@@ -22,7 +22,14 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 from sediment_core import (
     AgentHarness,
     CIProvider,
@@ -68,6 +75,14 @@ from sediment_derive import (
 )
 
 from sediment_derive.repository_context import read_repository_context
+from sediment_derive.context_retrieval import (
+    CONTEXT_DEFAULT_RESPONSE_BYTES,
+    CONTEXT_MIN_RESPONSE_BYTES,
+    CONTEXT_MAX_RESPONSE_BYTES,
+    CONTEXT_QUERY_BYTES_LIMIT,
+    ContextRetrievalResult,
+    context_query_tokens,
+)
 from sediment_derive.repository_identity import (
     RepositoryIdentity,
     RepositoryIdentitySkipReason,
@@ -80,7 +95,7 @@ from sediment_derive.repository_identity import (
 )
 
 from ..config import settings
-from ..deps import get_store, verify_operator_token
+from ..deps import get_store, verify_operator_token, verify_retrieval_token
 
 _SESSION_DOSSIER_LIMIT = 500
 
@@ -217,6 +232,73 @@ async def query_evidence_read(
     """
     return await _evidence_worker_response(
         request, "evidence-read", body.model_dump(mode="python")
+    )
+
+
+class ContextRetrievalRequest(BaseModel):
+    """Question and byte budget; the deployment fixes the source Session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: EvidenceSchemaVersion
+    query: str = Field(strict=True, max_length=CONTEXT_QUERY_BYTES_LIMIT)
+    max_bytes: int = Field(
+        default=CONTEXT_DEFAULT_RESPONSE_BYTES,
+        strict=True,
+        ge=CONTEXT_MIN_RESPONSE_BYTES,
+        le=CONTEXT_MAX_RESPONSE_BYTES,
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _declared_fields_only(cls, value):
+        # Extra-field locations would echo arbitrary caller-supplied key text.
+        if isinstance(value, dict) and value.keys() - {
+            "schema_version",
+            "query",
+            "max_bytes",
+        }:
+            raise ValueError("unsupported context request field")
+        return value
+
+    @field_validator("query")
+    @classmethod
+    def _valid_query(cls, value: str) -> str:
+        context_query_tokens(value)
+        return value
+
+
+@router.post(
+    "/context",
+    response_model=ContextRetrievalResult,
+    responses={
+        400: {"description": "Malformed JSON body."},
+        403: {"description": "Retrieval or operator authority required."},
+        404: {"description": "Context retrieval is disabled."},
+        409: {
+            "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+        },
+        413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
+        503: {
+            "description": "Database unavailable, or work capacity or execution budget exceeded."
+        },
+    },
+)
+async def query_context(
+    body: ContextRetrievalRequest,
+    request: Request,
+    _: None = Depends(verify_retrieval_token),
+) -> Response:
+    """Select exact evidence from the deployment's one configured Session.
+
+    Version 1 accepts English/code keywords, excludes reasoning, and returns
+    at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB).
+    Scores count distinct token overlap; capture completeness remains unknown.
+    The operation rechecks Quarantine, persists nothing, and shares the
+    evidence worker admission limit and 30-second deadline.
+    """
+    return await _evidence_worker_response(
+        request, "context-retrieve", body.model_dump(mode="python")
     )
 
 

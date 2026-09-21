@@ -31,6 +31,7 @@ from .config import settings
 # body before its auth dependency runs, so every door's read is pre-auth.
 # ponytail: fixed constant; make it a setting only if a non-GitHub forge needs it
 MAX_BODY_BYTES = 25 * 1024 * 1024
+CONTEXT_REQUEST_BYTES_LIMIT = 16 * 1024
 
 
 class BodySizeLimitMiddleware:
@@ -66,6 +67,8 @@ class BodySizeLimitMiddleware:
             # FastAPI parses model envelopes before running dependencies. Keep
             # this operation's smaller bound ahead of that allocation too.
             limit = min(limit, EVIDENCE_REQUEST_BYTES_LIMIT)
+        elif scope["method"] == "POST" and path == "/query/context":
+            limit = min(limit, CONTEXT_REQUEST_BYTES_LIMIT)
         received = 0
 
         async def capped_receive() -> Any:

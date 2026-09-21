@@ -414,3 +414,28 @@ def test_cli_later_quarantine_refuses_packet_for_previously_visible_reference(
     assert (
         store.count_facts(ORG, FactTable.INFERENCE_CALLS, include_quarantined=True) == 2
     )
+
+
+def test_context_retrieval_preserves_nonempty_pipeline_outputs(
+    client, captured_calls, training_corpus, tmp_path, monkeypatch
+):
+    from pydantic import SecretStr
+    from sediment_api.config import settings
+
+    monkeypatch.setattr(
+        settings, "retrieval_token", SecretStr("retrieval-test-token-long-enough")
+    )
+    monkeypatch.setattr(settings, "retrieval_session_id", SESSION)
+    before = _pipeline_snapshot(client, training_corpus, tmp_path / "before-context")
+    result = client.post(
+        "/query/context",
+        headers={"Authorization": "Bearer retrieval-test-token-long-enough"},
+        json={"schema_version": 1, "query": "function signature dependency passed"},
+    )
+    assert result.status_code == 200
+    assert result.json()["status"] == "matched"
+    assert result.json()["items"]
+    assert (
+        _pipeline_snapshot(client, training_corpus, tmp_path / "after-context")
+        == before
+    )

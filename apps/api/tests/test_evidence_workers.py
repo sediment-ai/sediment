@@ -25,7 +25,12 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
         )
         try:
             await _file(marker)
-            for kind in ("evidence-inventory", "evidence-manifest", "evidence-read"):
+            for kind in (
+                "evidence-inventory",
+                "evidence-manifest",
+                "evidence-read",
+                "context-retrieve",
+            ):
                 result = await supervisor.run(kind, {})
                 assert result.status_code == 503
             assert len(supervisor._query_tasks) == 1
@@ -41,8 +46,9 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
     asyncio.run(check())
 
 
+@pytest.mark.parametrize("kind", ["evidence-read", "context-retrieve"])
 @pytest.mark.parametrize("finish", ["cancel", "deadline", "failure", "representation"])
-def test_evidence_releases_both_admission_slots(monkeypatch, tmp_path, finish):
+def test_evidence_releases_both_admission_slots(monkeypatch, tmp_path, finish, kind):
     from sediment_api import workers
 
     marker = tmp_path / "pid"
@@ -62,7 +68,7 @@ def test_evidence_releases_both_admission_slots(monkeypatch, tmp_path, finish):
     async def check():
         supervisor = workers.WorkerSupervisor()
         try:
-            pending = asyncio.create_task(supervisor.run("evidence-read", {}))
+            pending = asyncio.create_task(supervisor.run(kind, {}))
             pid = int(await _file(marker))
             if finish == "cancel":
                 pending.cancel()

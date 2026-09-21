@@ -34,7 +34,7 @@ MAX_REQUEST_BYTES = 1024 * 1024
 MIRROR_FREE_BYTES = 1024 * 1024 * 1024
 _WORKER_COMMAND = (sys.executable, "-m", "sediment_api.worker")
 _EVIDENCE_KINDS = frozenset(
-    {"evidence-inventory", "evidence-manifest", "evidence-read"}
+    {"evidence-inventory", "evidence-manifest", "evidence-read", "context-retrieve"}
 )
 _QUERY_KINDS = (
     frozenset({"commit", "session", "model-report", "lifecycle-report"})
@@ -201,6 +201,19 @@ def _child_environment() -> dict[str, str]:
         SEDIMENT_DEV_MODE=str(settings.dev_mode).lower(),
         SEDIMENT_ALLOWED_CLONE_HOSTS=json.dumps(settings.allowed_clone_hosts),
     )
+    for name, value in (
+        (
+            "SEDIMENT_RETRIEVAL_TOKEN",
+            settings.retrieval_token.get_secret_value()
+            if settings.retrieval_token
+            else None,
+        ),
+        ("SEDIMENT_RETRIEVAL_SESSION_ID", settings.retrieval_session_id),
+    ):
+        if value is None:
+            environment.pop(name, None)
+        else:
+            environment[name] = value
     return environment
 
 

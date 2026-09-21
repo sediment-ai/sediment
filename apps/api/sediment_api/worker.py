@@ -26,6 +26,7 @@ from sediment_core import (
 from sediment_core.models import AwareDatetime, CommitSha, RepoSlug, RequiredRepoSlug
 from sediment_core.postgres_engine import create_postgres_engine
 from sediment_derive import MirrorManager
+from sediment_derive.context_retrieval import ContextRetrievalResult, retrieve_context
 from sediment_derive.repository_identity import (
     REPOSITORY_IDENTITY_SKIP_REASONS,
     RepositoryIdentity,
@@ -107,6 +108,7 @@ class WorkerRequest:
         "evidence-inventory",
         "evidence-manifest",
         "evidence-read",
+        "context-retrieve",
     ]
     payload: dict[str, Any]
 
@@ -114,6 +116,22 @@ class WorkerRequest:
 def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
     payload = request.payload
     match request.kind:
+        case "context-retrieve":
+            selection = query.ContextRetrievalRequest.model_validate(payload)
+            session_id = TypeAdapter(NonEmptyId).validate_python(
+                settings.retrieval_session_id
+            )
+            try:
+                with store.read_snapshot() as snapshot:
+                    source = snapshot.read_context_source(settings.org_id, session_id)
+                    value = retrieve_context(
+                        source, selection.query, selection.max_bytes
+                    )
+                    return query._query_response(
+                        value, ContextRetrievalResult, max_bytes=selection.max_bytes
+                    )
+            except EvidenceReadError as exc:
+                raise HTTPException(status_code=409, detail=exc.detail) from None
         case "evidence-inventory" | "evidence-manifest" | "evidence-read":
             session_id = TypeAdapter(NonEmptyId).validate_python(payload["session_id"])
             try:
