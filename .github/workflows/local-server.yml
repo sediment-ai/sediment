@@ -33,7 +33,6 @@ jobs:
           brew update
           brew install libpq openssl@3
           brew upgrade libpq openssl@3
-          echo "$(brew --prefix libpq)/bin" >> "$GITHUB_PATH"
       - run: uv sync --locked
       - name: Exercise installed local server
         run: >-

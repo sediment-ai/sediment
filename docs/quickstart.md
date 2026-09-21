@@ -9,69 +9,23 @@ hosted deployment, start at
 ## 0. Check the prerequisites
 
 Use a supported macOS release with Homebrew, or a supported Debian or Ubuntu
-release. Git, `curl`, and `uv` must be on PATH.
-
-```bash
-for tool in git curl uv; do command -v "$tool" >/dev/null || exit 1; done
-printf 'command prerequisites found\n'
-```
-
-```text
-command prerequisites found
-```
-
-This local-server tutorial also needs the maintained PostgreSQL client library,
-`libpq`, on the host. Capture-only machines that send to an existing deployment
-don't need it. Sediment uses [Psycopg's Python implementation](https://www.psycopg.org/psycopg3/docs/basic/install.html#pure-python-installation).
-
-Install the host libraries for this tutorial:
-
-```bash
-case "$(uname -s)" in
-  Darwin)
-    brew install libpq || exit 1
-    export PATH="$(brew --prefix libpq)/bin:$PATH"
-    ;;
-  Linux)
-    sudo apt-get update || exit 1
-    sudo apt-get install -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g || exit 1
-    ;;
-  *) echo 'Use supported macOS, Debian, or Ubuntu for this tutorial.' >&2; exit 1 ;;
-esac
-uv run --no-project --python 3.12 --with "psycopg>=3.3.5" python -c 'from psycopg import pq; print("libpq found")'
-```
-
-```text
-libpq found
-```
-
-[Homebrew's libpq](https://formulae.brew.sh/formula/libpq) is keg-only. The PATH
-setting lets Psycopg find its `pg_config`; keep this shell open for the server
-step. [Debian's libpq5](https://packages.debian.org/bookworm/libpq5)
-receives updates through the distribution's package repositories.
+release. Run the installer as your normal user. Debian and Ubuntu require
+`sudo` access to install host packages. Git and `curl` must be on PATH.
 
 ## 1. Install the CLI
 
-Install the source preview in a persistent checkout. This path installs the
-workspace members and their locked dependencies without a published Python
-package. Run the block in the shell that you used for the prerequisites:
-
 ```bash
-SEDIMENT_CHECKOUT="$HOME/.local/share/sediment"
-mkdir -p "$(dirname "$SEDIMENT_CHECKOUT")"
-git clone https://github.com/sediment-ai/sediment.git "$SEDIMENT_CHECKOUT" || exit 1
-SEDIMENT_REVISION="$(git -C "$SEDIMENT_CHECKOUT" rev-parse HEAD)"
-git -C "$SEDIMENT_CHECKOUT" checkout --detach "$SEDIMENT_REVISION" || exit 1
-cd "$SEDIMENT_CHECKOUT" || exit 1
-uv sync --locked --python 3.12 --no-dev || exit 1
-export PATH="$SEDIMENT_CHECKOUT/.venv/bin:$PATH"
-printf 'sediment_revision=%s\n' "$SEDIMENT_REVISION"
+curl -fsSL https://sediment.so/install.sh | sh
 ```
 
-Record the printed full commit hash with your results. The detached checkout
-keeps that revision until you choose another one. Keep the checkout and its
-`.venv` at this path; installed hooks reference them. In a later shell, export
-this PATH again before running `sediment`.
+The installer installs `sediment-cli` from PyPI in an isolated tool environment
+with Python 3.12. It installs `uv` if needed, plus the maintained host libraries
+that the local PostgreSQL server needs. You don't need a source checkout or
+Docker.
+
+If the installer prints an `export PATH=...` instruction, run it in this
+terminal before continuing. Repeat the same instruction in each terminal where
+you run `sediment`.
 
 Verify:
 
@@ -96,10 +50,10 @@ the API. It keeps the database, credentials, and mirror under
 `~/.sediment/server`.
 
 Keep this terminal open. When the server reports `Application startup complete.`,
-open a second terminal. Set the installed command's PATH and verify the server:
+open a second terminal. If installation printed a PATH instruction, repeat it
+in this terminal. Then verify the server:
 
 ```bash
-export PATH="$HOME/.local/share/sediment/.venv/bin:$PATH"
 curl -sf http://127.0.0.1:8000/health
 ```
 
