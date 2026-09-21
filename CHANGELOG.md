@@ -11,6 +11,11 @@
 - Document controlled agent continuation with preserved workspace state. Evidence
   reads add no model dependency, persisted domain state, or training interpretation.
 
+### Dependency maintenance
+
+- Update the supplied gateway to fastapi-sso 0.23.0 to follow upstream's
+  latest-release security support policy.
+
 ## 0.1.0 — 2026-09-21
 
 ### Installation
