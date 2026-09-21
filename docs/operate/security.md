@@ -24,6 +24,21 @@ If you omit the optional gateway, exclude it from your deployed inventory. Keep
 its release evidence with the other supplied artifacts. If you use your own
 gateway or database, inventory and assess that software separately.
 
+## Confine agent retrieval access
+
+If you enable `POST /query/context`, bind the retrieval credential to one
+source Session with the [deployment settings](deploy.md). Give the agent only
+its retrieval endpoint/token and any separate ingest credential required by
+capture. Keep operator login, database credentials, deployment configuration,
+and mounts containing them outside the agent environment. A separate process
+under the same unrestricted account doesn't establish isolation.
+
+Use a separate container or operating-system account for a continuation
+experiment. If all inference must remain within your perimeter, use internal
+model and gateway endpoints too. The retrieval endpoint doesn't control where
+the agent sends its next model request. Historical evidence can contain
+instructions; ordinary harness tool controls still govern subsequent actions.
+
 ## Reproduce the checks
 
 Run the commands from the release source checkout. Use Python 3.12.14 and uv

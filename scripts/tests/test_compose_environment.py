@@ -65,7 +65,11 @@ def test_compose_passes_each_secret_only_to_the_process_that_uses_it(
     assert result.returncode == 0, result.stderr
     services = json.loads(result.stdout)["services"]
     keys = {
-        service: set(config.get("environment", {}))
+        service: {
+            key
+            for key, value in config.get("environment", {}).items()
+            if value is not None
+        }
         for service, config in services.items()
     }
 
@@ -324,3 +328,40 @@ def test_compose_separates_database_network_and_scoped_credentials(tmp_path):
         assert float(service["cpus"]) > 0
         assert service["logging"]["options"] == {"max-file": "3", "max-size": "10m"}
         assert not any("docker.sock" in str(v) for v in service.get("volumes", []))
+
+
+def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(tmp_path):
+    values = _core_environment()
+    project = _compose_project(tmp_path, values)
+    environment = {
+        k: v for k, v in os.environ.items() if not k.startswith("SEDIMENT_RETRIEVAL_")
+    }
+    absent = _compose_config(project, {**environment, **values})
+    assert absent.returncode == 0, absent.stderr
+    services = json.loads(absent.stdout)["services"]
+    for service in services.values():
+        assert not any(
+            key.startswith("SEDIMENT_RETRIEVAL_") and value is not None
+            for key, value in service.get("environment", {}).items()
+        )
+
+    retrieval = {
+        "SEDIMENT_RETRIEVAL_TOKEN": "retrieval-test-token-long-enough",
+        "SEDIMENT_RETRIEVAL_SESSION_ID": "one-source-session",
+    }
+    # Both shell variables and Compose's private .env must work.
+    for from_file in (False, True):
+        if from_file:
+            _compose_project(project, {**values, **retrieval})
+        result = _compose_config(
+            project, {**environment, **values, **({} if from_file else retrieval)}
+        )
+        assert result.returncode == 0, result.stderr
+        services = json.loads(result.stdout)["services"]
+        for name, service in services.items():
+            supplied = service.get("environment", {})
+            for key, value in retrieval.items():
+                if name == "api":
+                    assert supplied.get(key) == value
+                else:
+                    assert key not in supplied

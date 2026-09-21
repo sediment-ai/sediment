@@ -5,9 +5,9 @@ import json
 import re
 from typing import Annotated
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from sediment_core import ForgeHost, normalize_org_id
+from sediment_core import ForgeHost, NonEmptyId, normalize_org_id
 
 # Token values that mean "operator never configured a real secret".
 _INSECURE_DEFAULTS = {
@@ -63,6 +63,8 @@ class Settings(BaseSettings):
     # Auth
     api_bearer_token: str = Field(default="", repr=False)
     operator_token: SecretStr = SecretStr("")
+    retrieval_token: SecretStr | None = None
+    retrieval_session_id: NonEmptyId | None = None
     ingest_tokens: Annotated[dict[str, SecretStr], NoDecode] = Field(
         default_factory=dict
     )
@@ -113,6 +115,11 @@ class Settings(BaseSettings):
     def _strip_operator_token(cls, value: SecretStr) -> SecretStr:
         return SecretStr(value.get_secret_value().strip())
 
+    @field_validator("retrieval_token")
+    @classmethod
+    def _strip_retrieval_token(cls, value: SecretStr | None) -> SecretStr | None:
+        return None if value is None else SecretStr(value.get_secret_value().strip())
+
     @field_validator("ingest_tokens", mode="before")
     @classmethod
     def _parse_ingest_tokens(cls, value):
@@ -140,7 +147,7 @@ class Settings(BaseSettings):
             if (
                 not isinstance(client_id, str)
                 or not _CLIENT_ID.fullmatch(client_id)
-                or client_id in {"operator", "legacy"}
+                or client_id in {"operator", "legacy", "retrieval"}
             ):
                 raise ValueError(
                     "ingest_tokens contains an invalid or reserved client identifier"
@@ -151,6 +158,36 @@ class Settings(BaseSettings):
                 raise ValueError("ingest_tokens must map client identifiers to secrets")
             normalized[client_id] = SecretStr(secret.strip())
         return normalized
+
+    @model_validator(mode="after")
+    def _validate_retrieval(self) -> "Settings":
+        # Agent read authority never inherits development-mode exemptions.
+        if (self.retrieval_token is None) != (self.retrieval_session_id is None):
+            raise ValueError(
+                "retrieval_token and retrieval_session_id must be set together"
+            )
+        if self.retrieval_token is None:
+            return self
+        token = self.retrieval_token.get_secret_value()
+        if (
+            token.lower() in _INSECURE_DEFAULTS
+            or len(token) < _MIN_SECRET_LENGTH
+            or any(not 33 <= ord(char) <= 126 for char in token)
+        ):
+            raise ValueError(
+                "retrieval_token must be a strong printable ASCII secret of at least 24 characters"
+            )
+        other_secrets = {
+            self.operator_token.get_secret_value(),
+            self.api_bearer_token,
+            self.github_webhook_secret,
+            *(secret.get_secret_value() for secret in self.ingest_tokens.values()),
+        }
+        if token in other_secrets:
+            raise ValueError(
+                "retrieval_token must differ from all other configured secrets"
+            )
+        return self
 
     def validate_production_security(self) -> list[str]:
         """Return human-readable security problems for a production boot.

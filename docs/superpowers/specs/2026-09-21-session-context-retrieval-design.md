@@ -2,9 +2,9 @@
 
 Date: 2026-09-21
 
-Status: design draft for review. This document proposes behavior; it doesn't
-ship a retrieval tool or establish a continuation result. Create and claim an
-implementation issue after design review, before changing runtime code.
+Status: implementation in progress under [issue #69](https://github.com/sediment-ai/sediment/issues/69)
+and [PR #70](https://github.com/sediment-ai/sediment/pull/70). The implementation
+must record validation before it claims continuation benefit.
 
 ## Outcome
 

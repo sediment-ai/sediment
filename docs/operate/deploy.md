@@ -71,9 +71,19 @@ proxy or tunnel that throttles repeated failures.
 Compose passes each service only its required credentials. The provisioning
 service receives bootstrap authority and the three role passwords. The API
 receives only its restricted database URL, operator HTTP token, ingest token
-map, and webhook secret. The operator profile receives its own database URL.
+map, webhook secret, and optional retrieval settings. The operator profile receives its own database URL.
 The gateway receives an ingest token and provider credentials. It has no
 database credentials or database-network membership.
+
+If you enable agent-requested retrieval, add both `SEDIMENT_RETRIEVAL_TOKEN` and
+`SEDIMENT_RETRIEVAL_SESSION_ID` to the private `.env`. Use a distinct printable
+ASCII token of at least 24 characters. Use the actual source Session identifier.
+The API validates this pair even in development mode. Leave both unset to disable
+retrieval; empty values are invalid. Compose passes the pair only to the API.
+Restart the API after changing either setting. Rotate the token when changing
+the Session. Removing both settings and restarting revokes access.
+If an ingest client is named `retrieval`, rename that entry before upgrading.
+The identifier is reserved; its old secret isn't reclassified.
 
 The authoritative API settings loader is `apps/api/sediment_api/config.py`.
 If a required setting is absent, Compose stops and names it.

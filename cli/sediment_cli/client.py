@@ -242,7 +242,7 @@ def probe_me(base_url: str, token: str) -> dict[str, Any]:
         identity = resp.json()
         if (
             not isinstance(identity, dict)
-            or identity.get("authority") not in {"operator", "ingest"}
+            or identity.get("authority") not in {"operator", "ingest", "retrieval"}
             or not isinstance(identity.get("client_id"), str)
             or not identity["client_id"]
             or not isinstance(identity.get("org_id"), str)

@@ -88,12 +88,12 @@ class BodySizeLimitMiddleware:
 class CredentialIdentity:
     """Configured authority only; never a tenant or captured developer identity."""
 
-    authority: Literal["ingest", "operator"]
+    authority: Literal["ingest", "operator", "retrieval"]
     client_id: str
 
 
 def verify_token(authorization: str | None = Header(None)) -> CredentialIdentity:
-    """Authenticate either fixed authority without logging credential material."""
+    """Authenticate configured authorities without logging credential material."""
     scheme, _, credential = (authorization or "").partition(" ")
     credential = credential.strip()
     if scheme.lower() != "bearer" or not credential:
@@ -104,6 +104,12 @@ def verify_token(authorization: str | None = Header(None)) -> CredentialIdentity
         (
             settings.operator_token.get_secret_value(),
             CredentialIdentity("operator", "operator"),
+        ),
+        (
+            settings.retrieval_token.get_secret_value()
+            if settings.retrieval_token is not None
+            else "",
+            CredentialIdentity("retrieval", "retrieval"),
         ),
         (settings.api_bearer_token, CredentialIdentity("ingest", "legacy")),
         *(
@@ -123,6 +129,8 @@ def verify_ingest_token(
     identity: CredentialIdentity = Depends(verify_token),
 ) -> CredentialIdentity:
     """Capture accepts ingest clients and explicit operator demonstrations."""
+    if identity.authority not in {"ingest", "operator"}:
+        raise HTTPException(status_code=403, detail="Ingest authority required")
     return identity
 
 
@@ -132,6 +140,17 @@ def verify_operator_token(
     """Read and inspection routes require operator authority."""
     if identity.authority != "operator":
         raise HTTPException(status_code=403, detail="Operator authority required")
+    return identity
+
+
+def verify_retrieval_token(
+    identity: CredentialIdentity = Depends(verify_token),
+) -> CredentialIdentity:
+    """Read the deployment's fixed source without broadening operator reads."""
+    if identity.authority not in {"retrieval", "operator"}:
+        raise HTTPException(status_code=403, detail="Retrieval authority required")
+    if settings.retrieval_session_id is None:
+        raise HTTPException(status_code=404, detail="Context retrieval is disabled")
     return identity
 
 

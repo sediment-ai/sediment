@@ -30,6 +30,8 @@ def credentials(monkeypatch):
             "bob": SecretStr("bob-capture-secret"),
         },
         api_bearer_token="legacy-capture-secret",
+        retrieval_token=None,
+        retrieval_session_id=None,
     )
     monkeypatch.setattr(deps, "settings", config)
     return config
