@@ -49,7 +49,8 @@ strings — is outside the subset. Keep it out of `docs/`.
    presentation, and hard-coded colors break dark mode on every surface.
 2. **Line meaning is semantic.** Solid arrows carry the normal flow. A
    dashed edge marks an exception or bypass and says why in its label —
-   the one current example is `DER -. "Recovery · ADR 0004" .-> PROJ`.
+   for example, `CI -. "Recovery · ADR 0004" .-> Z[Recovery rows]` in
+   [How Sediment works](../explanation/how-sediment-works.md).
    Don't use dashed edges as decoration.
 3. **One diagram, one claim.** Draw the boundary or flow the section
    argues for and stop. Component inventories belong in a stage node's

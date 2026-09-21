@@ -84,7 +84,7 @@ integration collects, including prompts and source code.
 
 Evidence retrieval uses the API or `sediment evidence inventory`, `inspect`, and
 `fetch`. An operator selects captured parts and gives the resulting packet to an
-agent. The continuation guide uses an intact workspace; Sediment does not restore
+agent. The continuation guide uses an intact workspace; Sediment doesn't restore
 files or infer the next task. Available evidence depends on the capture setup.
 
 ## Development

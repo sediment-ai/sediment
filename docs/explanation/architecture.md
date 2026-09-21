@@ -39,7 +39,7 @@ flowchart TB
 Evidence reads and Derivations share captured Facts. Reports answer questions
 about agent work; training exports project Attributed completions and Rollouts.
 The Recovery export reads Facts and mirror evidence directly, as described in
-the export path below.
+the [Export path](#export-path).
 
 ## Capture path
 

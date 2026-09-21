@@ -8,7 +8,27 @@
     rsvg-convert -f svg architecture.src.svg -o architecture-dark.svg
     rsvg-convert -f svg /tmp/arch-light-src.svg -o architecture-light.svg
 
-  Restore viewBox="0 0 880 520" on each output root if stripped.
+  Restore source metadata after outlining (rsvg-convert drops accessibility attributes):
+
+    uv run python - <<'PY'
+    from pathlib import Path
+    from xml.etree import ElementTree as ET
+    from xml.sax.saxutils import quoteattr
+
+    source = ET.parse("architecture.src.svg").getroot()
+    for theme in ("dark", "light"):
+        path = Path(f"architecture-{theme}.svg")
+        svg = path.read_text()
+        root = ET.fromstring(svg)
+        attributes = " ".join(
+            f"{name}={quoteattr(source.attrib[name])}"
+            for name in ("viewBox", "role", "aria-label")
+            if name not in root.attrib
+        )
+        if attributes:
+            path.write_text(svg.replace("<svg ", f"<svg {attributes} ", 1))
+    PY
+
   Dark: ground #111111, ink #FFFFFF, signal #F13D4F.
   Light: paper #F1EEE7, ink #111111, accent #C42033.
 -->

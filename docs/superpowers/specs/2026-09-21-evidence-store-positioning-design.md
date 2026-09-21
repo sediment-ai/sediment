@@ -1,9 +1,10 @@
 # Evidence store positioning
 
 Decision: Position Sediment as the open-source, self-hosted evidence store for
-coding agents. The maintainer approved this direction and implementation in the
-September 21 conversation. [Issue 67](https://github.com/sediment-ai/sediment/issues/67)
-tracks the core work; [site issue 109](https://github.com/sediment-ai/sediment-site/issues/109)
+coding agents. [Issue 67](https://github.com/sediment-ai/sediment/issues/67)
+records the maintainer's approval and tracks the core work. The
+[implementation claim on 2026-09-21](https://github.com/sediment-ai/sediment/issues/67#issuecomment-5762081465)
+records the accepted scope. [Site issue 109](https://github.com/sediment-ai/sediment-site/issues/109)
 tracks the website.
 
 ## Message and audience
