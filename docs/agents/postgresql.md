@@ -10,7 +10,7 @@ for the binding storage decision.
 | Module | Purpose |
 |---|---|
 | `postgres_schema.py` | Complete SQLAlchemy Core metadata for Facts and Sessions |
-| `postgres_engine.py` | Bounded synchronous psycopg 3 pool; API-only statement, lock, and idle-transaction limits |
+| `postgres_engine.py` | Homebrew libpq discovery and bounded synchronous psycopg 3 pool; API-only statement, lock, and idle-transaction limits |
 | `postgres_migrations.py` + `alembic/` | Advisory-locked upgrades and read-only revision inspection |
 | `postgres_roles.py` | Fixed deployment roles, legacy ownership adoption, and runtime privilege validation |
 | `store.py` | FactStore, projected reads, and repeatable-read snapshot |

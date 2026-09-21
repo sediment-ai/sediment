@@ -148,8 +148,9 @@ Keep the checkout and its `.venv` at this path. Installed hooks and the pi
 extension reference them. In a later shell, export the same PATH before running
 `sediment`. The wheel alone doesn't contain the pi extension. Capture-only
 machines don't need the PostgreSQL client library. Before running local
-server or database commands, install and verify the host `libpq` prerequisite
-from the [Quickstart](../quickstart.md#0-check-the-prerequisites).
+server or database commands, install the maintained host libraries: `brew install libpq openssl@3` on
+macOS, or `sudo apt-get install libpq5 libxml2 libzstd1 liblz4-1 zlib1g` on
+Debian and Ubuntu. Sediment discovers Homebrew's keg-only `libpq` automatically.
 
 ## Enroll the developer machine
 

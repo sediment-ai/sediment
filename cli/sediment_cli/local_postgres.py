@@ -202,13 +202,14 @@ def _stop(process: subprocess.Popen) -> None:
 def managed_postgres(root: Path, password: str):
     """Yield a bootstrap URL while an owned loopback PostgreSQL process runs."""
     from sqlalchemy.engine import URL
-    from sediment_core.postgres_engine import DatabaseOperationError
+    from sediment_core.postgres_engine import DatabaseOperationError, configure_libpq
 
     if os.geteuid() == 0:
         raise ValueError(f"managed PostgreSQL must run as a non-root user. {_EXTERNAL}")
     # Keep the existing maintained host driver; fail before downloading or
     # initializing data if it isn't installed.
     try:
+        configure_libpq()
         import psycopg
     except ImportError:
         raise ValueError(

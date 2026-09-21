@@ -29,9 +29,20 @@ and [training exports](docs/exports/training-exports.md) for commands and exampl
 
 ## Get started
 
-Follow the [Quickstart](docs/quickstart.md) to install from source, start a
-local server, and capture your first Session. It covers prerequisites and
-verification on macOS with Homebrew, Debian, and Ubuntu.
+Install Sediment and start a local server:
+
+```sh
+curl -fsSL https://sediment.so/install.sh | sh
+sediment server
+```
+
+The installer installs `sediment-cli` from PyPI and prepares the host libraries
+on macOS with Homebrew, Debian, and Ubuntu. If it prints a PATH instruction,
+run that instruction before `sediment server`.
+
+The server configures PostgreSQL automatically and keeps its database,
+credentials, and mirror under `~/.sediment/server`. Follow the
+[Quickstart](docs/quickstart.md) to connect an agent and verify capture.
 
 The [agent integration guide](docs/capture/agent-integrations.md) covers
 Claude Code, Codex, Cursor, pi, and Copilot Chat. Available signals vary by agent.

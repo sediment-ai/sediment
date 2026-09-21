@@ -161,15 +161,16 @@ publication. It repeats the verification before GitHub publication. The
 workflow runs these jobs in order:
 
 1. `build` runs the complete rehearsal and preserves the twelve validated
-   Python artifacts.
-2. `publish-pypi` waits for approval from the protected `pypi` environment,
-   then publishes those files through PyPI trusted publishing.
-3. `publish-github` adds the tagged `install.sh`, generates `SHA256SUMS`, and
-   publishes a GitHub Release from the same Python artifacts.
+   Python artifacts. Compatibility and security jobs check the release inputs.
+2. `prepare-release` collects those artifacts, the tagged installer, and the
+   security inventories. It generates support metadata and `SHA256SUMS`.
+3. `publish-pypi` waits for approval from the protected `pypi` environment,
+   then publishes the Python artifacts through PyPI trusted publishing.
+4. `publish-github` publishes the prepared asset set as a GitHub Release.
 
 The GitHub Release remains absent if PyPI rejects the version. If GitHub
 publication stops after creating its draft, rerun that job. The retry replaces
-the complete draft asset set, verifies all fourteen filenames, and refuses to
+the complete draft asset set, verifies every prepared asset filename, and refuses to
 change a published release.
 
 If PyPI accepts only part of the artifact set before a network failure, rerun

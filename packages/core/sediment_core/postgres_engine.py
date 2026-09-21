@@ -4,7 +4,12 @@
 from __future__ import annotations
 
 import logging
+import os
+import shutil
+import subprocess
+import sys
 import time
+from pathlib import Path
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection, Engine, make_url
@@ -85,6 +90,29 @@ def engine_target(engine: Engine) -> str:
     return f"{authority}/{engine.url.database}"
 
 
+def configure_libpq() -> None:
+    """Let Psycopg discover Homebrew's keg-only client without shell setup."""
+    if sys.platform != "darwin" or shutil.which("pg_config"):
+        return
+    try:
+        prefix = subprocess.run(
+            ["brew", "--prefix", "libpq"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout.strip()
+        binaries = Path(prefix) / "bin"
+        if binaries.is_absolute() and (binaries / "pg_config").is_file():
+            # Append so explicitly configured tools retain precedence.
+            os.environ["PATH"] = os.pathsep.join(
+                filter(None, (os.environ.get("PATH"), str(binaries)))
+            )
+    except (OSError, subprocess.SubprocessError):
+        # The driver supplies the existing credential-safe missing-library error.
+        pass
+
+
 def create_postgres_engine(
     database_url: str, *, api_work: bool = False, single_connection: bool = False
 ) -> Engine:
@@ -112,6 +140,7 @@ def create_postgres_engine(
             f"-c idle_in_transaction_session_timeout={API_IDLE_TRANSACTION_TIMEOUT_MS}"
         )
     try:
+        configure_libpq()
         return create_engine(
             url,
             pool_size=1 if single_connection else 5,

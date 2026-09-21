@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Installation
+
+- Install the PyPI CLI and maintained host libraries through
+  `curl -fsSL https://sediment.so/install.sh | sh`, then start with
+  `sediment server`. macOS database commands discover Homebrew's keg-only
+  PostgreSQL client library without a shell PATH change.
+- Use `--capture-only` to install the CLI for an existing deployment without
+  installing local-server libraries.
+
 ### Local server
 
 - Start a local API and PostgreSQL database with `sediment server`. The command
@@ -31,5 +40,5 @@
 - Provide a restricted Anthropic gateway based on LiteLLM 1.102.0. The supplied
   image excludes database clients and PgBouncer.
 
-See [Quickstart](docs/quickstart.md) to try the source checkout and
+See [Quickstart](docs/quickstart.md) to install and start Sediment and
 [Contributing](CONTRIBUTING.md) for development and reporting guidance.
