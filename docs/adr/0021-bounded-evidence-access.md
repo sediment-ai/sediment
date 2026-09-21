@@ -1,6 +1,6 @@
 # ADR 0021 — Bounded evidence reads preserve source identity
 
-Status: proposed
+Status: implemented
 
 Date: 2026-09-21
 
