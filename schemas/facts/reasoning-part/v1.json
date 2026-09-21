@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/reasoning-part/v1.json",
+  "title": "ReasoningPart",
+  "description": "One readable model-reasoning part.",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "reasoning",
+      "type": "string",
+      "description": "The message-part discriminator."
+    },
+    "content": {
+      "type": "string",
+      "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "content"
+  ]
+}

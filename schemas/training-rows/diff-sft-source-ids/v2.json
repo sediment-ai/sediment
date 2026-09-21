@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/diff-sft-source-ids/v2.json",
+  "title": "SourceIds",
+  "description": "Source fact ids for one diff-SFT sample.",
+  "type": "object",
+  "properties": {
+    "inference_call_id": {
+      "type": "string",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "decision_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Decisions that contributed to the row."
+    },
+    "ci_outcome_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "CI outcomes that contributed to the row."
+    },
+    "session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observation IDs from members supplying the emitted patch."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "inference_call_id",
+    "decision_ids",
+    "ci_outcome_ids",
+    "session_commit_observation_ids"
+  ]
+}

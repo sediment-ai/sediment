@@ -1,0 +1,16 @@
+USAGE:
+  sediment export dpo [-h] --out OUT [--recipe {dpo_human,dpo_outcome}]
+                      [--from FROM_BUNDLE]
+                      [--profile {hf-trl-dpo-v2,fireworks-dpo-v2}]
+
+  dpo.jsonl — chosen/rejected pairs
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             output directory
+  --recipe {dpo_human,dpo_outcome}
+                        evidence recipe (default: dpo_human; dpo_outcome
+                        requires opt-in)
+  --from FROM_BUNDLE    validated derived bundle directory
+  --profile {hf-trl-dpo-v2,fireworks-dpo-v2}
+                        exact optional consumer compatibility profile

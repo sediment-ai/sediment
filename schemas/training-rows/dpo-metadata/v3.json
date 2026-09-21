@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/dpo-metadata/v3.json",
+  "title": "DPOMetadata",
+  "description": "Sediment evidence for one DPO pair.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "source_model": {
+      "type": "string",
+      "description": "The model that served the source inference call."
+    },
+    "chosen_completion_id": {
+      "type": "string",
+      "description": "The preferred inference call."
+    },
+    "rejected_completion_id": {
+      "type": "string",
+      "description": "The dispreferred inference call from the same prompt and model."
+    },
+    "recipe_id": {
+      "enum": [
+        "dpo_human",
+        "dpo_outcome"
+      ],
+      "type": "string",
+      "description": "The closed evidence recipe that produced this training row."
+    },
+    "recipe_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The version of the evidence recipe; increment it when recipe semantics change."
+    },
+    "chosen_label_source": {
+      "enum": [
+        "explicit_accept",
+        "resolved_ci_pass"
+      ],
+      "type": "string",
+      "description": "The closed evidence source that labeled the preferred member."
+    },
+    "rejected_label_source": {
+      "enum": [
+        "explicit_reject",
+        "resolved_ci_fail"
+      ],
+      "type": "string",
+      "description": "The closed evidence source that labeled the dispreferred member."
+    },
+    "label_confidence": {
+      "type": "number",
+      "description": "The weaker member confidence — how much to trust the pair."
+    },
+    "ci_reliability": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Trust in the resolved CI evidence, separate from the categorical label."
+    },
+    "confidence_margin": {
+      "type": "number",
+      "description": "Chosen confidence minus rejected. Can be negative when attribution discounts or configured confidence factors outweigh direction."
+    },
+    "provenance": {
+      "$ref": "#/$defs/DPOProvenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "split": {
+      "enum": [
+        "train",
+        "eval"
+      ],
+      "type": "string",
+      "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+    },
+    "chosen_repository_identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Qualified repository identity of the chosen member; null for an unambiguous legacy repository."
+    },
+    "rejected_repository_identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Qualified repository identity of the rejected member; independent of the chosen member."
+    },
+    "chosen_attribution_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "git_notes",
+            "jaccard"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The selected preferred member's inferred Attribution method, or null without Attribution."
+    },
+    "rejected_attribution_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "git_notes",
+            "jaccard"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The selected dispreferred member's inferred Attribution method, or null without Attribution."
+    },
+    "chosen_session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observation IDs for the preferred member's exact Session-to-commit edge; empty when absent."
+    },
+    "rejected_session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observation IDs for the dispreferred member's exact Session-to-commit edge; empty when absent."
+    },
+    "schema_id": {
+      "const": "https://sediment.so/schemas/training-rows/dpo-pair/v3.json",
+      "type": "string",
+      "description": "The canonical wire-shape contract for this row."
+    },
+    "schema_version": {
+      "const": 3,
+      "type": "integer",
+      "description": "The positive integer version of the canonical row schema."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "source_model",
+    "chosen_completion_id",
+    "rejected_completion_id",
+    "recipe_id",
+    "recipe_version",
+    "chosen_label_source",
+    "rejected_label_source",
+    "label_confidence",
+    "ci_reliability",
+    "confidence_margin",
+    "provenance",
+    "split",
+    "chosen_repository_identity",
+    "rejected_repository_identity",
+    "chosen_attribution_source",
+    "rejected_attribution_source",
+    "chosen_session_commit_observation_ids",
+    "rejected_session_commit_observation_ids",
+    "schema_id",
+    "schema_version"
+  ],
+  "$defs": {
+    "DPOProvenance": {
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Provenance for the preferred member."
+        },
+        "rejected": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Provenance for the dispreferred member."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "chosen",
+        "rejected"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "RepositoryIdentity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "const": "github",
+          "type": "string",
+          "description": "The forge provider that assigns the immutable repository ID."
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The lowercase configured forge host."
+        },
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Immutable provider repository ID within its forge host."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "host",
+        "repository_id"
+      ]
+    }
+  }
+}

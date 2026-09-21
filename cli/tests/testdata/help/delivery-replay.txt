@@ -1,0 +1,11 @@
+USAGE:
+  sediment delivery replay [-h] [--directory DIRECTORY] [--watch]
+                           [--retry-blocked]
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --directory DIRECTORY
+                        private buffer (default: SEDIMENT_DELIVERY_DIR)
+  --watch               supervise replay until stopped
+  --retry-blocked       retry blocked payloads once; stop the existing worker
+                        first

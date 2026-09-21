@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Editable source for architecture-dark.svg / architecture-light.svg
+  (those two are text-outlined; edit THIS file, then regenerate both):
+
+    sed 's/#111111/#F1EEE7/g; s/#FFFFFF/#111111/g; s/#F13D4F/#C42033/g' \
+      architecture.src.svg > /tmp/arch-light-src.svg
+    rsvg-convert -f svg architecture.src.svg      -o architecture-dark.svg
+    rsvg-convert -f svg /tmp/arch-light-src.svg   -o architecture-light.svg
+
+  then restore viewBox="0 0 880 548" on each output's root <svg> if stripped.
+  Brand kit palette. Dark: ground #111111, ink #FFFFFF, signal red #F13D4F.
+  The sed maps it to light: paper #F1EEE7, ink #111111, accent-deep #C42033
+  (small accent text on paper needs the deep red for contrast). Signal red
+  carries the flow — arrows, the network boundary, the stage labels — while
+  box outlines and content text stay ink, per the brand rule that red marks
+  emphasis and never body copy.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 548" role="img" aria-label="Data flow: Claude Code, Copilot, Codex, and custom agents send telemetry and model traffic into your network, where the LLM gateway proxies model traffic upstream. Telemetry, the gateway callback, and source-control git history and CI/CD outcomes land as facts in PostgreSQL, are derived into labeled completions and rollouts, and are projected as DPO, SFT, recovery, and RLVR exports feeding your training frameworks, RL environments, or managed fine-tuning platform.">
+  <defs>
+    <marker id="arw" viewBox="0 0 8 8" refX="6" refY="3.5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L7 3.5 L0 7 z" fill="#F13D4F" />
+    </marker>
+  </defs>
+
+  <g font-family="IBM Plex Mono, ui-monospace, SF Mono, Menlo, monospace" font-size="11" font-weight="600" letter-spacing="1.2" stroke-width="1.5">
+    <!-- sources -->
+    <g fill="none" stroke="#FFFFFF" stroke-opacity="0.35">
+      <rect x="24" y="30" width="150" height="40" />
+      <rect x="220" y="30" width="440" height="40" />
+      <rect x="716" y="30" width="140" height="40" />
+    </g>
+    <g fill="#FFFFFF">
+      <text x="44" y="54">Source Control</text>
+      <text x="268" y="54">Claude Code &#183; Copilot &#183; Codex &#183; Custom Agent</text>
+      <text x="747" y="54">Model APIs</text>
+    </g>
+
+    <!-- outbound: gateway to model apis -->
+    <path d="M 800 140 V 76" fill="none" stroke="#F13D4F" stroke-opacity="0.75" marker-end="url(#arw)" />
+
+    <!-- flows in -->
+    <g stroke="#F13D4F" stroke-opacity="0.75" fill="none">
+      <path d="M 300 70 V 134" marker-end="url(#arw)" />
+      <path d="M 100 70 V 134" marker-end="url(#arw)" />
+      <path d="M 560 70 V 90 H 730 V 134" marker-end="url(#arw)" />
+      <path d="M 704 162 H 506" marker-end="url(#arw)" />
+    </g>
+    <text x="308" y="104" font-size="9.5" fill="#FFFFFF">OTEL metrics</text>
+    <text x="600" y="104" font-size="9.5" fill="#FFFFFF">model traffic</text>
+    <text x="108" y="104" font-size="9.5" fill="#FFFFFF">git history &#183; CI/CD</text>
+    <text x="585" y="154" font-size="9.5" fill="#FFFFFF">callback</text>
+
+    <!-- network boundary -->
+    <rect x="24" y="112" width="832" height="424" fill="none" stroke="#F13D4F" stroke-opacity="0.5" stroke-dasharray="4 6" />
+    <text x="844" y="527" text-anchor="end" font-size="10" fill="#F13D4F" letter-spacing="1.5">YOUR NETWORK</text>
+
+    <!-- capture + gateway -->
+    <rect x="60" y="140" width="440" height="44" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="218" y="166" fill="#F13D4F" font-size="10" letter-spacing="1.5">SEDIMENT &#8212; CAPTURE</text>
+    <rect x="704" y="140" width="140" height="44" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="731" y="166" fill="#FFFFFF">LLM Gateway</text>
+
+    <!-- spine -->
+    <path d="M 280 184 V 204" fill="none" stroke="#F13D4F" stroke-opacity="0.75" marker-end="url(#arw)" />
+    <rect x="60" y="210" width="560" height="40" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="76" y="234" fill="#F13D4F" font-size="10" letter-spacing="1.5">01 / FACTS</text>
+    <text x="232" y="234" fill="#FFFFFF">PostgreSQL &#183; git mirror</text>
+
+    <path d="M 280 250 V 272" fill="none" stroke="#F13D4F" stroke-opacity="0.75" marker-end="url(#arw)" />
+    <rect x="60" y="278" width="560" height="40" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="76" y="302" fill="#F13D4F" font-size="10" letter-spacing="1.5">02 / DERIVATIONS</text>
+    <text x="232" y="302" fill="#FFFFFF">completions &#8594; commits &#8594; CI</text>
+
+    <path d="M 280 318 V 340" fill="none" stroke="#F13D4F" stroke-opacity="0.75" marker-end="url(#arw)" />
+    <rect x="60" y="346" width="560" height="40" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="76" y="370" fill="#F13D4F" font-size="10" letter-spacing="1.5">03 / ARTIFACTS</text>
+    <text x="232" y="370" fill="#FFFFFF">labeled completions &#183; session rollouts</text>
+
+    <path d="M 280 386 V 408" fill="none" stroke="#F13D4F" stroke-opacity="0.75" marker-end="url(#arw)" />
+    <rect x="60" y="414" width="560" height="40" fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35" />
+    <text x="76" y="438" fill="#F13D4F" font-size="10" letter-spacing="1.5">04 / PROJECTIONS</text>
+    <text x="232" y="438" fill="#FFFFFF">DPO &#183; SFT &#183; recovery &#183; RLVR</text>
+
+    <g stroke="#F13D4F" stroke-opacity="0.75" fill="none">
+      <path d="M 148 454 V 476" marker-end="url(#arw)" />
+      <path d="M 340 454 V 476" marker-end="url(#arw)" />
+      <path d="M 532 454 V 476" marker-end="url(#arw)" />
+    </g>
+    <g fill="none" stroke="#FFFFFF" stroke-opacity="0.35">
+      <rect x="60" y="482" width="176" height="36" />
+      <rect x="252" y="482" width="176" height="36" />
+      <rect x="444" y="482" width="176" height="36" />
+    </g>
+    <g fill="#FFFFFF">
+      <text x="74" y="504">Training Frameworks</text>
+      <text x="281" y="504">RL Environments</text>
+      <text x="458" y="504">Managed Fine-Tuning</text>
+    </g>
+  </g>
+</svg>

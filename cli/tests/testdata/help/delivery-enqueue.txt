@@ -1,0 +1,9 @@
+USAGE:
+  sediment delivery enqueue [-h] [--directory DIRECTORY] [--fallback-direct]
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --directory DIRECTORY
+                        private buffer (default: SEDIMENT_DELIVERY_DIR)
+  --fallback-direct     allow one best-effort send when buffering is disabled or
+                        storage fails

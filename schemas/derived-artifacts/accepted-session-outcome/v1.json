@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/accepted-session-outcome/v1.json",
+  "title": "AcceptedSessionOutcome",
+  "description": "One accepted Session's terminal abandonment classification.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "accepted_decisions": {
+      "type": "integer",
+      "description": "How many accepted Developer decisions this Session contains."
+    },
+    "explicit_accepted_decisions": {
+      "type": "integer",
+      "description": "How many accepted decisions came from an explicit developer gesture."
+    },
+    "last_decision_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The Session's newest decision time, which anchors the grace horizon."
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The newest timestamp in the Facts read by the Derivation."
+    },
+    "status": {
+      "enum": [
+        "committed",
+        "abandoned",
+        "in_flight",
+        "attribution_unavailable"
+      ],
+      "type": "string",
+      "description": "The Session's closed terminal classification: committed, abandoned, in_flight, or attribution_unavailable."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "session_id",
+    "accepted_decisions",
+    "explicit_accepted_decisions",
+    "last_decision_at",
+    "as_of",
+    "status",
+    "provenance"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

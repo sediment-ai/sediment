@@ -1,0 +1,12 @@
+USAGE:
+  sediment delivery [-h] {enqueue,status,replay} ...
+
+  Deliver prepared capture payloads; OTLP acknowledgment is not a Fact count.
+
+ARGUMENTS:
+  enqueue               durably enqueue a bounded JSON request from stdin
+  status                inspect private buffer and worker state
+  replay                replay a bounded batch of due payloads
+
+OPTIONS:
+  -h, --help            show this help message and exit

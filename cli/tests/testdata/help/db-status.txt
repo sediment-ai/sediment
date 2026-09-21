@@ -1,0 +1,9 @@
+USAGE:
+  sediment db status [-h] [--database-url DATABASE_URL]
+
+  inspect the schema revision without changing it
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: SEDIMENT_DATABASE_URL)

@@ -1,0 +1,312 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "org.id",
+            "value": {
+              "stringValue": "acme-corp"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "0.142.5"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "0.31.0"
+            }
+          },
+          {
+            "key": "host.name",
+            "value": {
+              "stringValue": "dev-host.local"
+            }
+          },
+          {
+            "key": "env",
+            "value": {
+              "stringValue": "dev"
+            }
+          },
+          {
+            "key": "user.id",
+            "value": {
+              "stringValue": "developer-1"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "codex_exec"
+            }
+          },
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "rust"
+            }
+          }
+        ],
+        "droppedAttributesCount": 0,
+        "entityRefs": []
+      },
+      "scopeLogs": [
+        {
+          "scope": {
+            "name": "codex_otel.log_only",
+            "version": "",
+            "attributes": [],
+            "droppedAttributesCount": 0
+          },
+          "logRecords": [
+            {
+              "timeUnixNano": "0",
+              "observedTimeUnixNano": "1783542925478460000",
+              "severityNumber": 9,
+              "severityText": "INFO",
+              "body": null,
+              "attributes": [
+                {
+                  "key": "event.name",
+                  "value": {
+                    "stringValue": "codex.tool_decision"
+                  }
+                },
+                {
+                  "key": "tool_name",
+                  "value": {
+                    "stringValue": "apply_patch"
+                  }
+                },
+                {
+                  "key": "call_id",
+                  "value": {
+                    "stringValue": "call_7JXjTXnBT4R8YHM3bpvaOSSc"
+                  }
+                },
+                {
+                  "key": "decision",
+                  "value": {
+                    "stringValue": "approved"
+                  }
+                },
+                {
+                  "key": "source",
+                  "value": {
+                    "stringValue": "Config"
+                  }
+                },
+                {
+                  "key": "event.timestamp",
+                  "value": {
+                    "stringValue": "2026-07-08T20:35:25.478Z"
+                  }
+                },
+                {
+                  "key": "conversation.id",
+                  "value": {
+                    "stringValue": "01900000-0000-7000-8000-000000000001"
+                  }
+                },
+                {
+                  "key": "app.version",
+                  "value": {
+                    "stringValue": "0.142.5"
+                  }
+                },
+                {
+                  "key": "auth_mode",
+                  "value": {
+                    "stringValue": "Chatgpt"
+                  }
+                },
+                {
+                  "key": "originator",
+                  "value": {
+                    "stringValue": "codex_exec"
+                  }
+                },
+                {
+                  "key": "user.account_id",
+                  "value": {
+                    "stringValue": "00000000-0000-0000-0000-000000000000"
+                  }
+                },
+                {
+                  "key": "user.email",
+                  "value": {
+                    "stringValue": "dev@example.com"
+                  }
+                },
+                {
+                  "key": "terminal.type",
+                  "value": {
+                    "stringValue": "unknown"
+                  }
+                },
+                {
+                  "key": "model",
+                  "value": {
+                    "stringValue": "gpt-5.4-mini"
+                  }
+                },
+                {
+                  "key": "slug",
+                  "value": {
+                    "stringValue": "gpt-5.4-mini"
+                  }
+                }
+              ],
+              "droppedAttributesCount": 0,
+              "flags": 0,
+              "traceId": "",
+              "spanId": "",
+              "eventName": "event otel/src/events/session_telemetry.rs:955"
+            },
+            {
+              "timeUnixNano": "0",
+              "observedTimeUnixNano": "1783542925584362000",
+              "severityNumber": 9,
+              "severityText": "INFO",
+              "body": null,
+              "attributes": [
+                {
+                  "key": "event.name",
+                  "value": {
+                    "stringValue": "codex.tool_result"
+                  }
+                },
+                {
+                  "key": "tool_name",
+                  "value": {
+                    "stringValue": "apply_patch"
+                  }
+                },
+                {
+                  "key": "call_id",
+                  "value": {
+                    "stringValue": "call_7JXjTXnBT4R8YHM3bpvaOSSc"
+                  }
+                },
+                {
+                  "key": "arguments",
+                  "value": {
+                    "stringValue": "*** Begin Patch\n*** Update File: calc.py\n@@\n def add(a, b):\n     return a + b\n+\n+\n+def multiply(a, b):\n+    return a * b\n*** End Patch\n"
+                  }
+                },
+                {
+                  "key": "duration_ms",
+                  "value": {
+                    "stringValue": "153"
+                  }
+                },
+                {
+                  "key": "success",
+                  "value": {
+                    "stringValue": "true"
+                  }
+                },
+                {
+                  "key": "output",
+                  "value": {
+                    "stringValue": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\nSuccess. Updated the following files:\nM calc.py\n"
+                  }
+                },
+                {
+                  "key": "mcp_server",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "mcp_server_origin",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "event.timestamp",
+                  "value": {
+                    "stringValue": "2026-07-08T20:35:25.584Z"
+                  }
+                },
+                {
+                  "key": "conversation.id",
+                  "value": {
+                    "stringValue": "01900000-0000-7000-8000-000000000001"
+                  }
+                },
+                {
+                  "key": "app.version",
+                  "value": {
+                    "stringValue": "0.142.5"
+                  }
+                },
+                {
+                  "key": "auth_mode",
+                  "value": {
+                    "stringValue": "Chatgpt"
+                  }
+                },
+                {
+                  "key": "originator",
+                  "value": {
+                    "stringValue": "codex_exec"
+                  }
+                },
+                {
+                  "key": "user.account_id",
+                  "value": {
+                    "stringValue": "00000000-0000-0000-0000-000000000000"
+                  }
+                },
+                {
+                  "key": "user.email",
+                  "value": {
+                    "stringValue": "dev@example.com"
+                  }
+                },
+                {
+                  "key": "terminal.type",
+                  "value": {
+                    "stringValue": "unknown"
+                  }
+                },
+                {
+                  "key": "model",
+                  "value": {
+                    "stringValue": "gpt-5.4-mini"
+                  }
+                },
+                {
+                  "key": "slug",
+                  "value": {
+                    "stringValue": "gpt-5.4-mini"
+                  }
+                }
+              ],
+              "droppedAttributesCount": 0,
+              "flags": 0,
+              "traceId": "",
+              "spanId": "",
+              "eventName": "event otel/src/events/session_telemetry.rs:1080"
+            }
+          ],
+          "schemaUrl": ""
+        }
+      ],
+      "schemaUrl": ""
+    }
+  ]
+}

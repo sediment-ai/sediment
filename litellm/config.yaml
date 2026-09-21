@@ -1,0 +1,26 @@
+# LiteLLM config for the OPTIONAL bundled gateway (compose profile
+# `gateway`). This is the quickstart on-ramp for teams with no gateway yet —
+# if you already run LiteLLM, don't use this file: add the two
+# `litellm_settings`/callback lines below to YOUR config instead
+# (docs/operate/deploy.md, path 1).
+
+model_list:
+  # Anthropic passthrough: any claude-* model an agent asks for is forwarded
+  # verbatim. Claude Code requests several models per session (main +
+  # background), so a wildcard beats enumerating them.
+  - model_name: "claude-*"
+    litellm_params:
+      model: "anthropic/claude-*"
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+litellm_settings:
+  # The Sediment capture callback (litellm/sediment_callback.py, mounted next
+  # to this file). Fire-and-forget on success events; reads SEDIMENT_INGEST_URL and
+  # SEDIMENT_API_BEARER_TOKEN from the environment.
+  callbacks: sediment_callback.handler
+
+general_settings:
+  # Agents authenticate to the proxy with this key — never with the upstream
+  # Anthropic key. Required: an unauthenticated proxy on a host would relay
+  # ANTHROPIC_API_KEY to anyone who can reach port 4000.
+  master_key: os.environ/LITELLM_MASTER_KEY

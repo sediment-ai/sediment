@@ -1,0 +1,9 @@
+USAGE:
+  sediment db upgrade [-h] [--database-url DATABASE_URL]
+
+  upgrade the schema under an advisory lock
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: SEDIMENT_DATABASE_URL)

@@ -1,0 +1,11 @@
+USAGE:
+  sediment server [-h] [--host HOST] [--port PORT] [--root ROOT]
+
+  run a local API server with managed PostgreSQL
+
+OPTIONS:
+  -h, --help   show this help message and exit
+  --host HOST
+  --port PORT
+  --root ROOT  server data, PostgreSQL binaries, credentials, and logs (default:
+               ~/.sediment/server)

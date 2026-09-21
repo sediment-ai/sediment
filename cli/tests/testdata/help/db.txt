@@ -1,0 +1,12 @@
+USAGE:
+  sediment db [-h] <operation> ...
+
+  provision database roles or inspect and upgrade the schema
+
+OPERATIONS:
+  status       inspect the schema revision without changing it
+  upgrade      upgrade the schema under an advisory lock
+  provision    provision roles and migrate using isolated bootstrap credentials
+
+OPTIONS:
+  -h, --help   show this help message and exit

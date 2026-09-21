@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"/opt/sediment/sediment_attribution.py\" mark --tool claude-code || true"
+          }
+        ]
+      }
+    ]
+  }
+}

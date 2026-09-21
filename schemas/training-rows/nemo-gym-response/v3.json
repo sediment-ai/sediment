@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/nemo-gym-response/v3.json",
+  "title": "NemoGymResponse",
+  "description": "One NeMo Gym response trajectory.",
+  "type": "object",
+  "properties": {
+    "turns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RLVRTurnRow"
+      },
+      "description": "The captured turns in this contiguous rollout segment."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "turns"
+  ],
+  "$defs": {
+    "RLVRTurnRow": {
+      "type": "object",
+      "properties": {
+        "inference_call_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Id of the inference call this record belongs to."
+        },
+        "new_messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RLVRInferenceMessageRow"
+          },
+          "description": "Only the structured messages this turn added to the trajectory."
+        },
+        "completion": {
+          "type": "string",
+          "description": "The model's response text."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolCallPart"
+          },
+          "description": "Structured function calls requested by the assistant."
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RLVRDecisionRow"
+          },
+          "description": "The developer decisions recorded against this completion."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inference_call_id",
+        "new_messages",
+        "completion",
+        "tool_calls",
+        "decisions"
+      ]
+    },
+    "RLVRInferenceMessageRow": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextPart"
+              },
+              {
+                "$ref": "#/$defs/ReasoningPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallResponsePart"
+              }
+            ]
+          },
+          "description": "Ordered text, reasoning, tool-call, or tool-response parts."
+        },
+        "finish_reason": {
+          "type": "string",
+          "description": "The model service's finish reason; omitted when unreported."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "parts"
+      ]
+    },
+    "TextPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text, without JSON encoding around it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ReasoningPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "reasoning",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ToolCallPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The tool the model requested."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolCallResponsePart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call_response",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The tool-call id this result answers."
+        },
+        "result": {
+          "description": "The structured tool result supplied to the model."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "result"
+      ]
+    },
+    "RLVRDecisionRow": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "boolean",
+          "description": "Whether the developer took the change."
+        },
+        "explicit": {
+          "type": "boolean",
+          "description": "Whether a real human gesture produced this decision."
+        },
+        "agent_harness": {
+          "enum": [
+            "claude-code",
+            "copilot",
+            "codex",
+            "cursor",
+            "pi"
+          ],
+          "type": "string",
+          "description": "Which coding agent harness produced this fact."
+        },
+        "interaction_mode": {
+          "enum": [
+            "agent",
+            "inline"
+          ],
+          "type": "string",
+          "description": "Whether the edit interaction was `agent` or `inline`."
+        },
+        "file_path": {
+          "type": "string",
+          "description": "Repo-relative path of the file the record concerns."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "explicit",
+        "agent_harness",
+        "interaction_mode",
+        "file_path"
+      ]
+    }
+  }
+}

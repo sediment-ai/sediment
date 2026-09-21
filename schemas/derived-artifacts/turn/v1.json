@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/turn/v1.json",
+  "title": "Turn",
+  "description": "One rollout turn.",
+  "type": "object",
+  "properties": {
+    "new_messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InferenceMessage"
+      },
+      "description": "Only the messages this turn added, so a trajectory does not repeat the whole history per turn."
+    },
+    "completion": {
+      "type": "string",
+      "description": "The model's response text."
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DeveloperDecision"
+      },
+      "description": "The developer decisions recorded against this completion."
+    },
+    "inference_call_id": {
+      "type": "string",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ToolCallPart"
+      },
+      "description": "The tool calls this turn's response made."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "new_messages",
+    "completion",
+    "decisions",
+    "inference_call_id",
+    "tool_calls"
+  ],
+  "$defs": {
+    "InferenceMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The message author role, such as `system`, `user`, `assistant`, or `tool`."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextPart"
+              },
+              {
+                "$ref": "#/$defs/ReasoningPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallResponsePart"
+              }
+            ]
+          },
+          "description": "Ordered text, reasoning, tool-call, or tool-response parts."
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The model service's finish reason when reported."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "parts",
+        "finish_reason"
+      ]
+    },
+    "TextPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text, without JSON encoding around it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ReasoningPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "reasoning",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ToolCallPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The tool the model requested."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolCallResponsePart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call_response",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The tool-call id this result answers."
+        },
+        "result": {
+          "description": "The structured tool result supplied to the model."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "result"
+      ]
+    },
+    "DeveloperDecision": {
+      "type": "object",
+      "properties": {
+        "decision_id": {
+          "type": "string",
+          "description": "Stable id for this decision."
+        },
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The developer identity when known. Null when capture omitted it."
+        },
+        "agent_harness": {
+          "enum": [
+            "claude-code",
+            "copilot",
+            "codex",
+            "pi"
+          ],
+          "type": "string",
+          "description": "Which coding agent harness produced this fact."
+        },
+        "file_path": {
+          "type": "string",
+          "description": "The file edited, or empty string when the client emits none — common on rejects."
+        },
+        "accepted": {
+          "type": "boolean",
+          "description": "Whether the developer took the change."
+        },
+        "explicit": {
+          "type": "boolean",
+          "description": "True for a real human gesture; false for auto-applied or inferred. Implicit decisions move confidence but never classify a row."
+        },
+        "interaction_mode": {
+          "enum": [
+            "agent",
+            "inline"
+          ],
+          "type": "string",
+          "description": "Whether the edit interaction was `agent` or `inline`."
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The commit the client attributed, when it knew one."
+        },
+        "call_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's per-call id, joining this record back to the inference call that produced it. Null when the provider emits none."
+        },
+        "edit_retention_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Graded preference strength in [0, 1]: how much applied edit text remains in a later file observation. Null unless capture or derivation supplies it."
+        },
+        "observation_delay_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0,
+          "description": "The delay before the edit retention score was observed. Null unless the harness reports one."
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the developer acted, stamped client-side. Required — it is what makes a redelivery collapse, and is never backfilled."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "org_id",
+        "session_id",
+        "user_id",
+        "agent_harness",
+        "file_path",
+        "accepted",
+        "explicit",
+        "interaction_mode",
+        "commit_sha",
+        "call_id",
+        "edit_retention_score",
+        "observation_delay_ms",
+        "occurred_at",
+        "captured_at",
+        "raw"
+      ]
+    }
+  }
+}

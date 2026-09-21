@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/nemo-gym-responses-create-params/v1.json",
+  "title": "NemoGymResponsesCreateParams",
+  "description": "One NeMo Gym segment input.",
+  "type": "object",
+  "properties": {
+    "input": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RLVRInferenceMessageRow"
+      },
+      "description": "The structured messages at the start of this segment."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "input"
+  ],
+  "$defs": {
+    "RLVRInferenceMessageRow": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextPart"
+              },
+              {
+                "$ref": "#/$defs/ReasoningPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallResponsePart"
+              }
+            ]
+          },
+          "description": "Ordered text, reasoning, tool-call, or tool-response parts."
+        },
+        "finish_reason": {
+          "type": "string",
+          "description": "The model service's finish reason; omitted when unreported."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "parts"
+      ]
+    },
+    "TextPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text, without JSON encoding around it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ReasoningPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "reasoning",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ToolCallPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The tool the model requested."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolCallResponsePart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call_response",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The tool-call id this result answers."
+        },
+        "result": {
+          "description": "The structured tool result supplied to the model."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "result"
+      ]
+    }
+  }
+}

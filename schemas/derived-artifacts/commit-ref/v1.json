@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/commit-ref/v1.json",
+  "title": "CommitRef",
+  "description": "One repository-qualified commit.",
+  "type": "object",
+  "properties": {
+    "repo": {
+      "type": "string",
+      "description": "The repository containing this commit."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "The full commit identity within that repository."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "repo",
+    "commit_sha"
+  ]
+}

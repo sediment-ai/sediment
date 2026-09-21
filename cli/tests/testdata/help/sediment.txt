@@ -1,0 +1,38 @@
+sediment v0.1.0 — Turn AI developer workflow traces into RL-ready training data.
+
+USAGE:
+  sediment <command> [options]
+
+  Sediment CLI: login/logout, remote facts + commit, quarantine, exports,
+  reports, mirror GC.
+
+COMMANDS:
+  report                read-only reports (sediment report --help)
+  delivery              prepared capture delivery (sediment delivery --help)
+  mirror-gc             remove mirrors past push retention (dry-run; --apply
+                        deletes)
+  facts                 fact counts per table (remote; --database-url for
+                        direct)
+  demo                  plant one synthetic session so facts is non-zero
+  db                    provision database roles or inspect and upgrade the
+                        schema
+  quarantine            quarantine one fact by id
+  release               release one quarantined fact by id
+  quarantine-log        the org's quarantine history
+  quarantine-inference-calls
+                        bulk-quarantine inference calls by filter (dry-run by
+                        default)
+  install               wire a repo + this machine: git hooks, agent hooks,
+                        telemetry env (sediment install --help)
+  uninstall             remove the per-repo git hooks (--agents: user-level too)
+  doctor                check attribution + server health on this machine
+  server                run a local API server with managed PostgreSQL
+  login                 store credentials for a server
+  logout                remove stored credentials
+  commit                pretty-print attributions for a commit
+  derive                materialize a reviewed canonical derivation bundle
+  export                run an export projection
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

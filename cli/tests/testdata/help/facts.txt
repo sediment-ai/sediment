@@ -1,0 +1,9 @@
+USAGE:
+  sediment facts [-h] [--database-url DATABASE_URL]
+
+  fact counts per table (remote; --database-url for direct)
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --database-url DATABASE_URL
+                        read PostgreSQL directly instead of the API

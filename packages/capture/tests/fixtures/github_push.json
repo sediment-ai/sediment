@@ -1,0 +1,39 @@
+{
+  "ref": "refs/heads/main",
+  "before": "9049f1265b7d61be4a8904a9a27120d2064dab3b",
+  "after": "abc123def456abc123def456abc123def456abc1",
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "repository": {
+    "id": 186853002,
+    "name": "backend-service",
+    "full_name": "acme-corp/backend-service",
+    "private": true,
+    "owner": {
+      "login": "acme-corp",
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/acme-corp/backend-service",
+    "clone_url": "https://github.com/acme-corp/backend-service.git",
+    "ssh_url": "git@github.com:acme-corp/backend-service.git",
+    "default_branch": "main"
+  },
+  "pusher": {
+    "name": "dev-user",
+    "email": "dev-user@example.com"
+  },
+  "commits": [
+    {
+      "id": "abc123def456abc123def456abc123def456abc1",
+      "message": "add fibonacci helper",
+      "added": ["app/math_utils.py"],
+      "removed": [],
+      "modified": ["README.md"]
+    }
+  ],
+  "head_commit": {
+    "id": "abc123def456abc123def456abc123def456abc1",
+    "message": "add fibonacci helper"
+  }
+}

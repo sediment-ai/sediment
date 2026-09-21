@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/tool-call-part/v2.json",
+  "title": "ToolCallPart",
+  "description": "One tool invocation requested by the model.",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "tool_call",
+      "type": "string",
+      "description": "The message-part discriminator."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+    },
+    "name": {
+      "type": "string",
+      "description": "The tool the model requested."
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "id",
+    "name",
+    "arguments"
+  ]
+}

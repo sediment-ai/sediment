@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/provenance/v1.json",
+  "title": "Provenance",
+  "description": "One derivation provenance stamp.",
+  "type": "object",
+  "properties": {
+    "policy_version": {
+      "type": "string",
+      "description": "The derivation implementation policy version."
+    },
+    "quarantine_revision": {
+      "type": "integer",
+      "description": "The integer quarantine-log high-water mark used for the derivation."
+    },
+    "policy_digest": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "SHA-256 of the fully resolved derivation policy when available."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "policy_version",
+    "quarantine_revision",
+    "policy_digest"
+  ]
+}

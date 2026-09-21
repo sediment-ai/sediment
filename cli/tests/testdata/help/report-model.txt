@@ -1,0 +1,82 @@
+USAGE:
+  sediment report model [-h] [--org ORG] [--since-days SINCE_DAYS] [--json]
+                        [--trend] [--target-mde TARGET_MDE]
+                        [--completions-per-day MODEL_A_PER_DAY MODEL_B_PER_DAY]
+                        [--bootstrap-check]
+                        [--bootstrap-iterations BOOTSTRAP_ITERATIONS]
+                        [--bootstrap-seed BOOTSTRAP_SEED]
+                        [--non-inferiority-margin NON_INFERIORITY_MARGIN]
+                        [--peek-fraction PEEK_FRACTION]
+                        [--ci-grain {commit,attributed_completion}]
+                        [--compare MODEL_A MODEL_B]
+                        [--compare-all MODEL [MODEL ...]] [--effect-decay]
+                        [--regret] [--database-url DATABASE_URL]
+                        [--mirror-path MIRROR_PATH]
+
+  Per-model outcome report — attribution, CI, and acceptance by model.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --since-days SINCE_DAYS
+                        window inference calls (and their attributed
+                        completions) to the last N days by capture time;
+                        default: all history
+  --json                emit JSON rows instead of a table
+  --trend               also bucket attribution_rate and ci_pass_rate into 7-day
+                        captured-at windows and run a Mann-Kendall monotonic
+                        trend test
+  --target-mde TARGET_MDE
+                        with --compare, also report the equal-allocation n per
+                        arm needed to detect this target effect, expressed as
+                        raw proportion points (0.05 means five percentage
+                        points)
+  --completions-per-day MODEL_A_PER_DAY MODEL_B_PER_DAY
+                        with --target-mde, also estimate calendar days using
+                        per-arm completions/day in the same order as --compare;
+                        zero or negative rates omit the duration line
+  --bootstrap-check     with --compare, also run a fixed-seed bootstrap
+                        percentile CI diagnostic against the analytic two-
+                        proportion CI
+  --bootstrap-iterations BOOTSTRAP_ITERATIONS
+                        resamples for --bootstrap-check (default: 2000)
+  --bootstrap-seed BOOTSTRAP_SEED
+                        deterministic RNG seed for --bootstrap-check (default:
+                        151)
+  --non-inferiority-margin NON_INFERIORITY_MARGIN
+                        with --compare, test whether MODEL_B is not worse than
+                        MODEL_A by more than this raw proportion-point margin
+                        (0.05 means five percentage points)
+  --peek-fraction PEEK_FRACTION
+                        with --compare, also report an O'Brien-Fleming
+                        sequential boundary read for this information fraction
+                        (0 < t <= 1)
+  --ci-grain {commit,attributed_completion}
+                        unit of analysis for ci_linked/ci_passed: 'commit'
+                        (default, correct) dedups a commit's file-grained
+                        attributed completions to one trial before counting;
+                        'attributed_completion' is the legacy per-attributed-
+                        completion count, kept only as an escape hatch for
+                        explicit comparison — it inflates sample size and is not
+                        recommended for inference
+  --compare MODEL_A MODEL_B
+                        two-proportion z-test of MODEL_A vs MODEL_B on CI pass
+                        rate and attribution rate, over the same --org/--since-
+                        days window; a model with no data in this window
+                        compares as insufficient data, not an error
+  --compare-all MODEL [MODEL ...]
+                        pairwise two-proportion z-tests for 2+ models with
+                        Benjamini-Hochberg FDR control across both metrics and
+                        all pairs; a model with no data in this window compares
+                        as insufficient data, not an error
+  --effect-decay        with --compare, print a regression-to-the-mean
+                        diagnostic: Cohen's h at 25/50/75/100% prefixes for CI
+                        pass rate and attribution rate, using natural arrival
+                        order
+  --regret              with --compare-all, add expected regret for the
+                        apparent-best model on each metric
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

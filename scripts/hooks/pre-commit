@@ -1,0 +1,65 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Regenerate the committed artifacts a staged change invalidates — the CLI
+# reference, `openapi.yaml`, and the API reference rendered from it — and
+# stage the result. Opt-in, per developer — install the stub in
+# CONTRIBUTING.md §Mechanics, which resolves this file at commit time.
+#
+# The stub, not a symlink to this file: `.git/hooks` is SHARED by every
+# worktree, so a relative symlink resolves into the main checkout no matter
+# which worktree you commit from — and this repo works out of worktrees
+# (docs/onboarding.md). The stub asks git for the committing worktree
+# instead, and skips silently on a branch that predates this file.
+#
+# This is convenience, not the gate. CI's `--check` runs are what actually
+# block a stale artifact, and they stay authoritative: the generators read
+# the WORKING TREE, so a partial commit (staged parser change, other edits
+# left behind) can produce a page that does not match what lands. The hook
+# never fails the commit for that — CI catches it.
+
+set -eu
+
+# Only the surfaces the committed artifacts are generated from.
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+case "$staged" in
+    *cli/sediment_cli/*|*sediment_api/reports/*|*sediment_api/mirror_gc.py*|\
+*sediment_api/routers/*|*openapi.yaml*|*scripts/gen_cli_docs.py*|\
+*scripts/gen_api_docs.py*|*scripts/dump_openapi.py*|\
+*sediment_core/models.py*|*sediment_derive/attribution.py*|\
+*sediment_derive/rollout.py*|*sediment_derive/recovery.py*|\
+*sediment_export/attributed_completions.py*|*sediment_export/dpo.py*|\
+*sediment_export/sft.py*|*sediment_export/diff_sft.py*|\
+*sediment_export/recovery.py*|*scripts/gen_schema_docs.py*) ;;
+    *) exit 0 ;;
+esac
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo "pre-commit: uv not on PATH; skipping the reference regen." >&2
+    echo "            CI will fail if a generated artifact is stale." >&2
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel)
+
+regen() {
+    page="$root/$2"
+    before=$(git hash-object "$page" 2>/dev/null || echo none)
+    # Never fail the commit on a generator error — say so and let CI decide.
+    if ! (cd "$root" && uv run --quiet python "$1" >/dev/null); then
+        echo "pre-commit: $1 failed; $2 not regenerated." >&2
+        return 0
+    fi
+    after=$(git hash-object "$page")
+    if [ "$before" != "$after" ]; then
+        git add "$page"
+        echo "pre-commit: regenerated and staged $2"
+    fi
+}
+
+# All four run whenever any source is staged: each is cheap next to a
+# commit, and the spec goes first because the API reference renders from it.
+regen scripts/dump_openapi.py openapi.yaml
+regen scripts/gen_cli_docs.py docs/reference/cli.md
+regen scripts/gen_api_docs.py docs/reference/api.md
+regen scripts/gen_schema_docs.py docs/reference/schema.md

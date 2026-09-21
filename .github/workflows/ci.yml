@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  # Maintainers can validate a draft branch before marking it ready.
+  workflow_dispatch:
+  push:
+    branches: [main]
+  # ready_for_review is not in the default event set; without it a draft
+  # that flips to ready would sit unvalidated until its next push, because
+  # the draft gate below skips every draft push.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Least privilege, pinned in-repo rather than inherited: the org/repo default
+# is a mutable setting that no PR review would show changing. checkout is the
+# only consumer of the token here, and nothing in this workflow writes.
+permissions:
+  contents: read
+
+# One live run per pull request: a superseded push cancels its predecessor
+# instead of billing hosted-runner minutes to completion. Pushes to main
+# never cancel — each merge keeps its own post-merge validation run.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    # Draft pushes stay off the hosted runner: authors validate drafts with
+    # the local battery, and the ready_for_review trigger above runs the
+    # full suite before any merge decision.
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # The repository variable lets an operator point CI at a self-hosted
+    # runner without a commit; unset, it falls back to GitHub-hosted.
+    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-latest' }}
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    env:
+      SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so diff-mode check_docs can diff against the PR base.
+          fetch-depth: 0
+      # A history-range scan can miss content that predates a branch merge
+      # from main, then appears as a direct addition in the squash commit.
+      # Scan the complete proposed tree before dependencies add untracked files.
+      - name: Scan complete pull-request tree for secrets
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        env:
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.5@sha256:1cec88f18ca39e26e04e61fe9d886c9c4e5f2fc0ba4f2ed185cac0722bd8a076
+        run: |
+          scan_root="${RUNNER_TEMP}/sediment-secret-scan"
+          mkdir "$scan_root"
+          git archive HEAD | tar -x -C "$scan_root"
+          docker run --rm \
+            --mount "type=bind,src=$scan_root,dst=/scan,readonly" \
+            "$TRUFFLEHOG_IMAGE" filesystem /scan \
+            --fail --no-update --github-actions \
+            --results=verified,unknown --exclude-detectors=lob
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - run: uv sync --locked
+      - name: Select validation scope
+        id: scope
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run python scripts/add_spdx.py --check
+      # PRs also run the diff-mode CHANGELOG-touch check; pushes to
+      # main have no base to diff against, so they run the static checks only.
+      - run: uv run python scripts/check_docs.py ${{ github.event_name == 'pull_request' && format('--base origin/{0}', github.base_ref) || '' }}
+      # openapi.yaml freshness: regenerated from the live app, diffed against
+      # the committed spec; also fails on a route absent from the auth map.
+      - run: uv run python scripts/dump_openapi.py --check
+      # docs/reference/cli.md freshness: a new CLI flag cannot ship
+      # undocumented, since the page is generated from the parsers.
+      - run: uv run python scripts/gen_compatibility_docs.py --check
+      - run: uv run python scripts/gen_cli_docs.py --check
+      # docs/reference/api.md freshness: same guarantee for the HTTP surface,
+      # rendered from the spec checked one step above.
+      - run: uv run python scripts/gen_api_docs.py --check
+      # Canonical schema freshness and compatibility: a changed fact, derived
+      # artifact, or training row cannot ship undocumented or mutate an
+      # already-published id/version contract.
+      - run: uv run python scripts/gen_schema_docs.py --check ${{ github.event_name == 'pull_request' && format('--compatibility-base origin/{0}', github.base_ref) || '' }}
+      - name: Start the maintained PostgreSQL test image
+        if: steps.scope.outputs.full == 'true'
+        run: |
+          set -euo pipefail
+          docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          docker run --detach --name sediment-ci-postgres \
+            -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
+            sediment-ci-postgres
+          for _ in {1..60}; do
+            if docker exec sediment-ci-postgres pg_isready -h 127.0.0.1 -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sediment-ci-postgres
+          exit 1
+      - name: Install the maintained system PostgreSQL client library
+        if: steps.scope.outputs.full == 'true'
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+      - run: uv run sediment db upgrade
+        if: steps.scope.outputs.full == 'true'
+      - name: Check prose contracts
+        if: steps.scope.outputs.full == 'false'
+        run: >-
+          uv run pytest -q
+          scripts/tests/test_contributor_contract.py
+          scripts/tests/test_check_docs.py
+          scripts/tests/test_postgresql_only_repository.py
+      # Run role fixtures against the clean cluster before rehearsal provisions
+      # fixed deployment identities for its installed server.
+      - run: uv run pytest -q --durations=30
+        if: steps.scope.outputs.full == 'true'
+      # Build and inspect all twelve distribution artifacts, then install and
+      # exercise the six wheels without publishing.
+      - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
+        if: steps.scope.outputs.full == 'true'
+      # Manual draft validation scans the proposal from its common ancestor
+      # with the default branch. Without explicit bounds, the action scans
+      # unrelated fetched refs and all pre-existing repository history.
+      - name: Resolve manual secret scan range
+        id: secret-range
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          base=$(git merge-base HEAD "origin/$DEFAULT_BRANCH")
+          printf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"
+      # History secret scan, last so a false positive still leaves the test
+      # results visible. The action picks its own range from the event: PR
+      # base..head, push before..after, and exits 0 when there is nothing to
+      # scan — the checkout above is already unshallow, which is what it needs.
+      # `verified,unknown` is the low-false-positive posture: a live credential
+      # or a detector that could not reach its verifier fails the job; a
+      # detector that actively verified the match as dead does not. The
+      # unreachable-verifier half means a runner egress flake reads as a
+      # finding — measured, not theoretical. Treat a lone `unknown` whose text
+      # is a verification error as infra, and re-run.
+      # Dependabot bumps the action SHA below; the `version` input is a
+      # separate pin it does not track, so bump both together.
+      # Lob is excluded (twice-measured false-positive class):
+      # its detector matches any `test_<35-36 word chars>` token near a
+      # "lob" substring ("blob", "global"), i.e. ordinary pytest function
+      # names, and its verifier "verifies" them. This repo will never hold
+      # a real Lob (postal mail API) credential; re-include if one is ever
+      # actually adopted.
+      - uses: trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6 # v3.97.5
+        # The complete-tree scan still runs when a manual run has no proposal.
+        if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
+        with:
+          base: ${{ steps.secret-range.outputs.base || '' }}
+          head: ${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}
+          version: "3.97.5"
+          extra_args: --results=verified,unknown --exclude-detectors=lob
+      - name: Remove the disposable test database
+        if: always() && steps.scope.outputs.full == 'true'
+        run: docker rm -f sediment-ci-postgres
+
+  local-server:
+    needs: test
+    if: needs.test.outputs.full == 'true'
+    uses: ./.github/workflows/local-server.yml

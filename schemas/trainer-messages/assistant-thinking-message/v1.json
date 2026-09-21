@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/trainer-messages/assistant-thinking-message/v1.json",
+  "title": "TrainerAssistantThinkingMessage",
+  "description": "One assistant message with readable reasoning.",
+  "type": "object",
+  "properties": {
+    "role": {
+      "const": "assistant",
+      "type": "string",
+      "description": "The trainer-facing message role."
+    },
+    "thinking": {
+      "type": "string",
+      "description": "Readable assistant reasoning kept outside visible content."
+    },
+    "content": {
+      "type": "string",
+      "description": "Plain-text message content."
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TrainerToolCall"
+      },
+      "description": "Structured function calls requested by the assistant."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "role",
+    "thinking"
+  ],
+  "$defs": {
+    "TrainerToolCall": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The tool-call identity used by the matching result."
+        },
+        "type": {
+          "const": "function",
+          "type": "string",
+          "description": "The fixed `function` tool-call discriminator."
+        },
+        "function": {
+          "$ref": "#/$defs/TrainerFunctionCall",
+          "description": "The structured function payload for this tool call."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "function"
+      ]
+    },
+    "TrainerFunctionCall": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The exact structured arguments supplied to the function."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "arguments"
+      ]
+    }
+  }
+}

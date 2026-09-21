@@ -1,0 +1,9 @@
+{
+  "session_id": "session-alpha",
+  "turn_id": "turn-001",
+  "cwd": "${REPO}",
+  "hook_event_name": "Stop",
+  "transcript_path": "/private/fixture/transcript.jsonl",
+  "last_assistant_message": "fixture response that the spike must not read",
+  "stop_hook_active": false
+}

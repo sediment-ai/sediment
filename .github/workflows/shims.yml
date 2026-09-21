@@ -1,0 +1,102 @@
+name: shims
+
+# The pi shim (shims/pi/) is TypeScript — the one scoped exception to the
+# Python-only toolchain. Every pull request reports the stable shims result;
+# the job selects its installed-helper checks from the changed paths.
+on:
+  # Maintainers can validate a draft branch before marking it ready.
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "shims/**"
+      - "cli/sediment_cli/delivery.py"
+      - "cli/sediment_cli/cli.py"
+      - "cli/pyproject.toml"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/shims.yml"
+      - "scripts/ci_preflight.py"
+      - "scripts/tests/test_ci_preflight.py"
+  # ready_for_review mirrors ci.yml: the draft gate below skips draft
+  # pushes, so the ready flip must trigger the run.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Least privilege, pinned in-repo rather than inherited — same rationale as
+# ci.yml: checkout is the only token consumer and nothing here writes.
+permissions:
+  contents: read
+
+# One live run per pull request; superseded pushes cancel instead of
+# billing to completion. Main pushes never cancel.
+concurrency:
+  group: shims-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # npm ci (not install) against the committed lockfile; tests run on
+  # Node's native type stripping, no build step.
+  shims:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Select shim checks
+        id: scope
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/ci_preflight.py shims >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: steps.scope.outputs.shims == 'true'
+        with:
+          node-version: "24.21.0"
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        if: steps.scope.outputs.shims == 'true'
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Install delivery consumer from wheels
+        id: install
+        if: steps.scope.outputs.shims == 'true'
+        run: |
+          uv build --all-packages --wheel --out-dir "$RUNNER_TEMP/pi-wheels"
+          uv venv "$RUNNER_TEMP/pi-installed"
+          uv pip install --python "$RUNNER_TEMP/pi-installed/bin/python" "$RUNNER_TEMP/pi-wheels/"*.whl
+          echo "SEDIMENT_PI_TEST_PYTHON=$RUNNER_TEMP/pi-installed/bin/python" >> "$GITHUB_ENV"
+          echo "SEDIMENT_PI_TEST_INSTALLED_BIN=$RUNNER_TEMP/pi-installed/bin" >> "$GITHUB_ENV"
+      - run: npm ci --no-audit --no-fund
+        if: steps.scope.outputs.shims == 'true'
+        working-directory: shims/pi
+      - run: npm run typecheck
+        id: typecheck
+        if: steps.scope.outputs.shims == 'true'
+        working-directory: shims/pi
+      - run: npm test
+        id: tests
+        if: steps.scope.outputs.shims == 'true'
+        working-directory: shims/pi
+      - name: Require selected shim checks
+        if: always()
+        env:
+          SCOPE_RESULT: ${{ steps.scope.outcome }}
+          SHIMS: ${{ steps.scope.outputs.shims }}
+          INSTALL_RESULT: ${{ steps.install.outcome }}
+          TYPECHECK_RESULT: ${{ steps.typecheck.outcome }}
+          TEST_RESULT: ${{ steps.tests.outcome }}
+        run: |
+          if [[ "$SCOPE_RESULT" != success ]]; then
+            echo "Shim selection failed or did not complete."
+            exit 1
+          fi
+          if [[ "$SHIMS" == false ]]; then
+            echo "No shim dependency changed; shim tests are not applicable."
+          elif [[ "$SHIMS" == true && "$INSTALL_RESULT" == success && "$TYPECHECK_RESULT" == success && "$TEST_RESULT" == success ]]; then
+            echo "Installed shim checks passed."
+          else
+            echo "Selected shim checks failed or did not complete."
+            exit 1
+          fi

@@ -1,0 +1,431 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/dpo-pair/v1.json",
+  "title": "DPOPair",
+  "description": "One DPO pair.",
+  "type": "object",
+  "properties": {
+    "prompt": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TrainerTextMessage"
+          },
+          {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TrainerAssistantContentMessage"
+              },
+              {
+                "$ref": "#/$defs/TrainerAssistantThinkingMessage"
+              },
+              {
+                "$ref": "#/$defs/TrainerAssistantToolCallMessage"
+              }
+            ]
+          },
+          {
+            "$ref": "#/$defs/TrainerToolMessage"
+          }
+        ]
+      },
+      "description": "The ordered trainer-facing request-context messages."
+    },
+    "chosen": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TrainerAssistantContentMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantThinkingMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantToolCallMessage"
+          }
+        ]
+      },
+      "description": "The preferred trainer-facing response messages."
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TrainerAssistantContentMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantThinkingMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantToolCallMessage"
+          }
+        ]
+      },
+      "description": "The dispreferred trainer-facing response messages."
+    },
+    "tools": {
+      "type": "array",
+      "items": false,
+      "description": "Tool definitions available to the trainer. Empty for inference-call schema version 1, which carries no tool-definition field."
+    },
+    "metadata": {
+      "$ref": "#/$defs/DPOMetadata",
+      "description": "Sediment evidence excluded from trainer inputs."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "prompt",
+    "chosen",
+    "rejected",
+    "tools",
+    "metadata"
+  ],
+  "$defs": {
+    "TrainerTextMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "enum": [
+            "developer",
+            "system",
+            "user"
+          ],
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ]
+    },
+    "TrainerAssistantContentMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ]
+    },
+    "TrainerToolCall": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The tool-call identity used by the matching result."
+        },
+        "type": {
+          "const": "function",
+          "type": "string",
+          "description": "The fixed `function` tool-call discriminator."
+        },
+        "function": {
+          "$ref": "#/$defs/TrainerFunctionCall",
+          "description": "The structured function payload for this tool call."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "function"
+      ]
+    },
+    "TrainerFunctionCall": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The exact structured arguments supplied to the function."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "arguments"
+      ]
+    },
+    "TrainerAssistantThinkingMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "thinking"
+      ]
+    },
+    "TrainerAssistantToolCallMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "tool_calls"
+      ]
+    },
+    "TrainerToolMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "tool",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "name": {
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "tool_call_id": {
+          "type": "string",
+          "description": "The earlier tool-call id this result answers."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "name",
+        "tool_call_id",
+        "content"
+      ]
+    },
+    "DPOMetadata": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "source_model": {
+          "type": "string",
+          "description": "The model that served the source inference call."
+        },
+        "chosen_completion_id": {
+          "type": "string",
+          "description": "The preferred inference call."
+        },
+        "rejected_completion_id": {
+          "type": "string",
+          "description": "The dispreferred inference call from the same prompt and model."
+        },
+        "recipe_id": {
+          "enum": [
+            "dpo_human",
+            "dpo_outcome"
+          ],
+          "type": "string",
+          "description": "The closed evidence recipe that produced this training row."
+        },
+        "recipe_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The version of the evidence recipe; increment it when recipe semantics change."
+        },
+        "chosen_label_source": {
+          "enum": [
+            "explicit_accept",
+            "resolved_ci_pass"
+          ],
+          "type": "string",
+          "description": "The closed evidence source that labeled the preferred member."
+        },
+        "rejected_label_source": {
+          "enum": [
+            "explicit_reject",
+            "resolved_ci_fail"
+          ],
+          "type": "string",
+          "description": "The closed evidence source that labeled the dispreferred member."
+        },
+        "label_confidence": {
+          "type": "number",
+          "description": "The weaker member confidence — how much to trust the pair."
+        },
+        "ci_reliability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Trust in the resolved CI evidence, separate from the categorical label."
+        },
+        "confidence_margin": {
+          "type": "number",
+          "description": "Chosen confidence minus rejected. Can be negative when attribution discounts or configured confidence factors outweigh direction."
+        },
+        "provenance": {
+          "$ref": "#/$defs/DPOProvenance",
+          "description": "The structured provenance for this artifact."
+        },
+        "split": {
+          "enum": [
+            "train",
+            "eval"
+          ],
+          "type": "string",
+          "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+        },
+        "schema_id": {
+          "const": "https://sediment.so/schemas/training-rows/dpo-pair/v1.json",
+          "type": "string",
+          "description": "The canonical wire-shape contract for this row."
+        },
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The positive integer version of the canonical row schema."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "org_id",
+        "source_model",
+        "chosen_completion_id",
+        "rejected_completion_id",
+        "recipe_id",
+        "recipe_version",
+        "chosen_label_source",
+        "rejected_label_source",
+        "label_confidence",
+        "ci_reliability",
+        "confidence_margin",
+        "provenance",
+        "split",
+        "schema_id",
+        "schema_version"
+      ]
+    },
+    "DPOProvenance": {
+      "type": "object",
+      "properties": {
+        "chosen": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Provenance for the preferred member."
+        },
+        "rejected": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Provenance for the dispreferred member."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "chosen",
+        "rejected"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

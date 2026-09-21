@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-bundle/inference-call-identity/v1.json",
+  "title": "InferenceCallIdentity",
+  "description": "One declared source identity and its distinct attachment aliases.",
+  "type": "object",
+  "properties": {
+    "inference_call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment observed the call, stamped at capture."
+    },
+    "call_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted distinct provider-call and output tool-call aliases belonging to this Fact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "inference_call_id",
+    "org_id",
+    "session_id",
+    "observed_at",
+    "call_ids"
+  ]
+}

@@ -1,0 +1,330 @@
+{
+  "version": "sediment-release-synthetic-v1",
+  "prompt": "[{\"type\":\"text\",\"text\":\"literal, not an encoded message\"}]\n\u03bb\u0000",
+  "completion": "counter = 1\n++counter\nlabel = \"\u03bb\"\n",
+  "outside_completion": "external_counter = 100\nexternal_label = 'excluded'\n",
+  "gateway": [
+    {
+      "provider": "litellm",
+      "session_id": "rehearsal-session",
+      "user_id": "selected-user",
+      "payload": {
+        "litellm_call_id": "rehearsal-call-0",
+        "model": "synthetic-model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "[{\"type\":\"text\",\"text\":\"literal, not an encoded message\"}]\n\u03bb\u0000"
+          }
+        ],
+        "response": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "counter = 1\n++counter\nlabel = \"\u03bb\"\n"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "provider": "litellm",
+      "session_id": "rehearsal-session",
+      "user_id": "selected-user",
+      "payload": {
+        "litellm_call_id": "rehearsal-call-1",
+        "model": "synthetic-model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "[{\"type\":\"text\",\"text\":\"literal, not an encoded message\"}]\n\u03bb\u0000"
+          }
+        ],
+        "response": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "counter = 1\n++counter\nlabel = \"\u03bb\"\n"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "provider": "litellm",
+      "session_id": "rehearsal-session",
+      "user_id": "selected-user",
+      "payload": {
+        "litellm_call_id": "rehearsal-call-2",
+        "model": "synthetic-model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "[{\"type\":\"text\",\"text\":\"literal, not an encoded message\"}]\n\u03bb\u0000"
+          }
+        ],
+        "response": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "counter = 1\n++counter\nlabel = \"\u03bb\"\n\ud800"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "provider": "litellm",
+      "session_id": "excluded-session",
+      "user_id": "excluded-user",
+      "payload": {
+        "litellm_call_id": "rehearsal-call-3",
+        "model": "synthetic-model",
+        "messages": [
+          {
+            "role": "user",
+            "content": "[{\"type\":\"text\",\"text\":\"literal, not an encoded message\"}]\n\u03bb\u0000"
+          }
+        ],
+        "response": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": "external_counter = 100\nexternal_label = 'excluded'\n"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "otlp": {
+    "resourceLogs": [
+      {
+        "scopeLogs": [
+          {
+            "logRecords": [
+              {
+                "timeUnixNano": "$EVENT_TIME",
+                "body": {
+                  "stringValue": "claude_code.tool_decision"
+                },
+                "attributes": [
+                  {
+                    "key": "tool_name",
+                    "value": {
+                      "stringValue": "Write"
+                    }
+                  },
+                  {
+                    "key": "tool_use_id",
+                    "value": {
+                      "stringValue": "rehearsal-call-0"
+                    }
+                  },
+                  {
+                    "key": "session.id",
+                    "value": {
+                      "stringValue": "rehearsal-session"
+                    }
+                  },
+                  {
+                    "key": "decision",
+                    "value": {
+                      "stringValue": "accept"
+                    }
+                  },
+                  {
+                    "key": "source",
+                    "value": {
+                      "stringValue": "user_temporary"
+                    }
+                  }
+                ]
+              },
+              {
+                "timeUnixNano": "$EVENT_TIME",
+                "body": {
+                  "stringValue": ""
+                },
+                "attributes": [
+                  {
+                    "key": "conversation.id",
+                    "value": {
+                      "stringValue": "rehearsal-session"
+                    }
+                  },
+                  {
+                    "key": "call_id",
+                    "value": {
+                      "stringValue": "rehearsal-call-1"
+                    }
+                  },
+                  {
+                    "key": "tool_name",
+                    "value": {
+                      "stringValue": "apply_patch"
+                    }
+                  },
+                  {
+                    "key": "event.name",
+                    "value": {
+                      "stringValue": "codex.tool_decision"
+                    }
+                  },
+                  {
+                    "key": "decision",
+                    "value": {
+                      "stringValue": "approved"
+                    }
+                  },
+                  {
+                    "key": "source",
+                    "value": {
+                      "stringValue": "user"
+                    }
+                  }
+                ]
+              },
+              {
+                "timeUnixNano": "$EVENT_TIME",
+                "body": {
+                  "stringValue": ""
+                },
+                "attributes": [
+                  {
+                    "key": "conversation.id",
+                    "value": {
+                      "stringValue": "rehearsal-session"
+                    }
+                  },
+                  {
+                    "key": "call_id",
+                    "value": {
+                      "stringValue": "rehearsal-call-1"
+                    }
+                  },
+                  {
+                    "key": "tool_name",
+                    "value": {
+                      "stringValue": "apply_patch"
+                    }
+                  },
+                  {
+                    "key": "event.name",
+                    "value": {
+                      "stringValue": "codex.tool_result"
+                    }
+                  },
+                  {
+                    "key": "arguments",
+                    "value": {
+                      "stringValue": "*** Begin Patch\n*** Add File: a.py\n+one\n*** Add File: b.py\n+two\n*** End Patch"
+                    }
+                  }
+                ]
+              },
+              {
+                "timeUnixNano": "$EVENT_TIME",
+                "body": {
+                  "stringValue": "unsupported"
+                },
+                "attributes": []
+              },
+              null
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "transcript": [
+    {
+      "type": "assistant",
+      "sessionId": "rehearsal-session",
+      "offset_ms": 0,
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "rehearsal-rejected",
+            "name": "Write",
+            "input": {
+              "file_path": "$FILE",
+              "content": "wrong"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "sessionId": "rehearsal-session",
+      "offset_ms": 1000,
+      "toolUseResult": "User rejected tool use",
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "rehearsal-rejected",
+            "is_error": true,
+            "content": "The user doesn't want to proceed with this tool use."
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "sessionId": "rehearsal-session",
+      "offset_ms": 1500,
+      "message": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Use the counter implementation instead."
+          }
+        ]
+      }
+    },
+    {
+      "type": "assistant",
+      "sessionId": "rehearsal-session",
+      "offset_ms": 2000,
+      "message": {
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "rehearsal-call-0",
+            "name": "Write",
+            "input": {
+              "file_path": "$FILE",
+              "content": "counter = 1\n++counter\nlabel = \"\u03bb\"\n"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "user",
+      "sessionId": "rehearsal-session",
+      "offset_ms": 3000,
+      "message": {
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "rehearsal-call-0",
+            "is_error": false,
+            "content": "written"
+          }
+        ]
+      }
+    }
+  ]
+}

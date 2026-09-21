@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/ci-workflow-resolution/v2.json",
+  "title": "CIWorkflowResolution",
+  "description": "One attempt-aware workflow resolution.",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "enum": [
+        "github_actions",
+        "jenkins",
+        "gitlab_ci",
+        "circleci",
+        "buildkite",
+        "other"
+      ],
+      "type": "string",
+      "description": "Which system this fact came from."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The provider-issued pipeline-run identity."
+    },
+    "workflow_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider-issued workflow definition identity, when supplied."
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "The CI workflow's display name."
+    },
+    "workflow_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+    },
+    "branch": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The branch the run or commit belongs to."
+    },
+    "verdict": {
+      "anyOf": [
+        {
+          "enum": [
+            "passed",
+            "failed",
+            "error",
+            "timed_out",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The resolved pass or failure; null means no directional verdict."
+    },
+    "reliability": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Trust in the resolved verdict, bounded to [0, 1]."
+    },
+    "suspected_flake": {
+      "type": "boolean",
+      "description": "Whether the lineage contains both passing and failing verdict attempts."
+    },
+    "source_outcome_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Every CI outcome id that contributed to the resolution."
+    },
+    "verdict_outcome_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The final semantic pass or failure outcome id."
+    },
+    "non_verdict_outcome_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "The infrastructure, timeout, cancellation, skip, neutral, or unknown evidence."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "provider",
+    "run_id",
+    "workflow_id",
+    "workflow_name",
+    "workflow_path",
+    "branch",
+    "verdict",
+    "reliability",
+    "suspected_flake",
+    "source_outcome_ids",
+    "verdict_outcome_id",
+    "non_verdict_outcome_ids"
+  ]
+}

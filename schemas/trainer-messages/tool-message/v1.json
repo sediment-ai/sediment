@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/trainer-messages/tool-message/v1.json",
+  "title": "TrainerToolMessage",
+  "description": "One string tool result.",
+  "type": "object",
+  "properties": {
+    "role": {
+      "const": "tool",
+      "type": "string",
+      "description": "The trainer-facing message role."
+    },
+    "name": {
+      "type": "string",
+      "description": "The function name associated with this tool call or result."
+    },
+    "tool_call_id": {
+      "type": "string",
+      "description": "The earlier tool-call id this result answers."
+    },
+    "content": {
+      "type": "string",
+      "description": "Plain-text message content."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "role",
+    "name",
+    "tool_call_id",
+    "content"
+  ]
+}

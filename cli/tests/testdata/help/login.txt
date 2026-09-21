@@ -1,0 +1,18 @@
+USAGE:
+  sediment login [-h] [--capture] [--with-token] url
+
+  store verified operator credentials, or separate ingest credentials with
+  --capture. Remote URLs must use HTTPS; HTTP is accepted only for localhost
+  or a literal loopback IP address. A loopback URL enrolls both credentials
+  sediment server generated in ~/.sediment/server/server.env; any other server
+  prompts, or takes --with-token on stdin.
+
+ARGUMENTS:
+  url           HTTPS server base URL or loopback HTTP URL, e.g.
+                http://127.0.0.1:8000
+
+OPTIONS:
+  -h, --help    show this help message and exit
+  --capture     enroll an ingest credential for capture without replacing
+                operator login
+  --with-token  read the token from stdin instead of prompting (unattended)

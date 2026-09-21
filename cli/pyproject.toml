@@ -1,0 +1,44 @@
+[project]
+# The installable CLI: distribution `sediment-cli`, command
+# `sediment`, import package `sediment_cli` (unique in site-packages — a
+# top-level `cli` module would collide with other distributions).
+# Depends on sediment-api deliberately: the operator verbs are DB-local by
+# design (ADR 0001) and `server`/reports/mirror-gc forward into it.
+name = "sediment-cli"
+version = "0.1.0"
+description = "The sediment command: login, install, server, facts, exports"
+requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+# Exact member pins: one tag releases all six distributions at one version,
+# so an install never mixes member versions (the release workflow asserts
+# the versions agree before publishing).
+dependencies = [
+    "sediment-core==0.1.0",
+    "sediment-derive==0.1.0",
+    "sediment-export==0.1.0",
+    "sediment-api==0.1.0",
+    "httpx>=0.27",
+]
+
+[project.urls]
+Source = "https://github.com/sediment-ai/sediment"
+Documentation = "https://github.com/sediment-ai/sediment/tree/main/docs"
+Issues = "https://github.com/sediment-ai/sediment/issues"
+Changelog = "https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md"
+
+[project.scripts]
+sediment = "sediment_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sediment_cli"]
+
+[tool.uv.sources]
+sediment-core = { workspace = true }
+sediment-derive = { workspace = true }
+sediment-export = { workspace = true }
+sediment-api = { workspace = true }

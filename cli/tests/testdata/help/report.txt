@@ -1,0 +1,15 @@
+USAGE:
+  sediment report <name> [options]
+
+  read-only reports; each takes --help, an empty result exits 0
+
+REPORTS:
+  model                  per-model attribution/CI/acceptance; --compare significance
+  label-confidence-inspection sample resolved confidence for human validation
+  dataset-diagnostics    export-side dataset health checks
+  recovery-yield         recovery-pair yield by skip reason
+  precision              attribution precision/recall against a ground-truth manifest
+  abandonment            sessions whose accepted edits never reached a commit
+  attribution-share      notes-attribution share and decline alert
+  merge-retention        attributed change retention through pull request merge
+  lifecycle              accepted-work progression, retention, attrition, and rework evidence

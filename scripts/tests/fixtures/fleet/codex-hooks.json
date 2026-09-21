@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"/opt/sediment/sediment_attribution.py\" mark --tool codex || true"
+          }
+        ]
+      }
+    ]
+  }
+}

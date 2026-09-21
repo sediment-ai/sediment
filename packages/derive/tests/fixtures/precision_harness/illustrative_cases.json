@@ -1,0 +1,30 @@
+{
+  "description": "Illustrative synthetic cases for the scorer harness only; this is not the real labelled corpus.",
+  "cases": [
+    {
+      "completion_text": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n",
+      "diff_added_lines": "def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)\n",
+      "should_match": true
+    },
+    {
+      "completion_text": "class ShoppingCart:\n    def total(self):\n        subtotal = sum(item.price for item in self.items)\n        return round(subtotal, 2)\n",
+      "diff_added_lines": "class ShoppingCart:\n    def total(self):\n        subtotal = sum(item.price for item in self.items)\n        return round(subtotal, 2)\n",
+      "should_match": true
+    },
+    {
+      "completion_text": "def validate_user(value):\n    if value is None:\n        raise ValueError(\"missing\")\n    return value\n",
+      "diff_added_lines": "def validate_order(value):\n    if value is None:\n        raise ValueError(\"missing\")\n    return value\n",
+      "should_match": false
+    },
+    {
+      "completion_text": "def sum_prices(items):\n    total = 0\n    for item in items:\n        total += item.price\n    return total\n",
+      "diff_added_lines": "def basket_total(lines):\n    amount = 0\n    for line in lines:\n        amount += line.price\n    return amount\n",
+      "should_match": true
+    },
+    {
+      "completion_text": "def normalize_email(address):\n    return address.strip().lower()\n",
+      "diff_added_lines": "class RetryBudget:\n    def allow(self):\n        return self.remaining > 0\n",
+      "should_match": false
+    }
+  ]
+}

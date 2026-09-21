@@ -1,0 +1,248 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      wheels-artifact:
+        description: Exact wheel artifact produced by the release build job
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  source:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Select validation scope
+        id: scope
+        env:
+          # Reusable release validation must always scan the supplied wheels.
+          CI_EVENT: ${{ inputs.wheels-artifact != '' && 'workflow_call' || github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
+      - run: uv run --locked ruff check .
+      - run: uv run --locked ruff format --check .
+      # Manual runs collect evidence even when a retained review needs replacing.
+      # The final scanner still enforces each applicable disposition.
+      - name: Check retained source reviews before automatic builds
+        if: steps.scope.outputs.full == 'true' && github.event_name != 'workflow_dispatch' && inputs.wheels-artifact == ''
+        shell: bash
+        run: |
+          mkdir -p security-evidence
+          uv run --no-project python scripts/ci_preflight.py reviews 2>&1 | tee security-evidence/source-reviews.txt
+      - name: Test local rules and scan production source
+        if: steps.scope.outputs.full == 'true'
+        run: uv run --no-project python scripts/security_static.py --out security-evidence
+      - name: Exercise policy, collector, SBOM, and release failure gates
+        if: steps.scope.outputs.full == 'true'
+        env:
+          SEDIMENT_SECURITY_TOOL_TESTS: "1"
+        run: >-
+          uv run --locked pytest -q
+          scripts/tests/test_security_policy.py
+          scripts/tests/test_security_scan.py
+          scripts/tests/test_security_numpy_inventory.py
+          scripts/tests/test_security_image_assurance.py
+          scripts/tests/test_security_sbom.py
+          scripts/tests/test_security_workflow_contract.py
+          scripts/tests/test_retained_release_security.py
+          scripts/tests/test_local_security_rules.py
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always() && steps.scope.outputs.full == 'true'
+        with:
+          name: security-evidence-source
+          path: security-evidence/*
+          if-no-files-found: error
+          retention-days: 30
+
+  client:
+    needs: source
+    if: needs.source.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Download exact release wheels
+        if: inputs.wheels-artifact != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.wheels-artifact }}
+          path: dist
+      - name: Build candidate wheels for a source check
+        if: inputs.wheels-artifact == ''
+        run: uv build --all-packages --wheel --out-dir dist
+      - name: Install maintained native server prerequisites
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+      - name: Scan the resolved installation of those wheels
+        run: uv run --no-project python scripts/security_scan.py client --wheels dist --out security-evidence
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: security-evidence-client
+          path: security-evidence/*
+          if-no-files-found: error
+          retention-days: 30
+
+  pi:
+    needs: source
+    if: needs.source.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.21.0"
+      - name: Scan the production pi installation
+        working-directory: shims/pi
+        run: >-
+          npm exec --yes --package=npm@12.0.2 --
+          uv run --no-project python ../../scripts/security_scan.py pi --out ../../security-evidence
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: security-evidence-pi
+          path: security-evidence/*
+          if-no-files-found: error
+          retention-days: 30
+
+  images:
+    needs: source
+    if: needs.source.outputs.full == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact: [api, postgres, gateway]
+        architecture: [amd64, arm64]
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+            trivy-platform: Linux-64bit
+            trivy-sha256: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+            trivy-platform: Linux-ARM64
+            trivy-sha256: b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5
+          - artifact: api
+            dockerfile: Dockerfile
+          - artifact: postgres
+            dockerfile: docker/postgres/Dockerfile
+          - artifact: gateway
+            dockerfile: docker/gateway/Dockerfile
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Install checksum-pinned Trivy
+        env:
+          TRIVY_PLATFORM: ${{ matrix.trivy-platform }}
+          TRIVY_SHA256: ${{ matrix.trivy-sha256 }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/trivy.tar.gz"
+          curl --fail --location --silent --show-error \
+            "https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_${TRIVY_PLATFORM}.tar.gz" -o "$archive"
+          echo "$TRIVY_SHA256  $archive" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+      - name: Build and scan the exact final image
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        run: |
+          set -euo pipefail
+          image="sediment-security:${ARTIFACT}-${ARCHITECTURE}"
+          source_digest="$(uv run --no-project python scripts/security_image_assurance.py source-digest)"
+          docker build --pull --platform "linux/$ARCHITECTURE" -f "$DOCKERFILE" -t "$image" \
+            --build-arg "SEDIMENT_SOURCE_REVISION=$GITHUB_SHA" \
+            --build-arg "SEDIMENT_SOURCE_DIGEST=$source_digest" .
+          uv run --no-project python scripts/security_scan.py image \
+            --image "$image" --artifact "$ARTIFACT" --architecture "$ARCHITECTURE" --out security-evidence
+      - name: Test the scanned gateway runtime
+        if: matrix.artifact == 'gateway'
+        env:
+          SEDIMENT_TEST_GATEWAY_IMAGE: sediment-security:gateway-${{ matrix.architecture }}
+        run: uv run --locked pytest -q scripts/tests/test_container_images.py -k gateway
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: security-evidence-${{ matrix.artifact }}-${{ matrix.architecture }}
+          path: security-evidence/*
+          if-no-files-found: error
+          retention-days: 30
+
+  security:
+    needs: [source, client, pi, images]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every selected security check
+        env:
+          SOURCE_RESULT: ${{ needs.source.result }}
+          FULL: ${{ needs.source.outputs.full }}
+          CLIENT_RESULT: ${{ needs.client.result }}
+          PI_RESULT: ${{ needs.pi.result }}
+          IMAGES_RESULT: ${{ needs.images.result }}
+        run: |
+          if [[ "$SOURCE_RESULT" != success ]]; then
+            echo "Source preflight failed or did not complete."
+            exit 1
+          fi
+          if [[ "$FULL" == false ]]; then
+            echo "Prose-only change: artifact scans are not selected."
+          elif [[ "$FULL" == true && "$CLIENT_RESULT" == success && "$PI_RESULT" == success && "$IMAGES_RESULT" == success ]]; then
+            echo "Every selected security check passed."
+          else
+            echo "A selected security check failed or did not complete."
+            exit 1
+          fi

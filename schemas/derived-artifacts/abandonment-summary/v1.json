@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/abandonment-summary/v1.json",
+  "title": "AbandonmentSummary",
+  "description": "One abandonment coverage summary.",
+  "type": "object",
+  "properties": {
+    "abandoned_sessions": {
+      "type": "integer",
+      "description": "All sessions derived as abandoned, including implicit-only sessions."
+    },
+    "grade_eligible_sessions": {
+      "type": "integer",
+      "description": "Abandoned sessions with at least one explicit accepted decision."
+    },
+    "implicit_only_sessions": {
+      "type": "integer",
+      "description": "Abandoned sessions whose accepted decisions were all implicit."
+    },
+    "negative_completions": {
+      "type": "integer",
+      "description": "Abandonment-evidence attributed completions emitted for training."
+    },
+    "explicit_accepts_unjoined": {
+      "type": "integer",
+      "description": "Explicit accepted decision facts that could not join uniquely to a completion."
+    },
+    "derivation_skipped": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "Candidate counts by the abandonment derivation's closed skip reasons."
+    },
+    "provenance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provenance"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The structured provenance for this artifact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "abandoned_sessions",
+    "grade_eligible_sessions",
+    "implicit_only_sessions",
+    "negative_completions",
+    "explicit_accepts_unjoined",
+    "derivation_skipped",
+    "provenance"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

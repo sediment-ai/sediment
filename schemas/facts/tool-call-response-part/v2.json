@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/tool-call-response-part/v2.json",
+  "title": "ToolCallResponsePart",
+  "description": "One result supplied for an earlier tool invocation.",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "tool_call_response",
+      "type": "string",
+      "description": "The message-part discriminator."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The tool-call id this result answers."
+    },
+    "result": {
+      "description": "The structured tool result supplied to the model."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "id",
+    "result"
+  ]
+}

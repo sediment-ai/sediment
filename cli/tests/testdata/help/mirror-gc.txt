@@ -1,0 +1,21 @@
+USAGE:
+  sediment mirror-gc [-h] [--org ORG] [--retention-days RETENTION_DAYS] [--apply]
+                     [--json] [--database-url DATABASE_URL]
+                     [--mirror-path MIRROR_PATH]
+
+  Reclaim bare mirrors for repos with no recent Push activity.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --retention-days RETENTION_DAYS
+                        days of no Push before a mirror is eligible for removal
+                        (default: 90)
+  --apply               actually delete eligible mirrors (default: dry-run,
+                        print only)
+  --json                emit JSON instead of a text report
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

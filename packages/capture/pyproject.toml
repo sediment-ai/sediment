@@ -1,0 +1,24 @@
+[project]
+name = "sediment-capture"
+version = "0.1.0"
+description = "Sediment capture: gateway adapters, OTLP translators, forge parsers"
+requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+dependencies = ["sediment-core==0.1.0"]
+
+[project.urls]
+Source = "https://github.com/sediment-ai/sediment"
+Documentation = "https://github.com/sediment-ai/sediment/tree/main/docs"
+Issues = "https://github.com/sediment-ai/sediment/issues"
+Changelog = "https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sediment_capture"]
+
+[tool.uv.sources]
+sediment-core = { workspace = true }

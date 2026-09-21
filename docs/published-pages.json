@@ -1,0 +1,153 @@
+{
+  "pages": [
+    {
+      "source": "docs/quickstart.md",
+      "destination": "quickstart",
+      "description": "Capture your first agent session on one machine in about five minutes."
+    },
+    {
+      "source": "docs/explanation/how-sediment-works.md",
+      "destination": "how-sediment-works",
+      "description": "Facts, derivations, the two canonical artifacts \u2014 and what the labels do and do not mean."
+    },
+    {
+      "source": "docs/explanation/architecture.md",
+      "destination": "architecture",
+      "description": "Sediment's components, data flow, persistence boundaries, and network boundaries."
+    },
+    {
+      "source": "docs/explanation/operational-value.md",
+      "destination": "operational-value",
+      "title": "Why Sediment?",
+      "description": "Questions about model outcomes, retained code, rework, and cost."
+    },
+    {
+      "source": "docs/operate/deploy.md",
+      "destination": "operate/deploy",
+      "description": "Run the Sediment API, PostgreSQL fact store, and git mirror on a host."
+    },
+    {
+      "source": "docs/operate/security.md",
+      "destination": "operate/security",
+      "description": "Verify artifact inventories, maintenance coverage, vulnerability dispositions, and deployment controls."
+    },
+    {
+      "source": "docs/operate/run-pilot.md",
+      "destination": "operate/run-pilot",
+      "title": "Run a Cursor, pi, and Codex pilot",
+      "description": "Enroll a team from a pinned source checkout and verify each harness's capture."
+    },
+    {
+      "source": "docs/operate/validate-deployment.md",
+      "destination": "operate/validate-deployment",
+      "title": "Validate a deployment",
+      "description": "Verify capture, recovery, data integrity, exports, and capacity for your workload."
+    },
+    {
+      "source": "docs/operate/rehearse-release.md",
+      "destination": "operate/rehearse-release",
+      "description": "Build and exercise all six distributions without publishing them."
+    },
+    {
+      "source": "docs/operate/measure-agent-work.md",
+      "destination": "operate/measure-agent-work",
+      "description": "Compare agent outcomes, find accepted work that did not ship, and inspect merge retention."
+    },
+    {
+      "source": "docs/capture/agent-integrations.md",
+      "destination": "agents/overview",
+      "title": "Agent integrations",
+      "description": "Compare agent capture capabilities and choose an integration guide."
+    },
+    {
+      "source": "docs/capture/agents/claude-code.md",
+      "destination": "agents/claude-code",
+      "title": "Capture Claude Code work",
+      "description": "Capture Claude Code decisions, Attribution, inference calls, and optional edit evidence."
+    },
+    {
+      "source": "docs/capture/agents/codex.md",
+      "destination": "agents/codex",
+      "title": "Capture Codex work",
+      "description": "Capture Codex decisions, Attribution, inference calls, and optional edit evidence."
+    },
+    {
+      "source": "docs/capture/agents/cursor.md",
+      "destination": "agents/cursor",
+      "title": "Capture Cursor work",
+      "description": "Capture Cursor commit Attribution and implicit accepts from local desktop work."
+    },
+    {
+      "source": "docs/capture/local-capture.md",
+      "destination": "capture/local-capture",
+      "title": "Local capture",
+      "description": "Connect one developer machine, its coding agents, and its repositories to Sediment."
+    },
+    {
+      "source": "docs/capture/managed-capture.md",
+      "destination": "capture/managed-capture",
+      "title": "Managed capture",
+      "description": "Connect gateways, forges, private repositories, and a managed developer fleet."
+    },
+    {
+      "source": "docs/explanation/how-capture-works.md",
+      "destination": "capture/how-capture-works",
+      "description": "The five capture signals, their data paths, attribution, edit survival, and privacy boundaries."
+    },
+    {
+      "source": "docs/explanation/how-derivation-works.md",
+      "destination": "derive/how-derivation-works",
+      "description": "Facts, snapshots, resolved policy, cohort selection, and the canonical derived bundle."
+    },
+    {
+      "source": "docs/explanation/attribution.md",
+      "destination": "derive/attribution",
+      "description": "Git notes and jaccard fallback join commits to inference calls."
+    },
+    {
+      "source": "docs/operate/run-derivations.md",
+      "destination": "derive/run-derivations",
+      "description": "Run, scope, inspect, recompute, and export a derivation."
+    },
+    {
+      "source": "docs/operate/profile-derivations.md",
+      "destination": "operate/profile-derivations",
+      "description": "Measure complete report, Derivation, and training workloads with isolated inputs and explicit memory and storage budgets."
+    },
+    {
+      "source": "docs/operate/lifecycle-report.md",
+      "destination": "operate/lifecycle-report",
+      "description": "Measure accepted-work progression, retention, attrition, and rework evidence."
+    },
+    {
+      "source": "docs/exports/training-exports.md",
+      "destination": "exports/training-exports",
+      "description": "Choose a training objective, prepare its evidence, and audit the output."
+    },
+    {
+      "source": "docs/exports/dpo.md",
+      "destination": "exports/dpo",
+      "description": "Pair chosen and rejected responses from matching prompt buckets."
+    },
+    {
+      "source": "docs/exports/sft.md",
+      "destination": "exports/sft",
+      "description": "Export eligible responses or exact attributed-file patches."
+    },
+    {
+      "source": "docs/exports/recovery.md",
+      "destination": "exports/recovery",
+      "description": "Export red-to-green CI transitions with their fixing diffs."
+    },
+    {
+      "source": "docs/exports/rlvr-export.md",
+      "destination": "exports/rlvr-export",
+      "description": "Verifiable task specifications and reward-labeled trajectories: tasks.jsonl, rollouts.jsonl, and the taskset manifest."
+    },
+    {
+      "source": "docs/exports/consumer-compatibility.md",
+      "destination": "exports/consumer-compatibility",
+      "description": "Export for pinned downstream consumers with explicit configuration and auditable evidence."
+    }
+  ]
+}

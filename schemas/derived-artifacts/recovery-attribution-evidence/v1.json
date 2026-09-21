@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/recovery-attribution-evidence/v1.json",
+  "title": "RecoveryAttributionEvidence",
+  "description": "Source Attribution metadata for one Recovery enrichment call.",
+  "type": "object",
+  "properties": {
+    "inference_call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "attribution_sources": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "git_notes",
+          "jaccard"
+        ],
+        "type": "string"
+      },
+      "description": "Sorted distinct Attribution methods for this enrichment call on this side's commit."
+    },
+    "session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observation IDs matching this enrichment Session and this side's qualified commit."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "inference_call_id",
+    "session_id",
+    "attribution_sources",
+    "session_commit_observation_ids"
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/session-commit-observation/v3.json",
+  "title": "SessionCommitObservation",
+  "description": "The first observed Git-note Session-to-commit edge.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        1,
+        2
+      ],
+      "type": "integer",
+      "description": "The Fact payload contract: 1 for stored legacy payloads, 2 for identity-capable payloads."
+    },
+    "repository_provider": {
+      "anyOf": [
+        {
+          "const": "github",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured forge provider."
+    },
+    "repository_host": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Configured lowercase forge host."
+    },
+    "repository_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Immutable provider repository ID within its forge host."
+    },
+    "observation_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this Session-to-commit observation."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The non-empty `owner/repo` that owns the observed commit, lowercased."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Full-length commit sha, lowercased."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "source_push_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The Push that triggered this Git-note observation."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository_provider",
+    "repository_host",
+    "repository_id",
+    "observation_id",
+    "org_id",
+    "repo",
+    "commit_sha",
+    "session_id",
+    "source_push_id",
+    "captured_at"
+  ]
+}

@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/pull-request-revision/v3.json",
+  "title": "PullRequestRevision",
+  "description": "One observed pull request head revision.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        1,
+        2
+      ],
+      "type": "integer",
+      "description": "The positive integer version of the canonical row schema."
+    },
+    "repository_provider": {
+      "anyOf": [
+        {
+          "const": "github",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured forge provider."
+    },
+    "repository_host": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Configured lowercase forge host."
+    },
+    "repository_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Immutable provider repository ID within its forge host."
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this observed pull request revision."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "provider": {
+      "const": "github",
+      "type": "string",
+      "description": "Which system this fact came from."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "The positive pull request number within the repository."
+    },
+    "head_repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The repository that supplied the pull request head."
+    },
+    "head_repository_provider": {
+      "anyOf": [
+        {
+          "const": "github",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured head repository provider, independent of the target identity."
+    },
+    "head_repository_host": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured head repository host, independent of the target identity."
+    },
+    "head_repository_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured immutable head repository ID, independent of the target identity."
+    },
+    "head_ref": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The normalized observed pull request head branch."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "The observed pull request head commit."
+    },
+    "base_ref": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The normalized target branch when observed."
+    },
+    "base_sha": {
+      "type": "string",
+      "description": "The target branch commit when observed."
+    },
+    "previous_head_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The previously observed pull request head commit, or null when absent."
+    },
+    "source_event_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider delivery identity when supplied."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository_provider",
+    "repository_host",
+    "repository_id",
+    "revision_id",
+    "org_id",
+    "provider",
+    "repo",
+    "pr_number",
+    "head_repo",
+    "head_repository_provider",
+    "head_repository_host",
+    "head_repository_id",
+    "head_ref",
+    "head_sha",
+    "base_ref",
+    "base_sha",
+    "previous_head_sha",
+    "source_event_id",
+    "captured_at"
+  ]
+}

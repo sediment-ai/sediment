@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "developers": 2,
+  "history_weeks": 2,
+  "sessions_per_week": 2,
+  "calls_per_session": 6,
+  "history_bytes": 1024,
+  "output_bytes": 512,
+  "live_interval_ms": 50,
+  "max_live_calls": 10000,
+  "job_timeout_seconds": 120,
+  "max_process_rss_mib": 2048,
+  "max_workspace_mib": 4096
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/pull-request-revision/v1.json",
+  "title": "PullRequestRevision",
+  "description": "One observed pull request head revision.",
+  "type": "object",
+  "properties": {
+    "revision_id": {
+      "type": "string",
+      "description": "Stable id for this observed pull request revision."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "provider": {
+      "const": "github",
+      "type": "string",
+      "description": "Which system this fact came from."
+    },
+    "repo": {
+      "type": "string",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "The positive pull request number within the repository."
+    },
+    "head_repo": {
+      "type": "string",
+      "description": "The repository that supplied the pull request head."
+    },
+    "head_ref": {
+      "type": "string",
+      "description": "The normalized observed pull request head branch."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "The observed pull request head commit."
+    },
+    "base_ref": {
+      "type": "string",
+      "description": "The normalized target branch when observed."
+    },
+    "base_sha": {
+      "type": "string",
+      "description": "The target branch commit when observed."
+    },
+    "previous_head_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The previously observed pull request head commit, or null when absent."
+    },
+    "source_event_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider delivery identity when supplied."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "revision_id",
+    "org_id",
+    "provider",
+    "repo",
+    "pr_number",
+    "head_repo",
+    "head_ref",
+    "head_sha",
+    "base_ref",
+    "base_sha",
+    "previous_head_sha",
+    "source_event_id",
+    "captured_at"
+  ]
+}

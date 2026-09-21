@@ -1,0 +1,1137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/accepted-work-lifecycle/v2.json",
+  "title": "AcceptedWorkLifecycleReport",
+  "description": "One coverage-aware operational lifecycle report.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "accepted_work": {
+      "$ref": "#/$defs/AcceptedWorkProgression",
+      "description": "Inference-call progression for human-explicit accepts."
+    },
+    "edit_retention": {
+      "$ref": "#/$defs/EditRetentionPanel",
+      "description": "Edit-observation retention and final Fate evidence."
+    },
+    "merge_durability": {
+      "$ref": "#/$defs/MergeDurabilityPanel",
+      "description": "Attributed file contribution retention through merge."
+    },
+    "session_attrition": {
+      "$ref": "#/$defs/SessionAttritionPanel",
+      "description": "Terminal classification of accepted Sessions."
+    },
+    "rework": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ReworkComponent"
+      },
+      "description": "Independent rework evidence components with separate grains."
+    },
+    "strata": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LifecycleStratum"
+      },
+      "description": "Supported uniquely joined identity breakdowns."
+    },
+    "stratum_skips": {
+      "type": "object",
+      "properties": {
+        "missing_model": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "multiple_agent_harnesses": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_repository": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "multiple_repositories": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_workflow": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "multiple_workflows": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "description": "Closed counts for identities that could not form a unique stratum."
+    },
+    "policy": {
+      "$ref": "#/$defs/LifecycleReportPolicy",
+      "description": "Resolved lifecycle presentation policy."
+    },
+    "provenance": {
+      "$ref": "#/$defs/LifecycleProvenance",
+      "description": "The structured provenance for this artifact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "accepted_work",
+    "edit_retention",
+    "merge_durability",
+    "session_attrition",
+    "rework",
+    "strata",
+    "stratum_skips",
+    "policy",
+    "provenance"
+  ],
+  "$defs": {
+    "AcceptedWorkProgression": {
+      "type": "object",
+      "properties": {
+        "accepted_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Uniquely attached Inference calls with a human-explicit accept."
+        },
+        "attributed": {
+          "$ref": "#/$defs/LifecycleStage",
+          "description": "Accepted calls with at least one commit Attribution."
+        },
+        "pull_request_membership": {
+          "$ref": "#/$defs/LifecycleStage",
+          "description": "Attributed calls with unique pull-request membership."
+        },
+        "ci_linked": {
+          "$ref": "#/$defs/LifecycleStage",
+          "description": "Calls with linked continuous integration evidence."
+        },
+        "ci_verdict": {
+          "$ref": "#/$defs/LifecycleStage",
+          "description": "Linked calls with a resolved continuous integration verdict."
+        },
+        "ci_passed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Resolved accepted calls whose verdict passed."
+        },
+        "ci_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Resolved accepted calls whose verdict failed."
+        },
+        "skips": {
+          "type": "object",
+          "properties": {
+            "missing_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmatched_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "decision_org_mismatch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "decision_session_mismatch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session_commit_unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attribution_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pull_request_membership_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ci_missing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ci_non_verdict": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous_ci_verdict": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for inputs that could not produce this artifact."
+        },
+        "coverage": {
+          "$ref": "#/$defs/LifecycleCoverage",
+          "description": "Observed and unavailable evidence populations."
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionExamples"
+          },
+          "description": "Deterministically bounded Session examples by population."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "accepted_calls",
+        "attributed",
+        "pull_request_membership",
+        "ci_linked",
+        "ci_verdict",
+        "ci_passed",
+        "ci_failed",
+        "skips",
+        "coverage",
+        "examples"
+      ]
+    },
+    "LifecycleStage": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of records in this population."
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Immediate eligible population for this measurement."
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Count divided by its denominator, or null when the denominator is zero."
+        },
+        "initial_denominator": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Initial accepted-call population."
+        },
+        "initial_rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Count divided by the initial population, or null when empty."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "denominator",
+        "rate",
+        "initial_denominator",
+        "initial_rate"
+      ]
+    },
+    "LifecycleCoverage": {
+      "type": "object",
+      "properties": {
+        "observed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Population with the required evidence."
+        },
+        "missing": {
+          "type": "object",
+          "properties": {
+            "unsupported_diff_section": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "malformed_diff_section": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "decision_org_mismatch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "decision_session_mismatch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session_commit_unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmatched_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fate_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attribution_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mirror_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_diff_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_file_diff_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_text_empty": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_path_unresolved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_path_unresolved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_file_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_file_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "binary_file": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "file_oversized": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "file_read_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scorer_error": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "invalid_score": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for evidence that was not captured or derived."
+        },
+        "unsupported_by_integration": {
+          "type": "object",
+          "properties": {
+            "cursor_human_explicit_inference_capture": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cursor_edit_observations": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for integration capture limits."
+        },
+        "ambiguous": {
+          "type": "object",
+          "properties": {
+            "ambiguous_decision_call_id": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous_ci_verdict": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous_pr_membership": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for evidence that could not join uniquely."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "observed",
+        "missing",
+        "unsupported_by_integration",
+        "ambiguous"
+      ]
+    },
+    "SessionExamples": {
+      "type": "object",
+      "properties": {
+        "population": {
+          "enum": [
+            "accepted",
+            "attributed",
+            "pull_request_membership",
+            "ci_failed",
+            "unmodified",
+            "partially_modified",
+            "deleted",
+            "joined",
+            "scored",
+            "committed",
+            "abandoned",
+            "in_flight",
+            "attribution_unavailable"
+          ],
+          "type": "string",
+          "description": "The population represented by the Session examples."
+        },
+        "session_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sorted, deduplicated example Session identifiers."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "population",
+        "session_ids"
+      ]
+    },
+    "EditRetentionPanel": {
+      "type": "object",
+      "properties": {
+        "observations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Captured Edit observations."
+        },
+        "eligible": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations eligible for scoring."
+        },
+        "derived_fates": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations with a derived final Fate."
+        },
+        "unmodified": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations whose applied text remained unmodified."
+        },
+        "partially_modified": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations whose applied text was partially modified."
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations whose applied text was deleted."
+        },
+        "known_external_line_counts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observations with known external line counts."
+        },
+        "external_lines_added": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observed external lines added over known windows."
+        },
+        "external_lines_removed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observed external lines removed over known windows."
+        },
+        "fate_rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Derived Fate coverage over captured observations."
+        },
+        "skips": {
+          "type": "object",
+          "properties": {
+            "scorer_error": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "invalid_score": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for inputs that could not produce this artifact."
+        },
+        "coverage": {
+          "$ref": "#/$defs/LifecycleCoverage",
+          "description": "Observed and unavailable evidence populations."
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionExamples"
+          },
+          "description": "Deterministically bounded Session examples by population."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "observations",
+        "eligible",
+        "derived_fates",
+        "unmodified",
+        "partially_modified",
+        "deleted",
+        "known_external_line_counts",
+        "external_lines_added",
+        "external_lines_removed",
+        "fate_rate",
+        "skips",
+        "coverage",
+        "examples"
+      ]
+    },
+    "MergeDurabilityPanel": {
+      "type": "object",
+      "properties": {
+        "coverage_qualification": {
+          "const": "partial_pull_request_history",
+          "type": "string",
+          "description": "Qualification governing interpretation of this panel."
+        },
+        "attributed_file_candidates": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Attributed commit-file candidates."
+        },
+        "unique_pull_request_membership": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Candidates with unique pull-request membership."
+        },
+        "scored_rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Candidates scored at both merge boundaries."
+        },
+        "membership_rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Unique membership coverage over attributed candidates."
+        },
+        "scoring_rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Boundary scoring coverage over joined candidates."
+        },
+        "membership": {
+          "type": "object",
+          "properties": {
+            "attribution_without_merge": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous_pr_membership": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ancestry_check_failed": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed pull-request membership outcome counts."
+        },
+        "scoring_skips": {
+          "type": "object",
+          "properties": {
+            "session_commit_unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unsupported_diff_section": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "malformed_diff_section": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "mirror_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_commit_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_diff_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_file_diff_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source_text_empty": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_path_unresolved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_path_unresolved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "head_file_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "merge_file_absent": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "binary_file": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "file_oversized": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "file_read_failed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scorer_error": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "invalid_score": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed merge-retention scoring skip counts."
+        },
+        "head": {
+          "$ref": "#/$defs/LifecycleRetentionScoreSummary",
+          "description": "Retention score summary at the final pull-request head."
+        },
+        "merge": {
+          "$ref": "#/$defs/LifecycleRetentionScoreSummary",
+          "description": "Retention score summary at the merged commit."
+        },
+        "coverage": {
+          "$ref": "#/$defs/LifecycleCoverage",
+          "description": "Observed and unavailable evidence populations."
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionExamples"
+          },
+          "description": "Deterministically bounded Session examples by population."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "coverage_qualification",
+        "attributed_file_candidates",
+        "unique_pull_request_membership",
+        "scored_rows",
+        "membership_rate",
+        "scoring_rate",
+        "membership",
+        "scoring_skips",
+        "head",
+        "merge",
+        "coverage",
+        "examples"
+      ]
+    },
+    "LifecycleRetentionScoreSummary": {
+      "type": "object",
+      "properties": {
+        "distribution": {
+          "$ref": "#/$defs/LifecycleRetentionDistribution",
+          "description": "Distribution of observed retention scores."
+        },
+        "thresholds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LifecycleRetentionThreshold"
+          },
+          "description": "Counts below fixed retention sensitivity thresholds."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "distribution",
+        "thresholds"
+      ]
+    },
+    "LifecycleRetentionDistribution": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of records in this population."
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Arithmetic mean of observed values, or null for an empty population."
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Median of observed values, or null for an empty population."
+        },
+        "p10": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Tenth percentile, or null for an empty population."
+        },
+        "p90": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Ninetieth percentile, or null for an empty population."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "mean",
+        "median",
+        "p10",
+        "p90"
+      ]
+    },
+    "LifecycleRetentionThreshold": {
+      "type": "object",
+      "properties": {
+        "threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Fixed retention sensitivity threshold."
+        },
+        "below": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Observed values below the threshold."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total eligible values for this measurement."
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Count divided by its denominator, or null when the denominator is zero."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "threshold",
+        "below",
+        "total",
+        "rate"
+      ]
+    },
+    "SessionAttritionPanel": {
+      "type": "object",
+      "properties": {
+        "eligible_sessions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Accepted Sessions eligible for classification."
+        },
+        "committed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Accepted Sessions that reached a commit."
+        },
+        "abandoned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Accepted Sessions abandoned after the grace horizon."
+        },
+        "in_flight": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Accepted Sessions inside the grace horizon."
+        },
+        "attribution_unavailable": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Accepted Sessions without an observable Attribution path."
+        },
+        "skips": {
+          "type": "object",
+          "properties": {
+            "session_commit_unobserved": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "no_accepted_decision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "reached_a_commit": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "within_grace_horizon": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attribution_unavailable": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "description": "Closed counts for inputs that could not produce this artifact."
+        },
+        "coverage": {
+          "$ref": "#/$defs/LifecycleCoverage",
+          "description": "Observed and unavailable evidence populations."
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionExamples"
+          },
+          "description": "Deterministically bounded Session examples by population."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "eligible_sessions",
+        "committed",
+        "abandoned",
+        "in_flight",
+        "attribution_unavailable",
+        "skips",
+        "coverage",
+        "examples"
+      ]
+    },
+    "ReworkComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "enum": [
+            "explicit_rejects",
+            "retry_linkages",
+            "modified_or_deleted_edits",
+            "external_line_changes",
+            "abandoned_sessions",
+            "failed_ci_resolutions"
+          ],
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "grain": {
+          "enum": [
+            "developer_decision",
+            "retry_linkage",
+            "edit_observation",
+            "edit_observation_with_known_external_counts",
+            "accepted_session",
+            "ci_resolution"
+          ],
+          "type": "string",
+          "description": "The unit counted by this component."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of records in this population."
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Immediate eligible population for this measurement."
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Count divided by its denominator, or null when the denominator is zero."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "grain",
+        "count",
+        "denominator",
+        "rate"
+      ]
+    },
+    "LifecycleStratum": {
+      "type": "object",
+      "properties": {
+        "dimension": {
+          "enum": [
+            "model",
+            "repository",
+            "workflow",
+            "agent_harness"
+          ],
+          "type": "string",
+          "description": "The identity dimension used for this stratum."
+        },
+        "value": {
+          "type": "string",
+          "description": "The stable identity value for this stratum."
+        },
+        "accepted_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Uniquely attached Inference calls with a human-explicit accept."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "dimension",
+        "value",
+        "accepted_calls"
+      ]
+    },
+    "LifecycleReportPolicy": {
+      "type": "object",
+      "properties": {
+        "example_session_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum Session identifiers in each example population."
+        },
+        "policy_version": {
+          "type": "string",
+          "description": "Version of the policy that produced this artifact."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "example_session_limit",
+        "policy_version"
+      ]
+    },
+    "LifecycleProvenance": {
+      "type": "object",
+      "properties": {
+        "lifecycle": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Lifecycle report policy provenance."
+        },
+        "attribution": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Commit Attribution policy provenance."
+        },
+        "abandonment": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Session abandonment policy provenance."
+        },
+        "fate": {
+          "$ref": "#/$defs/Provenance",
+          "description": "The categorical final Fate assigned from the retention score."
+        },
+        "ci_resolution": {
+          "$ref": "#/$defs/Provenance",
+          "description": "The selected attempt-aware CI resolution for this row."
+        },
+        "merge_retention": {
+          "$ref": "#/$defs/Provenance",
+          "description": "Merge-retention policy provenance."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "lifecycle",
+        "attribution",
+        "abandonment",
+        "fate",
+        "ci_resolution",
+        "merge_retention"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

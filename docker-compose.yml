@@ -1,0 +1,192 @@
+# Self-hosted Sediment. See docs/operate/deploy.md for credentials, storage
+# quotas, backups, and the conditions attached to vulnerability dispositions.
+name: sediment
+
+x-runtime: &runtime
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-api-build: &api-build
+  context: .
+  args:
+    SEDIMENT_SOURCE_REVISION: "${SEDIMENT_SOURCE_REVISION:-unverified}"
+    SEDIMENT_SOURCE_DIGEST: "${SEDIMENT_SOURCE_DIGEST:-unverified}"
+
+services:
+  postgres:
+    <<: *runtime
+    build:
+      <<: *api-build
+      dockerfile: docker/postgres/Dockerfile
+    image: sediment-postgres:local
+    # The entrypoint initializes volume ownership, then runs as postgres.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    environment:
+      POSTGRES_DB: sediment
+      POSTGRES_USER: sediment
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    command: [postgres, -c, hba_file=/etc/postgresql/sediment-pg_hba.conf, -c, max_connections=40]
+    volumes:
+      - sediment-postgres:/var/lib/postgresql/data
+      - ./docker/postgres/pg_hba.conf:/etc/postgresql/sediment-pg_hba.conf:ro
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/run/postgresql:size=16m,uid=999,gid=999,mode=0775
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U sediment -d sediment]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    <<: *runtime
+    build: *api-build
+    image: sediment-api:local
+    restart: "no"
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 64
+    environment:
+      SEDIMENT_BOOTSTRAP_DATABASE_URL: "postgresql+psycopg://sediment:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/sediment"
+      SEDIMENT_MIGRATOR_PASSWORD: "${SEDIMENT_MIGRATOR_PASSWORD:?Set SEDIMENT_MIGRATOR_PASSWORD in .env}"
+      SEDIMENT_RUNTIME_PASSWORD: "${SEDIMENT_RUNTIME_PASSWORD:?Set SEDIMENT_RUNTIME_PASSWORD in .env}"
+      SEDIMENT_OPERATOR_PASSWORD: "${SEDIMENT_OPERATOR_PASSWORD:?Set SEDIMENT_OPERATOR_PASSWORD in .env}"
+    command: [sediment, db, provision]
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    networks: [database]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *runtime
+    build: *api-build
+    image: sediment-api:local
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 256
+    environment:
+      SEDIMENT_DATABASE_URL: "postgresql+psycopg://sediment_runtime:${SEDIMENT_RUNTIME_PASSWORD:?Set SEDIMENT_RUNTIME_PASSWORD in .env}@postgres:5432/sediment"
+      SEDIMENT_ORG_ID: "${SEDIMENT_ORG_ID:?Set SEDIMENT_ORG_ID in .env}"
+      SEDIMENT_OPERATOR_TOKEN: "${SEDIMENT_OPERATOR_TOKEN:?Set SEDIMENT_OPERATOR_TOKEN in .env}"
+      SEDIMENT_INGEST_TOKENS: "${SEDIMENT_INGEST_TOKENS:?Set SEDIMENT_INGEST_TOKENS in .env}"
+      SEDIMENT_API_BEARER_TOKEN: "${SEDIMENT_API_BEARER_TOKEN:-}"
+      SEDIMENT_GITHUB_WEBHOOK_SECRET: "${SEDIMENT_GITHUB_WEBHOOK_SECRET:?Set SEDIMENT_GITHUB_WEBHOOK_SECRET in .env}"
+      SEDIMENT_ALLOWED_CLONE_HOSTS: "${SEDIMENT_ALLOWED_CLONE_HOSTS:?Set SEDIMENT_ALLOWED_CLONE_HOSTS in .env}"
+      SEDIMENT_ENABLE_DOCS: "${SEDIMENT_ENABLE_DOCS:?Set SEDIMENT_ENABLE_DOCS in .env}"
+      SEDIMENT_DEV_MODE: "${SEDIMENT_DEV_MODE:?Set SEDIMENT_DEV_MODE in .env}"
+      SEDIMENT_MIRROR_PATH: /data/mirror
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports: [127.0.0.1:8000:8000]
+    volumes:
+      - sediment-mirror:/data/mirror
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    networks: [database, edge]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  operator:
+    <<: *runtime
+    profiles: [operator]
+    build: *api-build
+    image: sediment-api:local
+    restart: "no"
+    mem_limit: 2g
+    cpus: 1.0
+    pids_limit: 128
+    environment:
+      SEDIMENT_DATABASE_URL: "postgresql+psycopg://sediment_operator:${SEDIMENT_OPERATOR_PASSWORD:?Set SEDIMENT_OPERATOR_PASSWORD in .env}@postgres:5432/sediment"
+      SEDIMENT_ORG_ID: "${SEDIMENT_ORG_ID:?Set SEDIMENT_ORG_ID in .env}"
+      SEDIMENT_MIRROR_PATH: /data/mirror
+      # Private Derivation and export staging holds raw payloads and outgrows
+      # /tmp. tmpfs pages also count against mem_limit; a disk volume doesn't.
+      TMPDIR: /data/staging
+    command: [sediment, --help]
+    volumes:
+      - sediment-mirror:/data/mirror
+      - sediment-export:/data/export
+      - sediment-staging:/data/staging
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    networks: [database]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  gateway:
+    <<: *runtime
+    profiles: [gateway]
+    build:
+      <<: *api-build
+      dockerfile: docker/gateway/Dockerfile
+    image: sediment-gateway:local
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 256
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        if [ -z "$${ANTHROPIC_API_KEY:-}" ]; then
+          echo "error: gateway profile requires ANTHROPIC_API_KEY" >&2
+          exit 1
+        fi
+        if [ -z "$${LITELLM_MASTER_KEY:-}" ]; then
+          echo "error: gateway profile requires LITELLM_MASTER_KEY" >&2
+          exit 1
+        fi
+        if [ -z "$${SEDIMENT_API_BEARER_TOKEN:-}" ]; then
+          echo "error: gateway profile requires SEDIMENT_GATEWAY_INGEST_TOKEN" >&2
+          exit 1
+        fi
+        exec python /usr/local/bin/sediment-gateway.py "$$@"
+      - sediment-gateway
+    command: [--config, /app/config.yaml, --port, "4000"]
+    ports: [127.0.0.1:4000:4000]
+    environment:
+      SEDIMENT_INGEST_URL: http://api:8000
+      SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN: http://api:8000
+      SEDIMENT_API_BEARER_TOKEN: "${SEDIMENT_GATEWAY_INGEST_TOKEN:-}"
+      SEDIMENT_DELIVERY_DIR: "${SEDIMENT_DELIVERY_DIR:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:-}"
+      PYTHONPATH: /app
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/sediment_callback.py:/app/sediment_callback.py:ro
+      - ./cli/sediment_cli/delivery.py:/app/sediment_delivery.py:ro
+      - sediment-delivery:/data/delivery
+    tmpfs: ["/tmp:size=512m,mode=1777"]
+    networks: [edge]
+    depends_on:
+      api:
+        condition: service_healthy
+
+networks:
+  database:
+    internal: true
+  edge:
+
+volumes:
+  sediment-postgres:
+  sediment-mirror:
+  sediment-export:
+  sediment-staging:
+  sediment-delivery:

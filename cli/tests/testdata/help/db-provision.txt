@@ -1,0 +1,9 @@
+USAGE:
+  sediment db provision [-h]
+
+  Read SEDIMENT_BOOTSTRAP_DATABASE_URL, SEDIMENT_MIGRATOR_PASSWORD,
+  SEDIMENT_RUNTIME_PASSWORD, and SEDIMENT_OPERATOR_PASSWORD from the
+  environment. Stop services before provisioning.
+
+OPTIONS:
+  -h, --help  show this help message and exit

@@ -1,0 +1,17 @@
+USAGE:
+  sediment quarantine-inference-calls [-h] [--session-id SESSION_ID]
+                                      [--provider {litellm,portkey,helicone,unknown}]
+                                      [--between FROM TO] [--all] [--apply]
+                                      --reason REASON
+
+  bulk-quarantine inference calls by filter (dry-run by default)
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --session-id SESSION_ID
+  --provider {litellm,portkey,helicone,unknown}
+                        gateway provider filter
+  --between FROM TO     ISO-8601 capture-time bounds, timezone-aware, inclusive
+  --all                 allow a filterless (org-wide) run
+  --apply               write; without it, dry-run only
+  --reason REASON

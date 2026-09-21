@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/merge-membership-outcome/v2.json",
+  "title": "MergeMembershipOutcome",
+  "description": "One Attribution's pull-request membership classification.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "inference_call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "source_commit_sha": {
+      "type": "string",
+      "description": "The attributed source commit."
+    },
+    "source_file_path": {
+      "type": "string",
+      "description": "The attributed source path."
+    },
+    "attribution_source": {
+      "enum": [
+        "git_notes",
+        "jaccard"
+      ],
+      "type": "string",
+      "description": "How the underlying attribution was established."
+    },
+    "attribution_similarity_score": {
+      "type": "number",
+      "description": "The similarity score from the source Attribution."
+    },
+    "status": {
+      "enum": [
+        "joined",
+        "without_merge",
+        "ambiguous",
+        "ancestry_unresolved"
+      ],
+      "type": "string",
+      "description": "The closed classification assigned by this derivation."
+    },
+    "pr_number": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The uniquely joined pull request; null for an unjoined Attribution."
+    },
+    "merge_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The uniquely joined merge boundary; null for an unjoined Attribution."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observations of the Session on the source commit; membership does not prove individual-call authorship."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "repo",
+    "inference_call_id",
+    "session_id",
+    "source_commit_sha",
+    "source_file_path",
+    "attribution_source",
+    "attribution_similarity_score",
+    "status",
+    "pr_number",
+    "merge_id",
+    "provenance",
+    "session_commit_observation_ids"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

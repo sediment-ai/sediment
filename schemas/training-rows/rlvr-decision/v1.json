@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/rlvr-decision/v1.json",
+  "title": "RLVRDecisionRow",
+  "description": "One decision attached to an RLVR turn.",
+  "type": "object",
+  "properties": {
+    "accepted": {
+      "type": "boolean",
+      "description": "Whether the developer took the change."
+    },
+    "explicit": {
+      "type": "boolean",
+      "description": "Whether a real human gesture produced this decision."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "interaction_mode": {
+      "enum": [
+        "agent",
+        "inline"
+      ],
+      "type": "string",
+      "description": "Whether the edit interaction was `agent` or `inline`."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Repo-relative path of the file the record concerns."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "accepted",
+    "explicit",
+    "agent_harness",
+    "interaction_mode",
+    "file_path"
+  ]
+}

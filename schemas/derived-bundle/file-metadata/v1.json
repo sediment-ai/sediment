@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-bundle/file-metadata/v1.json",
+  "title": "BundleFileMetadata",
+  "description": "Integrity metadata for one bundle JSONL file.",
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "The fixed bundle-relative JSONL path."
+    },
+    "rows": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The JSONL row count."
+    },
+    "bytes": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The exact file size in bytes."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the complete file bytes."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "path",
+    "rows",
+    "bytes",
+    "sha256"
+  ]
+}

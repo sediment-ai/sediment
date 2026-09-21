@@ -1,0 +1,261 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "copilot-chat"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "0.54.0"
+            }
+          },
+          {
+            "key": "session.id",
+            "value": {
+              "stringValue": "00000000-0000-0000-0000-000000000000"
+            }
+          }
+        ],
+        "droppedAttributesCount": 0
+      },
+      "scopeLogs": [
+        {
+          "scope": {
+            "name": "copilot-chat",
+            "version": "0.54.0"
+          },
+          "logRecords": [
+            {
+              "timeUnixNano": "1782578950208000000",
+              "observedTimeUnixNano": "1782578950208000000",
+              "body": {
+                "stringValue": "GenAI inference: gpt-5.3-codex"
+              },
+              "attributes": [
+                {
+                  "key": "event.name",
+                  "value": {
+                    "stringValue": "gen_ai.client.inference.operation.details"
+                  }
+                },
+                {
+                  "key": "gen_ai.operation.name",
+                  "value": {
+                    "stringValue": "chat"
+                  }
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "gpt-5.3-codex"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.model",
+                  "value": {
+                    "stringValue": "gpt-5.3-codex"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.id",
+                  "value": {
+                    "stringValue": "629df9ef-6ed2-447d-a19e-9449c44e437a"
+                  }
+                },
+                {
+                  "key": "gen_ai.response.finish_reasons",
+                  "value": {
+                    "arrayValue": {
+                      "values": [
+                        {
+                          "stringValue": "stop"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": 40953
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": 58
+                  }
+                },
+                {
+                  "key": "gen_ai.request.temperature",
+                  "value": {
+                    "intValue": 0
+                  }
+                },
+                {
+                  "key": "gen_ai.request.max_tokens",
+                  "value": {
+                    "intValue": 128000
+                  }
+                }
+              ],
+              "droppedAttributesCount": 0,
+              "flags": 1,
+              "traceId": "b9b75122527a3fa22781c31ed61317fd",
+              "spanId": "138ba5fb3a635b96"
+            },
+            {
+              "timeUnixNano": "1782578950221000000",
+              "observedTimeUnixNano": "1782578950221000000",
+              "body": {
+                "stringValue": "copilot_chat.agent.turn: 2"
+              },
+              "attributes": [
+                {
+                  "key": "event.name",
+                  "value": {
+                    "stringValue": "copilot_chat.agent.turn"
+                  }
+                },
+                {
+                  "key": "turn.index",
+                  "value": {
+                    "intValue": 2
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": 40953
+                  }
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": 58
+                  }
+                },
+                {
+                  "key": "tool_call_count",
+                  "value": {
+                    "intValue": 0
+                  }
+                }
+              ],
+              "droppedAttributesCount": 0,
+              "flags": 1,
+              "traceId": "b9b75122527a3fa22781c31ed61317fd",
+              "spanId": "138ba5fb3a635b96"
+            },
+            {
+              "timeUnixNano": "1782578950493000000",
+              "observedTimeUnixNano": "1782578950493000000",
+              "body": {
+                "stringValue": "copilot_chat.edit.survival: apply_patch"
+              },
+              "attributes": [
+                {
+                  "key": "event.name",
+                  "value": {
+                    "stringValue": "copilot_chat.edit.survival"
+                  }
+                },
+                {
+                  "key": "edit_source",
+                  "value": {
+                    "stringValue": "apply_patch"
+                  }
+                },
+                {
+                  "key": "survival_rate_four_gram",
+                  "value": {
+                    "intValue": 1
+                  }
+                },
+                {
+                  "key": "survival_rate_no_revert",
+                  "value": {
+                    "intValue": 1
+                  }
+                },
+                {
+                  "key": "time_delay_ms",
+                  "value": {
+                    "intValue": 0
+                  }
+                },
+                {
+                  "key": "did_branch_change",
+                  "value": {
+                    "boolValue": false
+                  }
+                },
+                {
+                  "key": "request_id",
+                  "value": {
+                    "stringValue": "11111111-1111-1111-1111-111111111111"
+                  }
+                },
+                {
+                  "key": "copilot_chat.repo.head_branch_name",
+                  "value": {
+                    "stringValue": "main"
+                  }
+                },
+                {
+                  "key": "github.copilot.git.branch",
+                  "value": {
+                    "stringValue": "main"
+                  }
+                },
+                {
+                  "key": "copilot_chat.repo.head_commit_hash",
+                  "value": {
+                    "stringValue": "0000000000000000000000000000000000000000"
+                  }
+                },
+                {
+                  "key": "github.copilot.git.commit_sha",
+                  "value": {
+                    "stringValue": "0000000000000000000000000000000000000000"
+                  }
+                },
+                {
+                  "key": "copilot_chat.repo.remote_url",
+                  "value": {
+                    "stringValue": "https://github.com/example-org/example-repo.git"
+                  }
+                },
+                {
+                  "key": "github.copilot.git.repository",
+                  "value": {
+                    "stringValue": "https://github.com/example-org/example-repo.git"
+                  }
+                },
+                {
+                  "key": "github.copilot.github.org",
+                  "value": {
+                    "stringValue": "example-org"
+                  }
+                },
+                {
+                  "key": "copilot_chat.file.relative_path",
+                  "value": {
+                    "stringValue": "example.md"
+                  }
+                }
+              ],
+              "droppedAttributesCount": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

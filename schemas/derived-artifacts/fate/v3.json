@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/fate/v3.json",
+  "title": "Fate",
+  "description": "One Edit observation's derived final Fate.",
+  "type": "object",
+  "properties": {
+    "observation_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this edit observation."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "cursor",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The edit tool-call id that joins this Fate to its decision."
+    },
+    "score": {
+      "type": "number",
+      "description": "The scorer result after clamping to [0, 1], before threshold mapping."
+    },
+    "fate": {
+      "enum": [
+        "deleted",
+        "partially_modified",
+        "unmodified"
+      ],
+      "type": "string",
+      "description": "The categorical final Fate assigned from the retention score."
+    },
+    "external_lines_added": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Accumulated external lines added from this edit through Session end. Null when any window in the tail lacks coverage."
+    },
+    "external_lines_removed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Accumulated external lines removed from this edit through Session end. Null when any window in the tail lacks coverage."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "observation_id",
+    "org_id",
+    "agent_harness",
+    "session_id",
+    "call_id",
+    "score",
+    "fate",
+    "external_lines_added",
+    "external_lines_removed",
+    "provenance"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

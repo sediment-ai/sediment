@@ -1,0 +1,8 @@
+USAGE:
+  sediment logout [-h] [--server SERVER]
+
+  remove stored credentials
+
+OPTIONS:
+  -h, --help       show this help message and exit
+  --server SERVER  server URL to log out of (default: current)

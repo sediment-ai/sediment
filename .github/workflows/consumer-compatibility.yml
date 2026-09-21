@@ -1,0 +1,121 @@
+name: Consumer compatibility
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '37 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  pinned:
+    if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [hf, swe, nemo, fireworks]
+    runs-on: ubuntu-latest
+    env:
+      SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_COMPAT_TESTS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.17'
+          python-version: '3.12.14'
+      - run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5
+      - run: uv sync --locked
+      - name: Start the maintained PostgreSQL test image
+        if: matrix.group == 'swe'
+        run: |
+          set -euo pipefail
+          docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          docker run --detach --name sediment-ci-postgres \
+            -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
+            sediment-ci-postgres
+          for _ in {1..60}; do
+            if docker exec sediment-ci-postgres pg_isready -h 127.0.0.1 -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sediment-ci-postgres
+          exit 1
+      - name: Install isolated pinned consumer dependencies
+        run: |
+          if [ '${{ matrix.group }}' != fireworks ]; then
+            uv pip install --python .venv/bin/python --torch-backend cpu -r requirements/compatibility/${{ matrix.group }}.txt
+          fi
+          if [ '${{ matrix.group }}' = swe ]; then
+            uv pip install --python .venv/bin/python --no-deps 'swebench @ git+https://github.com/SWE-bench/SWE-bench.git@87ab1f6ced28f75ba73ca899dc759b019310944a'
+          elif [ '${{ matrix.group }}' = nemo ]; then
+            uv pip install --python .venv/bin/python --no-deps 'nemo-gym @ git+https://github.com/NVIDIA-NeMo/Gym.git@27e921137042dcdb8a39c7169128619b9108074b'
+          fi
+      - name: Verify the generated support matrix
+        run: .venv/bin/python scripts/gen_compatibility_docs.py --check
+      - name: Exercise real projections and consumer boundaries
+        run: .venv/bin/python -m pytest packages/export/tests/test_consumer_loaders.py -k '${{ matrix.group }}' -q
+      - name: Remove the disposable test database
+        if: always() && matrix.group == 'swe'
+        run: docker rm -f sediment-ci-postgres
+
+  canary:
+    if: github.event_name == 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [hf, swe, nemo]
+    runs-on: ubuntu-latest
+    env:
+      SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_COMPAT_TESTS: '1'
+      SEDIMENT_COMPAT_CANARY: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.17'
+          python-version: '3.12.14'
+      - run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5
+      - run: uv sync --locked
+      - name: Start the maintained PostgreSQL test image
+        if: matrix.group == 'swe'
+        run: |
+          set -euo pipefail
+          docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          docker run --detach --name sediment-ci-postgres \
+            -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
+            sediment-ci-postgres
+          for _ in {1..60}; do
+            if docker exec sediment-ci-postgres pg_isready -h 127.0.0.1 -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sediment-ci-postgres
+          exit 1
+      - name: Install newest upstream release or main commit
+        run: |
+          case '${{ matrix.group }}' in
+            hf) uv pip install --python .venv/bin/python --upgrade --torch-backend cpu datasets trl transformers ;;
+            swe) uv pip install --python .venv/bin/python --upgrade swebench datasets ;;
+            nemo) uv pip install --python .venv/bin/python --upgrade 'nemo-gym @ git+https://github.com/NVIDIA-NeMo/Gym.git@main' ;;
+          esac
+      - name: Record actual versions and exercise unchanged adapters
+        run: |
+          uv pip freeze --python .venv/bin/python
+          .venv/bin/python -m pytest packages/export/tests/test_consumer_loaders.py -k '${{ matrix.group }}' -q
+      - name: Remove the disposable test database
+        if: always() && matrix.group == 'swe'
+        run: docker rm -f sediment-ci-postgres

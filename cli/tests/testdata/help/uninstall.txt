@@ -1,0 +1,10 @@
+USAGE:
+  sediment uninstall [-h] [--agents] [repo]
+
+ARGUMENTS:
+  repo
+
+OPTIONS:
+  -h, --help  show this help message and exit
+  --agents    also remove user-level agent hooks, generated env, and managed
+              Codex telemetry

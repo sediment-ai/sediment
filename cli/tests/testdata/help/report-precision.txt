@@ -1,0 +1,24 @@
+USAGE:
+  sediment report precision [-h] [--org ORG] --manifest MANIFEST
+                            [--threshold THRESHOLD]
+                            [--sweep-thresholds SWEEP_THRESHOLDS] [--json]
+                            [--database-url DATABASE_URL]
+                            [--mirror-path MIRROR_PATH]
+
+  Score derived attributions against a ground-truth manifest.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --manifest MANIFEST   JSONL ground-truth manifest
+  --threshold THRESHOLD
+                        default scoring threshold (default: 0.7)
+  --sweep-thresholds SWEEP_THRESHOLDS
+                        comma-separated sweep thresholds (default:
+                        0.1,0.2,...,0.9)
+  --json                emit JSON instead of a text report
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

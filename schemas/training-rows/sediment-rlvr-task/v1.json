@@ -1,0 +1,607 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/sediment-rlvr-task/v1.json",
+  "title": "SedimentTaskRow",
+  "description": "One Sediment RLVR task.",
+  "type": "object",
+  "properties": {
+    "instance_id": {
+      "type": "string",
+      "description": "Stable target-row identity derived from recorded facts."
+    },
+    "recipe_id": {
+      "const": "rlvr_ci",
+      "type": "string",
+      "description": "The closed evidence recipe that produced this training row."
+    },
+    "recipe_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The version of the evidence recipe; increment it when recipe semantics change."
+    },
+    "reward_source": {
+      "enum": [
+        "resolved_ci_pass",
+        "resolved_ci_fail"
+      ],
+      "type": "string",
+      "description": "The closed source of the directional reward; absent without a verdict."
+    },
+    "repo": {
+      "type": "string",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "base_commit": {
+      "type": "string",
+      "description": "The commit that the historical reference patch applies to."
+    },
+    "problem_statement": {
+      "type": "string",
+      "description": "The first recorded user message for the task."
+    },
+    "reference_patch": {
+      "type": "string",
+      "description": "The observed historical patch, whether it passed or failed."
+    },
+    "verification": {
+      "$ref": "#/$defs/Verification",
+      "description": "Operator configuration for running the verifier again."
+    },
+    "verifier_results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CIOutcome"
+      },
+      "description": "The exact recorded CI outcomes that support this row."
+    },
+    "ci_resolution": {
+      "$ref": "#/$defs/CIResolution",
+      "description": "The selected attempt-aware CI resolution for this row."
+    },
+    "attribution_source": {
+      "enum": [
+        "git_notes",
+        "jaccard"
+      ],
+      "type": "string",
+      "description": "How the underlying attribution was established."
+    },
+    "split": {
+      "enum": [
+        "train",
+        "eval"
+      ],
+      "type": "string",
+      "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "schema_id": {
+      "const": "https://sediment.so/schemas/training-rows/sediment-rlvr-task/v1.json",
+      "type": "string",
+      "description": "The canonical wire-shape contract for this row."
+    },
+    "schema_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The positive integer version of the canonical row schema."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "instance_id",
+    "recipe_id",
+    "recipe_version",
+    "reward_source",
+    "repo",
+    "base_commit",
+    "problem_statement",
+    "reference_patch",
+    "verifier_results",
+    "ci_resolution",
+    "attribution_source",
+    "split",
+    "provenance",
+    "schema_id",
+    "schema_version"
+  ],
+  "$defs": {
+    "Verification": {
+      "type": "object",
+      "properties": {
+        "verification_command": {
+          "type": "string",
+          "description": "The opaque operator-configured verifier command."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "verification_command"
+      ]
+    },
+    "CIOutcome": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The normalized fact-contract version. CI outcomes use 1."
+        },
+        "outcome_id": {
+          "type": "string",
+          "description": "Stable id for this outcome."
+        },
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "provider": {
+          "enum": [
+            "github_actions",
+            "jenkins",
+            "gitlab_ci",
+            "circleci",
+            "buildkite",
+            "other"
+          ],
+          "type": "string",
+          "description": "The normalized CI system selected by a capture adapter or declared by the bearer-authenticated vendor integration."
+        },
+        "run_id": {
+          "type": "string",
+          "description": "The provider-issued pipeline-run id, unique within the deployment organization and provider namespace."
+        },
+        "run_attempt": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The positive provider attempt number. Null when the provider omits it."
+        },
+        "repo": {
+          "type": "string",
+          "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "branch": {
+          "type": "string",
+          "description": "The branch the run or commit belongs to."
+        },
+        "result": {
+          "enum": [
+            "passed",
+            "failed",
+            "error",
+            "timed_out",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "unknown"
+          ],
+          "type": "string",
+          "description": "Sediment's normalized terminal result."
+        },
+        "workflow_name": {
+          "type": "string",
+          "description": "The CI workflow's display name."
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's stable workflow or pipeline-definition identity."
+        },
+        "workflow_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+        },
+        "run_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Link to the run in the CI system. Null when unreported; never run identity."
+        },
+        "provider_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The exact terminal value reported by the provider before normalization."
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A structured, low-cardinality provider error type. Null when absent."
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "maxLength": 4096,
+          "description": "A bounded, Basic-redacted provider reason. Null when absent."
+        },
+        "source_event_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract and event type. Null when unreported."
+        },
+        "source_spec_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract version. Null when unreported."
+        },
+        "source_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider or standard source event identity. Null when unreported."
+        },
+        "pr_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The pull request the run belongs to, when there is one."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "outcome_id",
+        "org_id",
+        "provider",
+        "run_id",
+        "run_attempt",
+        "repo",
+        "commit_sha",
+        "branch",
+        "result",
+        "workflow_name",
+        "workflow_id",
+        "workflow_path",
+        "run_url",
+        "provider_result",
+        "error_type",
+        "reason",
+        "source_event_type",
+        "source_spec_version",
+        "source_event_id",
+        "pr_number",
+        "captured_at",
+        "raw"
+      ]
+    },
+    "CIResolution": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "repo": {
+          "type": "string",
+          "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "enum": [
+                "passed",
+                "failed",
+                "error",
+                "timed_out",
+                "cancelled",
+                "skipped",
+                "neutral",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The resolved pass or failure; null means no directional verdict."
+        },
+        "reliability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Trust in the resolved verdict, bounded to [0, 1]."
+        },
+        "suspected_flake": {
+          "type": "boolean",
+          "description": "Whether the lineage contains both passing and failing verdict attempts."
+        },
+        "workflow_resolutions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CIWorkflowResolution"
+          },
+          "description": "Attempt-aware resolutions for the commit's workflows."
+        },
+        "source_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every CI outcome id that contributed to the resolution."
+        },
+        "verdict_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The final semantic verdict outcome id from each workflow lineage."
+        },
+        "non_verdict_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The infrastructure, timeout, cancellation, skip, neutral, or unknown evidence."
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "The structured provenance for this artifact."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "org_id",
+        "repo",
+        "commit_sha",
+        "verdict",
+        "reliability",
+        "suspected_flake",
+        "workflow_resolutions",
+        "source_outcome_ids",
+        "verdict_outcome_ids",
+        "non_verdict_outcome_ids",
+        "provenance"
+      ]
+    },
+    "CIWorkflowResolution": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "enum": [
+            "github_actions",
+            "jenkins",
+            "gitlab_ci",
+            "circleci",
+            "buildkite",
+            "other"
+          ],
+          "type": "string",
+          "description": "Which system this fact came from."
+        },
+        "run_id": {
+          "type": "string",
+          "description": "The provider-issued pipeline-run identity."
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider-issued workflow definition identity, when supplied."
+        },
+        "workflow_name": {
+          "type": "string",
+          "description": "The CI workflow's display name."
+        },
+        "workflow_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+        },
+        "branch": {
+          "type": "string",
+          "description": "The branch the run or commit belongs to."
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "enum": [
+                "passed",
+                "failed",
+                "error",
+                "timed_out",
+                "cancelled",
+                "skipped",
+                "neutral",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The resolved pass or failure; null means no directional verdict."
+        },
+        "reliability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Trust in the resolved verdict, bounded to [0, 1]."
+        },
+        "suspected_flake": {
+          "type": "boolean",
+          "description": "Whether the lineage contains both passing and failing verdict attempts."
+        },
+        "source_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every CI outcome id that contributed to the resolution."
+        },
+        "verdict_outcome_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The final semantic pass or failure outcome id."
+        },
+        "non_verdict_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The infrastructure, timeout, cancellation, skip, neutral, or unknown evidence."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "run_id",
+        "workflow_id",
+        "workflow_name",
+        "workflow_path",
+        "branch",
+        "verdict",
+        "reliability",
+        "suspected_flake",
+        "source_outcome_ids",
+        "verdict_outcome_id",
+        "non_verdict_outcome_ids"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

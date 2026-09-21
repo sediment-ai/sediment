@@ -1,0 +1,40 @@
+USAGE:
+  sediment report label-confidence-inspection [-h] [--org ORG] [--n N] [--json]
+                                              [--recipe {sft_curated,sft_verified}]
+                                              [--sensitivity]
+                                              [--knob {explicit_accept_confidence,explicit_reject_confidence,baseline_confidence,implicit_accept_multiplier,implicit_reject_multiplier,ci_pass_multiplier,ci_fail_multiplier,ci_resolution.clean_reliability,ci_resolution.suspected_flake_reliability,ci_resolution.non_verdict_reliability}]
+                                              [--values VALUES]
+                                              [--min-confidence MIN_CONFIDENCE]
+                                              [--latency-buckets LATENCY_BUCKETS]
+                                              [--database-url DATABASE_URL]
+                                              [--mirror-path MIRROR_PATH]
+
+  Label-confidence inspection — a stratified sample of attributed_completions
+  with
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --n N                 sample size, stratified across the confidence ladder's
+                        real branches (default: 50)
+  --json                emit JSON rows instead of a table
+  --recipe {sft_curated,sft_verified}
+                        SFT evidence recipe (default: sft_curated)
+  --sensitivity         sweep LabelConfidencePolicy knobs over all assembled
+                        attributed_completions
+  --knob {explicit_accept_confidence,explicit_reject_confidence,baseline_confidence,implicit_accept_multiplier,implicit_reject_multiplier,ci_pass_multiplier,ci_fail_multiplier,ci_resolution.clean_reliability,ci_resolution.suspected_flake_reliability,ci_resolution.non_verdict_reliability}
+                        LabelConfidencePolicy knob to sweep in sensitivity mode;
+                        may repeat
+  --values VALUES       comma-separated grid for a single --knob in sensitivity
+                        mode
+  --min-confidence MIN_CONFIDENCE
+                        SFT confidence floor for sensitivity mode (default: 0.6)
+  --latency-buckets LATENCY_BUCKETS
+                        emit the decision-latency diagnostic using this many
+                        quantile buckets instead of the label-confidence-
+                        inspection sample
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

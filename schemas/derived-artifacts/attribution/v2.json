@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/attribution/v2.json",
+  "title": "Attribution",
+  "description": "One completion-to-commit attribution.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Full-length commit sha, lowercased."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "The changed file this attribution is keyed on."
+    },
+    "inference_call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "similarity_score": {
+      "type": "number",
+      "description": "Token-overlap similarity in [0, 1]. Under `git_notes` attribution it only ranks completions within a proven session; under `jaccard` it is the evidence, and it discounts confidence."
+    },
+    "attribution_source": {
+      "enum": [
+        "git_notes",
+        "jaccard"
+      ],
+      "type": "string",
+      "description": "How the underlying attribution was established."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "repository_identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Qualified provider, host, and repository ID; null for an unambiguous legacy repository."
+    },
+    "source_push_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The Push that triggered this Git-note observation."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "repo",
+    "commit_sha",
+    "file_path",
+    "inference_call_id",
+    "session_id",
+    "similarity_score",
+    "attribution_source",
+    "provenance",
+    "repository_identity",
+    "source_push_id"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "RepositoryIdentity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "const": "github",
+          "type": "string",
+          "description": "The forge provider that assigns the immutable repository ID."
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The lowercase configured forge host."
+        },
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Immutable provider repository ID within its forge host."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "host",
+        "repository_id"
+      ]
+    }
+  }
+}

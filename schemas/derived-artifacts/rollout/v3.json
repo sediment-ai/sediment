@@ -1,0 +1,747 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/rollout/v3.json",
+  "title": "Rollout",
+  "description": "One canonical session trajectory.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Turn"
+        }
+      },
+      "description": "The session's turns, split into contiguous segments. A segment break marks a gap the rollout should not pretend was continuous."
+    },
+    "commits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CommitRef"
+      },
+      "description": "Every commit this session was attributed to."
+    },
+    "attribution_source": {
+      "enum": [
+        "git_notes",
+        "jaccard"
+      ],
+      "type": "string",
+      "description": "How the underlying attribution was established."
+    },
+    "terminal_outcomes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CIOutcome"
+      },
+      "description": "The CI outcomes that supply the trajectory's terminal verifier results."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "split": {
+      "enum": [
+        "train",
+        "eval"
+      ],
+      "type": "string",
+      "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+    },
+    "session_commit_observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SessionCommitObservation"
+      },
+      "description": "Captured Facts matching this Session and its repository-qualified commits at the derivation boundary. These Facts do not prove individual-call authorship."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "session_id",
+    "segments",
+    "commits",
+    "attribution_source",
+    "terminal_outcomes",
+    "provenance",
+    "split",
+    "session_commit_observations"
+  ],
+  "$defs": {
+    "Turn": {
+      "type": "object",
+      "properties": {
+        "new_messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InferenceMessage"
+          },
+          "description": "Only the messages this turn added, so a trajectory does not repeat the whole history per turn."
+        },
+        "completion": {
+          "type": "string",
+          "description": "The model's response text."
+        },
+        "decisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeveloperDecision"
+          },
+          "description": "The developer decisions recorded against this completion."
+        },
+        "inference_call_id": {
+          "type": "string",
+          "description": "Id of the inference call this record belongs to."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolCallPart"
+          },
+          "description": "The tool calls this turn's response made."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "new_messages",
+        "completion",
+        "decisions",
+        "inference_call_id",
+        "tool_calls"
+      ]
+    },
+    "InferenceMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The message author role, such as `system`, `user`, `assistant`, or `tool`."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextPart"
+              },
+              {
+                "$ref": "#/$defs/ReasoningPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallResponsePart"
+              }
+            ]
+          },
+          "description": "Ordered text, reasoning, tool-call, or tool-response parts."
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The model service's finish reason when reported."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "parts",
+        "finish_reason"
+      ]
+    },
+    "TextPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text, without JSON encoding around it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ReasoningPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "reasoning",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ToolCallPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The tool the model requested."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolCallResponsePart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call_response",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The tool-call id this result answers."
+        },
+        "result": {
+          "description": "The structured tool result supplied to the model."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "result"
+      ]
+    },
+    "DeveloperDecision": {
+      "type": "object",
+      "properties": {
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this decision."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The developer identity when known. Null when capture omitted it."
+        },
+        "agent_harness": {
+          "enum": [
+            "claude-code",
+            "copilot",
+            "codex",
+            "cursor",
+            "pi"
+          ],
+          "type": "string",
+          "description": "Which coding agent harness produced this fact."
+        },
+        "file_path": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The file edited, or empty string when the client emits none — common on rejects."
+        },
+        "accepted": {
+          "type": "boolean",
+          "description": "Whether the developer took the change."
+        },
+        "explicit": {
+          "type": "boolean",
+          "description": "True for a real human gesture; false for auto-applied or inferred. Implicit decisions move confidence but never classify a row."
+        },
+        "interaction_mode": {
+          "enum": [
+            "agent",
+            "inline"
+          ],
+          "type": "string",
+          "description": "Whether the edit interaction was `agent` or `inline`."
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The commit the client attributed, when it knew one."
+        },
+        "call_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's per-call id, joining this record back to the inference call that produced it. Null when the provider emits none."
+        },
+        "edit_retention_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Graded preference strength in [0, 1]: how much applied edit text remains in a later file observation. Null unless capture or derivation supplies it."
+        },
+        "observation_delay_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0,
+          "maximum": 9223372036854775807,
+          "description": "The delay before the edit retention score was observed. Null unless the harness reports one."
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the developer acted, stamped client-side. Required — it is what makes a redelivery collapse, and is never backfilled."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "org_id",
+        "session_id",
+        "user_id",
+        "agent_harness",
+        "file_path",
+        "accepted",
+        "explicit",
+        "interaction_mode",
+        "commit_sha",
+        "call_id",
+        "edit_retention_score",
+        "observation_delay_ms",
+        "occurred_at",
+        "captured_at",
+        "raw"
+      ]
+    },
+    "CommitRef": {
+      "type": "object",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "The repository containing this commit."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "The full commit identity within that repository."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "commit_sha"
+      ]
+    },
+    "CIOutcome": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The normalized fact-contract version. CI outcomes use 1."
+        },
+        "outcome_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this outcome."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "provider": {
+          "enum": [
+            "github_actions",
+            "jenkins",
+            "gitlab_ci",
+            "circleci",
+            "buildkite",
+            "other"
+          ],
+          "type": "string",
+          "description": "The normalized CI system selected by a capture adapter or declared by the bearer-authenticated vendor integration."
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The provider-issued pipeline-run id, unique within the deployment organization and provider namespace."
+        },
+        "run_attempt": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The positive provider attempt number. Null when the provider omits it."
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "branch": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The branch the run or commit belongs to."
+        },
+        "result": {
+          "enum": [
+            "passed",
+            "failed",
+            "error",
+            "timed_out",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "unknown"
+          ],
+          "type": "string",
+          "description": "Sediment's normalized terminal result."
+        },
+        "workflow_name": {
+          "type": "string",
+          "description": "The CI workflow's display name."
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's stable workflow or pipeline-definition identity."
+        },
+        "workflow_path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+        },
+        "run_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Link to the run in the CI system. Null when unreported; never run identity."
+        },
+        "provider_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The exact terminal value reported by the provider before normalization."
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A structured, low-cardinality provider error type. Null when absent."
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A bounded, Basic-redacted provider reason. Null when absent."
+        },
+        "source_event_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract and event type. Null when unreported."
+        },
+        "source_spec_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract version. Null when unreported."
+        },
+        "source_event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider or standard source event identity. Null when unreported."
+        },
+        "pr_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The pull request the run belongs to, when there is one."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "outcome_id",
+        "org_id",
+        "provider",
+        "run_id",
+        "run_attempt",
+        "repo",
+        "commit_sha",
+        "branch",
+        "result",
+        "workflow_name",
+        "workflow_id",
+        "workflow_path",
+        "run_url",
+        "provider_result",
+        "error_type",
+        "reason",
+        "source_event_type",
+        "source_spec_version",
+        "source_event_id",
+        "pr_number",
+        "captured_at",
+        "raw"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "SessionCommitObservation": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The Git-note observation Fact contract version. Fixed at 1."
+        },
+        "observation_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this Session-to-commit observation."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The non-empty `owner/repo` that owns the observed commit, lowercased."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "source_push_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The Push that triggered this Git-note observation."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "observation_id",
+        "org_id",
+        "repo",
+        "commit_sha",
+        "session_id",
+        "source_push_id",
+        "captured_at"
+      ]
+    }
+  }
+}

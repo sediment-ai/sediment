@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/dpo-provenance/v1.json",
+  "title": "DPOProvenance",
+  "description": "Provenance for both DPO members.",
+  "type": "object",
+  "properties": {
+    "chosen": {
+      "$ref": "#/$defs/Provenance",
+      "description": "Provenance for the preferred member."
+    },
+    "rejected": {
+      "$ref": "#/$defs/Provenance",
+      "description": "Provenance for the dispreferred member."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "chosen",
+    "rejected"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

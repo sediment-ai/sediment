@@ -1,0 +1,1999 @@
+openapi: 3.1.0
+info:
+  title: Sediment API
+  description: 'Self-hosted ingest: facts in through three doors (ADR 0001)'
+  version: 0.1.0
+paths:
+  /ingest/gateway:
+    post:
+      tags:
+      - gateway
+      summary: Ingest Gateway
+      operationId: ingest_gateway_ingest_gateway_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GatewayIngestRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Gateway Ingest Gateway Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - bearerAuth: []
+      - operatorBearerAuth: []
+  /ingest/github/push:
+    post:
+      tags:
+      - forge
+      summary: Ingest Push
+      operationId: ingest_push_ingest_github_push_post
+      parameters:
+      - name: x-github-event
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Github-Event
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Push Ingest Github Push Post
+        '503':
+          description: Database unavailable, or stored Push awaits retry after mirror
+            admission failure.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - githubWebhookSignature: []
+  /ingest/github/repository:
+    post:
+      tags:
+      - forge
+      summary: Ingest Repository
+      description: Store an immutable rename receipt independently of mirror availability.
+      operationId: ingest_repository_ingest_github_repository_post
+      parameters:
+      - name: x-github-event
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Github-Event
+      - name: x-github-delivery
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Github-Delivery
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Repository Ingest Github Repository Post
+        '503':
+          description: Mirror work capacity, storage, or execution budget exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - githubWebhookSignature: []
+  /ingest/github/ci:
+    post:
+      tags:
+      - forge
+      summary: Ingest Ci
+      operationId: ingest_ci_ingest_github_ci_post
+      parameters:
+      - name: x-github-event
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Github-Event
+      - name: x-github-delivery
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Github-Delivery
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Ci Ingest Github Ci Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - githubWebhookSignature: []
+  /ingest/github/pull-request:
+    post:
+      tags:
+      - forge
+      summary: Ingest Pull Request
+      operationId: ingest_pull_request_ingest_github_pull_request_post
+      parameters:
+      - name: x-github-event
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Github-Event
+      - name: x-github-delivery
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Github-Delivery
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Pull Request Ingest Github Pull Request Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - githubWebhookSignature: []
+  /ingest/ci:
+    post:
+      tags:
+      - ci-vendor
+      summary: Ingest Ci Vendor
+      operationId: ingest_ci_vendor_ingest_ci_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VendorCIRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Ci Vendor Ingest Ci Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - bearerAuth: []
+      - operatorBearerAuth: []
+  /v1/logs:
+    post:
+      tags:
+      - otlp
+      summary: Ingest Otlp Logs
+      operationId: ingest_otlp_logs_v1_logs_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Otlp Logs V1 Logs Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - bearerAuth: []
+      - operatorBearerAuth: []
+  /query/ci/outcome:
+    get:
+      tags:
+      - query
+      summary: Query Ci Outcome
+      description: Return one exact CI run receipt; ambiguous forge namespaces require
+        a selector.
+      operationId: query_ci_outcome_query_ci_outcome_get
+      parameters:
+      - name: provider
+        in: query
+        required: true
+        schema:
+          $ref: '#/components/schemas/CIProvider'
+      - name: run_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Run Id
+      - name: run_attempt
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Run Attempt
+      - name: repo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repo
+      - name: repository_provider
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ForgeProvider'
+          - type: 'null'
+          title: Repository Provider
+      - name: repository_host
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Host
+      - name: repository_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Id
+      - name: as_of
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: As Of
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/CIOutcomeFound'
+                - $ref: '#/components/schemas/CIOutcomeNotFound'
+                title: Response Query Ci Outcome Query Ci Outcome Get
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '409':
+          description: Repository selection is ambiguous, complete evidence exceeds
+            its bound, or query content contains a non-finite number. The response
+            carries a closed detail.reason.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /query/ci/failures:
+    get:
+      tags:
+      - query
+      summary: Query Ci Failures
+      description: 'Page exact CI receipts under one repository identity and historical
+        boundary.
+
+
+        The default identity boundary is ``captured_before``. Capture bounds remain
+
+        half-open; an explicit ``as_of`` adds an inclusive evidence ceiling. Cursors
+
+        bind organization, qualified repository, boundary, filters, and quarantine
+
+        revision. They don''t preserve a database transaction between requests.'
+      operationId: query_ci_failures_query_ci_failures_get
+      parameters:
+      - name: captured_after
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Captured After
+      - name: captured_before
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Captured Before
+      - name: repo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repo
+      - name: repository_provider
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ForgeProvider'
+          - type: 'null'
+          title: Repository Provider
+      - name: repository_host
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Host
+      - name: repository_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Id
+      - name: as_of
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: As Of
+      - name: result
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/CIResult'
+          default: failed
+      - name: workflow_name
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Workflow Name
+      - name: pr_number
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Pr Number
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cursor
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CIOutcomePage'
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '409':
+          description: Repository selection is ambiguous, complete evidence exceeds
+            its bound, or query content contains a non-finite number. The response
+            carries a closed detail.reason.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /query/session/{session_id}:
+    get:
+      tags:
+      - query
+      summary: Query Session Dossier
+      description: 'Return one bounded, metadata-only Session evidence dossier.
+
+
+        Observation-backed commit edges keep ``attribution_sources`` empty. Similarity
+
+        extrema and ``attributed_files`` are unavailable and omitted from JSON.'
+      operationId: query_session_dossier_query_session__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/SessionDossierFound'
+                - $ref: '#/components/schemas/SessionDossierNotFound'
+                title: Response Query Session Dossier Query Session  Session Id  Get
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '409':
+          description: 'Session evidence exceeds the bounded read, or query content
+            contains a non-finite number (detail.reason: non_finite_number).'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /query/commit/{sha}:
+    get:
+      tags:
+      - query
+      summary: Query Commit
+      description: 'Investigate exact commit evidence in separate repository lifetimes.
+
+
+        Captured observations establish Session associations. Call-to-file Attribution
+
+        remains inferred. Optional repository selectors and an inclusive ``as_of``
+
+        bound all supporting evidence; otherwise one request instant supplies the
+        bound.
+
+        A bounded child process owns the Derivation and its database connection.
+
+        Capacity and execution deadlines return 503 after process cleanup.'
+      operationId: query_commit_query_commit__sha__get
+      parameters:
+      - name: sha
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sha
+      - name: repo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repo
+      - name: repository_provider
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ForgeProvider'
+          - type: 'null'
+          title: Repository Provider
+      - name: repository_host
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Host
+      - name: repository_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Id
+      - name: as_of
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: As Of
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Query Commit Query Commit  Sha  Get
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '409':
+          description: Repository selection is ambiguous, complete evidence exceeds
+            its bound, or query content contains a non-finite number. The response
+            carries a closed detail.reason.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/me:
+    get:
+      tags:
+      - v1
+      summary: Me
+      description: 'Auth probe for ``sediment login``: the deployment''s tenant and
+        the API
+
+        version, reported verbatim so the client can detect skew.'
+      operationId: me_v1_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                title: Response Me V1 Me Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - bearerAuth: []
+      - operatorBearerAuth: []
+  /v1/facts:
+    get:
+      tags:
+      - v1
+      summary: Facts
+      description: 'One entry per ``FactTable``: total rows and the derivation-facing
+
+        ("visible" = not quarantined) count.  Sessions are upserted metadata,
+
+        not quarantinable facts, so they carry a bare count with no visible
+
+        column — the same shape ``sediment facts`` prints.'
+      operationId: facts_v1_facts_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Facts V1 Facts Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/facts/session/{session_id}:
+    get:
+      tags:
+      - v1
+      summary: Session Facts
+      description: 'Fact counts for one session, so a client can verify its own writes
+
+        without treating unrelated organization-wide totals as evidence.'
+      operationId: session_facts_v1_facts_session__session_id__get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Session Facts V1 Facts Session  Session Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/facts/session/{session_id}/inference-calls:
+    get:
+      tags:
+      - v1
+      summary: Session Inference Calls
+      description: 'Return the narrow fields needed to reconcile one Session''s usage.
+
+
+        Prompts, responses, raw provider payloads, and user identity stay absent.'
+      operationId: session_inference_calls_v1_facts_session__session_id__inference_calls_get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Session Inference Calls V1 Facts Session  Session
+                  Id  Inference Calls Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/facts/session/{session_id}/compatibility-evidence:
+    get:
+      tags:
+      - v1
+      summary: Session Compatibility Evidence
+      description: Return bounded decision, Edit observation, and inference join fields.
+      operationId: session_compatibility_evidence_v1_facts_session__session_id__compatibility_evidence_get
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Session Compatibility Evidence V1 Facts Session  Session
+                  Id  Compatibility Evidence Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/reports/model-outcomes:
+    get:
+      tags:
+      - reports
+      summary: Model Outcomes Report
+      description: Return a bounded model-outcome report.
+      operationId: model_outcomes_report_v1_reports_model_outcomes_get
+      parameters:
+      - name: cohort_start
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Cohort Start
+      - name: cohort_end
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Cohort End
+      - name: as_of
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: As Of
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportEnvelope'
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /v1/reports/accepted-work-lifecycle:
+    get:
+      tags:
+      - reports
+      summary: Accepted Work Lifecycle Report
+      description: Return a bounded accepted-work lifecycle report.
+      operationId: accepted_work_lifecycle_report_v1_reports_accepted_work_lifecycle_get
+      parameters:
+      - name: cohort_start
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Cohort Start
+      - name: cohort_end
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: Cohort End
+      - name: as_of
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+          title: As Of
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportEnvelope'
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /health:
+    get:
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Health Health Get
+components:
+  schemas:
+    AgentHarness:
+      type: string
+      enum:
+      - claude-code
+      - copilot
+      - codex
+      - cursor
+      - pi
+      title: AgentHarness
+    AttributedCommitSummary:
+      properties:
+        repo:
+          type: string
+          title: Repo
+        commit_sha:
+          type: string
+          title: Commit Sha
+        attribution_sources:
+          items:
+            $ref: '#/components/schemas/AttributionSource'
+          type: array
+          title: Attribution Sources
+        minimum_similarity:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Minimum Similarity
+        maximum_similarity:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Maximum Similarity
+        attributed_files:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Attributed Files
+        session_commit_observation_ids:
+          items:
+            type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          type: array
+          title: Session Commit Observation Ids
+          default: []
+        repository_identity:
+          anyOf:
+          - $ref: '#/components/schemas/RepositoryIdentity'
+          - type: 'null'
+      type: object
+      required:
+      - repo
+      - commit_sha
+      - attribution_sources
+      - minimum_similarity
+      - maximum_similarity
+      - attributed_files
+      title: AttributedCommitSummary
+      description: 'Observation-backed Session edge with compatibility Attribution
+        fields.
+
+
+        ``attribution_sources`` is empty. Similarity extrema and ``attributed_files``
+
+        are unavailable (None), so the Session dossier omits them from JSON.'
+    AttributionSource:
+      type: string
+      enum:
+      - git_notes
+      - jaccard
+      title: AttributionSource
+    CIOutcomeFound:
+      properties:
+        found:
+          type: boolean
+          const: true
+          title: Found
+        outcome:
+          $ref: '#/components/schemas/CIOutcomeSummary'
+      type: object
+      required:
+      - found
+      - outcome
+      title: CIOutcomeFound
+    CIOutcomeNotFound:
+      properties:
+        found:
+          type: boolean
+          const: false
+          title: Found
+      type: object
+      required:
+      - found
+      title: CIOutcomeNotFound
+    CIOutcomePage:
+      properties:
+        result:
+          $ref: '#/components/schemas/CIResult'
+        outcomes:
+          items:
+            $ref: '#/components/schemas/CIOutcomeSummary'
+          type: array
+          title: Outcomes
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+      type: object
+      required:
+      - result
+      - outcomes
+      - next_cursor
+      title: CIOutcomePage
+    CIOutcomeSummary:
+      properties:
+        outcome_id:
+          type: string
+          title: Outcome Id
+        provider:
+          $ref: '#/components/schemas/CIProvider'
+        run_id:
+          type: string
+          title: Run Id
+        run_attempt:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Run Attempt
+        repo:
+          type: string
+          title: Repo
+        commit_sha:
+          type: string
+          title: Commit Sha
+        branch:
+          type: string
+          title: Branch
+        result:
+          $ref: '#/components/schemas/CIResult'
+        workflow_name:
+          type: string
+          title: Workflow Name
+        workflow_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Workflow Id
+        run_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Run Url
+        provider_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider Result
+        error_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Type
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+        pr_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Pr Number
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+        commit_query:
+          type: string
+          title: Commit Query
+        repository_identity:
+          anyOf:
+          - $ref: '#/components/schemas/RepositoryIdentity'
+          - type: 'null'
+      type: object
+      required:
+      - outcome_id
+      - provider
+      - run_id
+      - run_attempt
+      - repo
+      - commit_sha
+      - branch
+      - result
+      - workflow_name
+      - workflow_id
+      - run_url
+      - provider_result
+      - error_type
+      - reason
+      - pr_number
+      - captured_at
+      - commit_query
+      title: CIOutcomeSummary
+    CIProvider:
+      type: string
+      enum:
+      - github_actions
+      - jenkins
+      - gitlab_ci
+      - circleci
+      - buildkite
+      - other
+      title: CIProvider
+    CIResult:
+      type: string
+      enum:
+      - passed
+      - failed
+      - error
+      - timed_out
+      - cancelled
+      - skipped
+      - neutral
+      - unknown
+      title: CIResult
+    ForgeProvider:
+      type: string
+      enum:
+      - github
+      title: ForgeProvider
+    GatewayCapture:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        observed_at:
+          type: string
+          format: date-time
+          title: Observed At
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - observed_at
+      title: GatewayCapture
+      description: Identity and observation instant prepared once by the gateway callback.
+    GatewayIngestRequest:
+      properties:
+        provider:
+          $ref: '#/components/schemas/GatewayProvider'
+        session_id:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Session Id
+        user_id:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: User Id
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        capture:
+          anyOf:
+          - $ref: '#/components/schemas/GatewayCapture'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      - payload
+      title: GatewayIngestRequest
+    GatewayProvider:
+      type: string
+      enum:
+      - litellm
+      - portkey
+      - helicone
+      - unknown
+      title: GatewayProvider
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    InteractionMode:
+      type: string
+      enum:
+      - agent
+      - inline
+      title: InteractionMode
+    PushSummary:
+      properties:
+        push_id:
+          type: string
+          title: Push Id
+        provider:
+          $ref: '#/components/schemas/ForgeProvider'
+        repo:
+          type: string
+          title: Repo
+        ref:
+          type: string
+          title: Ref
+        before_sha:
+          type: string
+          title: Before Sha
+        after_sha:
+          type: string
+          title: After Sha
+        forced:
+          type: boolean
+          title: Forced
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+        match_kind:
+          type: string
+          const: after_sha
+          title: Match Kind
+          default: after_sha
+        repository_identity:
+          anyOf:
+          - $ref: '#/components/schemas/RepositoryIdentity'
+          - type: 'null'
+      type: object
+      required:
+      - push_id
+      - provider
+      - repo
+      - ref
+      - before_sha
+      - after_sha
+      - forced
+      - captured_at
+      title: PushSummary
+    ReportEnvelope:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+          default: 1
+        scope:
+          $ref: '#/components/schemas/ReportScopeResponse'
+        report:
+          additionalProperties: true
+          type: object
+          title: Report
+      type: object
+      required:
+      - scope
+      - report
+      title: ReportEnvelope
+      description: Version 1 operational-report response.
+    ReportScopeResponse:
+      properties:
+        cohort_start:
+          type: string
+          format: date-time
+          title: Cohort Start
+        cohort_end:
+          type: string
+          format: date-time
+          title: Cohort End
+        as_of:
+          type: string
+          format: date-time
+          title: As Of
+        max_inference_calls:
+          type: integer
+          const: 50000
+          title: Max Inference Calls
+      type: object
+      required:
+      - cohort_start
+      - cohort_end
+      - as_of
+      - max_inference_calls
+      title: ReportScopeResponse
+      description: The explicit bounds applied to one operational report.
+    RepositoryIdentity:
+      properties:
+        provider:
+          $ref: '#/components/schemas/ForgeProvider'
+        host:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Host
+        repository_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Repository Id
+      type: object
+      required:
+      - provider
+      - host
+      - repository_id
+      title: RepositoryIdentity
+    SessionCIOutcomeSummary:
+      properties:
+        outcome_id:
+          type: string
+          title: Outcome Id
+        provider:
+          $ref: '#/components/schemas/CIProvider'
+        run_id:
+          type: string
+          title: Run Id
+        run_attempt:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Run Attempt
+        repo:
+          type: string
+          title: Repo
+        commit_sha:
+          type: string
+          title: Commit Sha
+        branch:
+          type: string
+          title: Branch
+        result:
+          $ref: '#/components/schemas/CIResult'
+        workflow_name:
+          type: string
+          title: Workflow Name
+        workflow_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Workflow Id
+        run_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Run Url
+        provider_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider Result
+        error_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Type
+        pr_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Pr Number
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+        commit_query:
+          type: string
+          title: Commit Query
+        repository_identity:
+          anyOf:
+          - $ref: '#/components/schemas/RepositoryIdentity'
+          - type: 'null'
+      type: object
+      required:
+      - outcome_id
+      - provider
+      - run_id
+      - run_attempt
+      - repo
+      - commit_sha
+      - branch
+      - result
+      - workflow_name
+      - workflow_id
+      - run_url
+      - provider_result
+      - error_type
+      - pr_number
+      - captured_at
+      - commit_query
+      title: SessionCIOutcomeSummary
+      description: CI navigation metadata without free-form provider content.
+    SessionCoverageResponse:
+      properties:
+        inference_calls:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
+        developer_decisions:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
+        edit_observations:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
+        rejected_edits:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
+        retry_linkages:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
+      type: object
+      required:
+      - inference_calls
+      - developer_decisions
+      - edit_observations
+      - rejected_edits
+      - retry_linkages
+      title: SessionCoverageResponse
+    SessionDossierFound:
+      properties:
+        found:
+          type: boolean
+          const: true
+          title: Found
+        session_id:
+          type: string
+          title: Session Id
+        first_observed_at:
+          type: string
+          format: date-time
+          title: First Observed At
+        last_observed_at:
+          type: string
+          format: date-time
+          title: Last Observed At
+        coverage:
+          $ref: '#/components/schemas/SessionCoverageResponse'
+        omitted_events:
+          type: integer
+          title: Omitted Events
+        gaps:
+          items:
+            type: string
+            enum:
+            - no_inference_calls_observed
+            - no_developer_decisions_observed
+            - no_edit_observations_observed
+            - no_rejected_edits_observed
+            - no_retry_linkages_observed
+            - session_commit_unobserved
+            - no_exact_push_receipts_observed
+            - no_ci_outcomes_observed
+          type: array
+          title: Gaps
+        timeline:
+          items:
+            $ref: '#/components/schemas/SessionTimelineEvent'
+          type: array
+          title: Timeline
+        attributed_commits:
+          items:
+            $ref: '#/components/schemas/AttributedCommitSummary'
+          type: array
+          title: Attributed Commits
+        pushes:
+          items:
+            $ref: '#/components/schemas/PushSummary'
+          type: array
+          title: Pushes
+        ci_outcomes:
+          items:
+            $ref: '#/components/schemas/SessionCIOutcomeSummary'
+          type: array
+          title: Ci Outcomes
+        session_commit_unobserved:
+          type: integer
+          title: Session Commit Unobserved
+          default: 0
+        repository_skipped:
+          additionalProperties:
+            type: integer
+          propertyNames:
+            enum:
+            - repository_identity_absent
+            - repository_identity_unresolved
+            - repository_identity_conflict
+            - repository_source_absent
+            - repository_mirror_identity_unresolved
+          type: object
+          title: Repository Skipped
+      type: object
+      required:
+      - found
+      - session_id
+      - first_observed_at
+      - last_observed_at
+      - coverage
+      - omitted_events
+      - gaps
+      - timeline
+      - attributed_commits
+      - pushes
+      - ci_outcomes
+      title: SessionDossierFound
+    SessionDossierNotFound:
+      properties:
+        found:
+          type: boolean
+          const: false
+          title: Found
+      type: object
+      required:
+      - found
+      title: SessionDossierNotFound
+    SessionFactCoverageResponse:
+      properties:
+        total:
+          type: integer
+          title: Total
+        visible:
+          type: integer
+          title: Visible
+        quarantined:
+          type: integer
+          title: Quarantined
+      type: object
+      required:
+      - total
+      - visible
+      - quarantined
+      title: SessionFactCoverageResponse
+    SessionTimelineEvent:
+      properties:
+        event_type:
+          type: string
+          enum:
+          - inference_call
+          - developer_decision
+          - edit_observation
+          - rejected_edit
+          - retry_linkage
+          title: Event Type
+        fact_id:
+          type: string
+          title: Fact Id
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+        gateway_provider:
+          anyOf:
+          - $ref: '#/components/schemas/GatewayProvider'
+          - type: 'null'
+        model_provider:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Provider
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model
+        input_tokens:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Input Tokens
+        output_tokens:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Output Tokens
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
+        model_call_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Call Id
+        agent_harness:
+          anyOf:
+          - $ref: '#/components/schemas/AgentHarness'
+          - type: 'null'
+        accepted:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Accepted
+        explicit:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Explicit
+        interaction_mode:
+          anyOf:
+          - $ref: '#/components/schemas/InteractionMode'
+          - type: 'null'
+        has_file_path:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Has File Path
+        call_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Call Id
+        commit_sha:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Commit Sha
+        external_lines_added_present:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: External Lines Added Present
+        external_lines_removed_present:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: External Lines Removed Present
+        external_lines_added:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: External Lines Added
+        external_lines_removed:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: External Lines Removed
+        tool_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Tool Name
+        rejected_call_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Rejected Call Id
+        accepted_call_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Accepted Call Id
+      type: object
+      required:
+      - event_type
+      - fact_id
+      - occurred_at
+      title: SessionTimelineEvent
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VendorCIRequest:
+      properties:
+        provider:
+          $ref: '#/components/schemas/CIProvider'
+          description: The normalized CI system. The sender declares it from integration
+            configuration; Sediment does not infer it from a URL
+        run_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Run Id
+          description: The provider-issued pipeline-run id, unique within the deployment
+            organization and provider namespace
+        run_attempt:
+          anyOf:
+          - type: integer
+            maximum: 9.223372036854776e+18
+            minimum: 1.0
+          - type: 'null'
+          title: Run Attempt
+        repo:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Repo
+        repository_provider:
+          anyOf:
+          - $ref: '#/components/schemas/ForgeProvider'
+          - type: 'null'
+        repository_host:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Host
+        repository_id:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Repository Id
+        commit_sha:
+          type: string
+          title: Commit Sha
+        branch:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Branch
+        workflow_name:
+          type: string
+          title: Workflow Name
+          default: ''
+        workflow_id:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Workflow Id
+        workflow_path:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Workflow Path
+        result:
+          $ref: '#/components/schemas/CIResult'
+        run_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Run Url
+        provider_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Provider Result
+        error_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error Type
+        reason:
+          anyOf:
+          - type: string
+            maxLength: 4096
+          - type: 'null'
+          title: Reason
+        source_event_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Event Type
+        source_spec_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Spec Version
+        source_event_id:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Source Event Id
+      additionalProperties: false
+      type: object
+      required:
+      - provider
+      - run_id
+      - repo
+      - commit_sha
+      - branch
+      - result
+      title: VendorCIRequest
+      description: 'The vendor-neutral CI outcome payload — callers normalize their
+        own
+
+        CI system into this shape. ``extra="forbid"`` so a caller naming
+
+        an org or fabricating fields is rejected at the boundary.
+
+
+        The identity fields carry the shared core definitions on
+
+        the envelope, so malformed input 422s at the door rather than
+
+        surfacing as a ValidationError-turned-500 inside the handler:
+
+        ``CommitSha`` (40- and 64-char object names — a SHA-256 repo can use
+
+        this door), ``RepoSlug`` (required — a vendor fact without a repo has
+
+        no CI-attach join), ``BranchName`` (``refs/heads/x`` normalizes to
+
+        ``x``, one recovery lineage bucket per pipeline), and a required
+
+        non-empty ``run_id``. ``run_url`` is optional location metadata.'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Named SEDIMENT_INGEST_TOKENS credential or legacy SEDIMENT_API_BEARER_TOKEN.
+        Capture authority only; missing/invalid returns401.
+    operatorBearerAuth:
+      type: http
+      scheme: bearer
+      description: SEDIMENT_OPERATOR_TOKEN. Operator access and explicit operator
+        ingest; missing/invalid returns401, ingest authority on an operator route
+        returns403.
+    githubWebhookSignature:
+      type: apiKey
+      in: header
+      name: X-Hub-Signature-256
+      description: GitHub webhook HMAC-SHA256 of the raw body, keyed with SEDIMENT_GITHUB_WEBHOOK_SECRET.
+        Missing/invalid -> 401.

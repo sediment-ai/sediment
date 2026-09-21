@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/edit-observation/v3.json",
+  "title": "EditObservation",
+  "description": "One applied edit and later file observation.",
+  "type": "object",
+  "properties": {
+    "observation_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this edit observation."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The developer identity when known. Null when capture omitted it."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "cursor",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "file_path": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Repo-relative path of the file the record concerns."
+    },
+    "call_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The tool-use id of the edit this pair describes."
+    },
+    "applied_text": {
+      "type": "string",
+      "description": "The replacement text that the edit tool applied."
+    },
+    "observed_file_text": {
+      "type": "string",
+      "description": "The complete file text observed at session end. Empty string means the file was deleted."
+    },
+    "external_lines_added": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "maximum": 9223372036854775807,
+      "description": "Lines added by something other than the agent's edit tools between this edit and the next observation of the file. **External, not human** — a formatter, a linter, a watcher, or the agent's own shell all land here. Null means no window covered the call, which is not the same claim as 0."
+    },
+    "external_lines_removed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "maximum": 9223372036854775807,
+      "description": "Lines removed by something other than the agent's edit tools over the same window. Same caveats as `external_lines_added`."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the edit was observed, stamped client-side."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "observation_id",
+    "org_id",
+    "session_id",
+    "user_id",
+    "agent_harness",
+    "file_path",
+    "call_id",
+    "applied_text",
+    "observed_file_text",
+    "external_lines_added",
+    "external_lines_removed",
+    "occurred_at",
+    "captured_at",
+    "raw"
+  ]
+}

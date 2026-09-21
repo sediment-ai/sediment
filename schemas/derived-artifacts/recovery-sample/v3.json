@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/recovery-sample/v3.json",
+  "title": "RecoverySample",
+  "description": "One red-to-green recovery sample.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repo": {
+      "type": "string",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "branch": {
+      "type": "string",
+      "description": "The branch the run or commit belongs to."
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "The workflow that failed and then passed."
+    },
+    "workflow_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+    },
+    "failed_commit_sha": {
+      "type": "string",
+      "description": "The commit whose run failed."
+    },
+    "fixed_commit_sha": {
+      "type": "string",
+      "description": "The commit whose run passed."
+    },
+    "failed_outcome_id": {
+      "type": "string",
+      "description": "Id of the failing CI outcome."
+    },
+    "fixed_outcome_id": {
+      "type": "string",
+      "description": "Id of the passing CI outcome."
+    },
+    "recovery_diff": {
+      "type": "string",
+      "description": "The unified diff from the failing commit to the fixing one."
+    },
+    "failed_inference_call_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Inference calls attributed to the failing commit."
+    },
+    "fixed_inference_call_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Inference calls attributed to the fixing commit."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "failed_attribution_evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RecoveryAttributionEvidence"
+      },
+      "description": "Optional failed-side enrichment source records, ordered by Inference call and Session ID."
+    },
+    "fixed_attribution_evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RecoveryAttributionEvidence"
+      },
+      "description": "Optional fixed-side enrichment source records, ordered by Inference call and Session ID."
+    },
+    "repository_identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Qualified provider, host, and repository ID; null for an unambiguous legacy repository."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "repo",
+    "branch",
+    "workflow_name",
+    "workflow_path",
+    "failed_commit_sha",
+    "fixed_commit_sha",
+    "failed_outcome_id",
+    "fixed_outcome_id",
+    "recovery_diff",
+    "failed_inference_call_ids",
+    "fixed_inference_call_ids",
+    "provenance",
+    "failed_attribution_evidence",
+    "fixed_attribution_evidence",
+    "repository_identity"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "RecoveryAttributionEvidence": {
+      "type": "object",
+      "properties": {
+        "inference_call_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Id of the inference call this record belongs to."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "attribution_sources": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "git_notes",
+              "jaccard"
+            ],
+            "type": "string"
+          },
+          "description": "Sorted distinct Attribution methods for this enrichment call on this side's commit."
+        },
+        "session_commit_observation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+          },
+          "description": "Sorted unique observation IDs matching this enrichment Session and this side's qualified commit."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inference_call_id",
+        "session_id",
+        "attribution_sources",
+        "session_commit_observation_ids"
+      ]
+    },
+    "RepositoryIdentity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "const": "github",
+          "type": "string",
+          "description": "The forge provider that assigns the immutable repository ID."
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The lowercase configured forge host."
+        },
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Immutable provider repository ID within its forge host."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "host",
+        "repository_id"
+      ]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "repo": "acme-corp/backend-service",
+  "commit_sha": "abc123def456abc123def456abc123def456abc1",
+  "diff": "diff --git a/app/math_utils.py b/app/math_utils.py\nindex e69de29..a1b2c3d 100644\n--- a/app/math_utils.py\n+++ b/app/math_utils.py\n@@ -0,0 +1,4 @@\n+def fibonacci(n: int) -> int:\n+    if n <= 1:\n+        return n\n+    return fibonacci(n - 1) + fibonacci(n - 2)\ndiff --git a/README.md b/README.md\nindex 1111111..2222222 100644\n--- a/README.md\n+++ b/README.md\n@@ -1,0 +2,1 @@\n+Adds a fibonacci helper.\n"
+}

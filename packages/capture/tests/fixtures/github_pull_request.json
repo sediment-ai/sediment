@@ -1,0 +1,23 @@
+{
+  "action": "closed",
+  "repository": {
+    "full_name": "Acme-Corp/Backend-Service"
+  },
+  "pull_request": {
+    "number": 41,
+    "merged": true,
+    "merged_at": "2026-09-03T12:34:56Z",
+    "merge_commit_sha": "cccccccccccccccccccccccccccccccccccccccc",
+    "head": {
+      "ref": "feature/query",
+      "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repo": {
+        "full_name": "Acme-Corp/Backend-Service"
+      }
+    },
+    "base": {
+      "ref": "main",
+      "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+}

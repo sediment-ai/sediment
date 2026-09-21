@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/verification/v1.json",
+  "title": "Verification",
+  "description": "Operator verifier configuration.",
+  "type": "object",
+  "properties": {
+    "verification_command": {
+      "type": "string",
+      "description": "The opaque operator-configured verifier command."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "verification_command"
+  ]
+}

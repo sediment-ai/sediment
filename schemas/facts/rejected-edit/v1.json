@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/rejected-edit/v1.json",
+  "title": "RejectedEdit",
+  "description": "One refused AI edit.",
+  "type": "object",
+  "properties": {
+    "rejection_id": {
+      "type": "string",
+      "description": "Stable id for this rejected edit."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The developer identity when known. Null when capture omitted it."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Repo-relative path of the file the record concerns."
+    },
+    "call_id": {
+      "type": "string",
+      "description": "The tool-use id of the refused call, joining this to the `DeveloperDecision` that rejected it — which is what makes it usable as a rejected side."
+    },
+    "proposed": {
+      "type": "string",
+      "description": "The edit the model wrote and the developer declined, as the model wrote it. There is no `observed_file_text` counterpart: a refused edit never reached the file, so there is no file state to observe."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event happened, stamped client-side — distinct from `captured_at`, which is when Sediment stored it."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "rejection_id",
+    "org_id",
+    "session_id",
+    "user_id",
+    "agent_harness",
+    "file_path",
+    "call_id",
+    "proposed",
+    "occurred_at",
+    "captured_at",
+    "raw"
+  ]
+}

@@ -1,0 +1,42 @@
+USAGE:
+  sediment install [-h] [--no-agents] [--transcripts] [--no-env]
+                   [--user-id USER_ID] [--codex-profile NAME]
+                   [--gateway-url GATEWAY_URL] [--gateway-key GATEWAY_KEY]
+                   [--fleet] [--out DIR | --apply] [--prefix PREFIX]
+                   [repo]
+
+ARGUMENTS:
+  repo
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --no-agents           skip user-level hooks for Claude Code, Codex, Cursor,
+                        and pi
+  --transcripts         opt in to the SessionEnd transcript extractor: ships
+                        applied edit text and observed file text to the ingest
+                        endpoint, plus the PreToolUse snapshot hook whose line
+                        hashes let it report how many lines something other than
+                        the agent changed; also enable pi Edit observations in
+                        the generated environment
+  --no-env              skip writing the agent telemetry env files; by default
+                        install generates them from the `sediment login` config
+  --user-id USER_ID     stamp OTEL_RESOURCE_ATTRIBUTES=user.id=<value> into the
+                        env files (per-developer attribution)
+  --codex-profile NAME  write a Codex telemetry profile with resolved login
+                        credentials (0600); preserve its model and unrelated
+                        settings
+  --gateway-url GATEWAY_URL
+                        also wire ANTHROPIC_BASE_URL to this LLM gateway
+  --gateway-key GATEWAY_KEY
+                        also wire ANTHROPIC_AUTH_TOKEN and SEDIMENT_GATEWAY_KEY
+                        (the key agents present to the gateway)
+  --fleet               emit the machine-wide MDM bundle instead of a per-repo
+                        install
+  --out DIR             fleet: emit the bundle to DIR (default: ./sediment-
+                        fleet)
+  --apply               fleet: provision this machine directly — bundle into
+                        --prefix, system gitconfig, Claude Code managed settings
+                        (needs privileges)
+  --prefix PREFIX       fleet: absolute POSIX path where MDM installs the
+                        bundle; hooks reference the stamper there (default:
+                        /opt/sediment)

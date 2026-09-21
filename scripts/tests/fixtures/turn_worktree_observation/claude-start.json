@@ -1,0 +1,9 @@
+{
+  "session_id": "session-alpha",
+  "turn_id": "turn-001",
+  "cwd": "${REPO}",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "fixture prompt that the spike must not read",
+  "transcript_path": "/private/fixture/transcript.jsonl",
+  "permission_mode": "default"
+}

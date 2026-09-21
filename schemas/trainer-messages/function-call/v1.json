@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/trainer-messages/function-call/v1.json",
+  "title": "TrainerFunctionCall",
+  "description": "One structured function-call payload.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The function name associated with this tool call or result."
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The exact structured arguments supplied to the function."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "arguments"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/repository-rename/v1.json",
+  "title": "RepositoryRename",
+  "description": "One provider repository rename receipt.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The positive integer version of the canonical row schema."
+    },
+    "rename_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable receipt ID for this captured rename."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repository_provider": {
+      "const": "github",
+      "type": "string",
+      "description": "Captured forge provider."
+    },
+    "repository_host": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Configured lowercase forge host."
+    },
+    "repository_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Immutable provider repository ID within its forge host."
+    },
+    "old_repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Normalized repository label before the rename."
+    },
+    "new_repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Normalized repository label after the rename."
+    },
+    "source_event_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider delivery identity when supplied."
+    },
+    "occurred_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Provider-reported rename time; null when the provider supplies none."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rename_id",
+    "org_id",
+    "repository_provider",
+    "repository_host",
+    "repository_id",
+    "old_repo",
+    "new_repo",
+    "source_event_id",
+    "occurred_at",
+    "captured_at"
+  ]
+}

@@ -1,0 +1,5 @@
+# Optional loader qualification; never included in base dependencies.
+datasets==5.0.1
+trl==1.13.0
+transformers==5.17.0
+torch==2.14.0

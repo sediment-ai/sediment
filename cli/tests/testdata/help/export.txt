@@ -1,0 +1,14 @@
+USAGE:
+  sediment export [-h] <format> ...
+
+  run an export projection
+
+FORMATS:
+  rlvr        export one explicit RLVR target
+  dpo         dpo.jsonl — chosen/rejected pairs
+  sft         sft.jsonl — supervised training targets
+  diff-sft    diff_sft.jsonl — per-commit, per-file training rows
+  recovery    recovery.jsonl — red-to-green CI-transition recovery pairs
+
+OPTIONS:
+  -h, --help  show this help message and exit

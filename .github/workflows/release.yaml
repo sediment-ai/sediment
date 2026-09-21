@@ -1,0 +1,266 @@
+# Release: build the six AGPL distributions once, publish the validated files
+# to PyPI, then attach the same files to a GitHub Release. Publishing stays
+# inert until the PyPI trusted publisher and protected environment exist.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    uses: ./.github/workflows/consumer-compatibility.yml
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      release-commit: ${{ steps.verify-tag.outputs.release-commit }}
+    env:
+      SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+    steps:
+      - name: Require a public repository
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPOSITORY_PRIVATE" == "true" ]]; then
+            echo "error: releases remain disabled while the repository is private" >&2
+            exit 1
+          fi
+
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the annotated release tag
+        id: verify-tag
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin main:refs/remotes/origin/main
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          test "$(git describe --exact-match --match "$GITHUB_REF_NAME")" = "$GITHUB_REF_NAME"
+          git merge-base --is-ancestor HEAD origin/main
+          release_commit="$(git rev-parse "$GITHUB_REF_NAME^{commit}")"
+          test "$release_commit" = "$(git rev-parse HEAD)"
+          echo "release-commit=$release_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Start the maintained PostgreSQL test image
+        run: |
+          set -euo pipefail
+          docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          docker run --detach --name sediment-ci-postgres \
+            -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
+            sediment-ci-postgres
+          for _ in {1..60}; do
+            if docker exec sediment-ci-postgres pg_isready -h 127.0.0.1 -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sediment-ci-postgres
+          exit 1
+      - name: Install the maintained system PostgreSQL client library
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+
+      - name: Rehearse the complete release without publishing
+        run: uv run python scripts/release_rehearsal.py --tag "$GITHUB_REF_NAME" --out-dir dist
+
+      - name: Preserve the validated Python distributions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Remove the disposable test database
+        if: always()
+        run: docker rm -f sediment-ci-postgres
+
+  security:
+    needs: build
+    uses: ./.github/workflows/security.yml
+    with:
+      wheels-artifact: python-distributions
+
+  prepare-release:
+    needs: [build, security, compatibility]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the validated Python distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-distributions
+          path: dist
+      - name: Download security inventories, SBOMs, and raw reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: security-evidence-*
+          merge-multiple: true
+          path: dist
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+
+      - name: Add the installer, support metadata, and SHA256SUMS
+        env:
+          EXPECTED_RELEASE_COMMIT: ${{ needs.build.outputs.release-commit }}
+        run: |
+          set -euo pipefail
+          cp install.sh dist/install.sh
+          uv run --no-project python scripts/rescan_releases.py bundle \
+            --directory dist --tag "$GITHUB_REF_NAME" --commit "$EXPECTED_RELEASE_COMMIT"
+
+      - name: Preserve the complete verified release asset set
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-assets
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish-pypi:
+    needs: [build, security, prepare-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sediment-cli
+    permissions:
+      contents: read
+      id-token: write # PyPI trusted publishing
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Reverify the approved release tag
+        env:
+          EXPECTED_RELEASE_COMMIT: ${{ needs.build.outputs.release-commit }}
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin main:refs/remotes/origin/main
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          test "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" = "$EXPECTED_RELEASE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_RELEASE_COMMIT"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Download the validated Python distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-distributions
+          path: dist
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+
+      - name: Publish to PyPI
+        run: >-
+          uv publish
+          --trusted-publishing always
+          --publish-url https://upload.pypi.org/legacy/
+          --check-url https://pypi.org/simple/
+          dist/sediment_api-*
+          dist/sediment_capture-*
+          dist/sediment_cli-*
+          dist/sediment_core-*
+          dist/sediment_derive-*
+          dist/sediment_export-*
+
+  publish-github:
+    needs: [build, security, prepare-release, publish-pypi]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download the complete verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Reverify the release tag
+        env:
+          EXPECTED_RELEASE_COMMIT: ${{ needs.build.outputs.release-commit }}
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin main:refs/remotes/origin/main
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          test "$(git rev-parse "$GITHUB_REF_NAME^{commit}")" = "$EXPECTED_RELEASE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_RELEASE_COMMIT"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Create the GitHub Release draft
+        run: |
+          set -euo pipefail
+          assets=(dist/*)
+          state="$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft 2>/dev/null || true)"
+          if [[ "$state" == "false" ]]; then
+            echo "error: release $GITHUB_REF_NAME is already published" >&2
+            exit 1
+          elif [[ "$state" == "true" ]]; then
+            while IFS= read -r asset_name; do
+              gh release delete-asset "$GITHUB_REF_NAME" "$asset_name" --yes
+            done < <(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name')
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --verify-tag \
+              --generate-notes \
+              --title "$GITHUB_REF_NAME" \
+              "${assets[@]}"
+          fi
+          expected_assets="$(printf '%s\n' "${assets[@]##*/}" | sort)"
+          actual_assets="$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | sort)"
+          if [[ "$actual_assets" != "$expected_assets" ]]; then
+            echo "error: GitHub Release draft asset set does not match" >&2
+            exit 1
+          fi
+
+      - name: Publish the GitHub Release
+        run: |
+          set -euo pipefail
+          release_args=(--draft=false)
+          if [[ "$GITHUB_REF_NAME" =~ rc[0-9]+$ ]]; then
+            release_args+=(--prerelease --latest=false)
+          else
+            release_args+=(--prerelease=false --latest)
+          fi
+          gh release edit "$GITHUB_REF_NAME" "${release_args[@]}"

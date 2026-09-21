@@ -1,0 +1,14 @@
+USAGE:
+  sediment quarantine [-h] --reason REASON
+                      {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames}
+                      fact_id
+
+  quarantine one fact by id
+
+ARGUMENTS:
+  {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames}
+  fact_id
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --reason REASON

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/pull-request-merge/v1.json",
+  "title": "PullRequestMerge",
+  "description": "One pull request merge boundary.",
+  "type": "object",
+  "properties": {
+    "merge_id": {
+      "type": "string",
+      "description": "Stable id for this pull request merge boundary."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "provider": {
+      "const": "github",
+      "type": "string",
+      "description": "Which system this fact came from."
+    },
+    "repo": {
+      "type": "string",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "pr_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "The positive pull request number within the repository."
+    },
+    "head_repo": {
+      "type": "string",
+      "description": "The repository that supplied the pull request head."
+    },
+    "head_ref": {
+      "type": "string",
+      "description": "The normalized final pull request head branch."
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "The final pull request head commit."
+    },
+    "base_ref": {
+      "type": "string",
+      "description": "The normalized target branch at merge time."
+    },
+    "base_sha": {
+      "type": "string",
+      "description": "The target branch commit recorded by the merge event."
+    },
+    "merge_commit_sha": {
+      "type": "string",
+      "description": "The provider-reported merged commit boundary."
+    },
+    "merged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the forge recorded the pull request merge."
+    },
+    "source_event_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider delivery identity when supplied."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "merge_id",
+    "org_id",
+    "provider",
+    "repo",
+    "pr_number",
+    "head_repo",
+    "head_ref",
+    "head_sha",
+    "base_ref",
+    "base_sha",
+    "merge_commit_sha",
+    "merged_at",
+    "source_event_id",
+    "captured_at"
+  ]
+}

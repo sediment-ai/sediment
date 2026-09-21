@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+*.db
+*.db-wal
+*.db-shm
+sediment_data/
+exports/
+!docs/exports/
+.env
+.DS_Store
+.claude/settings.local.*
+.claude/worktrees/
+
+# Deployment-local compose overrides (mirror credentials etc.) — never in PRs
+compose.override.yml
+docker-compose.override.yml
+node_modules/
+
+# Local tooling and per-deployment config — never tracked.
+.deepsec/
+.kiro/
+litellm/config.local.yaml
+.env.*
+!.env.example
+.agents/
+skills-lock.json
+.claude/skills/asd-ste100

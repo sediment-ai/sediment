@@ -1,0 +1,52 @@
+[project]
+# Virtual workspace root — not a distribution. The installable CLI is the
+# top-level cli/ member (distribution `sediment-cli`, command `sediment`);
+# everything publishes from the members.
+name = "sediment"
+version = "0.1.0"
+description = "Turn AI developer workflow traces into RL-ready training data"
+requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+dependencies = [
+    "sediment-core==0.1.0",
+    "sediment-capture==0.1.0",
+    "sediment-derive==0.1.0",
+    "sediment-export==0.1.0",
+    "sediment-api==0.1.0",
+    "sediment-cli==0.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.16.8",
+    "httpx>=0.27",
+    "jsonschema>=4.23",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*", "cli"]
+
+[tool.uv.sources]
+sediment-core = { workspace = true }
+sediment-capture = { workspace = true }
+sediment-derive = { workspace = true }
+sediment-export = { workspace = true }
+sediment-api = { workspace = true }
+sediment-cli = { workspace = true }
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+# Keep the Python-only formatter scope used before Ruff 0.16.
+include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
+
+[tool.ruff.lint]
+# Ruff 0.16 expands its defaults; preserve the existing lint contract.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm"]

@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/ci-outcome/v3.json",
+  "title": "CIOutcome",
+  "description": "One CI run attempt.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "enum": [
+        1,
+        2
+      ],
+      "type": "integer",
+      "description": "The Fact payload contract: 1 for stored legacy payloads, 2 for identity-capable payloads."
+    },
+    "repository_provider": {
+      "anyOf": [
+        {
+          "const": "github",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured forge provider."
+    },
+    "repository_host": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Configured lowercase forge host."
+    },
+    "repository_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Immutable provider repository ID within its forge host."
+    },
+    "outcome_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this outcome."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "provider": {
+      "enum": [
+        "github_actions",
+        "jenkins",
+        "gitlab_ci",
+        "circleci",
+        "buildkite",
+        "other"
+      ],
+      "type": "string",
+      "description": "The normalized CI system selected by a capture adapter or declared by the bearer-authenticated vendor integration."
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The provider-issued pipeline-run id, unique within the deployment organization and provider namespace."
+    },
+    "run_attempt": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "The positive provider attempt number. Null when the provider omits it."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Full-length commit sha, lowercased."
+    },
+    "branch": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The branch the run or commit belongs to."
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed",
+        "error",
+        "timed_out",
+        "cancelled",
+        "skipped",
+        "neutral",
+        "unknown"
+      ],
+      "type": "string",
+      "description": "Sediment's normalized terminal result."
+    },
+    "workflow_name": {
+      "type": "string",
+      "description": "The CI workflow's display name."
+    },
+    "workflow_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider's stable workflow or pipeline-definition identity."
+    },
+    "workflow_path": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+    },
+    "run_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Link to the run in the CI system. Null when unreported; never run identity."
+    },
+    "provider_result": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The exact terminal value reported by the provider before normalization."
+    },
+    "error_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A structured, low-cardinality provider error type. Null when absent."
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 4096
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "A bounded, Basic-redacted provider reason. Null when absent."
+    },
+    "source_event_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The source contract and event type. Null when unreported."
+    },
+    "source_spec_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The source contract version. Null when unreported."
+    },
+    "source_event_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider or standard source event identity. Null when unreported."
+    },
+    "pr_number": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "The pull request the run belongs to, when there is one."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository_provider",
+    "repository_host",
+    "repository_id",
+    "outcome_id",
+    "org_id",
+    "provider",
+    "run_id",
+    "run_attempt",
+    "repo",
+    "commit_sha",
+    "branch",
+    "result",
+    "workflow_name",
+    "workflow_id",
+    "workflow_path",
+    "run_url",
+    "provider_result",
+    "error_type",
+    "reason",
+    "source_event_type",
+    "source_spec_version",
+    "source_event_id",
+    "pr_number",
+    "captured_at",
+    "raw"
+  ]
+}

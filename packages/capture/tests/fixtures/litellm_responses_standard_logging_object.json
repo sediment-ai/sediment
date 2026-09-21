@@ -1,0 +1,402 @@
+{
+  "id": "resp_JzztbLp3ejUBI4OA9RTyc-7JYOqh9MSjw4NxutRNRZAqL5wp_O7AQztKp-siIuN5e_E4Xn7gRdWTGYf4Q6BGXLoOMPdGkvkvceq4JC5qr3uTvkeJVqUKC9A0R8u-Oiu2Aw3LmhjsJRBydI2n8y2Ni1C_3cj4gtdkmAsPwTu2inJaSgv1jJ4fX9BLqto8jIF4iZz_hBRl2E58L-4KFExzxeNpOLSEwaZmq2IrwfWU43NIsiLitM8Vqb3CjT6xTk8Hgi7rPDrudItaPk2d_DPtsyEhJSt1j44fjHSidDlkRy8wUnM6lPlLmNnSDmkaxZwLlSNj8-YKIN2iSFZ45gUAbMtQmJ4crCKNB9j_MhmYNuPKItRohY2GReQamF9ipvmE8D_5JAbuUxg-glYpG6wlgYoJCw7sUPlmLViStIc1oT-y64OiI4HEh7VEzU-E51X5JOgyDNaSg3NKeQ==",
+  "litellm_call_id": "49264cf1-a817-4dba-9ed2-8c35f36be15a",
+  "trace_id": "f73492a0-03fb-48a1-bbbb-faf3fc08e8a9",
+  "call_type": "aresponses",
+  "cache_hit": null,
+  "stream": true,
+  "status": "success",
+  "status_fields": {
+    "llm_api_status": "success",
+    "guardrail_status": "not_run"
+  },
+  "custom_llm_provider": "openai",
+  "saved_cache_cost": 0.0,
+  "startTime": 1784278719.95159,
+  "endTime": 1784278724.103389,
+  "completionStartTime": 1784278724.103389,
+  "response_time": 4.151798963546753,
+  "model": "openai/claude-opus-4-8",
+  "metadata": {
+    "user_api_key_hash": "litellm_proxy_master_key",
+    "user_api_key_alias": null,
+    "user_api_key_spend": 0.0,
+    "user_api_key_max_budget": null,
+    "user_api_key_budget_reset_at": null,
+    "user_api_key_team_id": null,
+    "user_api_key_org_id": null,
+    "user_api_key_org_alias": null,
+    "user_api_key_project_id": null,
+    "user_api_key_project_alias": null,
+    "user_api_key_user_id": "default_user_id",
+    "user_api_key_team_alias": null,
+    "user_api_key_user_email": null,
+    "user_api_key_end_user_id": null,
+    "user_api_key_request_route": "/v1/responses",
+    "spend_logs_metadata": null,
+    "requester_ip_address": "127.0.0.1",
+    "user_agent": "codex_exec/0.142.5 (Mac OS 26.5.2; arm64) unknown (codex_exec; 0.142.5)",
+    "requester_metadata": null,
+    "prompt_management_metadata": null,
+    "applied_guardrails": [],
+    "mcp_tool_call_metadata": null,
+    "vector_store_request_metadata": null,
+    "usage_object": {
+      "completion_tokens": 296,
+      "prompt_tokens": 39414,
+      "total_tokens": 39710,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": null,
+        "text_tokens": 296,
+        "image_tokens": null,
+        "video_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 0,
+        "text_tokens": 39414,
+        "image_tokens": null,
+        "video_tokens": null
+      }
+    },
+    "requester_custom_headers": {
+      "x-codex-beta-features": "remote_compaction_v2",
+      "x-codex-window-id": "019f6f4c-810d-7ab1-afad-7d40838a62cd:0",
+      "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000000\",\"session_id\":\"019f6f4c-810d-7ab1-afad-7d40838a62cd\",\"thread_id\":\"019f6f4c-810d-7ab1-afad-7d40838a62cd\",\"turn_id\":\"019f6f4c-8174-7382-9481-49015b1eb651\",\"window_id\":\"019f6f4c-810d-7ab1-afad-7d40838a62cd:0\",\"request_kind\":\"turn\",\"thread_source\":\"user\",\"sandbox\":\"seatbelt\",\"workspaces\":{\"/work/scratch/codex79\":{\"latest_git_commit_hash\":\"c67899a2831b38a6e91cfd3eb520d27160b21964\",\"has_changes\":false}},\"turn_started_at_unix_ms\":1784278712694}",
+      "x-client-request-id": "019f6f4c-810d-7ab1-afad-7d40838a62cd"
+    },
+    "cold_storage_object_key": null,
+    "user_api_key_auth_metadata": {},
+    "team_alias": null,
+    "team_id": null
+  },
+  "cache_key": null,
+  "response_cost": 0.0,
+  "cost_breakdown": null,
+  "total_tokens": 39710,
+  "prompt_tokens": 39414,
+  "completion_tokens": 296,
+  "request_tags": [
+    "User-Agent: codex_exec",
+    "User-Agent: codex_exec/0.142.5 (Mac OS 26.5.2; arm64) unknown (codex_exec; 0.142.5)"
+  ],
+  "end_user": "",
+  "api_base": "https://gateway.example.com/v1/responses",
+  "model_group": "claude-opus-4-8",
+  "model_id": "9135481a647bf7253f57df51daf4d8f9232c573f99176739e5825dc7c1b706f6",
+  "requester_ip_address": "127.0.0.1",
+  "user_agent": "codex_exec/0.142.5 (Mac OS 26.5.2; arm64) unknown (codex_exec; 0.142.5)",
+  "messages": [
+    {
+      "type": "message",
+      "role": "developer",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbox_mode` is `workspace-write`: The sandbox permits reading files, and editing files in `cwd` and `wri \u2026[truncated for fixture]"
+        },
+        {
+          "type": "input_text",
+          "text": "<apps_instructions>\n## Apps (Connectors)\nApps (Connectors) can be explicitly triggered in user messages in the format `[$app-name](app://{connector_id})`. Apps can also be implicitly triggered as long \u2026[truncated for fixture]"
+        },
+        {
+          "type": "input_text",
+          "text": "<skills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, descript \u2026[truncated for fixture]"
+        },
+        {
+          "type": "input_text",
+          "text": "<plugins_instructions>\n## Plugins\nA plugin is a local bundle of skills, MCP servers, and apps.\n### How to use plugins\n- Skill naming: If a plugin contributes skills, those skill entries are prefixed w \u2026[truncated for fixture]"
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "<environment_context>\n  <cwd>/work/scratch/codex79</cwd>\n  <sh \u2026[truncated for fixture]"
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "The test suite in test_slugger.py is failing. Diagnose the bug in slugger/__init__.py, fix it, run 'python3 -m pytest -q' until all tests pass, then git commit the fix with a sensible message. Work st \u2026[truncated for fixture]"
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "I'll start by inspecting the files."
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "name": "exec_command",
+      "arguments": "{\"cmd\": \"cat test_slugger.py; echo \\\"-----\\\"; cat slugger/__init__.py\"}",
+      "call_id": "toolu_01Lpeij5e3ppUPAMdaqQTJR7"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "toolu_01Lpeij5e3ppUPAMdaqQTJR7",
+      "output": "Chunk ID: d11a7e\nWall time: 0.0000 seconds\nProcess exited with code 0\nOriginal token count: 187\nOutput:\nfrom slugger import slugify\n\n\ndef test_basic():\n    assert slugify(\"Hello World\") == \"hello-world\"\n\n\ndef test_collapses_runs():\n    assert slugify(\"a  --  b\") == \"a-b\"\n\n\ndef test_strips_edges():\n    assert slugify(\"  hello  \") == \"hello\"\n\n\ndef test_numbers():\n    assert slugify(\"Top 10 Tips!\") == \"top-10-tips\"\n-----\n\"\"\"Tiny slug utility \u2014 intentionally buggy debugging exercise.\"\"\"\n\n\ndef slugify(text: str) -> str:\n    \"\"\"Lowercase, alnum runs joined by single hyphens. BUG: collapses nothing,\n    keeps leading/trailing hyphens, and drops unicode instead of transliterating.\"\"\"\n    out = []\n    for ch in text:\n        if ch.isalnum():\n            out.append(ch.lower())\n        else:\n            out.append(\"-\")\n    return \"\".join(out)\n"
+    },
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "The bug is clear: every non-alphanumeric char becomes a hyphen, without collapsing runs or stripping edges. Let me run the tests to confirm, then fix."
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "name": "exec_command",
+      "arguments": "{\"cmd\": \"python3 -m pytest -q\"}",
+      "call_id": "toolu_01Ew6hbem912BJeJUcHDmNyZ"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "toolu_01Ew6hbem912BJeJUcHDmNyZ",
+      "output": "Chunk ID: a585bf\nWall time: 0.1428 seconds\nProcess exited with code 1\nOriginal token count: 363\nOutput:\n.FFF                                                                     [100%]\n=================================== FAILURES ===================================\n_____________________________ test_collapses_runs ______________________________\n\n    def test_collapses_runs():\n>       assert slugify(\"a  --  b\") == \"a-b\"\nE       AssertionError: assert 'a------b' == 'a-b'\nE         \nE         - a-b\nE         + a------b\n\ntest_slugger.py:9: AssertionError\n______________________________ test_strips_edges _______________________________\n\n    def test_strips_edges():\n>       assert slugify(\"  hello  \") == \"hello\"\nE       AssertionError: assert '--hello--' == 'hello'\nE         \nE         - hello\nE         + --hello--\n\ntest_slugger.py:13: AssertionError\n_________________________________ test_numbers _________________________________\n\n    def test_numbers():\n>       assert slugify(\"Top 10 Tips!\") == \"top-10-tips\"\nE       AssertionError: assert 'top-10-tips-' == 'top-10-tips'\nE         \nE         - top-10-tips\nE         + top-10-tips-\nE         ?            +\n\ntest_slugger.py:17: AssertionError\n=========================== short test summary info ============================\nFAILED test_slugger.py::test_collapses_runs - AssertionError: assert 'a------...\nFAILED test_slugger.py::test_strips_edges - AssertionError: assert '--hello--...\nFAILED test_slugger.py::test_numbers - AssertionError: assert 'top-10-tips-' ...\n3 failed, 1 passed in 0.01s\n"
+    }
+  ],
+  "response": {
+    "id": "resp_JzztbLp3ejUBI4OA9RTyc-7JYOqh9MSjw4NxutRNRZAqL5wp_O7AQztKp-siIuN5e_E4Xn7gRdWTGYf4Q6BGXLoOMPdGkvkvceq4JC5qr3uTvkeJVqUKC9A0R8u-Oiu2Aw3LmhjsJRBydI2n8y2Ni1C_3cj4gtdkmAsPwTu2inJaSgv1jJ4fX9BLqto8jIF4iZz_hBRl2E58L-4KFExzxeNpOLSEwaZmq2IrwfWU43NIsiLitM8Vqb3CjT6xTk8Hgi7rPDrudItaPk2d_DPtsyEhJSt1j44fjHSidDlkRy8wUnM6lPlLmNnSDmkaxZwLlSNj8-YKIN2iSFZ45gUAbMtQmJ4crCKNB9j_MhmYNuPKItRohY2GReQamF9ipvmE8D_5JAbuUxg-glYpG6wlgYoJCw7sUPlmLViStIc1oT-y64OiI4HEh7VEzU-E51X5JOgyDNaSg3NKeQ==",
+    "created_at": 1784278724,
+    "error": null,
+    "incomplete_details": null,
+    "instructions": null,
+    "metadata": {},
+    "model": "claude-opus-4-8",
+    "object": "response",
+    "output": [
+      {
+        "id": "chatcmpl-3c684970-a5f9-4f0f-841b-ee12006ad79a",
+        "content": [
+          {
+            "annotations": [],
+            "text": "Confirmed. Now I'll fix `slugify` to collapse hyphen runs and strip leading/trailing hyphens.",
+            "type": "output_text",
+            "logprobs": null
+          }
+        ],
+        "role": "assistant",
+        "status": "completed",
+        "type": "message",
+        "phase": null
+      },
+      {
+        "arguments": "{\"cmd\": \"cat > slugger/__init__.py <<'EOF'\\n\\\"\\\"\\\"Tiny slug utility.\\\"\\\"\\\"\\n\\n\\ndef slugify(text: str) -> str:\\n    \\\"\\\"\\\"Lowercase text, joining alphanumeric runs with single hyphens.\\n\\n    Non-alphanumeric characters become hyphens, consecutive hyphens are\\n    collapsed into one, and leading/trailing hyphens are stripped.\\n    \\\"\\\"\\\"\\n    out = []\\n    for ch in text:\\n        if ch.isalnum():\\n            out.append(ch.lower())\\n        elif out and out[-1] != \\\"-\\\":\\n            out.append(\\\"-\\\")\\n    return \\\"\\\".join(out).strip(\\\"-\\\")\\nEOF\"}",
+        "call_id": "toolu_01CirjUmykuyzEVCHQLKgrcx",
+        "name": "exec_command",
+        "type": "function_call",
+        "id": "toolu_01CirjUmykuyzEVCHQLKgrcx",
+        "caller": null,
+        "namespace": null,
+        "status": "completed"
+      }
+    ],
+    "parallel_tool_calls": false,
+    "temperature": 0.0,
+    "tool_choice": "auto",
+    "tools": [],
+    "top_p": null,
+    "max_output_tokens": null,
+    "previous_response_id": null,
+    "reasoning": null,
+    "status": "completed",
+    "text": {},
+    "truncation": null,
+    "usage": {
+      "completion_tokens": 296,
+      "prompt_tokens": 39414,
+      "total_tokens": 39710,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": null,
+        "audio_tokens": null,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": null,
+        "text_tokens": 296,
+        "image_tokens": null,
+        "video_tokens": null
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 0,
+        "text_tokens": 39414,
+        "image_tokens": null,
+        "video_tokens": null
+      }
+    },
+    "user": null,
+    "store": null,
+    "provider_specific_fields": {
+      "citations": null,
+      "thinking_blocks": null
+    }
+  },
+  "model_parameters": {
+    "include": [],
+    "instructions": "You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.\n\nYour capabili \u2026[truncated for fixture]",
+    "parallel_tool_calls": false,
+    "store": false,
+    "stream": true,
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "type": "function",
+        "name": "exec_command",
+        "description": "Runs a command in a PTY, returning output or a session ID for ongoing interaction.",
+        "strict": false,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cmd": {
+              "type": "string",
+              "description": "Shell command to execute."
+            },
+            "justification": {
+              "type": "string",
+              "description": "User-facing approval question for `require_escalated`; omit otherwise."
+            },
+            "login": {
+              "type": "boolean",
+              "description": "True runs the shell with -l/-i semantics; false disables them. Defaults to true."
+            },
+            "max_output_tokens": {
+              "type": "number",
+              "description": "Output token budget. Defaults to 10000 tokens; larger requests may be capped by policy."
+            },
+            "prefix_rule": {
+              "type": "array",
+              "description": "Reusable approval prefix for `cmd`, only with `sandbox_permissions: \"require_escalated\"`; for example [\"git\", \"pull\"].",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sandbox_permissions": {
+              "type": "string",
+              "description": "Per-command sandbox override. Defaults to `use_default`; use `require_escalated` for unsandboxed execution.",
+              "enum": [
+                "use_default",
+                "require_escalated"
+              ]
+            },
+            "shell": {
+              "type": "string",
+              "description": "Shell binary to launch. Defaults to the user's default shell."
+            },
+            "tty": {
+              "type": "boolean",
+              "description": "True allocates a PTY for the command; false or omitted uses plain pipes."
+            },
+            "workdir": {
+              "type": "string",
+              "description": "Working directory for the command. Defaults to the turn cwd."
+            },
+            "yield_time_ms": {
+              "type": "number",
+              "description": "Wait before yielding output. Defaults to 10000 ms; effective range is 250-30000 ms."
+            }
+          },
+          "required": [
+            "cmd"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "type": "function",
+        "name": "write_stdin",
+        "description": "Writes characters to an existing unified exec session and returns recent output.",
+        "strict": false,
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "chars": {
+              "type": "string",
+              "description": "Bytes to write to stdin. Defaults to empty, which polls without writing."
+            },
+            "max_output_tokens": {
+              "type": "number",
+              "description": "Output token budget. Defaults to 10000 tokens; larger requests may be capped by policy."
+            },
+            "session_id": {
+              "type": "number",
+              "description": "Identifier of the running unified exec session."
+            },
+            "yield_time_ms": {
+              "type": "number",
+              "description": "Wait before yielding output. Non-empty writes default to 250 ms and cap at 30000 ms; empty polls wait 5000-300000 ms by default."
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ],
+    "prompt_cache_key": "019f6f4c-810d-7ab1-afad-7d40838a62cd"
+  },
+  "hidden_params": {
+    "model_id": null,
+    "cache_key": null,
+    "api_base": null,
+    "response_cost": null,
+    "additional_headers": null,
+    "litellm_overhead_time_ms": null,
+    "batch_models": null,
+    "litellm_model_name": null,
+    "usage_object": null
+  },
+  "model_map_information": {
+    "model_map_key": "claude-opus-4-8",
+    "model_map_value": null
+  },
+  "error_str": null,
+  "error_information": {
+    "error_code": "",
+    "error_class": "",
+    "llm_provider": "",
+    "traceback": "",
+    "error_message": "",
+    "error_rate_limit_category": null,
+    "error_rate_limit_type": null
+  },
+  "response_cost_failure_debug_info": {
+    "error_str": "This model isn't mapped yet. model=claude-opus-4-8, custom_llm_provider=openai. Add it here - https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json.",
+    "traceback_str": "Traceback (most recent call last): \u2026[scrubbed for fixture \u2014 local paths and environment details removed; field shape kept]",
+    "model": "claude-opus-4-8",
+    "cache_hit": null,
+    "custom_llm_provider": "openai",
+    "base_model": null,
+    "call_type": "aresponses",
+    "custom_pricing": false
+  },
+  "guardrail_information": null,
+  "standard_built_in_tools_params": {
+    "web_search_options": {
+      "type": "web_search",
+      "external_web_access": false
+    },
+    "file_search": null
+  }
+}

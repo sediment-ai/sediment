@@ -1,0 +1,488 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contracts": [
+    {
+      "schema_id": "https://sediment.so/schemas/facts/inference-call/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_core.models.InferenceCall",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/inference-call/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/inference-message/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_core.models.InferenceMessage",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/inference-message/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/text-part/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.models.TextPart",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/text-part/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/reasoning-part/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.models.ReasoningPart",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/reasoning-part/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/tool-call-part/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_core.models.ToolCallPart",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/tool-call-part/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/tool-call-response-part/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_core.models.ToolCallResponsePart",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/tool-call-response-part/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/developer-decision/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.DeveloperDecision",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/developer-decision/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/edit-observation/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.EditObservation",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/edit-observation/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/rejected-edit/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.RejectedEdit",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/rejected-edit/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/retry-linkage/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.RetryLinkage",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/retry-linkage/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/ci-outcome/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.CIOutcome",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/ci-outcome/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/push/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.Push",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/push/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/pull-request-merge/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.PullRequestMerge",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/pull-request-merge/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/pull-request-revision/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.PullRequestRevision",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/pull-request-revision/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/session-commit-observation/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_core.models.SessionCommitObservation",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/session-commit-observation/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/quarantine-record/v7.json",
+      "schema_version": 7,
+      "python_type": "sediment_core.models.QuarantineRecord",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/quarantine-record/v7.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/facts/repository-rename/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.models.RepositoryRename",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/repository-rename/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/external-inputs/price-manifest/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.price_manifest.PriceManifest",
+      "artifact_family": "external-inputs",
+      "output_path": "schemas/external-inputs/price-manifest/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/repository-identity/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.repository_identity.RepositoryIdentity",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/repository-identity/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/accepted-work-lifecycle/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.accepted_work_lifecycle.AcceptedWorkLifecycleReport",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/accepted-work-lifecycle/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/attribution/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_derive.attribution.Attribution",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/attribution/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/attributed-completion/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.attributed_completions.AttributedCompletion",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/attributed-completion/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/rollout/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_derive.rollout.Rollout",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/rollout/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/commit-ref/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_derive.rollout.CommitRef",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/commit-ref/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/turn/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.rollout.Turn",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/turn/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/ci-resolution/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.ci_resolution.CIResolution",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/ci-resolution/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/ci-workflow-resolution/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.ci_resolution.CIWorkflowResolution",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/ci-workflow-resolution/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/provenance/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.provenance.Provenance",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/provenance/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/recovery-attribution-evidence/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.recovery.RecoveryAttributionEvidence",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/recovery-attribution-evidence/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/recovery-sample/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.recovery.RecoverySample",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/recovery-sample/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/accepted-session-outcome/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_derive.abandonment.AcceptedSessionOutcome",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/accepted-session-outcome/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/session-abandonment/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.abandonment.SessionAbandonment",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/session-abandonment/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/fate/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.survival.Fate",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/fate/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/merge-membership-outcome/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.merge_retention.MergeMembershipOutcome",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/merge-membership-outcome/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/merge-retention/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_derive.merge_retention.MergeRetention",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/merge-retention/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/abandonment-summary/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.attributed_completions.AbandonmentSummary",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/abandonment-summary/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/function-call/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerFunctionCall",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/function-call/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/tool-call/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerToolCall",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/tool-call/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/text-message/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerTextMessage",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/text-message/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/assistant-content-message/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerAssistantContentMessage",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/assistant-content-message/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/assistant-thinking-message/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerAssistantThinkingMessage",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/assistant-thinking-message/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/assistant-tool-call-message/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerAssistantToolCallMessage",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/assistant-tool-call-message/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/trainer-messages/tool-message/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.trainer.TrainerToolMessage",
+      "artifact_family": "trainer-messages",
+      "output_path": "schemas/trainer-messages/tool-message/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/dpo-pair/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.dpo.DPOPair",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/dpo-pair/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/dpo-metadata/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.dpo.DPOMetadata",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/dpo-metadata/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/dpo-provenance/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.dpo.DPOProvenance",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/dpo-provenance/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/sft-sample/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.sft.SFTSample",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/sft-sample/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/sft-metadata/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.sft.SFTMetadata",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/sft-metadata/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/diff-sft-sample/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.diff_sft.DiffSFTSample",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/diff-sft-sample/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/diff-sft-metadata/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.diff_sft.DiffSFTMetadata",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/diff-sft-metadata/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/diff-sft-source-ids/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_export.diff_sft.SourceIds",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/diff-sft-source-ids/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/recovery-row/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.recovery.RecoveryRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/recovery-row/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/verification/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.rlvr.Verification",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/verification/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/rlvr-decision/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_export.rlvr.RLVRDecisionRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/rlvr-decision/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/rlvr-inference-message/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_export.rlvr.RLVRInferenceMessageRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/rlvr-inference-message/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/rlvr-turn/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.rlvr.RLVRTurnRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/rlvr-turn/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/nemo-gym-responses-create-params/v2.json",
+      "schema_version": 2,
+      "python_type": "sediment_export.rlvr.NemoGymResponsesCreateParams",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/nemo-gym-responses-create-params/v2.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/nemo-gym-response/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.rlvr.NemoGymResponse",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/nemo-gym-response/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/sediment-rlvr-task/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.rlvr.SedimentTaskRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/sediment-rlvr-task/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/sediment-rlvr-rollout/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.rlvr.SedimentRolloutRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/sediment-rlvr-rollout/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/swe-bench-task/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.rlvr.SWEBenchTaskRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/swe-bench-task/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/swe-bench-metadata/v3.json",
+      "schema_version": 3,
+      "python_type": "sediment_export.rlvr.SWEBenchMetadata",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/swe-bench-metadata/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/nemo-gym-rollout/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.rlvr.NemoGymRolloutRow",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/nemo-gym-rollout/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/training-rows/nemo-gym-metadata/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.rlvr.NemoGymMetadata",
+      "artifact_family": "training-rows",
+      "output_path": "schemas/training-rows/nemo-gym-metadata/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-bundle/manifest/v4.json",
+      "schema_version": 4,
+      "python_type": "sediment_export.derived_bundle.BundleManifest",
+      "artifact_family": "derived-bundle",
+      "output_path": "schemas/derived-bundle/manifest/v4.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-bundle/inference-call-identity/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.store.InferenceCallIdentity",
+      "artifact_family": "derived-bundle",
+      "output_path": "schemas/derived-bundle/inference-call-identity/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-bundle/repository-identity-evidence/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.store.RepositoryIdentityEvidence",
+      "artifact_family": "derived-bundle",
+      "output_path": "schemas/derived-bundle/repository-identity-evidence/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-bundle/record/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.derived_bundle.BundleRecord",
+      "artifact_family": "derived-bundle",
+      "output_path": "schemas/derived-bundle/record/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-bundle/file-metadata/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_export.derived_bundle.BundleFileMetadata",
+      "artifact_family": "derived-bundle",
+      "output_path": "schemas/derived-bundle/file-metadata/v1.json"
+    }
+  ]
+}

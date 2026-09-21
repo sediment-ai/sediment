@@ -1,0 +1,3 @@
+{"type": "session_meta", "payload": {"id": "sess-codex", "cwd": "__ROOT__"}}
+{"timestamp": "2026-08-28T21:35:56.000Z", "type": "event_msg", "payload": {"type": "patch_apply_end", "call_id": "native-add", "success": true, "status": "completed", "changes": {"counter.js": {"type": "add", "content": "old(counter, delta, result);\n"}}}}
+{"timestamp": "2026-08-28T21:35:56.000Z", "type": "event_msg", "payload": {"type": "patch_apply_end", "call_id": "native-update", "success": true, "status": "completed", "changes": {"counter.js": {"type": "update", "move_path": null, "unified_diff": "@@ -1 +1 @@\n-old(counter, delta, result);\n+++counter; update_total(counter, delta, result);\n"}}}}

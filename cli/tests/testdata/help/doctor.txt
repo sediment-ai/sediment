@@ -1,0 +1,23 @@
+USAGE:
+  sediment doctor [-h] [--fetch] [--agent {cursor,codex,pi}]
+                  [--session-id SESSION_ID] [--transcripts] [--inference-calls]
+                  [REPO ...]
+
+ARGUMENTS:
+  REPO                  also run the per-repo checks on each REPO (default:
+                        agent and machine-level checks only)
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --fetch               allow one fetch into the notes tracking ref, so a notes
+                        ref whose remote tip is not a local object can be
+                        classified as behind vs diverged; without it doctor
+                        writes nothing at all
+  --agent {cursor,codex,pi}
+                        verify this harness's installation and captured Session
+                        evidence
+  --session-id SESSION_ID
+                        verify this exact Session with --agent and one REPO
+  --transcripts         also require this harness's Edit observation and
+                        transcript opt-in
+  --inference-calls     also require an Inference call in the selected Session

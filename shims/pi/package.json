@@ -1,0 +1,19 @@
+{
+  "name": "sediment-pi",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Sediment capture shim for the pi harness — emits the Sediment client capture contract (docs/agents/capture-clients.md)",
+  "engines": {
+    "node": ">=22.18 <23 || >=24 <25"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.6",
+    "typescript": "^7.0.2"
+  }
+}

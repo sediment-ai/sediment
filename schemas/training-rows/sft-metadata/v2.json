@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/sft-metadata/v2.json",
+  "title": "SFTMetadata",
+  "description": "Sediment evidence for one SFT sample.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "source_model": {
+      "type": "string",
+      "description": "The model that served the source inference call."
+    },
+    "completion_id": {
+      "type": "string",
+      "description": "The inference call that supplied the training target."
+    },
+    "recipe_id": {
+      "enum": [
+        "sft_curated",
+        "sft_verified"
+      ],
+      "type": "string",
+      "description": "The closed evidence recipe that produced this training row."
+    },
+    "recipe_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The version of the evidence recipe; increment it when recipe semantics change."
+    },
+    "eligibility_source": {
+      "enum": [
+        "explicit_accept",
+        "edit_retention",
+        "resolved_ci_pass"
+      ],
+      "type": "string",
+      "description": "The closed evidence source that made this supervised target eligible."
+    },
+    "label_confidence": {
+      "type": "number",
+      "description": "Trust in the derived training label, bounded to [0, 1]."
+    },
+    "ci_reliability": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Trust in the resolved CI evidence, separate from the categorical label."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "split": {
+      "enum": [
+        "train",
+        "eval"
+      ],
+      "type": "string",
+      "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+    },
+    "attribution_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "git_notes",
+            "jaccard"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The selected target's inferred Attribution method, independent of recipe eligibility."
+    },
+    "session_commit_observation_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+      },
+      "description": "Sorted unique observation IDs for the selected target's exact Session-to-commit edge; empty when absent."
+    },
+    "schema_id": {
+      "const": "https://sediment.so/schemas/training-rows/sft-sample/v2.json",
+      "type": "string",
+      "description": "The canonical wire-shape contract for this row."
+    },
+    "schema_version": {
+      "const": 2,
+      "type": "integer",
+      "description": "The positive integer version of the canonical row schema."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "source_model",
+    "completion_id",
+    "recipe_id",
+    "recipe_version",
+    "eligibility_source",
+    "label_confidence",
+    "ci_reliability",
+    "provenance",
+    "split",
+    "attribution_source",
+    "session_commit_observation_ids",
+    "schema_id",
+    "schema_version"
+  ],
+  "$defs": {
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

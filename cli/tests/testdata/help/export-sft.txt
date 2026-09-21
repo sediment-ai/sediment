@@ -1,0 +1,16 @@
+USAGE:
+  sediment export sft [-h] --out OUT [--recipe {sft_curated,sft_verified}]
+                      [--from FROM_BUNDLE]
+                      [--profile {hf-trl-sft-v1,fireworks-sft-v1}]
+
+  sft.jsonl — supervised training targets
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             output directory
+  --recipe {sft_curated,sft_verified}
+                        evidence recipe (default: sft_curated; sft_verified
+                        requires opt-in)
+  --from FROM_BUNDLE    validated derived bundle directory
+  --profile {hf-trl-sft-v1,fireworks-sft-v1}
+                        exact optional consumer compatibility profile

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/text-part/v1.json",
+  "title": "TextPart",
+  "description": "One plain-text part.",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "text",
+      "type": "string",
+      "description": "The message-part discriminator."
+    },
+    "content": {
+      "type": "string",
+      "description": "Plain text, without JSON encoding around it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "content"
+  ]
+}

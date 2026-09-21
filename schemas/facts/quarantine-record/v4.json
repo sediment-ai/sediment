@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/quarantine-record/v4.json",
+  "title": "QuarantineRecord",
+  "description": "One append-only fact quarantine action.",
+  "type": "object",
+  "properties": {
+    "quarantine_id": {
+      "type": "string",
+      "description": "Stable id for this quarantine record."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "fact_table": {
+      "enum": [
+        "inference_calls",
+        "developer_decisions",
+        "ci_outcomes",
+        "pushes",
+        "pull_request_merges",
+        "pull_request_revisions",
+        "edit_observations",
+        "rejected_edits",
+        "retry_linkages"
+      ],
+      "type": "string",
+      "description": "The fact table that owns the affected fact."
+    },
+    "fact_id": {
+      "type": "string",
+      "description": "The fact affected by this quarantine record."
+    },
+    "action": {
+      "enum": [
+        "quarantine",
+        "release"
+      ],
+      "type": "string",
+      "description": "Whether this record quarantines or releases the fact."
+    },
+    "reason": {
+      "type": "string",
+      "description": "The recorded reason for the quarantine action."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment appended this quarantine record."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "quarantine_id",
+    "org_id",
+    "fact_table",
+    "fact_id",
+    "action",
+    "reason",
+    "recorded_at"
+  ]
+}

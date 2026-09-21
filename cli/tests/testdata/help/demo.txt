@@ -1,0 +1,8 @@
+USAGE:
+  sediment demo [-h] [--force]
+
+  plant one synthetic session so facts is non-zero
+
+OPTIONS:
+  -h, --help  show this help message and exit
+  --force     allow a non-loopback server (writes synthetic facts to it)

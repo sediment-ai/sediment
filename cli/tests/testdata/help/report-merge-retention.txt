@@ -1,0 +1,17 @@
+USAGE:
+  sediment report merge-retention [-h] [--org ORG] [--json] [--rows-out FILE]
+                                  [--database-url DATABASE_URL]
+                                  [--mirror-path MIRROR_PATH]
+
+  Measure attributed file changes at pull request merge boundaries.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --json                emit JSON instead of a text report
+  --rows-out FILE       write canonical merge-retention rows to FILE as JSONL
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

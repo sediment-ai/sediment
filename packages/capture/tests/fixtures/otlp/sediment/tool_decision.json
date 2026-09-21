@@ -1,0 +1,56 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          { "key": "user.id", "value": { "stringValue": "developer-1" } }
+        ]
+      },
+      "scopeLogs": [
+        {
+          "logRecords": [
+            {
+              "body": { "stringValue": "sediment.tool_decision" },
+              "timeUnixNano": "1782578510649000000",
+              "attributes": [
+                { "key": "agent", "value": { "stringValue": "pi" } },
+                { "key": "session.id", "value": { "stringValue": "sess-1" } },
+                { "key": "tool_use_id", "value": { "stringValue": "call-write-1" } },
+                { "key": "tool_name", "value": { "stringValue": "write" } },
+                { "key": "decision", "value": { "stringValue": "accept" } },
+                { "key": "explicit", "value": { "boolValue": false } },
+                { "key": "file_path", "value": { "stringValue": "/repo/app/main.py" } }
+              ]
+            },
+            {
+              "body": { "stringValue": "sediment.tool_decision" },
+              "timeUnixNano": "1782578510655000000",
+              "attributes": [
+                { "key": "agent", "value": { "stringValue": "pi" } },
+                { "key": "session.id", "value": { "stringValue": "sess-1" } },
+                { "key": "tool_use_id", "value": { "stringValue": "call-edit-1" } },
+                { "key": "tool_name", "value": { "stringValue": "edit" } },
+                { "key": "decision", "value": { "stringValue": "accept" } },
+                { "key": "explicit", "value": { "boolValue": false } },
+                { "key": "file_path", "value": { "stringValue": "/repo/app/util.py" } }
+              ]
+            },
+            {
+              "body": { "stringValue": "sediment.tool_decision" },
+              "timeUnixNano": "1782578510661000000",
+              "attributes": [
+                { "key": "agent", "value": { "stringValue": "pi" } },
+                { "key": "session.id", "value": { "stringValue": "sess-1" } },
+                { "key": "tool_use_id", "value": { "stringValue": "call-edit-2" } },
+                { "key": "tool_name", "value": { "stringValue": "edit" } },
+                { "key": "decision", "value": { "stringValue": "reject" } },
+                { "key": "explicit", "value": { "boolValue": true } },
+                { "key": "file_path", "value": { "stringValue": "" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

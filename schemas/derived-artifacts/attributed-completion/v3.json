@@ -1,0 +1,654 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/attributed-completion/v3.json",
+  "title": "AttributedCompletion",
+  "description": "One canonical attributed completion.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "inference_call_id": {
+      "type": "string",
+      "description": "Id of the inference call this record belongs to."
+    },
+    "repo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The attributed repo. Null on an abandonment-evidence row; Sediment does not guess a repo for work that reached no commit."
+    },
+    "commit_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The attributed commit. Null on an abandonment-evidence row."
+    },
+    "file_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The changed file the attribution was keyed on. Null on an abandonment-evidence row."
+    },
+    "similarity_score": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The attribution's similarity score, carried through so a projection can discount on it without re-deriving. Null on an abandonment-evidence row."
+    },
+    "attribution_source": {
+      "anyOf": [
+        {
+          "enum": [
+            "git_notes",
+            "jaccard"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The attribution's `git_notes` or `jaccard` source. Null on an abandonment-evidence row."
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/DeveloperDecision"
+      },
+      "description": "The developer decisions recorded against this completion."
+    },
+    "ci_outcomes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CIOutcome"
+      },
+      "description": "The CI runs recorded for this commit."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    },
+    "split": {
+      "enum": [
+        "train",
+        "eval"
+      ],
+      "type": "string",
+      "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+    },
+    "abandonment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SessionAbandonment"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The session-level abandonment evidence for an explicit-accept negative. Null on an attribution-evidence row. Exactly one evidence variant must be present."
+    },
+    "session_commit_observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SessionCommitObservation"
+      },
+      "description": "Captured Session-to-commit Facts matching this artifact, ordered by qualified edge, UTC capture time, and observation ID. Empty means no observed relationship; Attribution remains inferred."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "session_id",
+    "inference_call_id",
+    "repo",
+    "commit_sha",
+    "file_path",
+    "similarity_score",
+    "attribution_source",
+    "decisions",
+    "ci_outcomes",
+    "provenance",
+    "split",
+    "abandonment",
+    "session_commit_observations"
+  ],
+  "$defs": {
+    "DeveloperDecision": {
+      "type": "object",
+      "properties": {
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this decision."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The developer identity when known. Null when capture omitted it."
+        },
+        "agent_harness": {
+          "enum": [
+            "claude-code",
+            "copilot",
+            "codex",
+            "cursor",
+            "pi"
+          ],
+          "type": "string",
+          "description": "Which coding agent harness produced this fact."
+        },
+        "file_path": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The file edited, or empty string when the client emits none — common on rejects."
+        },
+        "accepted": {
+          "type": "boolean",
+          "description": "Whether the developer took the change."
+        },
+        "explicit": {
+          "type": "boolean",
+          "description": "True for a real human gesture; false for auto-applied or inferred. Implicit decisions move confidence but never classify a row."
+        },
+        "interaction_mode": {
+          "enum": [
+            "agent",
+            "inline"
+          ],
+          "type": "string",
+          "description": "Whether the edit interaction was `agent` or `inline`."
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The commit the client attributed, when it knew one."
+        },
+        "call_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's per-call id, joining this record back to the inference call that produced it. Null when the provider emits none."
+        },
+        "edit_retention_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Graded preference strength in [0, 1]: how much applied edit text remains in a later file observation. Null unless capture or derivation supplies it."
+        },
+        "observation_delay_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 0,
+          "maximum": 9223372036854775807,
+          "description": "The delay before the edit retention score was observed. Null unless the harness reports one."
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the developer acted, stamped client-side. Required — it is what makes a redelivery collapse, and is never backfilled."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "org_id",
+        "session_id",
+        "user_id",
+        "agent_harness",
+        "file_path",
+        "accepted",
+        "explicit",
+        "interaction_mode",
+        "commit_sha",
+        "call_id",
+        "edit_retention_score",
+        "observation_delay_ms",
+        "occurred_at",
+        "captured_at",
+        "raw"
+      ]
+    },
+    "CIOutcome": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The normalized fact-contract version. CI outcomes use 1."
+        },
+        "outcome_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this outcome."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "provider": {
+          "enum": [
+            "github_actions",
+            "jenkins",
+            "gitlab_ci",
+            "circleci",
+            "buildkite",
+            "other"
+          ],
+          "type": "string",
+          "description": "The normalized CI system selected by a capture adapter or declared by the bearer-authenticated vendor integration."
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The provider-issued pipeline-run id, unique within the deployment organization and provider namespace."
+        },
+        "run_attempt": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The positive provider attempt number. Null when the provider omits it."
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "branch": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The branch the run or commit belongs to."
+        },
+        "result": {
+          "enum": [
+            "passed",
+            "failed",
+            "error",
+            "timed_out",
+            "cancelled",
+            "skipped",
+            "neutral",
+            "unknown"
+          ],
+          "type": "string",
+          "description": "Sediment's normalized terminal result."
+        },
+        "workflow_name": {
+          "type": "string",
+          "description": "The CI workflow's display name."
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider's stable workflow or pipeline-definition identity."
+        },
+        "workflow_path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The workflow definition's repo-relative path — the stable identity a display name does not give you. Null when unreported."
+        },
+        "run_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Link to the run in the CI system. Null when unreported; never run identity."
+        },
+        "provider_result": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The exact terminal value reported by the provider before normalization."
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A structured, low-cardinality provider error type. Null when absent."
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 4096
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A bounded, Basic-redacted provider reason. Null when absent."
+        },
+        "source_event_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract and event type. Null when unreported."
+        },
+        "source_spec_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The source contract version. Null when unreported."
+        },
+        "source_event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The provider or standard source event identity. Null when unreported."
+        },
+        "pr_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "The pull request the run belongs to, when there is one."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        },
+        "raw": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "outcome_id",
+        "org_id",
+        "provider",
+        "run_id",
+        "run_attempt",
+        "repo",
+        "commit_sha",
+        "branch",
+        "result",
+        "workflow_name",
+        "workflow_id",
+        "workflow_path",
+        "run_url",
+        "provider_result",
+        "error_type",
+        "reason",
+        "source_event_type",
+        "source_spec_version",
+        "source_event_id",
+        "pr_number",
+        "captured_at",
+        "raw"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "SessionAbandonment": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "accepted_decisions": {
+          "type": "integer",
+          "description": "How many accepted edits this session had that never reached a commit."
+        },
+        "explicit_accepted_decisions": {
+          "type": "integer",
+          "description": "How many of those accepts came from a real human gesture. Only a session with at least one explicit accept can emit a negative attributed completion."
+        },
+        "last_decision_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The session's newest decision time — the anchor the grace horizon is measured back from."
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The newest timestamp anywhere in the facts this derivation read. The horizon is measured against this, never the wall clock, so the same facts always yield the same verdict."
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "The structured provenance for this artifact."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "org_id",
+        "session_id",
+        "accepted_decisions",
+        "explicit_accepted_decisions",
+        "last_decision_at",
+        "as_of",
+        "provenance"
+      ]
+    },
+    "SessionCommitObservation": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The Git-note observation Fact contract version. Fixed at 1."
+        },
+        "observation_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this Session-to-commit observation."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The non-empty `owner/repo` that owns the observed commit, lowercased."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "source_push_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The Push that triggered this Git-note observation."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "observation_id",
+        "org_id",
+        "repo",
+        "commit_sha",
+        "session_id",
+        "source_push_id",
+        "captured_at"
+      ]
+    }
+  }
+}

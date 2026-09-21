@@ -1,0 +1,29 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Check the commit subject against the Conventional Commits dialect in
+# CONTRIBUTING.md §Commits. Opt-in, per developer — install the stub from
+# that section, which resolves this file at commit time.
+#
+# The stub, not a symlink: `.git/hooks` is SHARED by every worktree, so a
+# relative symlink resolves into the main checkout no matter which worktree
+# you commit from — and this repo works out of worktrees
+# (docs/onboarding.md). The stub asks git for the committing worktree
+# instead, and skips silently on a branch that predates this file.
+#
+# This is convenience, not the gate. The repo squash-merges, so what lands
+# on main is the PR title — and CI checks that. A local commit subject that
+# never reaches main is the developer's business; the hook exists so the
+# habit is already right by the time they write the PR title.
+
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo "commit-msg: uv not on PATH; skipping the subject check." >&2
+    exit 0
+fi
+
+exec uv run --quiet --directory "$root" python \
+    "$root/scripts/check_commit_msg.py" "$1"

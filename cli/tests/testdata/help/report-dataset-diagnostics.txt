@@ -1,0 +1,29 @@
+USAGE:
+  sediment report dataset-diagnostics [-h] [--org ORG] [--json]
+                                      [--dpo-recipe {dpo_human,dpo_outcome}]
+                                      [--sft-recipe {sft_curated,sft_verified}]
+                                      [--max-examples MAX_EXAMPLES]
+                                      [--dpo-near-duplicate-threshold DPO_NEAR_DUPLICATE_THRESHOLD]
+                                      [--database-url DATABASE_URL]
+                                      [--mirror-path MIRROR_PATH]
+
+  DPO/SFT dataset diagnostics.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --json                emit JSON report instead of tables
+  --dpo-recipe {dpo_human,dpo_outcome}
+                        DPO evidence recipe (default: dpo_human)
+  --sft-recipe {sft_curated,sft_verified}
+                        SFT evidence recipe (default: sft_curated)
+  --max-examples MAX_EXAMPLES
+                        maximum examples per diagnostics section (default: 5)
+  --dpo-near-duplicate-threshold DPO_NEAR_DUPLICATE_THRESHOLD
+                        minimum token Jaccard similarity for DPO near-duplicate
+                        prompt bucket flags (default: 0.8)
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

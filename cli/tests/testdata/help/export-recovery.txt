@@ -1,0 +1,10 @@
+USAGE:
+  sediment export recovery [-h] --out OUT [--recipe {recovery_ci}]
+
+  recovery.jsonl — red-to-green CI-transition recovery pairs
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             output directory
+  --recipe {recovery_ci}
+                        evidence recipe (default: recovery_ci)

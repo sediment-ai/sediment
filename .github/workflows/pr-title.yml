@@ -1,0 +1,26 @@
+# The repo squash-merges, so the PR title is the subject that lands on main
+# — it is the only subject worth checking. Its own workflow rather than a
+# job in ci.yml, because it needs the `edited` trigger: a title fixed after
+# review must re-run, and adding `edited` to ci.yml would re-run pytest and
+# the secret scan every time someone corrects a typo in a title.
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  conventional-subject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The runner's own python: the checker imports stdlib only, so this
+      # job needs no uv sync and finishes in seconds.
+      - run: python3 scripts/check_commit_msg.py --title "$PR_TITLE"
+        env:
+          # Through the environment, never interpolated into the shell: a
+          # PR title is text an outside contributor writes.
+          PR_TITLE: ${{ github.event.pull_request.title }}

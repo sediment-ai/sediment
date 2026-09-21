@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/inference-call/v1.json",
+  "title": "InferenceCall",
+  "description": "One model call.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The normalized fact-contract version. Inference calls use 1."
+    },
+    "inference_call_id": {
+      "type": "string",
+      "description": "Stable id for this inference-call fact."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The developer identity when known. Null when capture omitted it."
+    },
+    "gateway_provider": {
+      "enum": [
+        "litellm",
+        "portkey",
+        "helicone",
+        "unknown"
+      ],
+      "type": "string",
+      "description": "The capture gateway that observed the call, not the model service."
+    },
+    "model_provider": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The model service when the gateway reports it. Null when unknown."
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The model that served the call, as the gateway spelled it."
+    },
+    "input_messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InferenceMessage"
+      },
+      "description": "The ordered request messages with typed parts preserved."
+    },
+    "output_messages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InferenceMessage"
+      },
+      "description": "The ordered response messages with typed parts preserved."
+    },
+    "input_tokens": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "description": "Input tokens reported by the gateway. Null when unreported."
+    },
+    "output_tokens": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "description": "Output tokens reported by the gateway. Null when unreported."
+    },
+    "duration_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "description": "Call duration in milliseconds. Null when unreported."
+    },
+    "model_call_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The model service's per-call id and dedup key when present. It is separate from the ids on tool-call parts."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment observed the call, stamped at capture."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "inference_call_id",
+    "org_id",
+    "session_id",
+    "user_id",
+    "gateway_provider",
+    "model_provider",
+    "model",
+    "input_messages",
+    "output_messages",
+    "input_tokens",
+    "output_tokens",
+    "duration_ms",
+    "model_call_id",
+    "observed_at",
+    "raw"
+  ],
+  "$defs": {
+    "InferenceMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "The message author role, such as `system`, `user`, `assistant`, or `tool`."
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextPart"
+              },
+              {
+                "$ref": "#/$defs/ReasoningPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallPart"
+              },
+              {
+                "$ref": "#/$defs/ToolCallResponsePart"
+              }
+            ]
+          },
+          "description": "Ordered text, reasoning, tool-call, or tool-response parts."
+        },
+        "finish_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The model service's finish reason when reported."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "parts",
+        "finish_reason"
+      ]
+    },
+    "TextPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "text",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain text, without JSON encoding around it."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ReasoningPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "reasoning",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "content": {
+          "type": "string",
+          "description": "Readable model reasoning. Opaque provider state remains on the fact's `raw` payload."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "content"
+      ]
+    },
+    "ToolCallPart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The agent-visible tool-call id. It is separate from `model_call_id`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The tool the model requested."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The parsed argument object. Malformed wire arguments become `{}`; the original stays on `InferenceCall.raw`."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "name",
+        "arguments"
+      ]
+    },
+    "ToolCallResponsePart": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "tool_call_response",
+          "type": "string",
+          "description": "The message-part discriminator."
+        },
+        "id": {
+          "type": "string",
+          "description": "The tool-call id this result answers."
+        },
+        "result": {
+          "description": "The structured tool result supplied to the model."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "result"
+      ]
+    }
+  }
+}

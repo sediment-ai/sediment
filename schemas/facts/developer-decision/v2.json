@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/developer-decision/v2.json",
+  "title": "DeveloperDecision",
+  "description": "One developer accept or reject decision.",
+  "type": "object",
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "description": "Stable id for this decision."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The developer identity when known. Null when capture omitted it."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "cursor",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "The file edited, or empty string when the client emits none — common on rejects."
+    },
+    "accepted": {
+      "type": "boolean",
+      "description": "Whether the developer took the change."
+    },
+    "explicit": {
+      "type": "boolean",
+      "description": "True for a real human gesture; false for auto-applied or inferred. Implicit decisions move confidence but never classify a row."
+    },
+    "interaction_mode": {
+      "enum": [
+        "agent",
+        "inline"
+      ],
+      "type": "string",
+      "description": "Whether the edit interaction was `agent` or `inline`."
+    },
+    "commit_sha": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The commit the client attributed, when it knew one."
+    },
+    "call_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The provider's per-call id, joining this record back to the inference call that produced it. Null when the provider emits none."
+    },
+    "edit_retention_score": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Graded preference strength in [0, 1]: how much applied edit text remains in a later file observation. Null unless capture or derivation supplies it."
+    },
+    "observation_delay_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "description": "The delay before the edit retention score was observed. Null unless the harness reports one."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the developer acted, stamped client-side. Required — it is what makes a redelivery collapse, and is never backfilled."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "decision_id",
+    "org_id",
+    "session_id",
+    "user_id",
+    "agent_harness",
+    "file_path",
+    "accepted",
+    "explicit",
+    "interaction_mode",
+    "commit_sha",
+    "call_id",
+    "edit_retention_score",
+    "observation_delay_ms",
+    "occurred_at",
+    "captured_at",
+    "raw"
+  ]
+}

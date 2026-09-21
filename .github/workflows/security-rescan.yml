@@ -1,0 +1,46 @@
+name: retained release security
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rescan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Only the current scanner/policy code runs. Retained releases supply data.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Install checksum-pinned Trivy
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/trivy.tar.gz"
+          curl --fail --location --silent --show-error \
+            https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz -o "$archive"
+          echo "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a  $archive" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+      - name: Verify retained assets and rescan supported release inventories
+        run: uv run --no-project python scripts/rescan_releases.py scan --repository "$GITHUB_REPOSITORY" --out security-rescans
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: retained-release-security
+          path: |
+            security-rescans/retained-releases.json
+            security-rescans/rescan-*/*
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,426 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-bundle/manifest/v1.json",
+  "title": "BundleManifest",
+  "description": "The top-level derived-bundle manifest.",
+  "type": "object",
+  "properties": {
+    "bundle_schema_version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The derived-bundle contract version. Canonical bundles use 1."
+    },
+    "org_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "scope": {
+      "$ref": "#/$defs/BundleScope",
+      "description": "The inclusive `since`, exclusive `until`, and user allowlist. An absent user allowlist means every user in the configured organization."
+    },
+    "policy": {
+      "$ref": "#/$defs/BundlePolicy",
+      "description": "Every resolved attribution and split policy value."
+    },
+    "policy_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the canonical resolved policy."
+    },
+    "implementation_versions": {
+      "$ref": "#/$defs/BundleImplementationVersions",
+      "description": "The abandonment, attribution, attributed-completion, and rollout implementation versions."
+    },
+    "quarantine_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The fact-store quarantine token from the bundle's read snapshot."
+    },
+    "as_of": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The newest visible input-fact timestamp, or null for an empty fact set."
+    },
+    "mirror_revisions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "The ref-to-object map for every mirror held stable during derivation."
+    },
+    "counts": {
+      "$ref": "#/$defs/BundleArtifactCounts",
+      "description": "Row count for each canonical JSONL file."
+    },
+    "skipped": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Data-quality derivation skips by closed reason."
+    },
+    "excluded": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Intended cohort exclusions by closed reason."
+    },
+    "files": {
+      "$ref": "#/$defs/BundleFiles",
+      "description": "Integrity metadata keyed by canonical artifact name."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "bundle_schema_version",
+    "org_id",
+    "scope",
+    "policy",
+    "policy_digest",
+    "implementation_versions",
+    "quarantine_revision",
+    "as_of",
+    "mirror_revisions",
+    "counts",
+    "skipped",
+    "excluded",
+    "files"
+  ],
+  "$defs": {
+    "BundleScope": {
+      "type": "object",
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Inclusive lower timestamp bound, or null when unbounded."
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Exclusive upper timestamp bound, or null when unbounded."
+        },
+        "users": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "minItems": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Included user ids, or null when all users are included."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "since",
+        "until",
+        "users"
+      ]
+    },
+    "BundlePolicy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The closed derivation-policy schema version."
+        },
+        "attribution": {
+          "$ref": "#/$defs/BundleAttributionPolicy",
+          "description": "The resolved attribution policy."
+        },
+        "split": {
+          "$ref": "#/$defs/BundleSplitPolicy",
+          "description": "The resolved deterministic split policy."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "attribution",
+        "split"
+      ]
+    },
+    "BundleAttributionPolicy": {
+      "type": "object",
+      "properties": {
+        "post_push_grace_period_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The non-negative post-push attribution grace period in minutes."
+        },
+        "max_commits_per_push": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "description": "The positive maximum number of commits inspected per push."
+        },
+        "git_notes": {
+          "$ref": "#/$defs/BundleSimilarityPolicy",
+          "description": "The resolved similarity policy for git-notes attribution."
+        },
+        "jaccard": {
+          "$ref": "#/$defs/BundleSimilarityPolicy",
+          "description": "The resolved similarity policy for Jaccard attribution."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "post_push_grace_period_minutes",
+        "max_commits_per_push",
+        "git_notes",
+        "jaccard"
+      ]
+    },
+    "BundleSimilarityPolicy": {
+      "type": "object",
+      "properties": {
+        "min_similarity": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "The inclusive similarity threshold, bounded to [0, 1]."
+        },
+        "lookback_window_minutes": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "description": "The positive fact-anchored lookback window in minutes."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "min_similarity",
+        "lookback_window_minutes"
+      ]
+    },
+    "BundleSplitPolicy": {
+      "type": "object",
+      "properties": {
+        "eval_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 0.5,
+          "description": "The deterministic evaluation fraction, bounded to [0, 0.5]."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "eval_fraction"
+      ]
+    },
+    "BundleImplementationVersions": {
+      "type": "object",
+      "properties": {
+        "abandonment": {
+          "const": "2",
+          "type": "string",
+          "description": "The abandonment derivation implementation version."
+        },
+        "attribution": {
+          "const": "1",
+          "type": "string",
+          "description": "The attribution derivation implementation version."
+        },
+        "attributed_completion": {
+          "const": "3",
+          "type": "string",
+          "description": "The attributed-completion assembly implementation version."
+        },
+        "rollout": {
+          "const": "2",
+          "type": "string",
+          "description": "The rollout derivation implementation version."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "abandonment",
+        "attribution",
+        "attributed_completion",
+        "rollout"
+      ]
+    },
+    "BundleArtifactCounts": {
+      "type": "object",
+      "properties": {
+        "attributed_completions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The attributed-completions JSONL row count."
+        },
+        "rollouts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The rollouts JSONL row count."
+        },
+        "inference_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The inference-calls JSONL row count."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "attributed_completions",
+        "rollouts",
+        "inference_calls"
+      ]
+    },
+    "BundleFiles": {
+      "type": "object",
+      "properties": {
+        "attributed_completions": {
+          "$ref": "#/$defs/BundleAttributedCompletionsFile",
+          "description": "Integrity metadata for attributed_completions.jsonl."
+        },
+        "rollouts": {
+          "$ref": "#/$defs/BundleRolloutsFile",
+          "description": "Integrity metadata for rollouts.jsonl."
+        },
+        "inference_calls": {
+          "$ref": "#/$defs/BundleInferenceCallsFile",
+          "description": "Integrity metadata for inference_calls.jsonl."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "attributed_completions",
+        "rollouts",
+        "inference_calls"
+      ]
+    },
+    "BundleAttributedCompletionsFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "attributed_completions.jsonl",
+          "type": "string",
+          "description": "The fixed attributed_completions.jsonl path."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The JSONL row count."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The exact file size in bytes."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the complete file bytes."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "rows",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "BundleRolloutsFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "rollouts.jsonl",
+          "type": "string",
+          "description": "The fixed rollouts.jsonl path."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The JSONL row count."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The exact file size in bytes."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the complete file bytes."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "rows",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "BundleInferenceCallsFile": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "const": "inference_calls.jsonl",
+          "type": "string",
+          "description": "The fixed inference_calls.jsonl path."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The JSONL row count."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The exact file size in bytes."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the complete file bytes."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "rows",
+        "bytes",
+        "sha256"
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "hook_event_name": "postToolUse",
+  "conversation_id": "f42a975c-5bd3-4c45-a2fb-3c9b52a52659",
+  "tool_use_id": "call-55f3d276-aae5-423b-9289-4c7d4dc3a749-0\nfc_f869985f-ae0c-4666-92c8-bd376efb73f9_0",
+  "tool_name": "Write",
+  "workspace_roots": ["/fixture/repository"],
+  "tool_input": {
+    "path": "/fixture/repository/cursor_native.py",
+    "contents": "def multiply(a, b):\n    return a * b\n"
+  }
+}

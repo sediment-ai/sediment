@@ -1,0 +1,55 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      routine:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      routine:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+  - package-ecosystem: npm
+    directory: /shims/pi
+    # Typings follow the declared Node 24 runtime.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+    schedule:
+      interval: daily
+    groups:
+      routine:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /docker/postgres
+      - /docker/gateway
+    # Runtime-line migrations require a separate compatibility review.
+    ignore:
+      - dependency-name: python
+        versions: [">=3.13"]
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+    schedule:
+      interval: daily
+    groups:
+      routine:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)

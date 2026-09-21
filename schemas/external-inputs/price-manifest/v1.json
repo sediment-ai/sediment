@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/external-inputs/price-manifest/v1.json",
+  "title": "PriceManifest",
+  "description": "One immutable model price policy for cost analysis.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1,
+      "type": "integer",
+      "description": "The supported price-manifest contract version."
+    },
+    "manifest_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The operator-assigned immutable price-policy identifier."
+    },
+    "prices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ModelPrice"
+      },
+      "minItems": 1,
+      "description": "The model price entries in this policy."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "manifest_id",
+    "prices"
+  ],
+  "$defs": {
+    "ModelPrice": {
+      "type": "object",
+      "properties": {
+        "model_provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The explicitly declared model provider."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The provider-specific model identifier."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "The uppercase three-letter currency code for both prices."
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The inclusive start of this price interval, or null when unbounded."
+        },
+        "effective_until": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The exclusive end of this price interval, or null when unbounded."
+        },
+        "input_per_million_tokens": {
+          "type": "string",
+          "format": "decimal",
+          "pattern": "^(?:-0(?:\\.0+)?|0(?:\\.\\d+)?|[1-9]\\d*(?:\\.\\d+)?)$",
+          "description": "The exact input price per million tokens, serialized as a decimal string."
+        },
+        "output_per_million_tokens": {
+          "type": "string",
+          "format": "decimal",
+          "pattern": "^(?:-0(?:\\.0+)?|0(?:\\.\\d+)?|[1-9]\\d*(?:\\.\\d+)?)$",
+          "description": "The exact output price per million tokens, serialized as a decimal string."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "model_provider",
+        "model",
+        "currency",
+        "effective_from",
+        "effective_until",
+        "input_per_million_tokens",
+        "output_per_million_tokens"
+      ]
+    }
+  }
+}

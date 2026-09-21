@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/retry-linkage/v2.json",
+  "title": "RetryLinkage",
+  "description": "One human-directed correction retry after a refused AI edit.",
+  "type": "object",
+  "properties": {
+    "retry_linkage_id": {
+      "type": "string",
+      "description": "Stable id for this retry-linkage fact."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The developer identity when known. Null when capture omitted it."
+    },
+    "agent_harness": {
+      "enum": [
+        "claude-code",
+        "copilot",
+        "codex",
+        "cursor",
+        "pi"
+      ],
+      "type": "string",
+      "description": "Which coding agent harness produced this fact."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "The path the harness reported for both edit attempts. It may be absolute or repo-relative."
+    },
+    "tool_name": {
+      "enum": [
+        "Edit",
+        "Write"
+      ],
+      "type": "string",
+      "description": "The edit tool shared by the rejected call and accepted retry."
+    },
+    "rejected_call_id": {
+      "type": "string",
+      "description": "The refused edit tool-call id that started the retry."
+    },
+    "accepted_call_id": {
+      "type": "string",
+      "description": "The later accepted edit tool-call id."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event happened, stamped client-side — distinct from `captured_at`, which is when Sediment stored it."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": {},
+      "description": "The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "retry_linkage_id",
+    "org_id",
+    "session_id",
+    "user_id",
+    "agent_harness",
+    "file_path",
+    "tool_name",
+    "rejected_call_id",
+    "accepted_call_id",
+    "occurred_at",
+    "captured_at",
+    "raw"
+  ]
+}

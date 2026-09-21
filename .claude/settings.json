@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf 'The repo router follows. Read it; it governs this session.\\n\\n' && cat \"$CLAUDE_PROJECT_DIR/AGENTS.md\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(git diff:*)",
+      "Bash(git grep:*)",
+      "Bash(uv run python scripts/add_spdx.py --check)",
+      "Bash(uv run python scripts/check_docs.py:*)",
+      "Bash(uv run python scripts/dump_openapi.py:*)",
+      "Bash(uv run sediment report:*)",
+      "Bash(uv run sediment doctor:*)",
+      "Bash(uv run python scripts/calibration_check.py:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)"
+    ]
+  }
+}

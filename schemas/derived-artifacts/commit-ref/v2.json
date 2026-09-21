@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/commit-ref/v2.json",
+  "title": "CommitRef",
+  "description": "One repository-qualified commit.",
+  "type": "object",
+  "properties": {
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The repository containing this commit."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "The full commit identity within that repository."
+    },
+    "repository_identity": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepositoryIdentity"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Qualified provider, host, and repository ID; null for an unambiguous legacy repository."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "repo",
+    "commit_sha",
+    "repository_identity"
+  ],
+  "$defs": {
+    "RepositoryIdentity": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "const": "github",
+          "type": "string",
+          "description": "The forge provider that assigns the immutable repository ID."
+        },
+        "host": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The lowercase configured forge host."
+        },
+        "repository_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Immutable provider repository ID within its forge host."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "host",
+        "repository_id"
+      ]
+    }
+  }
+}

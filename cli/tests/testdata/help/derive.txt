@@ -1,0 +1,16 @@
+USAGE:
+  sediment derive [-h] --out OUT [--policy POLICY] [--since SINCE] [--until UNTIL]
+                  [--users USER [USER ...]] [--sample N]
+
+  materialize a reviewed canonical derivation bundle
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             new bundle directory
+  --policy POLICY       strict derivation policy TOML file
+  --since SINCE         inclusive RFC 3339 completion time
+  --until UNTIL         exclusive RFC 3339 completion time
+  --users USER [USER ...]
+                        space-separated user IDs (default: every user in the
+                        organization)
+  --sample N            print the first N canonical rows after writing

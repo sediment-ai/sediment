@@ -1,0 +1,19 @@
+USAGE:
+  sediment export rlvr [-h] --out OUT --target {sediment,swe-bench,nemo-gym}
+                       [--from FROM_BUNDLE]
+                       [--profile {swe-bench-tasks-v1,nemo-gym-rollouts-v1}]
+                       [--consumer-config CONSUMER_CONFIG]
+
+  export one explicit RLVR target
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             output directory
+  --target {sediment,swe-bench,nemo-gym}
+                        explicit consumer contract
+  --from FROM_BUNDLE    validated derived bundle directory
+  --profile {swe-bench-tasks-v1,nemo-gym-rollouts-v1}
+                        exact optional consumer compatibility profile
+  --consumer-config CONSUMER_CONFIG
+                        JSON task and response configuration for the selected
+                        profile

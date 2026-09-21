@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/push/v1.json",
+  "title": "Push",
+  "description": "One forge push receipt.",
+  "type": "object",
+  "properties": {
+    "push_id": {
+      "type": "string",
+      "description": "Stable id for this push."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "provider": {
+      "const": "github",
+      "type": "string",
+      "description": "Which system this fact came from."
+    },
+    "repo": {
+      "type": "string",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "clone_url": {
+      "type": "string",
+      "description": "Where the mirror fetches this repo from."
+    },
+    "ref": {
+      "type": "string",
+      "description": "The ref that moved, e.g. `refs/heads/main`."
+    },
+    "before_sha": {
+      "type": "string",
+      "description": "The ref's tip before the push."
+    },
+    "after_sha": {
+      "type": "string",
+      "description": "The ref's tip after the push."
+    },
+    "forced": {
+      "type": "boolean",
+      "description": "Whether the push rewrote history."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "push_id",
+    "org_id",
+    "provider",
+    "repo",
+    "clone_url",
+    "ref",
+    "before_sha",
+    "after_sha",
+    "forced",
+    "captured_at"
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-bundle/repository-identity-evidence/v1.json",
+  "title": "RepositoryIdentityEvidence",
+  "description": "One captured repository role and its exact source Fact.",
+  "type": "object",
+  "properties": {
+    "source_table": {
+      "enum": [
+        "pushes",
+        "ci_outcomes",
+        "session_commit_observations",
+        "pull_request_merges",
+        "pull_request_revisions"
+      ],
+      "description": "Fact family that owns this repository-role projection."
+    },
+    "source_fact_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Exact source Fact ID retained without replacement."
+    },
+    "role": {
+      "enum": [
+        "repo",
+        "head_repo"
+      ],
+      "type": "string",
+      "description": "Target repository or independent pull-request head repository role."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+    },
+    "repository_provider": {
+      "anyOf": [
+        {
+          "const": "github",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Captured forge provider."
+    },
+    "repository_host": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Configured lowercase forge host."
+    },
+    "repository_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Immutable provider repository ID within its forge host."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    },
+    "source_push_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The Push that triggered this Git-note observation."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "source_table",
+    "source_fact_id",
+    "role",
+    "org_id",
+    "repo",
+    "repository_provider",
+    "repository_host",
+    "repository_id",
+    "captured_at",
+    "source_push_id"
+  ]
+}

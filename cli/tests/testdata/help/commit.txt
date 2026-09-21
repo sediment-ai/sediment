@@ -1,0 +1,23 @@
+USAGE:
+  sediment commit [-h] [--repo REPO] [--repository-provider {github}]
+                  [--repository-host REPOSITORY_HOST]
+                  [--repository-id REPOSITORY_ID] [--as-of AS_OF]
+                  sha
+
+  pretty-print attributions for a commit
+
+ARGUMENTS:
+  sha                   full 40- or 64-char commit SHA
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --repo REPO           observed repository name; ambiguous names require
+                        identity
+  --repository-provider {github}
+                        forge provider (requires host and ID)
+  --repository-host REPOSITORY_HOST
+                        forge hostname (requires provider and ID)
+  --repository-id REPOSITORY_ID
+                        provider repository ID (requires provider and host)
+  --as-of AS_OF         inclusive evidence boundary as an aware RFC 3339
+                        timestamp

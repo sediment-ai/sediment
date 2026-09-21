@@ -1,0 +1,7 @@
+USAGE:
+  sediment delivery status [-h] [--directory DIRECTORY]
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --directory DIRECTORY
+                        private buffer (default: SEDIMENT_DELIVERY_DIR)

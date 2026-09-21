@@ -1,0 +1,9 @@
+USAGE:
+  sediment quarantine-log [-h] [--tail TAIL] [--all]
+
+  the org's quarantine history
+
+OPTIONS:
+  -h, --help   show this help message and exit
+  --tail TAIL  rows shown (default 20)
+  --all        show the full history

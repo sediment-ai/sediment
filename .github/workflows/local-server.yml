@@ -1,0 +1,41 @@
+name: Local server
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: local-server-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  native:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.17"
+          python-version: "3.12.14"
+      - name: Install maintained Linux libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+      - name: Install maintained macOS libraries
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install libpq openssl@3
+          brew upgrade libpq openssl@3
+          echo "$(brew --prefix libpq)/bin" >> "$GITHUB_PATH"
+      - run: uv sync --locked
+      - name: Exercise installed local server
+        run: >-
+          uv run pytest -q cli/tests/test_local_postgres.py
+          cli/tests/test_installed_wheel.py -k 'local_postgres or manages_database'

@@ -1,0 +1,4 @@
+#!/bin/sh
+# >>> sediment-attribution >>>
+python3 "/opt/sediment/sediment_attribution.py" stamp || true
+# <<< sediment-attribution <<<

@@ -1,0 +1,447 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/training-rows/diff-sft-sample/v2.json",
+  "title": "DiffSFTSample",
+  "description": "One diff-SFT sample.",
+  "type": "object",
+  "properties": {
+    "prompt": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TrainerTextMessage"
+          },
+          {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TrainerAssistantContentMessage"
+              },
+              {
+                "$ref": "#/$defs/TrainerAssistantThinkingMessage"
+              },
+              {
+                "$ref": "#/$defs/TrainerAssistantToolCallMessage"
+              }
+            ]
+          },
+          {
+            "$ref": "#/$defs/TrainerToolMessage"
+          }
+        ]
+      },
+      "description": "The ordered trainer-facing request-context messages."
+    },
+    "completion": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TrainerAssistantContentMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantThinkingMessage"
+          },
+          {
+            "$ref": "#/$defs/TrainerAssistantToolCallMessage"
+          }
+        ]
+      },
+      "description": "An assistant message containing the exact patch."
+    },
+    "tools": {
+      "type": "array",
+      "items": false,
+      "description": "Tool definitions available to the trainer. Empty for inference-call schema version 1, which carries no tool-definition field."
+    },
+    "metadata": {
+      "$ref": "#/$defs/DiffSFTMetadata",
+      "description": "Sediment evidence excluded from trainer inputs."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "prompt",
+    "completion",
+    "tools",
+    "metadata"
+  ],
+  "$defs": {
+    "TrainerTextMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "enum": [
+            "developer",
+            "system",
+            "user"
+          ],
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ]
+    },
+    "TrainerAssistantContentMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ]
+    },
+    "TrainerToolCall": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The tool-call identity used by the matching result."
+        },
+        "type": {
+          "const": "function",
+          "type": "string",
+          "description": "The fixed `function` tool-call discriminator."
+        },
+        "function": {
+          "$ref": "#/$defs/TrainerFunctionCall",
+          "description": "The structured function payload for this tool call."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "function"
+      ]
+    },
+    "TrainerFunctionCall": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "The exact structured arguments supplied to the function."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "arguments"
+      ]
+    },
+    "TrainerAssistantThinkingMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "thinking"
+      ]
+    },
+    "TrainerAssistantToolCallMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "assistant",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "tool_calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrainerToolCall"
+          },
+          "description": "Structured function calls requested by the assistant."
+        },
+        "thinking": {
+          "type": "string",
+          "description": "Readable assistant reasoning kept outside visible content."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "tool_calls"
+      ]
+    },
+    "TrainerToolMessage": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "const": "tool",
+          "type": "string",
+          "description": "The trainer-facing message role."
+        },
+        "name": {
+          "type": "string",
+          "description": "The function name associated with this tool call or result."
+        },
+        "tool_call_id": {
+          "type": "string",
+          "description": "The earlier tool-call id this result answers."
+        },
+        "content": {
+          "type": "string",
+          "description": "Plain-text message content."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "name",
+        "tool_call_id",
+        "content"
+      ]
+    },
+    "DiffSFTMetadata": {
+      "type": "object",
+      "properties": {
+        "org_id": {
+          "type": "string",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "repo": {
+          "type": "string",
+          "description": "`owner/repo`, lowercased. Empty string when the sender omitted it."
+        },
+        "commit_sha": {
+          "type": "string",
+          "description": "Full-length commit sha, lowercased."
+        },
+        "source_model": {
+          "type": "string",
+          "description": "The model that served the source inference call."
+        },
+        "completion_id": {
+          "type": "string",
+          "description": "The inference call that supplied the training target."
+        },
+        "recipe_id": {
+          "enum": [
+            "sft_curated",
+            "sft_verified"
+          ],
+          "type": "string",
+          "description": "The closed evidence recipe that produced this training row."
+        },
+        "recipe_version": {
+          "const": 1,
+          "type": "integer",
+          "description": "The version of the evidence recipe; increment it when recipe semantics change."
+        },
+        "eligibility_source": {
+          "enum": [
+            "explicit_accept",
+            "edit_retention",
+            "resolved_ci_pass"
+          ],
+          "type": "string",
+          "description": "The closed evidence source that made this supervised target eligible."
+        },
+        "label_confidence": {
+          "type": "number",
+          "description": "Trust in the derived training label, bounded to [0, 1]."
+        },
+        "ci_reliability": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Trust in the resolved CI evidence, separate from the categorical label."
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "description": "The structured provenance for this artifact."
+        },
+        "split": {
+          "enum": [
+            "train",
+            "eval"
+          ],
+          "type": "string",
+          "description": "Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both."
+        },
+        "source_ids": {
+          "$ref": "#/$defs/SourceIds",
+          "description": "The facts this row was assembled from."
+        },
+        "attribution_sources": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "git_notes",
+              "jaccard"
+            ],
+            "type": "string"
+          },
+          "description": "Sorted distinct Attribution methods of members supplying the emitted patch."
+        },
+        "schema_id": {
+          "const": "https://sediment.so/schemas/training-rows/diff-sft-sample/v2.json",
+          "type": "string",
+          "description": "The canonical wire-shape contract for this row."
+        },
+        "schema_version": {
+          "const": 2,
+          "type": "integer",
+          "description": "The positive integer version of the canonical row schema."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "org_id",
+        "session_id",
+        "repo",
+        "commit_sha",
+        "source_model",
+        "completion_id",
+        "recipe_id",
+        "recipe_version",
+        "eligibility_source",
+        "label_confidence",
+        "ci_reliability",
+        "provenance",
+        "split",
+        "source_ids",
+        "attribution_sources",
+        "schema_id",
+        "schema_version"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    },
+    "SourceIds": {
+      "type": "object",
+      "properties": {
+        "inference_call_id": {
+          "type": "string",
+          "description": "Id of the inference call this record belongs to."
+        },
+        "decision_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Decisions that contributed to the row."
+        },
+        "ci_outcome_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "CI outcomes that contributed to the row."
+        },
+        "session_commit_observation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+          },
+          "description": "Sorted unique observation IDs from members supplying the emitted patch."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "inference_call_id",
+        "decision_ids",
+        "ci_outcome_ids",
+        "session_commit_observation_ids"
+      ]
+    }
+  }
+}

@@ -1,0 +1,321 @@
+{
+ "resourceLogs": [
+  {
+   "resource": {
+    "attributes": [
+     {
+      "key": "user.id",
+      "value": {
+       "stringValue": "spike-dev"
+      }
+     },
+     {
+      "key": "host.arch",
+      "value": {
+       "stringValue": "arm64"
+      }
+     },
+     {
+      "key": "os.type",
+      "value": {
+       "stringValue": "darwin"
+      }
+     },
+     {
+      "key": "os.version",
+      "value": {
+       "stringValue": "25.5.0"
+      }
+     },
+     {
+      "key": "service.name",
+      "value": {
+       "stringValue": "claude-code"
+      }
+     },
+     {
+      "key": "service.version",
+      "value": {
+       "stringValue": "2.1.200"
+      }
+     }
+    ],
+    "droppedAttributesCount": 0
+   },
+   "scopeLogs": [
+    {
+     "scope": {
+      "name": "com.anthropic.claude_code.events",
+      "version": "2.1.200"
+     },
+     "logRecords": [
+      {
+       "timeUnixNano": "1783454138277000000",
+       "observedTimeUnixNano": "1783454138277000000",
+       "body": {
+        "stringValue": "claude_code.tool_result"
+       },
+       "attributes": [
+        {
+         "key": "user.id",
+         "value": {
+          "stringValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+         }
+        },
+        {
+         "key": "session.id",
+         "value": {
+          "stringValue": "11111111-1111-1111-1111-111111111111"
+         }
+        },
+        {
+         "key": "terminal.type",
+         "value": {
+          "stringValue": "non-interactive"
+         }
+        },
+        {
+         "key": "event.name",
+         "value": {
+          "stringValue": "tool_result"
+         }
+        },
+        {
+         "key": "event.timestamp",
+         "value": {
+          "stringValue": "2026-07-07T19:55:38.277Z"
+         }
+        },
+        {
+         "key": "event.sequence",
+         "value": {
+          "intValue": 14
+         }
+        },
+        {
+         "key": "prompt.id",
+         "value": {
+          "stringValue": "22222222-2222-2222-2222-222222222222"
+         }
+        },
+        {
+         "key": "tool_name",
+         "value": {
+          "stringValue": "Read"
+         }
+        },
+        {
+         "key": "tool_use_id",
+         "value": {
+          "stringValue": "toolu_0000000000000001"
+         }
+        },
+        {
+         "key": "success",
+         "value": {
+          "stringValue": "true"
+         }
+        },
+        {
+         "key": "duration_ms",
+         "value": {
+          "stringValue": "4"
+         }
+        },
+        {
+         "key": "tool_input",
+         "value": {
+          "stringValue": "{\"file_path\":\"/home/dev/project/target.txt\"}"
+         }
+        },
+        {
+         "key": "tool_input_size_bytes",
+         "value": {
+          "stringValue": "184"
+         }
+        },
+        {
+         "key": "tool_result_size_bytes",
+         "value": {
+          "stringValue": "13"
+         }
+        }
+       ],
+       "droppedAttributesCount": 0
+      },
+      {
+       "timeUnixNano": "1783454138290000000",
+       "observedTimeUnixNano": "1783454138290000000",
+       "body": {
+        "stringValue": "claude_code.tool_decision"
+       },
+       "attributes": [
+        {
+         "key": "user.id",
+         "value": {
+          "stringValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+         }
+        },
+        {
+         "key": "session.id",
+         "value": {
+          "stringValue": "11111111-1111-1111-1111-111111111111"
+         }
+        },
+        {
+         "key": "terminal.type",
+         "value": {
+          "stringValue": "non-interactive"
+         }
+        },
+        {
+         "key": "event.name",
+         "value": {
+          "stringValue": "tool_decision"
+         }
+        },
+        {
+         "key": "event.timestamp",
+         "value": {
+          "stringValue": "2026-07-07T19:55:38.290Z"
+         }
+        },
+        {
+         "key": "event.sequence",
+         "value": {
+          "intValue": 16
+         }
+        },
+        {
+         "key": "prompt.id",
+         "value": {
+          "stringValue": "22222222-2222-2222-2222-222222222222"
+         }
+        },
+        {
+         "key": "decision",
+         "value": {
+          "stringValue": "accept"
+         }
+        },
+        {
+         "key": "source",
+         "value": {
+          "stringValue": "config"
+         }
+        },
+        {
+         "key": "tool_name",
+         "value": {
+          "stringValue": "Edit"
+         }
+        },
+        {
+         "key": "tool_use_id",
+         "value": {
+          "stringValue": "toolu_0000000000000002"
+         }
+        }
+       ],
+       "droppedAttributesCount": 0
+      },
+      {
+       "timeUnixNano": "1783454138293000000",
+       "observedTimeUnixNano": "1783454138293000000",
+       "body": {
+        "stringValue": "claude_code.tool_result"
+       },
+       "attributes": [
+        {
+         "key": "user.id",
+         "value": {
+          "stringValue": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+         }
+        },
+        {
+         "key": "session.id",
+         "value": {
+          "stringValue": "11111111-1111-1111-1111-111111111111"
+         }
+        },
+        {
+         "key": "terminal.type",
+         "value": {
+          "stringValue": "non-interactive"
+         }
+        },
+        {
+         "key": "event.name",
+         "value": {
+          "stringValue": "tool_result"
+         }
+        },
+        {
+         "key": "event.timestamp",
+         "value": {
+          "stringValue": "2026-07-07T19:55:38.293Z"
+         }
+        },
+        {
+         "key": "event.sequence",
+         "value": {
+          "intValue": 17
+         }
+        },
+        {
+         "key": "prompt.id",
+         "value": {
+          "stringValue": "22222222-2222-2222-2222-222222222222"
+         }
+        },
+        {
+         "key": "tool_name",
+         "value": {
+          "stringValue": "Edit"
+         }
+        },
+        {
+         "key": "tool_use_id",
+         "value": {
+          "stringValue": "toolu_0000000000000002"
+         }
+        },
+        {
+         "key": "success",
+         "value": {
+          "stringValue": "true"
+         }
+        },
+        {
+         "key": "duration_ms",
+         "value": {
+          "stringValue": "2"
+         }
+        },
+        {
+         "key": "tool_input",
+         "value": {
+          "stringValue": "{\"file_path\":\"/home/dev/project/target.txt\",\"old_string\":\"line one\",\"new_string\":\"line two\",\"replace_all\":false}"
+         }
+        },
+        {
+         "key": "tool_input_size_bytes",
+         "value": {
+          "stringValue": "252"
+         }
+        },
+        {
+         "key": "tool_result_size_bytes",
+         "value": {
+          "stringValue": "274"
+         }
+        }
+       ],
+       "droppedAttributesCount": 0
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

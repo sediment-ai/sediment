@@ -1,0 +1,16 @@
+.git/
+.venv/
+**/tests/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+*.db
+*.db-wal
+*.db-shm
+sediment_data/
+exports/
+.env
+.claude/

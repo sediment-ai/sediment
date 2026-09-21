@@ -1,0 +1,13 @@
+USAGE:
+  sediment export diff-sft [-h] --out OUT [--recipe {sft_curated,sft_verified}]
+                           [--from FROM_BUNDLE]
+
+  diff_sft.jsonl — per-commit, per-file training rows
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --out OUT             output directory
+  --recipe {sft_curated,sft_verified}
+                        SFT evidence recipe (default: sft_curated; sft_verified
+                        requires opt-in)
+  --from FROM_BUNDLE    validated derived bundle directory

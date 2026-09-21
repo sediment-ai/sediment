@@ -1,0 +1,16 @@
+USAGE:
+  sediment report recovery-yield [-h] [--org ORG] [--json]
+                                 [--database-url DATABASE_URL]
+                                 [--mirror-path MIRROR_PATH]
+
+  Recovery-pair yield report: failed CI runs, emitted pairs, skips.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --json                emit a JSON row instead of a table
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')

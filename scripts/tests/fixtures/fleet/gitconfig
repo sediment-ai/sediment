@@ -1,0 +1,4 @@
+[init]
+	templateDir = /opt/sediment/git-template
+[notes]
+	rewriteRef = refs/notes/sediment

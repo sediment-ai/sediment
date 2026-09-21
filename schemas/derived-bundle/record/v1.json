@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-bundle/record/v1.json",
+  "title": "BundleRecord",
+  "description": "Strict JSON envelope for one lossless canonical record.",
+  "type": "object",
+  "properties": {
+    "record_json": {
+      "type": "string",
+      "description": "One ASCII-escaped canonical record serialized with the declared `NaN`, `Infinity`, and `-Infinity` extensions. The outer envelope is strict JSON."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "record_json"
+  ]
+}

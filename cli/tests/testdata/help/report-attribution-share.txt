@@ -1,0 +1,28 @@
+USAGE:
+  sediment report attribution-share [-h] [--org ORG] --target-margin TARGET_MARGIN
+                                    [--window-days WINDOW_DAYS]
+                                    [--baseline-window-days BASELINE_WINDOW_DAYS]
+                                    [--json] [--database-url DATABASE_URL]
+                                    [--mirror-path MIRROR_PATH]
+
+  Report notes-attribution share per repo and flag a material decline against
+  a trailing baseline window.
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --target-margin TARGET_MARGIN
+                        target CI half-width in raw proportion points for the
+                        decline verdict's min-cases gate, e.g. 0.1 for +/-10pp
+                        (worst-case p=0.5 planner -- see
+                        scripts/corpus_sizing.py)
+  --window-days WINDOW_DAYS
+                        current window width in days (default: 7)
+  --baseline-window-days BASELINE_WINDOW_DAYS
+                        trailing baseline window width in days (default: 28)
+  --json                emit JSON instead of a text report
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: $SEDIMENT_DATABASE_URL)
+  --mirror-path MIRROR_PATH
+                        base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH
+                        or './mirrors')
