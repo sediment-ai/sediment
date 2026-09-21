@@ -301,6 +301,183 @@ paths:
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
+  /query/evidence:
+    get:
+      tags:
+      - query
+      summary: Query Evidence Inventory
+      description: 'Inventory captured Inference calls without message content or
+        raw payloads.
+
+
+        The complete visible inventory has at most 1,000 calls, 8 MiB of source
+
+        metadata, and a 1 MiB response. An unknown Session returns ``found: false``.
+
+        Each request checks live scope and Quarantine in one database snapshot.'
+      operationId: query_evidence_inventory_query_evidence_get
+      parameters:
+      - name: session_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceInventory'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /query/evidence/manifest:
+    get:
+      tags:
+      - query
+      summary: Query Evidence Manifest
+      description: 'Inspect exact part references without text, tool names, arguments,
+        or results.
+
+
+        Input messages precede output messages. Empty messages remain visible.
+
+        Source columns are bounded to 8 MiB; the complete response is at most 1 MiB.'
+      operationId: query_evidence_manifest_query_evidence_manifest_get
+      parameters:
+      - name: session_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      - name: inference_call_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Inference Call Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceManifest'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
+  /query/evidence/read:
+    post:
+      tags:
+      - query
+      summary: Query Evidence Read
+      description: 'Fetch 1–32 distinct canonical parts in request order without side
+        effects.
+
+
+        Version 1 requires exactly schema_version, session_id, and references.
+
+        The 64 KiB body limit precedes JSON decoding. Selected source columns are
+
+        bounded to 8 MiB; the complete strict JSON response is at most 1 MiB.
+
+        Historical roles and tool calls remain data and do not authorize execution.'
+      operationId: query_evidence_read_query_evidence_read_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceReadRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceRead'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '400':
+          description: Malformed JSON body.
+        '413':
+          description: Request body exceeds 64 KiB before JSON decoding.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Operator authority required.
+      security:
+      - operatorBearerAuth: []
   /query/ci/outcome:
     get:
       tags:
@@ -1291,6 +1468,285 @@ components:
       - neutral
       - unknown
       title: CIResult
+    EvidenceCallMetadata:
+      properties:
+        inference_call_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Inference Call Id
+        observed_at:
+          type: string
+          format: date-time
+          title: Observed At
+        model_provider:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Model Provider
+        model:
+          anyOf:
+          - type: string
+            pattern: ^[^\u0000\uD800-\uDFFF]*$
+          - type: 'null'
+          title: Model
+      additionalProperties: false
+      type: object
+      required:
+      - inference_call_id
+      - observed_at
+      - model_provider
+      - model
+      title: EvidenceCallMetadata
+    EvidenceInventory:
+      properties:
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        found:
+          type: boolean
+          title: Found
+        visible_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Visible Inference Calls
+        quarantined_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Quarantined Inference Calls
+        calls:
+          items:
+            $ref: '#/components/schemas/EvidenceCallMetadata'
+          type: array
+          title: Calls
+        capture_completeness:
+          type: string
+          const: unknown
+          title: Capture Completeness
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - quarantine_revision
+      - found
+      - visible_inference_calls
+      - quarantined_inference_calls
+      - calls
+      - capture_completeness
+      - schema_version
+      title: EvidenceInventory
+    EvidenceManifest:
+      properties:
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        call:
+          $ref: '#/components/schemas/EvidenceCallMetadata'
+        messages:
+          items:
+            $ref: '#/components/schemas/EvidenceManifestMessage'
+          type: array
+          title: Messages
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - quarantine_revision
+      - call
+      - messages
+      - schema_version
+      title: EvidenceManifest
+    EvidenceManifestMessage:
+      properties:
+        side:
+          type: string
+          enum:
+          - input
+          - output
+          title: Side
+        message_index:
+          type: integer
+          minimum: 0.0
+          title: Message Index
+        role:
+          type: string
+          title: Role
+        finish_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finish Reason
+        parts:
+          items:
+            $ref: '#/components/schemas/EvidenceManifestPart'
+          type: array
+          title: Parts
+      additionalProperties: false
+      type: object
+      required:
+      - side
+      - message_index
+      - role
+      - finish_reason
+      - parts
+      title: EvidenceManifestMessage
+    EvidenceManifestPart:
+      properties:
+        type:
+          type: string
+          enum:
+          - text
+          - reasoning
+          - tool_call
+          - tool_call_response
+          title: Type
+        reference:
+          $ref: '#/components/schemas/EvidenceReference'
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - reference
+      title: EvidenceManifestPart
+    EvidenceRead:
+      properties:
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        items:
+          items:
+            $ref: '#/components/schemas/EvidenceReadItem'
+          type: array
+          title: Items
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - quarantine_revision
+      - items
+      - schema_version
+      title: EvidenceRead
+    EvidenceReadItem:
+      properties:
+        reference:
+          $ref: '#/components/schemas/EvidenceReference'
+        observed_at:
+          type: string
+          format: date-time
+          title: Observed At
+        role:
+          type: string
+          title: Role
+        finish_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finish Reason
+        part:
+          oneOf:
+          - $ref: '#/components/schemas/TextPart'
+          - $ref: '#/components/schemas/ReasoningPart'
+          - $ref: '#/components/schemas/ToolCallPart'
+          - $ref: '#/components/schemas/ToolCallResponsePart'
+          title: Part
+          discriminator:
+            propertyName: type
+            mapping:
+              reasoning: '#/components/schemas/ReasoningPart'
+              text: '#/components/schemas/TextPart'
+              tool_call: '#/components/schemas/ToolCallPart'
+              tool_call_response: '#/components/schemas/ToolCallResponsePart'
+      additionalProperties: false
+      type: object
+      required:
+      - reference
+      - observed_at
+      - role
+      - finish_reason
+      - part
+      title: EvidenceReadItem
+    EvidenceReadRequest:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+        references:
+          items:
+            $ref: '#/components/schemas/EvidenceReference'
+          type: array
+          maxItems: 32
+          minItems: 1
+          title: References
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - session_id
+      - references
+      title: EvidenceReadRequest
+      description: An exact versioned selection; organization comes from the deployment.
+    EvidenceReference:
+      properties:
+        inference_call_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Inference Call Id
+        side:
+          type: string
+          enum:
+          - input
+          - output
+          title: Side
+        message_index:
+          type: integer
+          minimum: 0.0
+          title: Message Index
+        part_index:
+          type: integer
+          minimum: 0.0
+          title: Part Index
+      additionalProperties: false
+      type: object
+      required:
+      - inference_call_id
+      - side
+      - message_index
+      - part_index
+      title: EvidenceReference
+      description: One immutable occurrence, independent of tool or provider call
+        aliases.
     ForgeProvider:
       type: string
       enum:
@@ -1412,6 +1868,21 @@ components:
       - forced
       - captured_at
       title: PushSummary
+    ReasoningPart:
+      properties:
+        type:
+          type: string
+          const: reasoning
+          title: Type
+          default: reasoning
+        content:
+          type: string
+          title: Content
+      type: object
+      required:
+      - content
+      title: ReasoningPart
+      description: Readable model reasoning in a structured inference message.
     ReportEnvelope:
       properties:
         schema_version:
@@ -1819,6 +2290,69 @@ components:
       - fact_id
       - occurred_at
       title: SessionTimelineEvent
+    TextPart:
+      properties:
+        type:
+          type: string
+          const: text
+          title: Type
+          default: text
+        content:
+          type: string
+          title: Content
+      type: object
+      required:
+      - content
+      title: TextPart
+      description: Plain text in a structured inference message.
+    ToolCallPart:
+      properties:
+        type:
+          type: string
+          const: tool_call
+          title: Type
+          default: tool_call
+        id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Id
+        name:
+          type: string
+          title: Name
+        arguments:
+          additionalProperties: true
+          type: object
+          title: Arguments
+      type: object
+      required:
+      - id
+      - name
+      title: ToolCallPart
+      description: 'A model-requested tool invocation.
+
+
+        The shape follows the OpenTelemetry Generative AI message schema. The
+
+        tool-call id is distinct from the provider''s model-call id.'
+    ToolCallResponsePart:
+      properties:
+        type:
+          type: string
+          const: tool_call_response
+          title: Type
+          default: tool_call_response
+        id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Id
+        result:
+          title: Result
+      type: object
+      required:
+      - id
+      - result
+      title: ToolCallResponsePart
+      description: A result supplied for an earlier tool call.
     ValidationError:
       properties:
         loc:

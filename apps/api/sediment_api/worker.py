@@ -12,7 +12,17 @@ from typing import Any, Literal
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse, Response
 from pydantic import TypeAdapter
-from sediment_core import FactStore, NonEmptyId, OperationalReportLimitExceeded, Push
+from sediment_core import (
+    EVIDENCE_RESPONSE_BYTES_LIMIT,
+    EvidenceInventory,
+    EvidenceManifest,
+    EvidenceRead,
+    EvidenceReadError,
+    FactStore,
+    NonEmptyId,
+    OperationalReportLimitExceeded,
+    Push,
+)
 from sediment_core.models import AwareDatetime, CommitSha, RepoSlug, RequiredRepoSlug
 from sediment_core.postgres_engine import create_postgres_engine
 from sediment_derive import MirrorManager
@@ -88,7 +98,15 @@ class WorkerRequest:
     """Private subprocess envelope; captured Facts retain their canonical models."""
 
     kind: Literal[
-        "commit", "session", "model-report", "lifecycle-report", "push", "rename"
+        "commit",
+        "session",
+        "model-report",
+        "lifecycle-report",
+        "push",
+        "rename",
+        "evidence-inventory",
+        "evidence-manifest",
+        "evidence-read",
     ]
     payload: dict[str, Any]
 
@@ -96,6 +114,31 @@ class WorkerRequest:
 def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
     payload = request.payload
     match request.kind:
+        case "evidence-inventory" | "evidence-manifest" | "evidence-read":
+            session_id = TypeAdapter(NonEmptyId).validate_python(payload["session_id"])
+            try:
+                if request.kind == "evidence-inventory":
+                    value = store.read_evidence_inventory(settings.org_id, session_id)
+                    contract = EvidenceInventory
+                elif request.kind == "evidence-manifest":
+                    inference_call_id = TypeAdapter(NonEmptyId).validate_python(
+                        payload["inference_call_id"]
+                    )
+                    value = store.read_evidence_manifest(
+                        settings.org_id, session_id, inference_call_id
+                    )
+                    contract = EvidenceManifest
+                else:
+                    selection = query.EvidenceReadRequest.model_validate(payload)
+                    value = store.read_evidence_parts(
+                        settings.org_id, selection.session_id, selection.references
+                    )
+                    contract = EvidenceRead
+            except EvidenceReadError as exc:
+                raise HTTPException(status_code=409, detail=exc.detail) from None
+            return query._query_response(
+                value, contract, max_bytes=EVIDENCE_RESPONSE_BYTES_LIMIT
+            )
         case "commit":
             sha = TypeAdapter(CommitSha).validate_python(payload["sha"])
             options = {}

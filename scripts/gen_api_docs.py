@@ -175,6 +175,66 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             )
         },
     ),
+    "/query/evidence": (
+        "Complete bounded metadata inventory for one Session.",
+        "Returns schema_version 1, the Session ID, Quarantine revision, found, "
+        "capture_completeness=unknown, visible and quarantined Inference call counts, "
+        "and calls sorted by observation time and Fact ID. Unknown or foreign Sessions "
+        "return found=false with zero counts. Known empty Sessions return found=true. "
+        "The inventory excludes message content, raw payloads, and user identifiers. "
+        "Each request checks live visibility in one read snapshot. The response has "
+        "Cache-Control: no-store. Limits: 1,000 visible calls, 8 MiB of selected source "
+        "metadata, and a 1 MiB strict JSON response. IDs travel in query parameters.",
+        {
+            "409": "The closed detail.reason is evidence_inventory_limit (count, limit), "
+            "evidence_source_limit (bytes, limit), evidence_response_limit (limit), or "
+            "non_finite_number. The complete operation is declined.",
+            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
+        },
+    ),
+    "/query/evidence/manifest": (
+        "Message and part references for one captured Inference call.",
+        "Returns schema_version 1, the Session ID, Quarantine revision, call metadata, "
+        "and messages in input-then-output order. Each message preserves role, finish "
+        "reason, and ordinal; each part gives its type and exact occurrence reference. "
+        "Empty messages remain visible. Text, tool names, arguments, and results are "
+        "excluded. IDs travel in query parameters. Limits: 8 MiB of selected source "
+        "columns and a 1 MiB strict JSON response. The response has Cache-Control: "
+        "no-store. Every read checks Session scope and Quarantine afresh.",
+        {
+            "409": "The closed detail.reason is evidence_unavailable for any absent, "
+            "foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, "
+            "limit); evidence_response_limit (limit); or non_finite_number.",
+            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
+        },
+    ),
+    "/query/evidence/read": (
+        "Read-only fetch of complete canonical parts by exact occurrence reference.",
+        "Requires exactly schema_version 1, session_id, and 1–32 distinct references. "
+        "Returns schema_version 1, the Session ID, Quarantine revision, and items in "
+        "request order. Each item preserves its reference, observation time, role, "
+        "finish reason, and canonical part. The operation never summarizes, clips, "
+        "executes tools, or returns partial success. Historical content remains data. "
+        "ASCII-escaped strict JSON preserves NUL, surrogates, and large integers; "
+        "emitted non-finite numbers decline the complete response. Limits: 64 KiB "
+        "before request JSON decoding, 8 MiB of selected source columns, and a 1 MiB "
+        "response. No raw payloads or user identifiers are selected. The response has "
+        "Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.",
+        {
+            "400": "Malformed JSON body.",
+            "409": "The closed detail.reason is evidence_unavailable or "
+            "evidence_part_absent (reference_index), evidence_source_limit (bytes, "
+            "limit), evidence_response_limit (limit), or non_finite_number. "
+            "Unavailability does not disclose its cause. Failures decline all items.",
+            "413": "Request body exceeds 64 KiB, including when Content-Length is absent.",
+            "422": "Malformed envelope, unsupported version, invalid indices, unknown "
+            "fields, duplicate references, or selection outside 1–32 references.",
+            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
+        },
+    ),
     "/query/commit/{sha}": (
         "Observed Sessions and inferred call associations for one commit.",
         "Observed Session edges, inferred calls and decisions, and exact CI Facts, grouped by "
