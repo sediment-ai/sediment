@@ -130,8 +130,14 @@ against the exact distribution source before assigning a disposition.
 For the gateway zlib disposition, pair the native symbol check with a review of
 the exact image's Python callers. The `gzip_write_api_unreachable` predicate
 rejects dynamic imports and unreviewed static embeds. It doesn't inspect Python
-filename arguments to the permitted SAML extensions. Retain the caller source
-identities and review together with the image evidence.
+filename arguments to the permitted SAML extensions. The gateway assurance
+artifact retains `gateway_caller_files`: SHA-256 hashes of the installed
+LiteLLM SAML handler and every Python source file under `onelogin/saml2`,
+collected from the exact scanned image. The collector rejects missing sources
+and symlinked paths. Compare the complete file set and hashes with the reviewed
+callers; any change needs source review. The mapping is
+evidence, not an approval or an automatic non-applicability verdict. Retain
+the caller review with the image evidence.
 
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
