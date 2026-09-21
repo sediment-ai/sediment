@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# Disposable evaluation harness; no model or deployment credentials belong here.
+FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS harness
+WORKDIR /opt/sediment-pi
+COPY shims/pi/package.json shims/pi/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+FROM python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates libstdc++6 \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+    && useradd --uid 10001 --create-home agent
+COPY --from=harness /usr/local/bin/node /usr/local/bin/node
+COPY --from=harness /opt/sediment-pi /opt/sediment-pi
+COPY shims/pi/index.ts /opt/sediment-pi/index.ts
+COPY shims/pi/lib /opt/sediment-pi/lib
+RUN ln -s /opt/sediment-pi/node_modules/@earendil-works/pi-coding-agent/dist/cli.js /usr/local/bin/pi
+ENV PI_OFFLINE=1 PI_TELEMETRY=0
+WORKDIR /workspace
+USER agent
+ENTRYPOINT ["pi"]
