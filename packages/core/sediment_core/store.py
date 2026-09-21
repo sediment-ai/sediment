@@ -32,11 +32,13 @@ from sqlalchemy.engine import Connection, Engine
 from . import evidence
 from .evidence import (
     EvidenceCallMetadata,
+    EvidenceContextSource,
     EvidenceInventory,
     EvidenceManifest,
     EvidenceMessageSource,
     EvidenceRead,
     EvidenceReadError,
+    EvidenceReadItem,
     EvidenceReference,
     project_evidence_inventory,
     project_evidence_manifest,
@@ -1492,6 +1494,14 @@ class FactStore:
         with self.read_snapshot() as snapshot:
             return snapshot.read_evidence_inventory(org_id, session_id)
 
+    def read_context_source(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceContextSource:
+        """Read a complete bounded Session without hydrating raw Fact payloads."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_context_source(org_id, session_id)
+
     def read_evidence_manifest(
         self, org_id: OrgId, session_id: NonEmptyId, inference_call_id: NonEmptyId
     ) -> EvidenceManifest:
@@ -1939,6 +1949,68 @@ class _FactSnapshot:
             found=found,
             calls=calls,
             quarantined_inference_calls=quarantined,
+        )
+
+    def read_context_source(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceContextSource:
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        inventory = self.read_evidence_inventory(org_id, session_id)
+        if not inventory.found:
+            raise EvidenceReadError("evidence_unavailable")
+        conditions = _evidence_conditions(org_id, session_id)
+        _, size = _evidence_preflight(
+            self._connection,
+            conditions,
+            (*_EVIDENCE_METADATA_TEXT_COLUMNS, "input_messages", "output_messages"),
+        )
+        _check_evidence_bytes(size)
+        items = []
+        part_count = 0
+        rows = self._connection.execute(
+            select(
+                *_evidence_metadata_columns(),
+                inference_calls.c.input_messages,
+                inference_calls.c.output_messages,
+            ).where(*conditions)
+        ).mappings()
+        for row in rows:
+            for side in ("input", "output"):
+                for message_index, message in enumerate(
+                    _messages(row[f"{side}_messages"])
+                ):
+                    part_count += len(message.parts)
+                    # Keep counting the complete bounded source so refusal reports
+                    # an exact count; never build a successful partial population.
+                    if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+                        continue
+                    for part_index, part in enumerate(message.parts):
+                        items.append(
+                            EvidenceReadItem(
+                                reference=EvidenceReference(
+                                    row["inference_call_id"],
+                                    side,
+                                    message_index,
+                                    part_index,
+                                ),
+                                observed_at=row["observed_at"],
+                                role=message.role,
+                                finish_reason=message.finish_reason,
+                                part=part,
+                            )
+                        )
+        if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+            raise EvidenceReadError(
+                "retrieval_part_limit",
+                count=part_count,
+                limit=evidence.CONTEXT_SOURCE_PART_LIMIT,
+            )
+        return EvidenceContextSource(
+            session_id=inventory.session_id,
+            quarantine_revision=inventory.quarantine_revision,
+            visible_inference_calls=inventory.visible_inference_calls,
+            quarantined_inference_calls=inventory.quarantined_inference_calls,
+            items=tuple(items),
         )
 
     def read_evidence_manifest(

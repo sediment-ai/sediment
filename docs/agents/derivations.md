@@ -14,6 +14,7 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 | `repository_identity.py` | Pure immutable repository/commit keys, complete-evidence resolver, source-role validation, unambiguous operator selectors, and deterministic labels (ADR 0019) |
 | `repository_context.py` | Bounded complete evidence reads inside the caller's snapshot; explicit boundary or latest captured repository Fact, with declared legacy-only supplements for direct APIs |
 | `provenance.py` | Structured `Provenance` shared by canonical derived artifacts |
+| `context_retrieval.py` | Pure version-1 keyword selection from a bounded `EvidenceContextSource`; exact references, counted exclusions, and whole-part byte packing |
 | `similarity.py` | `tokenize()` + `jaccard_tokens()` — the only similarity math |
 | `inference_call.py` | Canonical inference-call projections, including the pure Attribution scoring-text renderer and native prompt values and typed, totally ordered prompt keys without scalar coercion |
 | `scoring.py` | `Scorer` Protocol + `JaccardScorer` swap seam |
@@ -41,6 +42,11 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 `repository_identity.py` owns identity resolution before cohort selection. The key is organization/provider/host/ID; labels, clone URLs, Sessions, and SHAs never prove identity. Exact source Push references can qualify legacy observations. Other unresolved inputs remain absent and counted under the shared closed vocabulary. `read_repository_context` reads both complete populations in the caller's snapshot. Explicit `as_of` stays authoritative; implicit consumers include the actual timestamps of their consumed Facts.
 
 Attribution retains `source_push_id`; every repository-bearing derived row carries `repository_identity`. Original observation IDs remain unchanged. Identified mirrors use the stable key. A distinct pull-request head requires its own proved identity and mirror; target objects cannot replace head evidence. Missing scoring evidence cannot erase independently proved CI membership.
+
+## Session context retrieval
+
+`context_retrieval.py::retrieve_context` reads no store and writes no Fact. `ContextRetrievalPolicy` version 1 reuses `similarity.tokenize`, removes the fixed query stopword set, and ranks distinct-token overlap by score, UTC observation time, Fact ID, side, and indices. Response-only repeated-content suppression preserves the first ranked exact occurrence. It doesn't change database deduplication or training evidence.
+Closed skips, in precedence order: `reasoning_part`, `non_finite_number`, `no_match`, `repeated_content`, `item_limit`, `response_budget`. Every scanned part is selected or counted once. Packing keeps at most eight complete parts inside a requested 4–64 KiB response with a 2 KiB envelope reserve. Core's shared strict encoder validates the complete response; unsupported metadata or source capacity refuses the operation. No match doesn't prove an event absent.
 
 ## The knobs, and who else they re-tune
 

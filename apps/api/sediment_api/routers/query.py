@@ -13,10 +13,9 @@ from sediment_derive.session_commit import bind_session_commit_keys_result
 import base64
 import binascii
 import json
-import math
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 from urllib.parse import urlencode
@@ -48,6 +47,7 @@ from sediment_core import (
     WorkflowName,
     normalize_commit_sha,
 )
+from sediment_core.evidence import EvidenceReadError, encode_evidence_json
 from sediment_core.models import AwareDatetime
 from sediment_core.store import (
     CIOutcomeProjection,
@@ -98,19 +98,6 @@ _QUERY_REPRESENTATION_RESPONSES = {
 }
 
 
-def _validate_query_numbers(value: Any) -> None:
-    """Decline only non-finite numbers, including nested content and object keys."""
-    if isinstance(value, float) and not math.isfinite(value):
-        raise HTTPException(status_code=409, detail={"reason": "non_finite_number"})
-    if isinstance(value, dict):
-        for key, item in value.items():
-            _validate_query_numbers(key)
-            _validate_query_numbers(item)
-    elif isinstance(value, (list, tuple)):
-        for item in value:
-            _validate_query_numbers(item)
-
-
 def _query_response(
     value: Any,
     contract: Any,
@@ -118,41 +105,13 @@ def _query_response(
     exclude_none: bool = False,
     max_bytes: int | None = None,
 ) -> Response:
-    """Validate the declared response, then preserve content through ASCII JSON.
-
-    Pydantic's JSON serializer requires UTF-8 for every string. Python-mode
-    serialization keeps canonical descriptive surrogates for JSON escaping.
-    """
-    adapter = TypeAdapter(contract)
-    validated = adapter.validate_python(asdict(value) if is_dataclass(value) else value)
-    payload = adapter.dump_python(validated, mode="python", exclude_none=exclude_none)
-    _validate_query_numbers(payload)
-
-    def encode_timestamp(item: Any) -> str:
-        if isinstance(item, datetime):
-            return TypeAdapter(datetime).dump_python(item, mode="json")
-        raise TypeError(f"unsupported query response value: {type(item).__name__}")
-
-    encoder = json.JSONEncoder(
-        ensure_ascii=True,
-        allow_nan=False,
-        separators=(",", ":"),
-        default=encode_timestamp,
-    )
-    if max_bytes is None:
-        content = encoder.encode(payload)
-    else:
-        # All output is ASCII, so character count equals byte count. Retain
-        # at most the admitted bytes even when one escaped scalar exceeds it.
-        bounded = bytearray()
-        for chunk in encoder.iterencode(payload):
-            if len(bounded) + len(chunk) > max_bytes:
-                raise HTTPException(
-                    status_code=409,
-                    detail={"reason": "evidence_response_limit", "limit": max_bytes},
-                )
-            bounded.extend(chunk.encode("ascii"))
-        content = bytes(bounded)
+    """Publish the shared lossless encoding with HTTP refusal translation."""
+    try:
+        content = encode_evidence_json(
+            value, contract, exclude_none=exclude_none, max_bytes=max_bytes
+        )
+    except EvidenceReadError as exc:
+        raise HTTPException(status_code=409, detail=exc.detail) from None
     return Response(content=content, media_type="application/json")
 
 

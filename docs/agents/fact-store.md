@@ -10,7 +10,7 @@ Fact shapes live in `sediment_core/models.py`; this playbook covers the remainin
 | `redaction.py` | Fixed Basic redaction patterns + counted `RedactionReason` vocabulary |
 | `store.py` | PostgreSQL FactStore, projected reads, repeatable-read snapshots; UTC instants determine insertion receipts and batch Session bounds |
 | `postgres_*.py` + `alembic/` | Physical schema, pooled engine, and migrations; see [`postgresql.md`](postgresql.md) |
-| `evidence.py` | Frozen operational evidence shapes, occurrence references, pure projections, and fixed limits; [ADR 0021](../adr/0021-bounded-evidence-access.md) |
+| `evidence.py` | Frozen evidence/source shapes, exact references, pure projections, bounded strict JSON encoding, and fixed limits; [ADR 0021](../adr/0021-bounded-evidence-access.md) |
 | `org.py` | `normalize_org_id` — the only tenant-boundary normalizer |
 
 Everything public re-exports flat from `sediment_core`. PostgreSQL is required at runtime. `SEDIMENT_DATABASE_URL` is the sole Fact-store setting, and public `sediment_core.FactStore` names its concrete implementation. Sediment has no backend interface, selector, dual-write path, or legacy importer.
@@ -68,7 +68,7 @@ presence in SQL and never loads content-bearing columns.
 
 Bounded reads, including Attribution candidate projections, use `LIMIT + 1`; overflow raises instead of truncating. `read_inference_call_identities` reads organization-wide provider and typed output tool aliases through inclusive `observed_through`, without a cohort lower bound. It excludes quarantine and retains only Fact ID, organization, Session, and distinct aliases. It decodes output messages in Python without loading input messages or raw payloads. Its positive row limit rejects incomplete populations with `OperationalReportLimitExceeded`; a separate 64 MiB per-row encoded-output check precedes decoding. Neither bounds database scan work.
 Identity projections retain canonical `observed_at` so offline bundle validation can check the declared bound. Time filters use half-open cohort windows or inclusive capture/merge bounds. `ReportInferenceCall` adds output to summary metadata without input/raw; [bounded content reads](postgresql.md#factstore-and-runtime-boundary) retain one snapshot and explicit byte limits.
-Exact filters accept Session/call, repository-commit, or repository-PR keys. `read_evidence_inventory`, `read_evidence_manifest`, and `read_evidence_parts` scope organization and Session before selection, recheck Quarantine, and return complete bounded projections without persisting state. Their separate source limits include metadata; see [PostgreSQL read boundaries](postgresql.md#factstore-and-runtime-boundary).
+Exact filters accept Session/call, repository-commit, or repository-PR keys. `read_evidence_inventory`, `read_evidence_manifest`, and `read_evidence_parts` scope organization and Session before selection, recheck Quarantine, and return complete bounded projections without persisting state. `read_context_source` reuses inventory and separately preflights the complete visible Session content at 8 MiB, refuses more than 2,048 canonical parts, and omits raw payloads/user identity. Their separate source limits include metadata; see [PostgreSQL read boundaries](postgresql.md#factstore-and-runtime-boundary).
 Qualified repository-commit and repository-PR filters accept 15,000 keys. A
 `RepositoryReadKey` is a validated provider/host/ID tuple or an explicit legacy slug;
 the legacy branch selects only NULL identity rows. Literal compatibility filters
