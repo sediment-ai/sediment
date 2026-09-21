@@ -1,8 +1,12 @@
 # Architecture
 
-Sediment separates captured evidence from its interpretation. Capture endpoints
-append immutable Facts, Derivations interpret those Facts under a policy, and
-export projections shape the results for a training objective.
+Sediment is a self-hosted evidence store for coding agents. Engineering teams use
+the evidence to evaluate agent work, agents consume selected evidence as context,
+and training pipelines consume exports.
+
+Capture endpoints append immutable Facts. Evidence reads return selected captured
+parts. Derivations interpret Facts under a policy for reports and training
+artifacts, and export projections shape those artifacts for a training objective.
 
 This page explains the components that enforce that separation and the data
 that crosses each boundary.
@@ -18,24 +22,24 @@ preference optimization (DPO), supervised fine-tuning (SFT), diff-shaped SFT
 
 ```mermaid
 flowchart TB
-  SRC(["EVIDENCE SOURCES<br/>Agent harnesses · LLM gateways · forges · CI"])
+  SRC(["EVIDENCE SOURCES<br/>Agents · gateways · forges · CI"])
 
   subgraph network["YOUR NETWORK"]
     CAP["CAPTURE<br/>Authenticate, validate, normalize"]
-    FACTS["01 · EVIDENCE<br/>PostgreSQL Fact store · git mirrors"]
-    DER["02 · DERIVATIONS<br/>Pure functions of Facts,<br/>mirrors, and resolved policy"]
-    ART["03 · ARTIFACTS<br/>Attributed completions · Rollouts"]
-    PROJ["04 · PROJECTIONS<br/>Attributed completions → DPO · SFT · diff-SFT<br/>Rollouts → RLVR"]
+    FACTS["IMMUTABLE FACTS<br/>PostgreSQL Fact store"]
+    READ["EVIDENCE READS<br/>Selected source parts<br/>for agent context"]
+    DER["DERIVATIONS<br/>Facts, mirrors, policy<br/>Reports and training"]
   end
 
   SRC --> CAP --> FACTS
-  FACTS --> DER --> ART --> PROJ
-  DER -. "Recovery · ADR 0004" .-> PROJ
+  FACTS --> READ
+  FACTS --> DER
 ```
 
-The dashed route is the Recovery exception. It bypasses the two canonical
-artifacts, not the Derivation rules. Recovery remains a pure Derivation over
-Facts and mirror evidence.
+Evidence reads and Derivations share captured Facts. Reports answer questions
+about agent work; training exports project Attributed completions and Rollouts.
+The Recovery export reads Facts and mirror evidence directly, as described in
+the export path below.
 
 ## Capture path
 
@@ -118,11 +122,18 @@ high-confidence API keys and bearer credentials before PostgreSQL writes a
 Fact. Quarantine excludes an unsafe or incorrect Fact from later Derivations
 without mutating or deleting the Fact.
 
-Sediment has no phone-home path. Repository mirroring is its only optional
-outbound connection. An internal forge can keep capture and mirror traffic
-inside an air-gapped network. Evidence reads add no outbound connection. If a
-consumer sends a packet to a model, that consumer's configured endpoint decides
-whether the content crosses the perimeter.
+Sediment has no phone-home path. During installation, the installer and managed
+local PostgreSQL setup can download packages, host libraries, and PostgreSQL
+binaries. Operation without public network access requires dependencies prepared
+inside the perimeter. See the [deployment
+guide](../operate/deploy.md#84-network-exposure) for runtime network exposure.
+
+During operation, optional repository mirrors connect to configured Git remotes.
+Internal forges, gateways, and CI systems can keep capture and mirror traffic
+inside your network. Evidence reads make no model call and add no outbound
+connection. If an agent sends captured content or an evidence packet to a model,
+its configured endpoint determines whether the content crosses the perimeter.
+Keeping the entire workflow internal also requires an internal model endpoint.
 
 ## Continue reading
 

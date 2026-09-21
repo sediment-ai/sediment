@@ -12,18 +12,31 @@
 
 <!-- docs-home:start -->
 
-Sediment turns coding-agent activity into training data. Run it on your own
-infrastructure to capture model calls, code changes, developer feedback, and
-automated check results.
+Sediment is the open-source, self-hosted evidence store for coding agents.
+
+Capture what coding agents did and what happened to their work. Keep the
+evidence on your infrastructure. Use it to evaluate agent work, provide agents
+with context, and build training datasets.
 
 Use Sediment to:
 
-- See which agent edits remain after later edits, review, and merge.
-- Compare models using recorded decisions, code retention, and automated checks.
-- Export data for fine-tuning, preference training, and reinforcement learning.
+- **Evaluate agent work.** Compare models using recorded decisions, code
+  retention, and automated checks. See which accepted edits reach review and merge.
+- **Reuse evidence as context.** Retrieve selected captured messages, tool calls,
+  and tool results for an agent continuing a task.
+- **Build training datasets.** Export evidence-backed examples for fine-tuning,
+  preference training, and reinforcement learning.
 
-Read the guides to [measuring agent work](docs/operate/measure-agent-work.md)
-and [training exports](docs/exports/training-exports.md) for commands and examples.
+Start with [measuring agent work](docs/operate/measure-agent-work.md),
+[continuing a task with captured evidence](docs/operate/resume-with-evidence.md),
+or [training exports](docs/exports/training-exports.md).
+
+Capture, storage, evidence reads, and exports run on your infrastructure.
+Your agent's configured model endpoint determines where inference data goes.
+Installation downloads software, and optional repository mirrors contact your
+configured remotes. An internal deployment needs prepared dependencies and
+internal endpoints. See the [network and trust
+boundaries](docs/explanation/architecture.md#network-and-trust-boundaries).
 
 <!-- docs-home:end -->
 
@@ -52,13 +65,15 @@ For a shared server, follow the [deployment guide](docs/operate/deploy.md).
 
 Agent hooks, model gateways, and repository webhooks send events to your
 Sediment server. It stores those events as append-only Facts in PostgreSQL
-and computes reports and training exports from them.
+and reuses them for reports, selected agent context, and training exports.
+Evidence reads return captured source parts; Derivations compute relationships
+and outcomes without changing the Facts.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Sediment architecture: agent and gateway events flow into PostgreSQL on your infrastructure, then into reports and training exports." src=".github/assets/architecture-light.svg" width="880">
+    <img alt="Sediment stores captured coding-agent evidence as immutable Facts in PostgreSQL. Teams use reports to evaluate work, agents receive selected evidence as context, and training pipelines consume exports. Sediment runs on your infrastructure." src=".github/assets/architecture-light.svg" width="880">
   </picture>
 </p>
 
@@ -66,6 +81,11 @@ The [architecture guide](docs/explanation/architecture.md) explains the
 components and network boundaries. The
 [capture guide](docs/explanation/how-capture-works.md) explains what data each
 integration collects, including prompts and source code.
+
+Evidence retrieval uses the API or `sediment evidence inventory`, `inspect`, and
+`fetch`. An operator selects captured parts and gives the resulting packet to an
+agent. The continuation guide uses an intact workspace; Sediment does not restore
+files or infer the next task. Available evidence depends on the capture setup.
 
 ## Development
 
