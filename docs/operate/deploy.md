@@ -619,8 +619,14 @@ review. These controls don't establish Cyber Essentials certification.
 update checks, license validation, or cloud SDK. Exports are local JSONL files.
 
 Cloudflare ingress makes captured requests transit Cloudflare's edge. Replace
-it with internal ingress when that boundary doesn't fit the deployment. An
-internal gateway and on-premises forge can keep Sediment air-gapped.
+it with internal ingress when that boundary doesn't fit the deployment.
+
+For operation without public network access, prepare the required software,
+container images, and dependencies inside the perimeter. Use internal ingress,
+capture sources, Git remotes, and model endpoints. An internal gateway alone
+doesn't keep model requests inside the perimeter; its configured model endpoint
+determines their destination. Installation can still require public downloads
+unless you provision its dependencies in advance.
 
 ## 9. Troubleshooting
 
