@@ -1,6 +1,29 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Sediment core: fact models and the PostgreSQL fact store."""
 
+from .evidence import (
+    EVIDENCE_INVENTORY_LIMIT,
+    EVIDENCE_REFERENCE_LIMIT,
+    EVIDENCE_REQUEST_BYTES_LIMIT,
+    EVIDENCE_SOURCE_BYTES_LIMIT,
+    EVIDENCE_RESPONSE_BYTES_LIMIT,
+    EvidenceCallMetadata,
+    EvidenceInventory,
+    EvidenceManifest,
+    EvidenceManifestMessage,
+    EvidenceManifestPart,
+    EvidenceMessageSource,
+    EvidenceRead,
+    EvidenceReadError,
+    EvidenceReadItem,
+    EvidenceReference,
+    EvidenceSchemaVersion,
+    EvidenceSide,
+    project_evidence_inventory,
+    project_evidence_manifest,
+    project_evidence_read,
+    validate_evidence_references,
+)
 from .models import (
     BranchName,
     CIOutcome,
@@ -73,6 +96,27 @@ from .store import (
 )
 
 __all__ = [
+    "EVIDENCE_INVENTORY_LIMIT",
+    "EVIDENCE_REFERENCE_LIMIT",
+    "EVIDENCE_REQUEST_BYTES_LIMIT",
+    "EVIDENCE_SOURCE_BYTES_LIMIT",
+    "EVIDENCE_RESPONSE_BYTES_LIMIT",
+    "EvidenceCallMetadata",
+    "EvidenceInventory",
+    "EvidenceManifest",
+    "EvidenceManifestMessage",
+    "EvidenceManifestPart",
+    "EvidenceMessageSource",
+    "EvidenceRead",
+    "EvidenceReadError",
+    "EvidenceReadItem",
+    "EvidenceReference",
+    "EvidenceSchemaVersion",
+    "EvidenceSide",
+    "project_evidence_inventory",
+    "project_evidence_manifest",
+    "project_evidence_read",
+    "validate_evidence_references",
     "BranchName",
     "CIOutcome",
     "CIReason",
