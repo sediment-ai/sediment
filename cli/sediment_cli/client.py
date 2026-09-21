@@ -21,6 +21,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
+from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, EVIDENCE_RESPONSE_BYTES_LIMIT
 
 from . import __version__, ui
 
@@ -288,6 +289,54 @@ def post_json(path: str, body: Any) -> Any:
     if resp.status_code >= 300:
         raise ClientError(_error_detail(resp))
     return resp.json()
+
+
+def read_evidence(
+    path: str, *, params: dict[str, str] | None = None, body: bytes | None = None
+) -> bytes:
+    """Read one complete bounded evidence response with operator credentials."""
+    if body is not None and len(body) > EVIDENCE_REQUEST_BYTES_LIMIT:
+        raise ClientError("evidence request exceeds the 64 KiB limit")
+    base_url, token = _resolve()
+    try:
+        with (
+            _http() as http,
+            http.stream(
+                "GET" if body is None else "POST",
+                _url(base_url, path),
+                params=params,
+                content=body,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept-Encoding": "identity",
+                },
+                timeout=httpx.Timeout(_TIMEOUT_SECONDS, read=40.0),
+            ) as response,
+        ):
+            if response.status_code == 401:
+                raise ClientError("not logged in / token rejected — run sediment login")
+            if response.status_code == 403:
+                raise ClientError(
+                    "operator authority required — run sediment login with an operator token"
+                )
+            if response.status_code != 200:
+                raise ClientError(f"evidence server error ({response.status_code})")
+            if (
+                response.headers.get("Content-Encoding", "identity").lower()
+                != "identity"
+            ):
+                raise ClientError("evidence response must use identity encoding")
+            content = bytearray()
+            for chunk in response.iter_bytes():
+                if len(content) + len(chunk) > EVIDENCE_RESPONSE_BYTES_LIMIT:
+                    raise ClientError("evidence response exceeds the 1 MiB limit")
+                content.extend(chunk)
+            return bytes(content)
+    except httpx.HTTPError:
+        raise ClientError(
+            "evidence request failed; check the server connection"
+        ) from None
 
 
 def current_url() -> str:

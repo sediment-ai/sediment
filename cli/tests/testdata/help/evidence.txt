@@ -1,0 +1,12 @@
+USAGE:
+  sediment evidence [-h] <operation> ...
+
+  read selected Session evidence with operator authority
+
+OPERATIONS:
+  inventory    print a complete bounded Session inventory as JSON
+  inspect      print one Inference call's part manifest as JSON
+  fetch        write exact selected parts to a private local packet
+
+OPTIONS:
+  -h, --help   show this help message and exit

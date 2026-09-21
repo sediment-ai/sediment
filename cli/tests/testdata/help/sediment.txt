@@ -13,6 +13,7 @@ COMMANDS:
                         deletes)
   facts                 fact counts per table (remote; --database-url for
                         direct)
+  evidence              read selected Session evidence with operator authority
   demo                  plant one synthetic session so facts is non-zero
   db                    provision database roles or inspect and upgrade the
                         schema

@@ -29,6 +29,64 @@ Options:
 |---|---|
 | `--database-url` | read PostgreSQL directly instead of the API |
 
+## sediment evidence
+
+read selected Session evidence with operator authority
+
+```text
+sediment evidence [-h] <operation> ...
+```
+
+### sediment evidence inventory
+
+print a complete bounded Session inventory as JSON
+
+```text
+sediment evidence inventory [-h] SESSION
+```
+
+Arguments:
+
+| Name | Description |
+|---|---|
+| `session_id` | source Session ID |
+
+### sediment evidence inspect
+
+print one Inference call's part manifest as JSON
+
+```text
+sediment evidence inspect [-h] SESSION INFERENCE_CALL
+```
+
+Arguments:
+
+| Name | Description |
+|---|---|
+| `session_id` | source Session ID |
+| `inference_call_id` | Inference call Fact ID |
+
+### sediment evidence fetch
+
+write exact selected parts to a private local packet
+
+```text
+sediment evidence fetch [-h] --references PATH --output PATH SESSION
+```
+
+Arguments:
+
+| Name | Description |
+|---|---|
+| `session_id` | source Session ID |
+
+Options:
+
+| Name | Description |
+|---|---|
+| `--references` | version 1 selection JSON (64 KiB; 1–32 distinct references) **(required)** |
+| `--output` | packet destination (0600; must not exist) **(required)** |
+
 ## sediment demo
 
 plant one synthetic session so facts is non-zero
