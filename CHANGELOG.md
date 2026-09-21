@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Contributor checks
+
+- Route changes to the root `README.md` through the existing prose checks in
+  continuous integration (CI). Mixed changes, executable files, symlinks,
+  deletions, renames, manual runs, and unavailable Git history retain full
+  validation.
+
 ### Operational evidence
 
 - Inventory a Session, inspect captured Inference-call structure, and fetch up to
