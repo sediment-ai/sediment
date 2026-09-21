@@ -40,6 +40,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -265,6 +267,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -298,6 +302,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -477,6 +483,70 @@ paths:
         '403':
           description: Operator authority required.
       security:
+      - operatorBearerAuth: []
+  /query/context:
+    post:
+      tags:
+      - query
+      summary: Query Context
+      description: 'Select exact evidence from the deployment''s one configured Session.
+
+
+        Version 1 accepts English/code keywords, excludes reasoning, and returns
+
+        at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB).
+
+        Scores count distinct token overlap; capture completeness remains unknown.
+
+        The operation rechecks Quarantine, persists nothing, and shares the
+
+        evidence worker admission limit and 30-second deadline.'
+      operationId: query_context_query_context_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextRetrievalRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextRetrievalResult'
+        '400':
+          description: Malformed JSON body.
+        '403':
+          description: Retrieval or operator authority required.
+        '404':
+          description: Context retrieval is disabled.
+        '409':
+          description: 'Complete read declined: evidence_unavailable, evidence_inventory_limit,
+            evidence_source_limit, retrieval_part_limit, evidence_response_limit,
+            or non_finite_number in detail.reason.'
+        '413':
+          description: Request body exceeds 16 KiB before JSON decoding.
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - retrievalBearerAuth: []
       - operatorBearerAuth: []
   /query/ci/outcome:
     get:
@@ -935,6 +1005,7 @@ paths:
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
+      - retrievalBearerAuth: []
   /v1/facts:
     get:
       tags:
@@ -1468,6 +1539,157 @@ components:
       - neutral
       - unknown
       title: CIResult
+    ContextRetrievalCoverage:
+      properties:
+        visible_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Visible Inference Calls
+        quarantined_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Quarantined Inference Calls
+        scanned_parts:
+          type: integer
+          minimum: 0.0
+          title: Scanned Parts
+        complete_visible_scan:
+          type: boolean
+          const: true
+          title: Complete Visible Scan
+      additionalProperties: false
+      type: object
+      required:
+      - visible_inference_calls
+      - quarantined_inference_calls
+      - scanned_parts
+      - complete_visible_scan
+      title: ContextRetrievalCoverage
+    ContextRetrievalItem:
+      properties:
+        score:
+          type: integer
+          minimum: 1.0
+          title: Score
+        evidence:
+          $ref: '#/components/schemas/EvidenceReadItem'
+      additionalProperties: false
+      type: object
+      required:
+      - score
+      - evidence
+      title: ContextRetrievalItem
+    ContextRetrievalRequest:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        query:
+          type: string
+          maxLength: 2048
+          title: Query
+        max_bytes:
+          type: integer
+          maximum: 65536.0
+          minimum: 4096.0
+          title: Max Bytes
+          default: 16384
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - query
+      title: ContextRetrievalRequest
+      description: Question and byte budget; the deployment fixes the source Session.
+    ContextRetrievalResult:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        policy_version:
+          type: integer
+          const: 1
+          title: Policy Version
+        source_session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Source Session Id
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        status:
+          type: string
+          enum:
+          - matched
+          - no_match
+          - budget_exhausted
+          title: Status
+        capture_completeness:
+          type: string
+          const: unknown
+          title: Capture Completeness
+        coverage:
+          $ref: '#/components/schemas/ContextRetrievalCoverage'
+        skipped:
+          $ref: '#/components/schemas/ContextRetrievalSkipped'
+        items:
+          items:
+            $ref: '#/components/schemas/ContextRetrievalItem'
+          type: array
+          maxItems: 8
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - policy_version
+      - source_session_id
+      - quarantine_revision
+      - status
+      - capture_completeness
+      - coverage
+      - skipped
+      - items
+      title: ContextRetrievalResult
+    ContextRetrievalSkipped:
+      properties:
+        reasoning_part:
+          type: integer
+          minimum: 0.0
+          title: Reasoning Part
+        non_finite_number:
+          type: integer
+          minimum: 0.0
+          title: Non Finite Number
+        no_match:
+          type: integer
+          minimum: 0.0
+          title: No Match
+        repeated_content:
+          type: integer
+          minimum: 0.0
+          title: Repeated Content
+        item_limit:
+          type: integer
+          minimum: 0.0
+          title: Item Limit
+        response_budget:
+          type: integer
+          minimum: 0.0
+          title: Response Budget
+      additionalProperties: false
+      type: object
+      required:
+      - reasoning_part
+      - non_finite_number
+      - no_match
+      - repeated_content
+      - item_limit
+      - response_budget
+      title: ContextRetrievalSkipped
     EvidenceCallMetadata:
       properties:
         inference_call_id:
@@ -2525,6 +2747,12 @@ components:
       description: SEDIMENT_OPERATOR_TOKEN. Operator access and explicit operator
         ingest; missing/invalid returns401, ingest authority on an operator route
         returns403.
+    retrievalBearerAuth:
+      type: http
+      scheme: bearer
+      description: SEDIMENT_RETRIEVAL_TOKEN. Read-only access to the configured source
+        Session through /query/context and /v1/me; all existing ingest and operator
+        reads return403.
     githubWebhookSignature:
       type: apiKey
       in: header

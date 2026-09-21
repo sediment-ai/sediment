@@ -4,6 +4,15 @@
 
 ### Operational evidence
 
+- Add pi's opt-in `sediment_retrieve_context` tool and `POST /query/context` for
+  keyword-selected exact evidence from one configured previous Session. Restrict
+  retrieval credentials to that Session, preserve Quarantine and exact references,
+  and bound complete source reads and whole-part responses. Reads persist nothing
+  and don't change Attribution or training export semantics.
+- Reserve the ingest client name `retrieval`. Rename an existing client with that
+  name before upgrading. Retrieval configuration validates even in development
+  mode; changing the source Session requires rotating its token.
+
 - Inventory a Session, inspect captured Inference-call structure, and fetch up to
   32 exact parts through operator-authenticated API routes and `sediment evidence`.
   Reads enforce fixed source and response limits and recheck Quarantine. The CLI

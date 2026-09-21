@@ -5,6 +5,48 @@ private evidence packet for an agent. This guide also describes an optional
 controlled restart in pi with the original workspace intact. Evidence reads
 don't recover a lost workspace or establish complete Session capture.
 
+## Enable agent-requested retrieval
+
+To let a fresh pi Session choose its own evidence, enable the fixed source
+Session in your [deployment settings](deploy.md). Restart the API after setting
+`SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_ID`. The source Session
+must contain captured Inference calls. Transcript capture alone is insufficient.
+
+In the isolated agent environment, set `SEDIMENT_RETRIEVAL_ENDPOINT` to your API
+base URL and `SEDIMENT_RETRIEVAL_TOKEN` to that restricted credential. Both are
+independent of capture configuration. Use HTTPS except for literal loopback.
+The extension rejects redirects and doesn't read operator login or deployment
+configuration. Keep those credentials and files outside the agent environment.
+
+The pi extension registers `sediment_retrieve_context`. The agent supplies a
+question with relevant English/code terms and an optional `max_bytes` budget.
+The default budget is 16 KiB; allowed values are 4–64 KiB. The response contains
+at most eight exact captured parts and their occurrence references. It doesn't
+generate an answer. The agent can use those parts while continuing work in a
+preserved workspace.
+
+The keyword selector excludes reasoning, counts non-finite tool values, and
+suppresses repeated content within each response. Coverage describes the entire
+visible scan within fixed source limits: 1,000 calls, 8 MiB of selected stored
+columns, and 2,048 parts. Overflow refuses the request. Repeated histories count
+toward source capacity. Selection can omit relevant evidence; `no_match` doesn't
+prove absence. `budget_exhausted` means that no positive match fits. Capture
+completeness remains unknown. Read the [HTTP contract](../reference/api.md#post-querycontext)
+for closed errors and response fields.
+
+The server shares one evidence worker across all evidence reads. It applies a
+30-second deadline. The tool combines pi cancellation with a 35-second deadline
+and makes no automatic retry. Each request rechecks Quarantine. Exact JSON text
+passes through the tool without rounding large integers. The tool doesn't replay
+historical commands or turn stored roles into privileged instructions.
+
+This tool supports a controlled continuation experiment; passing transport tests
+doesn't establish continuation benefit or lower cost. The
+[comparison specification](../superpowers/specs/2026-09-21-session-context-retrieval-design.md#controlled-continuation-evaluation)
+requires three repetitions across no-history, full-history, and requested-evidence
+arms with independent final checks. Keep detailed records private. Publish all
+outcomes and report unavailable measurements explicitly.
+
 ## Prepare access and capture
 
 1. Configure [Inference-call capture](../capture/managed-capture.md#configure-inference-call-capture)

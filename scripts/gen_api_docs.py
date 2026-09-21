@@ -47,16 +47,22 @@ BEARER_AUTH = (
     "ingest or operator",
     "Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy "
     "`$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit "
-    "operator ingest. Missing or invalid credentials return 401.",
+    "operator ingest. Missing or invalid credentials return 401; retrieval authority returns 403.",
 )
 OPERATOR_AUTH = (
     "operator",
     "Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. "
-    "Missing or invalid credentials return 401; an ingest token returns 403.",
+    "Missing or invalid credentials return 401; ingest or retrieval authority returns 403.",
+)
+RETRIEVAL_AUTH = (
+    "retrieval or operator",
+    "Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or "
+    "`$SEDIMENT_OPERATOR_TOKEN`. Both read the one configured source Session. "
+    "Missing or invalid credentials return 401; ingest authority returns 403.",
 )
 PROBE_AUTH = (
-    "ingest or operator",
-    "Either configured bearer authority. The response identifies the configured "
+    "ingest, operator, or retrieval",
+    "Any configured bearer authority. The response identifies the configured "
     "authority and client, never the token. Missing or invalid credentials return 401.",
 )
 HMAC_AUTH = (
@@ -173,6 +179,29 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
                 "The body is not JSON, or not a JSON object — 400 so the "
                 "exporter drops it instead of retrying."
             )
+        },
+    ),
+    "/query/context": (
+        "Agent-requested evidence from the configured previous Session.",
+        "Accepts schema_version=1, a nonblank English/code query of at most 2048 UTF-8 bytes "
+        "with a meaningful token, and optional integer max_bytes (4096–65536; default 16384). "
+        "Rejects all other fields. Returns policy/schema version 1, source_session_id, "
+        "quarantine_revision, matched/no_match/budget_exhausted status, unknown capture completeness, "
+        "complete visible scan coverage, closed exclusion counts, and at most eight scored exact "
+        "EvidenceReadItem values. Each item retains its occurrence reference, timestamp, role, "
+        "finish_reason, and complete canonical part. Scores count distinct token overlap. "
+        "Whole-response ASCII JSON respects max_bytes and carries Cache-Control: no-store. "
+        "Reads use one snapshot, cap visible calls at 1000, selected stored columns at 8 MiB, "
+        "and canonical parts at 2048. Reasoning and non-finite parts are counted exclusions.",
+        {
+            "400": "Malformed JSON body.",
+            "404": "Retrieval is disabled for this deployment.",
+            "409": "Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), "
+            "evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), "
+            "evidence_response_limit (limit), or non_finite_number. No partial scan succeeds.",
+            "413": "The streamed body exceeds 16 KiB before JSON decoding.",
+            "422": "Invalid version, query, byte budget, or undeclared field; content is omitted.",
+            "503": "The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL.",
         },
     ),
     "/query/evidence": (
@@ -301,7 +330,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
     ),
     "/v1/me": (
         "Auth probe: tenant, version, authority, and configured client.",
-        '`{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest or operator>", "client_id": "<configured client>"}`. These identifiers never select tenancy.',
+        '`{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id. These identifiers never select tenancy.',
         {},
     ),
     "/v1/facts": (
@@ -377,7 +406,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
 # envelope validator, 413 from the body-size middleware (bodies only).
 _SHARED_STATUS = {
     "401": "Missing or invalid credentials.",
-    "403": "The credential lacks operator authority.",
+    "403": "The credential lacks the authority required by this route.",
     "503": "Worker capacity, deadline, result limit, or database availability prevents this operation; retry retained request bytes after recovery.",
     "413": (
         "Body over 25 MiB. The cap is enforced pre-auth, on every door that "
@@ -433,6 +462,7 @@ def _auth_map() -> dict[str, tuple[str, str]]:
     return (
         {path: BEARER_AUTH for path in module.INGEST}
         | {path: OPERATOR_AUTH for path in module.OPERATOR}
+        | {path: RETRIEVAL_AUTH for path in module.RETRIEVAL}
         | {"/v1/me": PROBE_AUTH}
         | {path: HMAC_AUTH for path in module.HMAC}
         | {path: OPEN_AUTH for path in module.OPEN}

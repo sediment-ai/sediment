@@ -41,6 +41,7 @@ BEARER = {
     "/query/evidence",
     "/query/evidence/manifest",
     "/query/evidence/read",
+    "/query/context",
     "/query/ci/outcome",
     "/query/ci/failures",
     "/query/session/{session_id}",
@@ -53,7 +54,8 @@ BEARER = {
     "/v1/reports/accepted-work-lifecycle",
 }
 INGEST = {"/ingest/gateway", "/ingest/ci", "/v1/logs"}
-OPERATOR = BEARER - INGEST - {"/v1/me"}
+RETRIEVAL = {"/query/context"}
+OPERATOR = BEARER - INGEST - RETRIEVAL - {"/v1/me"}
 HMAC = {
     "/ingest/github/push",
     "/ingest/github/repository",
@@ -75,6 +77,11 @@ SECURITY_SCHEMES = {
         "type": "http",
         "scheme": "bearer",
         "description": "SEDIMENT_OPERATOR_TOKEN. Operator access and explicit operator ingest; missing/invalid returns401, ingest authority on an operator route returns403.",
+    },
+    "retrievalBearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "SEDIMENT_RETRIEVAL_TOKEN. Read-only access to the configured source Session through /query/context and /v1/me; all existing ingest and operator reads return403.",
     },
     "githubWebhookSignature": {
         "type": "apiKey",
@@ -126,6 +133,14 @@ def build_spec() -> str:
     for path, ops in spec["paths"].items():
         if path in OPERATOR:
             sec = [{"operatorBearerAuth": []}]
+        elif path in RETRIEVAL:
+            sec = [{"retrievalBearerAuth": []}, {"operatorBearerAuth": []}]
+        elif path == "/v1/me":
+            sec = [
+                {"bearerAuth": []},
+                {"operatorBearerAuth": []},
+                {"retrievalBearerAuth": []},
+            ]
         elif path in BEARER:
             sec = [{"bearerAuth": []}, {"operatorBearerAuth": []}]
         elif path in HMAC:
@@ -137,6 +152,10 @@ def build_spec() -> str:
             op["responses"]["401"] = UNAUTHORIZED
             if path in OPERATOR:
                 op["responses"]["403"] = {"description": "Operator authority required."}
+            elif path in INGEST:
+                op["responses"]["403"] = {
+                    "description": "Ingest or operator authority required."
+                }
             params = [
                 p
                 for p in op.get("parameters", [])

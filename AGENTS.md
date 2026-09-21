@@ -152,7 +152,7 @@ proposals outside the open-core scope.
 |---|---|---|
 | `packages/core` | Fact models + Basic redaction + PostgreSQL FactStore + bounded evidence projections — source of truth | `docs/agents/fact-store.md` |
 | `packages/capture` | Gateway adapters, OTLP translators, forge parsers | `docs/agents/capture-translators.md` |
-| `packages/derive` | Inference-call views, mirror, notes/jaccard Attribution (`diff`, `precision_harness`, `precision_report`), CI resolution, merge retention, Attribution-share metric + decline alert, Rollouts, Recovery pairs, edit retention + final Fate, eval `split`, shared joins + historical Session observation binding (`session_commit`) | `docs/explanation/attribution.md` + `docs/agents/derivations.md` |
+| `packages/derive` | Inference-call views, keyword context retrieval (`context_retrieval`), mirror, notes/jaccard Attribution (`diff`, `precision_harness`, `precision_report`), CI resolution, merge retention, Attribution-share metric + decline alert, Rollouts, Recovery pairs, edit retention + final Fate, eval `split`, shared joins + historical Session observation binding (`session_commit`) | `docs/explanation/attribution.md` + `docs/agents/derivations.md` |
 | `packages/export` | Attributed completions (`attributed_completions`), Confidence ladder (`label_confidence`), canonical schemas (`schema_contracts`, `schema_identity`), canonical-to-trainer mapping (`trainer`), consumer profiles (`compatibility`, `consumer_rlvr`), bounded bundle/training execution (`derived_bundle`, `bounded_training`, `staged_rows`, `_record_storage`), DPO/SFT/diff-SFT/recovery, RLVR (`rlvr`, `environment_manifest`, `verifier_commands`, `jsonl`), outcome and merge-retention reports, `significance`, `calibration`, `label_confidence_inspection`, `dataset_diagnostics`, `decision_latency` | `docs/agents/exports-and-stats.md` + `docs/agents/statistics.md` (+ `docs/exports/rlvr-export.md`) |
 | `apps/api` | FastAPI ingest + OTLP receiver + authenticated operational-report and evidence reads + operator CLI (`sediment`: managed local PostgreSQL, quarantine, exports, reports, mirror GC) | `docs/agents/api-and-operations.md` |
 
@@ -233,7 +233,7 @@ Grouped by reader intent; `docs/` subdirectories mirror these groups.
 | Credentials and repository identity | `docs/adr/0018-static-credential-authorities.md`; `docs/adr/0022-agent-requested-session-context.md`; `docs/adr/0019-repository-identity-and-renames.md` |
 | Pipeline acceptance and release artifacts | `docs/operate/rehearse-release.md`; `docs/agents/exports-and-stats.md` |
 | Contributor setup and issue maintenance | `CONTRIBUTING.md`; `docs/agents/issue-tracker.md` |
-| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; `docs/adr/0021-bounded-evidence-access.md`; `docs/superpowers/specs/2026-09-21-context-evidence-design.md`; `docs/superpowers/specs/2026-09-21-evidence-store-positioning-design.md`; `docs/superpowers/specs/2026-09-21-session-context-retrieval-design.md` (agent-requested retrieval draft) |
+| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; `docs/adr/0021-bounded-evidence-access.md`; `docs/superpowers/specs/2026-09-21-context-evidence-design.md`; `docs/superpowers/specs/2026-09-21-evidence-store-positioning-design.md`; `docs/superpowers/specs/2026-09-21-session-context-retrieval-design.md` (agent-requested retrieval specification) |
 
 Maintained documentation and ADRs carry contributor-facing contracts.
 
