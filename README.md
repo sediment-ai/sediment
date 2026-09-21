@@ -10,6 +10,7 @@
 [![PyPI](https://img.shields.io/pypi/v/sediment-cli)](https://pypi.org/project/sediment-cli/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](CONTRIBUTING.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![Follow @sedimentai on X](https://img.shields.io/badge/Follow-%40sedimentai-000000?logo=x&logoColor=white)](https://x.com/sedimentai)
 
 [Website](https://sediment.so) |
 [Documentation](https://docs.sediment.so) |
