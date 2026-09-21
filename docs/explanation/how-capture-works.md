@@ -395,6 +395,12 @@ raw transcript, correction text, or duplicate attempt text.
 The transcript payload contains no raw transcript, prompts, Read results, tool
 results, or environment.
 
+Operator evidence reads expose selected canonical Inference-call parts and
+message metadata, excluding `raw` and user identity. A tool result needs a
+captured model request that contains it. Reads cannot establish complete capture
+or reconstruct missing workspace state. See
+[Continue a task with captured evidence](../operate/resume-with-evidence.md).
+
 The external-delta cache stores per-line hashes under
 `<base>/sediment/deltas`. The base is `SEDIMENT_DELTA_CACHE`, then
 `XDG_CACHE_HOME`, then `~/.cache`.
