@@ -24,7 +24,8 @@ that the local PostgreSQL server needs. You don't need a source checkout or
 Docker.
 
 If the installer prints an `export PATH=...` instruction, run it in this
-terminal before continuing. Follow its guidance for later terminals too.
+terminal before continuing. Repeat the same instruction in each terminal where
+you run `sediment`.
 
 Verify:
 
@@ -49,7 +50,8 @@ the API. It keeps the database, credentials, and mirror under
 `~/.sediment/server`.
 
 Keep this terminal open. When the server reports `Application startup complete.`,
-open a second terminal and verify the server:
+open a second terminal. If installation printed a PATH instruction, repeat it
+in this terminal. Then verify the server:
 
 ```bash
 curl -sf http://127.0.0.1:8000/health
