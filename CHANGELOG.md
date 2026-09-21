@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 — 2026-09-21
+
 ### Installation
 
 - Install the PyPI CLI and maintained host libraries through
