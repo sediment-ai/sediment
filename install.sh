@@ -1,156 +1,161 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# Sediment CLI installer.
+# curl -fsSL https://sediment.so/install.sh | sh
 #
-#   curl -fsSL https://raw.githubusercontent.com/sediment-ai/sediment/main/install.sh | sh
-#
-# Installs the `sediment` command (PyPI distribution `sediment-cli`) with
-# the best tool present: uv, then pipx, then `pip install --user`. The
-# server deployment recipe stays docker compose (README) — this installs
-# the client/operator CLI. Local server/database commands need a maintained
-# host libpq; capture-only clients do not. This installer never changes
-# system packages.
-#
-# This script is the one install path, and it never asks a question or
-# leaves a step to the reader: a machine with none of the three
-# tools — or whose pipx/python3 is older than the 3.12 the wheel requires
-# — gets uv bootstrapped here rather than an error naming a command to
-# run next.
-#
-# Flags:
-#   --version X.Y.Z   pin a version (default: latest)
-#   --method M        force uv|pipx|pip instead of detecting
-#   --dry-run         print the install command instead of running it
-#
-# SEDIMENT_INSTALL_METHOD=M is the env form of --method (CI exercises every
-# branch this way without three tool installations).
+# Install sediment-cli from PyPI with Python 3.12 and prepare the maintained
+# host libraries used by `sediment server`. macOS requires Homebrew; Debian
+# and Ubuntu require sudo access. --capture-only skips host package changes.
+# Explicit pipx/pip methods require an existing Python 3.12 installation.
 
 set -eu
 
 VERSION=""
-METHOD="${SEDIMENT_INSTALL_METHOD:-detect}"
+METHOD="${SEDIMENT_INSTALL_METHOD:-uv}"
 DRY_RUN=0
-BOOTSTRAP_UV=0
+CAPTURE_ONLY=0
 UV_BOOTSTRAP_URL="https://astral.sh/uv/install.sh"
 
 usage() {
-    echo "usage: install.sh [--version X.Y.Z] [--method uv|pipx|pip] [--dry-run]"
+    echo "usage: install.sh [--version X.Y.Z] [--method uv|pipx|pip] [--capture-only] [--dry-run]"
 }
+
+fail() { echo "error: $*" >&2; exit 1; }
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --version)
-            [ $# -ge 2 ] || { echo "error: --version needs a value" >&2; exit 1; }
+            [ $# -ge 2 ] || fail "--version needs a value"
             VERSION="$2"; shift 2 ;;
         --method)
-            [ $# -ge 2 ] || { echo "error: --method needs a value" >&2; exit 1; }
+            [ $# -ge 2 ] || fail "--method needs a value"
             METHOD="$2"; shift 2 ;;
+        --capture-only) CAPTURE_ONLY=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage; exit 0 ;;
-        *) echo "error: unknown argument $1" >&2; usage >&2; exit 1 ;;
+        *) fail "unknown argument $1" ;;
     esac
 done
 
+# Keep the old environment value working without selecting system pip.
+[ "$METHOD" != detect ] || METHOD=uv
+case "$METHOD" in uv|pipx|pip) ;; *) fail "unknown method $METHOD (uv|pipx|pip)" ;; esac
+: "${HOME:?error: HOME must name your user directory}"
+ORIGINAL_PATH="$PATH"
 SPEC="sediment-cli${VERSION:+==$VERSION}"
 
-# Both the pipx and pip branches need an interpreter the wheel actually
-# supports. pip refuses a requires-python it does not satisfy ("requires a
-# different Python: 3.11.x not in '>=3.12'") — a resolver error that reads
-# like a missing package — and pipx builds its venv with its own
-# interpreter, so `apt install pipx` on Debian 12 (python3.11) fails the
-# same way. Neither tool goes looking for a newer interpreter; uv does,
-# which is why it is the fallback for both.
-interpreter_is_supported() {
-    [ -n "${1:-}" ] || return 1
-    "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' \
-        2>/dev/null
+run() {
+    if [ "$DRY_RUN" = 1 ]; then echo "would run: $*"; else "$@"; fi
 }
 
-# The interpreter pipx would build the venv with. `pipx environment` exists
-# from pipx 1.2; older pipx falls back to its own shebang, which names the
-# same interpreter. Unknown (neither works) reads as unsupported: skipping
-# pipx still lands a working install via python3 or uv, where guessing
-# wrong lands none.
-pipx_python() {
-    # Empty output counts as a miss, not a success: `pipx environment` can
-    # exit 0 with nothing to say, and an empty interpreter would then read
-    # as "unsupported" without the shebang ever being tried.
-    _py=$(pipx environment --value PIPX_DEFAULT_PYTHON 2>/dev/null) || _py=""
-    if [ -z "$_py" ]; then
-        _py=$(sed -n '1s|^#![[:space:]]*\([^[:space:]]*\).*|\1|p' \
-            "$(command -v pipx)" 2>/dev/null)
-    fi
-    printf '%s\n' "$_py"
-}
+if [ "$CAPTURE_ONLY" = 0 ]; then
+    [ "$(id -u)" != 0 ] || fail "run this installer as your normal user; it uses sudo for system dependencies"
+    SYSTEM=$(uname -s)
+    case "$SYSTEM/$(uname -m)" in
+        Darwin/arm64|Darwin/x86_64|Linux/aarch64|Linux/x86_64) ;;
+        *) fail "local server setup requires macOS or Linux on a supported 64-bit processor" ;;
+    esac
+    case "$SYSTEM" in
+        Darwin)
+            if [ "$DRY_RUN" = 0 ]; then
+                command -v brew >/dev/null 2>&1 || fail "install Homebrew from https://brew.sh, then retry"
+            fi
+            echo "Installing host packages with Homebrew: libpq openssl@3"
+            run brew install libpq openssl@3
+            ;;
+        Linux)
+            if [ "$DRY_RUN" = 0 ]; then
+                command -v apt-get >/dev/null 2>&1 || fail "local server setup requires Debian or Ubuntu with apt-get"
+                command -v sudo >/dev/null 2>&1 || fail "sudo is required to install the host packages"
+            fi
+            echo "Installing host packages with sudo apt-get: git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g"
+            run sudo apt-get update
+            run sudo apt-get install -y git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+            ;;
+        *) fail "local server setup requires macOS with Homebrew, Debian, or Ubuntu" ;;
+    esac
+fi
 
-# Install uv, then put it on this run's PATH — its installer writes a shell
-# profile, which does nothing for the shell already running.
+# Prefer a known user-owned bin directory already visible to the calling shell.
+BIN_DIR="$HOME/.local/bin"
+for candidate in "$HOME/.local/bin" "$HOME/bin"; do
+    case ":$ORIGINAL_PATH:" in
+        *":$candidate:"*)
+            if [ -d "$candidate" ] && [ -O "$candidate" ] && [ -w "$candidate" ] && [ ! -L "$candidate" ]; then
+                BIN_DIR="$candidate"
+                break
+            fi
+            ;;
+    esac
+done
+
 bootstrap_uv() {
-    command -v curl >/dev/null 2>&1 || {
-        echo "error: need curl to install uv; install uv manually:" >&2
-        echo "  https://docs.astral.sh/uv/getting-started/installation/" >&2
-        exit 1
-    }
-    echo "no uv, pipx, or Python 3.12+ found — installing uv first..."
-    curl -LsSf "$UV_BOOTSTRAP_URL" | sh
-    PATH="${UV_INSTALL_DIR:-$HOME/.local/bin}:$HOME/.cargo/bin:$PATH"
+    if [ "$DRY_RUN" = 1 ]; then
+        echo "would download $UV_BOOTSTRAP_URL and run the completed installer with sh"
+        return
+    fi
+    command -v curl >/dev/null 2>&1 || fail "curl is required to download uv"
+    echo "Installing uv from $UV_BOOTSTRAP_URL"
+    # Download completely before executing: POSIX sh has no pipefail, so a
+    # failed `curl | sh` can otherwise run a partial script and report success.
+    UV_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/sediment-uv.XXXXXXXX")
+    trap 'rm -f "$UV_SCRIPT"' 0
+    trap 'exit 1' HUP INT TERM
+    curl -fLsS --proto '=https' --tlsv1.2 "$UV_BOOTSTRAP_URL" -o "$UV_SCRIPT"
+    UV_BIN_DIR="${UV_INSTALL_DIR:-$BIN_DIR}"
+    UV_INSTALL_DIR="$UV_BIN_DIR" UV_NO_MODIFY_PATH=1 sh "$UV_SCRIPT"
+    rm -f "$UV_SCRIPT"
+    trap - 0 HUP INT TERM
+    PATH="$UV_BIN_DIR:$PATH"
     export PATH
-    command -v uv >/dev/null 2>&1 || {
-        echo "error: uv installed but is not on PATH; open a new shell and" >&2
-        echo "       re-run this script" >&2
-        exit 1
-    }
+    command -v uv >/dev/null 2>&1 || fail "uv installation did not produce an executable"
 }
 
-if [ "$METHOD" = "detect" ]; then
-    if command -v uv >/dev/null 2>&1; then METHOD="uv"
-    elif command -v pipx >/dev/null 2>&1 &&
-        interpreter_is_supported "$(pipx_python)"; then METHOD="pipx"
-    elif interpreter_is_supported "$(command -v python3)"; then METHOD="pip"
-    else METHOD="uv"; BOOTSTRAP_UV=1
-    fi
+PYTHON=python3.12
+if [ "$METHOD" != uv ] && [ "$DRY_RUN" = 0 ]; then
+    if ! command -v "$PYTHON" >/dev/null 2>&1; then PYTHON=python3; fi
+    "$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 12) else 1)' 2>/dev/null ||
+        fail "--method $METHOD requires Python 3.12; use --method uv to install it automatically"
 fi
 
 case "$METHOD" in
-    uv)   set -- uv tool install "$SPEC" ;;
-    pipx) set -- pipx install "$SPEC" ;;
-    pip)  set -- python3 -m pip install --user "$SPEC" ;;
-    *) echo "error: unknown method $METHOD (uv|pipx|pip)" >&2; exit 1 ;;
+    uv)
+        BIN_DIR="${UV_TOOL_BIN_DIR:-$BIN_DIR}"
+        export UV_TOOL_BIN_DIR="$BIN_DIR"
+        if ! command -v uv >/dev/null 2>&1; then bootstrap_uv; fi
+        set -- uv tool install --python 3.12 --upgrade "$SPEC"
+        ;;
+    pipx)
+        BIN_DIR="${PIPX_BIN_DIR:-$BIN_DIR}"
+        export PIPX_BIN_DIR="$BIN_DIR"
+        set -- pipx install --python "$PYTHON" "$SPEC"
+        ;;
+    pip)
+        if [ "$DRY_RUN" = 0 ]; then BIN_DIR="$("$PYTHON" -m site --user-base)/bin"; fi
+        set -- "$PYTHON" -m pip install --user "$SPEC"
+        ;;
 esac
 
-if [ "$DRY_RUN" = 1 ]; then
-    # `if`, not `[ … ] && …`: under set -e a false one-liner test is the
-    # whole command's status and would exit the script.
-    if [ "$BOOTSTRAP_UV" = 1 ]; then
-        echo "would run: curl -LsSf $UV_BOOTSTRAP_URL | sh"
-    fi
-    echo "would run: $*"
-    exit 0
+echo "Installing $SPEC via $METHOD..."
+run "$@"
+[ "$DRY_RUN" = 0 ] || exit 0
+
+EXECUTABLE="$BIN_DIR/sediment"
+[ -x "$EXECUTABLE" ] || fail "installation did not produce $EXECUTABLE"
+"$EXECUTABLE" --help >/dev/null || fail "the installed sediment command could not start"
+
+# A child process cannot update its parent's PATH. Print one exact command,
+# with shell quoting that also works when the home directory contains spaces.
+if [ "$(PATH="$ORIGINAL_PATH" command -v sediment || true)" != "$EXECUTABLE" ]; then
+    QUOTED_BIN=$(printf '%s' "$BIN_DIR" | sed "s/'/'\\\\''/g")
+    printf '\nBefore running sediment in this terminal, run:\n'
+    printf "  export PATH='%s':\"\$PATH\"\n" "$QUOTED_BIN"
 fi
 
-if [ "$BOOTSTRAP_UV" = 1 ]; then
-    bootstrap_uv
+printf '\nInstalled %s.\n' "$SPEC"
+if [ "$CAPTURE_ONLY" = 0 ]; then
+    echo "Start your local server: sediment server"
+else
+    echo "Connect to a deployment: sediment login <url>"
+    echo "For capture, enroll a separate ingest credential: sediment login <url> --capture --with-token"
 fi
-
-echo "installing $SPEC via $METHOD..."
-"$@"
-
-if ! command -v sediment >/dev/null 2>&1; then
-    # uv/pipx/pip --user all install into a per-user bin dir that may not be
-    # on PATH yet; name the usual suspects instead of guessing wrong.
-    echo ""
-    echo "note: 'sediment' is not on your PATH yet. Likely bin dirs:"
-    echo "  uv:   ~/.local/bin        (uv tool update-shell adds it)"
-    echo "  pipx: ~/.local/bin        (pipx ensurepath adds it)"
-    echo "  pip:  \$(python3 -m site --user-base)/bin"
-fi
-
-echo ""
-echo "To connect to a deployment:   sediment login <url>"
-echo "Use an operator credential for login; then verify it with sediment facts."
-echo "For capture, enroll a separate named ingest credential from stdin:"
-echo "  sediment login <url> --capture --with-token"
-echo "Capture-only installs do not need libpq; local server/database commands do."
-echo "Local setup and maintained host libpq prerequisites:"
-echo "  https://github.com/sediment-ai/sediment/blob/main/docs/quickstart.md"
