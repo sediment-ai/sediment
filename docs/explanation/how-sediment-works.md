@@ -1,12 +1,25 @@
 # How Sediment works
 
-Sediment joins the evidence that your coding workflow already produces into
-operational reports and training data you own. A model writes code. You accept
-or reject it. The code changes before the Session ends, reaches a commit,
-passes through pull-request review, merges, or receives a CI result.
+Sediment is the open-source, self-hosted evidence store for coding agents. It
+captures the evidence that your coding workflow produces: a model writes code,
+you accept or reject it, the code changes, a commit reaches review or merge, or
+continuous integration (CI) reports a result.
 
 Those signals live in separate systems. Sediment preserves each observation
 and joins them without presenting any one signal as ground truth.
+
+You can use the same captured evidence to:
+
+- [Evaluate agent work](../operate/measure-agent-work.md) through model outcomes,
+  code retention, and rework reports.
+- [Provide context to an agent](../operate/resume-with-evidence.md) by selecting
+  captured Inference-call parts for a task continuation.
+- [Build training datasets](../exports/training-exports.md) with evidence and
+  Provenance attached to each row.
+
+Evidence reads return captured content without a model call. Reports and training
+exports interpret Facts through recomputable Derivations. Selecting context does
+not change the Facts or their interpretation for training.
 
 This page explains that design. The [Quickstart](../quickstart.md) provides a
 working local setup.

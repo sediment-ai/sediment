@@ -8,7 +8,7 @@
     {
       "source": "docs/explanation/how-sediment-works.md",
       "destination": "how-sediment-works",
-      "description": "Facts, derivations, the two canonical artifacts \u2014 and what the labels do and do not mean."
+      "description": "One evidence store for evaluating agent work, reusing selected context, and building training datasets."
     },
     {
       "source": "docs/explanation/architecture.md",

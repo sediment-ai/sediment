@@ -7,9 +7,9 @@ locally, and how to contribute your first pull request.
 
 | Read | Why |
 |---|---|
-| 1. [`README.md`](../README.md) | What Sediment is, its Attributed completions and Rollouts, and their DPO, SFT, and RLVR projections |
+| 1. [`README.md`](../README.md) | The evidence store and its uses: evaluate agent work, reuse context, and build training datasets |
 | 2. [`AGENTS.md`](../AGENTS.md) | The router: non-negotiable rules, package map, topical docs. Claude Code reaches it via [`CLAUDE.md`](../CLAUDE.md) and a `SessionStart` hook |
-| 3. [`CONTEXT.md`](../CONTEXT.md) | The vocabulary — use its terms exactly |
+| 3. [`CONTEXT.md`](../CONTEXT.md) | The domain vocabulary: Facts, Derivations, Attributed completions, and Rollouts. Use its terms exactly. |
 | 4. [`docs/adr/`](adr/) | The binding decisions: 0001–0005 core, 0006 open-core boundary, 0007 client-side transcript parsing, 0008 structured inference calls, 0009 canonical Attribution, [0010 canonical continuous integration outcomes](adr/0010-canonical-ci-outcome-facts.md), [0011 training-objective evidence](adr/0011-training-objectives-own-evidence-interpretation.md), [0012 PostgreSQL-only storage](adr/0012-postgresql-fact-store.md), [0013 Git-note observation Facts](adr/0013-git-note-observation-facts.md), [0014 factual outcomes and training evidence](adr/0014-factual-outcomes-and-training-evidence.md), [0015 lossless representation and bundle v2](adr/0015-lossless-values-and-bundle-v2.md), [0016 bundle derivation consistency](adr/0016-bundle-derivation-consistency.md), [0017 bounded sender transport storage](adr/0017-sender-transport-replay.md), [0018 credential authorities](adr/0018-static-credential-authorities.md), and [0019 repository identity](adr/0019-repository-identity-and-renames.md) |
 | 5. The playbook for your area | AGENTS.md's package map (`Read first` column) routes you into [`docs/agents/`](agents/) |
 | 6. [The issue tracker](agents/issue-tracker.md) | Labels, milestones, and how to pick up work |
