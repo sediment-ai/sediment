@@ -1,0 +1,11 @@
+USAGE:
+  sediment evidence inspect [-h] SESSION INFERENCE_CALL
+
+  print one Inference call's part manifest as JSON
+
+ARGUMENTS:
+  SESSION         source Session ID
+  INFERENCE_CALL  Inference call Fact ID
+
+OPTIONS:
+  -h, --help      show this help message and exit

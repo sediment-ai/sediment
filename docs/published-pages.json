@@ -148,6 +148,11 @@
       "source": "docs/exports/consumer-compatibility.md",
       "destination": "exports/consumer-compatibility",
       "description": "Export for pinned downstream consumers with explicit configuration and auditable evidence."
+    },
+    {
+      "source": "docs/operate/resume-with-evidence.md",
+      "destination": "operate/resume-with-evidence",
+      "description": "Select captured Inference-call parts and test controlled agent continuation with an intact workspace."
     }
   ]
 }

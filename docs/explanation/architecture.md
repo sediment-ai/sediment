@@ -92,6 +92,21 @@ can't project from either canonical artifact. The Recovery Derivation therefore
 reads eligible Facts and the mirror directly to produce a row with the fixing
 diff.
 
+## Operational evidence reads
+
+An operator can inventory a Session, inspect Inference-call message structure,
+and fetch selected canonical parts through the existing API. Each read uses one
+Quarantine-aware PostgreSQL snapshot and fixed source and response limits. The
+CLI publishes the result as a private local packet. Sediment stores no packet,
+checkpoint, retrieval index, or inferred task state.
+
+This path reuses captured Facts without changing Attributed completions,
+Rollouts, reports, or training projections. A consuming agent treats the packet
+as historical data and supplies its own task instructions. No retrieval model
+or model-service dependency participates in these reads. See
+[Bounded evidence access](../adr/0021-bounded-evidence-access.md) and
+[Continue a task with captured evidence](../operate/resume-with-evidence.md).
+
 ## Network and trust boundaries
 
 The API, PostgreSQL Fact store, git mirrors, Derivations, and exporters run
@@ -105,7 +120,9 @@ without mutating or deleting the Fact.
 
 Sediment has no phone-home path. Repository mirroring is its only optional
 outbound connection. An internal forge can keep capture and mirror traffic
-inside an air-gapped network.
+inside an air-gapped network. Evidence reads add no outbound connection. If a
+consumer sends a packet to a model, that consumer's configured endpoint decides
+whether the content crosses the perimeter.
 
 ## Continue reading
 

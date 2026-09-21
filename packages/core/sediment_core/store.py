@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -29,6 +29,20 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, Engine
 
+from . import evidence
+from .evidence import (
+    EvidenceCallMetadata,
+    EvidenceInventory,
+    EvidenceManifest,
+    EvidenceMessageSource,
+    EvidenceRead,
+    EvidenceReadError,
+    EvidenceReference,
+    project_evidence_inventory,
+    project_evidence_manifest,
+    project_evidence_read,
+    validate_evidence_references,
+)
 from .models import (
     AgentHarness,
     AwareDatetime,
@@ -1470,6 +1484,37 @@ class FactStore:
         with self.read_snapshot() as snapshot:
             return snapshot.read_session_dossier(org_id, session_id, limit=limit)
 
+    def read_evidence_inventory(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceInventory:
+        """Read complete, bounded call metadata from one visibility snapshot."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_evidence_inventory(org_id, session_id)
+
+    def read_evidence_manifest(
+        self, org_id: OrgId, session_id: NonEmptyId, inference_call_id: NonEmptyId
+    ) -> EvidenceManifest:
+        """Describe the selected call's canonical parts without emitting content."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        inference_call_id = _EVIDENCE_ID.validate_python(inference_call_id)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_evidence_manifest(
+                org_id, session_id, inference_call_id
+            )
+
+    def read_evidence_parts(
+        self,
+        org_id: OrgId,
+        session_id: NonEmptyId,
+        references: Sequence[EvidenceReference],
+    ) -> EvidenceRead:
+        """Read exact occurrences without raw payloads or unrelated message sides."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        references = validate_evidence_references(references)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_evidence_parts(org_id, session_id, references)
+
     def read_delivery_summaries(
         self,
         org_id: str,
@@ -1847,6 +1892,133 @@ class FactStore:
 
 class _FactSnapshot:
     """One borrowed connection's immutable PostgreSQL fact view."""
+
+    def read_evidence_inventory(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceInventory:
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        revision = self.quarantine_revision(org_id)
+        found = self._connection.execute(
+            select(
+                select(1)
+                .select_from(sessions)
+                .where(sessions.c.org_id == org_id, sessions.c.session_id == session_id)
+                .exists()
+            )
+        ).scalar_one()
+        calls = []
+        quarantined = 0
+        if found:
+            conditions = _evidence_conditions(org_id, session_id)
+            count, size = _evidence_preflight(
+                self._connection, conditions, _EVIDENCE_METADATA_TEXT_COLUMNS
+            )
+            if count > evidence.EVIDENCE_INVENTORY_LIMIT:
+                raise EvidenceReadError(
+                    "evidence_inventory_limit",
+                    count=count,
+                    limit=evidence.EVIDENCE_INVENTORY_LIMIT,
+                )
+            _check_evidence_bytes(size)
+            total = self._connection.execute(
+                select(func.count())
+                .select_from(inference_calls)
+                .where(
+                    inference_calls.c.org_id == org_id,
+                    inference_calls.c.session_id == session_id,
+                )
+            ).scalar_one()
+            quarantined = total - count
+            rows = self._connection.execute(
+                select(*_evidence_metadata_columns()).where(*conditions)
+            ).mappings()
+            calls = [_evidence_metadata(row) for row in rows]
+        return project_evidence_inventory(
+            session_id,
+            revision,
+            found=found,
+            calls=calls,
+            quarantined_inference_calls=quarantined,
+        )
+
+    def read_evidence_manifest(
+        self, org_id: OrgId, session_id: NonEmptyId, inference_call_id: NonEmptyId
+    ) -> EvidenceManifest:
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        inference_call_id = _EVIDENCE_ID.validate_python(inference_call_id)
+        conditions = _evidence_conditions(org_id, session_id, {inference_call_id})
+        count, size = _evidence_preflight(
+            self._connection,
+            conditions,
+            (*_EVIDENCE_METADATA_TEXT_COLUMNS, "input_messages", "output_messages"),
+        )
+        if not count:
+            raise EvidenceReadError("evidence_unavailable")
+        _check_evidence_bytes(size)
+        row = (
+            self._connection.execute(
+                select(
+                    *_evidence_metadata_columns(),
+                    inference_calls.c.input_messages,
+                    inference_calls.c.output_messages,
+                ).where(*conditions)
+            )
+            .mappings()
+            .one()
+        )
+        return project_evidence_manifest(
+            session_id,
+            self.quarantine_revision(org_id),
+            _evidence_metadata(row),
+            _messages(row["input_messages"]),
+            _messages(row["output_messages"]),
+        )
+
+    def read_evidence_parts(
+        self,
+        org_id: OrgId,
+        session_id: NonEmptyId,
+        references: Sequence[EvidenceReference],
+    ) -> EvidenceRead:
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        references = validate_evidence_references(references)
+        selected: dict[str, set[str]] = {}
+        for reference in references:
+            selected.setdefault(reference.inference_call_id, set()).add(reference.side)
+        groups: dict[tuple[str, ...], set[str]] = {}
+        for identifier, sides in selected.items():
+            groups.setdefault(tuple(sorted(sides)), set()).add(identifier)
+        statements = []
+        total_bytes = 0
+        for sides, identifiers in sorted(groups.items()):
+            conditions = _evidence_conditions(org_id, session_id, identifiers)
+            columns = tuple(f"{side}_messages" for side in sides)
+            _, size = _evidence_preflight(
+                self._connection, conditions, ("inference_call_id", *columns)
+            )
+            total_bytes += size
+            statements.append(
+                (
+                    sides,
+                    select(
+                        inference_calls.c.inference_call_id,
+                        inference_calls.c.observed_at,
+                        *(inference_calls.c[name] for name in columns),
+                    ).where(*conditions),
+                )
+            )
+        # Preflight every selected source before transferring any source column.
+        _check_evidence_bytes(total_bytes)
+        sources = {}
+        for sides, statement in statements:
+            for row in self._connection.execute(statement).mappings():
+                for side in sides:
+                    sources[(row["inference_call_id"], side)] = EvidenceMessageSource(
+                        row["observed_at"], tuple(_messages(row[f"{side}_messages"]))
+                    )
+        return project_evidence_read(
+            session_id, self.quarantine_revision(org_id), references, sources
+        )
 
     def read_repository_renames(
         self,
@@ -2709,6 +2881,64 @@ class _FactSnapshot:
             return []
         return _read_ci_outcomes(
             self._connection, org_id, False, outcome_ids=outcome_ids
+        )
+
+
+_EVIDENCE_ID = TypeAdapter(NonEmptyId)
+_EVIDENCE_ORG = TypeAdapter(OrgId)
+_EVIDENCE_METADATA = TypeAdapter(EvidenceCallMetadata)
+_EVIDENCE_METADATA_TEXT_COLUMNS = ("inference_call_id", "model_provider", "model")
+
+
+def _evidence_scope(org_id: OrgId, session_id: NonEmptyId) -> tuple[OrgId, NonEmptyId]:
+    return _EVIDENCE_ORG.validate_python(org_id), _EVIDENCE_ID.validate_python(
+        session_id
+    )
+
+
+def _evidence_conditions(
+    org_id: OrgId, session_id: NonEmptyId, identifiers: set[str] | None = None
+) -> list:
+    return [
+        *_inference_content_conditions(org_id, inference_call_ids=identifiers),
+        inference_calls.c.session_id == session_id,
+    ]
+
+
+def _evidence_metadata_columns() -> list:
+    return [
+        inference_calls.c[name]
+        for name in (*_EVIDENCE_METADATA_TEXT_COLUMNS, "observed_at")
+    ]
+
+
+def _evidence_metadata(row: Mapping) -> EvidenceCallMetadata:
+    return _EVIDENCE_METADATA.validate_python(
+        {name: row[name] for name in (*_EVIDENCE_METADATA_TEXT_COLUMNS, "observed_at")}
+    )
+
+
+def _evidence_preflight(
+    connection: Connection, conditions: list, columns: tuple[str, ...]
+) -> tuple[int, int]:
+    """Count opaque stored bytes without transferring any variable-width field."""
+    size = sum(
+        func.coalesce(func.octet_length(inference_calls.c[name]), 0) for name in columns
+    )
+    count, total = connection.execute(
+        select(func.count(), func.coalesce(func.sum(size), 0))
+        .select_from(inference_calls)
+        .where(*conditions)
+    ).one()
+    return int(count), int(total)
+
+
+def _check_evidence_bytes(size: int) -> None:
+    if size > evidence.EVIDENCE_SOURCE_BYTES_LIMIT:
+        raise EvidenceReadError(
+            "evidence_source_limit",
+            bytes=size,
+            limit=evidence.EVIDENCE_SOURCE_BYTES_LIMIT,
         )
 
 

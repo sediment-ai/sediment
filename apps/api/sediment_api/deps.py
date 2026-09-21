@@ -19,7 +19,7 @@ from typing import Any
 
 from fastapi import Depends, Header, HTTPException, Request
 from sediment_capture import verify_signature
-from sediment_core import FactStore
+from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore
 
 from .config import settings
 
@@ -57,6 +57,15 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        limit = MAX_BODY_BYTES
+        path = scope["path"]
+        root_path = scope.get("root_path", "")
+        if root_path and path.startswith(root_path + "/"):
+            path = path[len(root_path) :]
+        if scope["method"] == "POST" and path == "/query/evidence/read":
+            # FastAPI parses model envelopes before running dependencies. Keep
+            # this operation's smaller bound ahead of that allocation too.
+            limit = min(limit, EVIDENCE_REQUEST_BYTES_LIMIT)
         received = 0
 
         async def capped_receive() -> Any:
@@ -66,7 +75,7 @@ class BodySizeLimitMiddleware:
                 received += len(message.get("body", b""))
                 # Module-global lookup on purpose: tests lower the cap by
                 # patching MAX_BODY_BYTES after the app is constructed.
-                if received > MAX_BODY_BYTES:
+                if received > limit:
                     raise HTTPException(
                         status_code=413, detail="request body too large"
                     )

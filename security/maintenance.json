@@ -3535,15 +3535,15 @@
     },
     "pypi/fastapi-sso": {
       "basis": "Upstream applies security fixes only to the latest release and does not promise older-release backports. The online gate must confirm the latest non-prerelease, non-yanked registry version.",
-      "evidence": "https://raw.githubusercontent.com/tomasvotava/fastapi-sso/HEAD/SECURITY.md",
+      "evidence": "https://github.com/tomasvotava/fastapi-sso/blob/0.23.0/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/tomasvotava/fastapi-sso",
-      "source_updated_at": "2026-09-07T01:34:28Z",
+      "source_updated_at": "2026-09-21T13:20:45Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "0.22.0"
+        "0.23.0"
       ]
     },
     "pypi/fastuuid": {

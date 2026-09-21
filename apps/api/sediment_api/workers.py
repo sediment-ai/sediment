@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Bounded, disposable processes for the API's six expensive operations."""
+"""Bounded, disposable processes for expensive API operations."""
 
 from __future__ import annotations
 
@@ -33,7 +33,13 @@ MAX_DIAGNOSTIC_BYTES = 64 * 1024
 MAX_REQUEST_BYTES = 1024 * 1024
 MIRROR_FREE_BYTES = 1024 * 1024 * 1024
 _WORKER_COMMAND = (sys.executable, "-m", "sediment_api.worker")
-_QUERY_KINDS = frozenset({"commit", "session", "model-report", "lifecycle-report"})
+_EVIDENCE_KINDS = frozenset(
+    {"evidence-inventory", "evidence-manifest", "evidence-read"}
+)
+_QUERY_KINDS = (
+    frozenset({"commit", "session", "model-report", "lifecycle-report"})
+    | _EVIDENCE_KINDS
+)
 _MIRROR_KINDS = frozenset({"push", "rename"})
 
 
@@ -268,6 +274,7 @@ class WorkerSupervisor:
             if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
                 raise RuntimeError("cannot initialize worker process cleanup")
         self._query_tasks: set[asyncio.Task] = set()
+        self._evidence_tasks: set[asyncio.Task] = set()
         self._mirror_tasks: set[asyncio.Task] = set()
         self._push_tasks: dict[tuple[str, str], asyncio.Task] = {}
         self._mirror_slots = asyncio.Semaphore(MIRROR_SLOTS)
@@ -296,16 +303,23 @@ class WorkerSupervisor:
     async def run(self, kind: str, payload: dict) -> Response:
         if kind not in _QUERY_KINDS:
             raise ValueError("unknown query job")
-        if self._closed or len(self._query_tasks) >= QUERY_SLOTS:
+        if (
+            self._closed
+            or len(self._query_tasks) >= QUERY_SLOTS
+            or (kind in _EVIDENCE_KINDS and self._evidence_tasks)
+        ):
             return _unavailable("work capacity exceeded")
         task = asyncio.create_task(
             self._run(kind, _request_data(kind, payload), mirror=False)
         )
         self._query_tasks.add(task)
+        if kind in _EVIDENCE_KINDS:
+            self._evidence_tasks.add(task)
         try:
             return await task
         finally:
             self._query_tasks.discard(task)
+            self._evidence_tasks.discard(task)
 
     def _submit_mirror(self, kind: str, payload: dict) -> asyncio.Task:
         if kind not in _MIRROR_KINDS:
@@ -378,5 +392,6 @@ class WorkerSupervisor:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._query_tasks.clear()
+        self._evidence_tasks.clear()
         self._mirror_tasks.clear()
         self._push_tasks.clear()

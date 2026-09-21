@@ -1,0 +1,12 @@
+USAGE:
+  sediment evidence fetch [-h] --references PATH --output PATH SESSION
+
+  write exact selected parts to a private local packet
+
+ARGUMENTS:
+  SESSION            source Session ID
+
+OPTIONS:
+  -h, --help         show this help message and exit
+  --references PATH  version 1 selection JSON (64 KiB; 1–32 distinct references)
+  --output PATH      packet destination (0600; must not exist)

@@ -1,0 +1,10 @@
+USAGE:
+  sediment evidence inventory [-h] SESSION
+
+  print a complete bounded Session inventory as JSON
+
+ARGUMENTS:
+  SESSION     source Session ID
+
+OPTIONS:
+  -h, --help  show this help message and exit

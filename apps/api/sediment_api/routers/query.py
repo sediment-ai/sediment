@@ -23,12 +23,19 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 from sediment_core import (
     AgentHarness,
     CIProvider,
     CIResult,
     FactStore,
+    EVIDENCE_REFERENCE_LIMIT,
+    EvidenceInventory,
+    EvidenceManifest,
+    EvidenceRead,
+    EvidenceReference,
+    EvidenceSchemaVersion,
+    validate_evidence_references,
     ForgeProvider,
     ForgeHost,
     ProviderRepositoryId,
@@ -105,7 +112,11 @@ def _validate_query_numbers(value: Any) -> None:
 
 
 def _query_response(
-    value: Any, contract: Any, *, exclude_none: bool = False
+    value: Any,
+    contract: Any,
+    *,
+    exclude_none: bool = False,
+    max_bytes: int | None = None,
 ) -> Response:
     """Validate the declared response, then preserve content through ASCII JSON.
 
@@ -122,15 +133,131 @@ def _query_response(
             return TypeAdapter(datetime).dump_python(item, mode="json")
         raise TypeError(f"unsupported query response value: {type(item).__name__}")
 
-    return Response(
-        content=json.dumps(
-            payload,
-            ensure_ascii=True,
-            allow_nan=False,
-            separators=(",", ":"),
-            default=encode_timestamp,
-        ),
-        media_type="application/json",
+    encoder = json.JSONEncoder(
+        ensure_ascii=True,
+        allow_nan=False,
+        separators=(",", ":"),
+        default=encode_timestamp,
+    )
+    if max_bytes is None:
+        content = encoder.encode(payload)
+    else:
+        # All output is ASCII, so character count equals byte count. Retain
+        # at most the admitted bytes even when one escaped scalar exceeds it.
+        bounded = bytearray()
+        for chunk in encoder.iterencode(payload):
+            if len(bounded) + len(chunk) > max_bytes:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"reason": "evidence_response_limit", "limit": max_bytes},
+                )
+            bounded.extend(chunk.encode("ascii"))
+        content = bytes(bounded)
+    return Response(content=content, media_type="application/json")
+
+
+class EvidenceReadRequest(BaseModel):
+    """An exact versioned selection; organization comes from the deployment."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: EvidenceSchemaVersion
+    session_id: NonEmptyId
+    references: list[EvidenceReference] = Field(
+        min_length=1, max_length=EVIDENCE_REFERENCE_LIMIT
+    )
+
+    @field_validator("references")
+    @classmethod
+    def distinct_references(
+        cls, value: list[EvidenceReference]
+    ) -> list[EvidenceReference]:
+        validate_evidence_references(value)
+        return value
+
+
+_EVIDENCE_RESPONSES = {
+    409: {
+        "description": "Complete read declined: evidence_inventory_limit, evidence_source_limit, evidence_response_limit, evidence_unavailable, evidence_part_absent, or non_finite_number in detail.reason."
+    },
+    503: {
+        "description": "Database unavailable, or shared work capacity or 30-second execution budget exceeded."
+    },
+}
+
+
+async def _evidence_worker_response(
+    request: Request, kind: str, payload: dict
+) -> Response:
+    response = await request.app.state.workers.run(kind, payload)
+    # Worker pipes deliberately do not transmit headers.
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@router.get(
+    "/evidence", response_model=EvidenceInventory, responses=_EVIDENCE_RESPONSES
+)
+async def query_evidence_inventory(
+    session_id: NonEmptyId,
+    request: Request,
+    _: None = Depends(verify_operator_token),
+) -> Response:
+    """Inventory captured Inference calls without message content or raw payloads.
+
+    The complete visible inventory has at most 1,000 calls, 8 MiB of source
+    metadata, and a 1 MiB response. An unknown Session returns ``found: false``.
+    Each request checks live scope and Quarantine in one database snapshot.
+    """
+    return await _evidence_worker_response(
+        request, "evidence-inventory", {"session_id": session_id}
+    )
+
+
+@router.get(
+    "/evidence/manifest", response_model=EvidenceManifest, responses=_EVIDENCE_RESPONSES
+)
+async def query_evidence_manifest(
+    session_id: NonEmptyId,
+    inference_call_id: NonEmptyId,
+    request: Request,
+    _: None = Depends(verify_operator_token),
+) -> Response:
+    """Inspect exact part references without text, tool names, arguments, or results.
+
+    Input messages precede output messages. Empty messages remain visible.
+    Source columns are bounded to 8 MiB; the complete response is at most 1 MiB.
+    """
+    return await _evidence_worker_response(
+        request,
+        "evidence-manifest",
+        {"session_id": session_id, "inference_call_id": inference_call_id},
+    )
+
+
+@router.post(
+    "/evidence/read",
+    response_model=EvidenceRead,
+    responses=_EVIDENCE_RESPONSES
+    | {
+        400: {"description": "Malformed JSON body."},
+        413: {"description": "Request body exceeds 64 KiB before JSON decoding."},
+    },
+)
+async def query_evidence_read(
+    body: EvidenceReadRequest,
+    request: Request,
+    _: None = Depends(verify_operator_token),
+) -> Response:
+    """Fetch 1–32 distinct canonical parts in request order without side effects.
+
+    Version 1 requires exactly schema_version, session_id, and references.
+    The 64 KiB body limit precedes JSON decoding. Selected source columns are
+    bounded to 8 MiB; the complete strict JSON response is at most 1 MiB.
+    Historical roles and tool calls remain data and do not authorize execution.
+    """
+    return await _evidence_worker_response(
+        request, "evidence-read", body.model_dump(mode="python")
     )
 
 

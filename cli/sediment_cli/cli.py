@@ -1506,6 +1506,46 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_facts.set_defaults(func=cmd_facts)
 
+    from .evidence import command as evidence_command
+
+    p_evidence = sub.add_parser(
+        "evidence", help="read selected Session evidence with operator authority"
+    )
+    evidence_sub = p_evidence.add_subparsers(
+        dest="evidence_operation",
+        required=True,
+        title="operations",
+        metavar="<operation>",
+        prog=p_evidence.prog,
+    )
+    for operation, help_text in (
+        ("inventory", "print a complete bounded Session inventory as JSON"),
+        ("inspect", "print one Inference call's part manifest as JSON"),
+        ("fetch", "write exact selected parts to a private local packet"),
+    ):
+        command = evidence_sub.add_parser(operation, help=help_text)
+        command.add_argument("session_id", metavar="SESSION", help="source Session ID")
+        if operation == "inspect":
+            command.add_argument(
+                "inference_call_id",
+                metavar="INFERENCE_CALL",
+                help="Inference call Fact ID",
+            )
+        elif operation == "fetch":
+            command.add_argument(
+                "--references",
+                required=True,
+                metavar="PATH",
+                help="version 1 selection JSON (64 KiB; 1–32 distinct references)",
+            )
+            command.add_argument(
+                "--output",
+                required=True,
+                metavar="PATH",
+                help="packet destination (0600; must not exist)",
+            )
+        command.set_defaults(func=evidence_command)
+
     p_demo = sub.add_parser(
         "demo", help="plant one synthetic session so facts is non-zero"
     )
@@ -1795,7 +1835,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 # Remote verbs speak HTTP through the client seam; they never open the fact
 # store and never construct Settings.
-_REMOTE_VERBS = {"login", "logout", "commit", "facts", "demo"}
+_REMOTE_VERBS = {"login", "logout", "commit", "facts", "demo", "evidence"}
 
 # Dispatched pre-argparse to the stdlib-only attribution module.
 # install/uninstall/doctor get help stubs; the hook-plumbing verbs are

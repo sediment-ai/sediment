@@ -38,6 +38,9 @@ Every route, in ingest → read order:
 | [`POST /ingest/github/pull-request`](#post-ingestgithubpull-request) | HMAC signature | Revision and merge-boundary facts from a GitHub `pull_request` webhook. |
 | [`POST /ingest/ci`](#post-ingestci) | ingest or operator | CI outcome facts from any non-GitHub pipeline. |
 | [`POST /v1/logs`](#post-v1logs) | ingest or operator | OTLP log records: developer decisions, edit observations, rejected edits, and retry linkages. |
+| [`GET /query/evidence`](#get-queryevidence) | operator | Complete bounded metadata inventory for one Session. |
+| [`GET /query/evidence/manifest`](#get-queryevidencemanifest) | operator | Message and part references for one captured Inference call. |
+| [`POST /query/evidence/read`](#post-queryevidenceread) | operator | Read-only fetch of complete canonical parts by exact occurrence reference. |
 | [`GET /query/ci/outcome`](#get-querycioutcome) | operator | One CI outcome identified by provider run and attempt. |
 | [`GET /query/ci/failures`](#get-querycifailures) | operator | Bounded failure-first CI outcome search. |
 | [`GET /query/session/{session_id}`](#get-querysessionsession_id) | operator | Metadata evidence dossier for one Session. |
@@ -235,6 +238,92 @@ Status codes:
 | `400` | The body is not JSON, or not a JSON object — 400 so the exporter drops it instead of retrying. |
 | `401` | Missing or invalid credentials. |
 | `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
+
+## GET /query/evidence
+
+Inventory captured Inference calls without message content or raw payloads.
+
+The complete visible inventory has at most 1,000 calls, 8 MiB of source metadata, and a 1 MiB response. An unknown Session returns `found: false`. Each request checks live scope and Quarantine in one database snapshot.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+
+**Response:** Returns schema_version 1, the Session ID, Quarantine revision, found, capture_completeness=unknown, visible and quarantined Inference call counts, and calls sorted by observation time and Fact ID. Unknown or foreign Sessions return found=false with zero counts. Known empty Sessions return found=true. The inventory excludes message content, raw payloads, and user identifiers. Each request checks live visibility in one read snapshot. The response has Cache-Control: no-store. Limits: 1,000 visible calls, 8 MiB of selected source metadata, and a 1 MiB strict JSON response. IDs travel in query parameters.
+
+Parameters:
+
+| Name | In | Type | Required |
+|---|---|---|---|
+| `session_id` | query | string | yes |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks operator authority. |
+| `409` | The closed detail.reason is evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. The complete operation is declined. |
+| `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+
+## GET /query/evidence/manifest
+
+Inspect exact part references without text, tool names, arguments, or results.
+
+Input messages precede output messages. Empty messages remain visible. Source columns are bounded to 8 MiB; the complete response is at most 1 MiB.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+
+**Response:** Returns schema_version 1, the Session ID, Quarantine revision, call metadata, and messages in input-then-output order. Each message preserves role, finish reason, and ordinal; each part gives its type and exact occurrence reference. Empty messages remain visible. Text, tool names, arguments, and results are excluded. IDs travel in query parameters. Limits: 8 MiB of selected source columns and a 1 MiB strict JSON response. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
+
+Parameters:
+
+| Name | In | Type | Required |
+|---|---|---|---|
+| `session_id` | query | string | yes |
+| `inference_call_id` | query | string | yes |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks operator authority. |
+| `409` | The closed detail.reason is evidence_unavailable for any absent, foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, limit); evidence_response_limit (limit); or non_finite_number. |
+| `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+
+## POST /query/evidence/read
+
+Fetch 1–32 distinct canonical parts in request order without side effects.
+
+Version 1 requires exactly schema_version, session_id, and references. The 64 KiB body limit precedes JSON decoding. Selected source columns are bounded to 8 MiB; the complete strict JSON response is at most 1 MiB. Historical roles and tool calls remain data and do not authorize execution.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+
+**Response:** Requires exactly schema_version 1, session_id, and 1–32 distinct references. Returns schema_version 1, the Session ID, Quarantine revision, and items in request order. Each item preserves its reference, observation time, role, finish reason, and canonical part. The operation never summarizes, clips, executes tools, or returns partial success. Historical content remains data. ASCII-escaped strict JSON preserves NUL, surrogates, and large integers; emitted non-finite numbers decline the complete response. Limits: 64 KiB before request JSON decoding, 8 MiB of selected source columns, and a 1 MiB response. No raw payloads or user identifiers are selected. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
+
+Request body — `EvidenceReadRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `session_id` | string | yes | — |
+| `references` | array of object | yes | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks operator authority. |
+| `409` | The closed detail.reason is evidence_unavailable or evidence_part_absent (reference_index), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. Unavailability does not disclose its cause. Failures decline all items. |
+| `413` | Request body exceeds 64 KiB, including when Content-Length is absent. |
+| `422` | Malformed envelope, unsupported version, invalid indices, unknown fields, duplicate references, or selection outside 1–32 references. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## GET /query/ci/outcome
 
