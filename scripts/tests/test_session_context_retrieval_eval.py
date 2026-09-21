@@ -156,6 +156,7 @@ def run_record(arm, repetition):
         "status": "settled",
         "behavior_pass": True,
         "constraint_pass": arm != "A",
+        "verification_error": None,
         "retrieval_calls": 1 if arm == "C" else 0,
         "retrieved_constraint": arm == "C",
         "retrieved_failure": arm == "C",
@@ -474,6 +475,17 @@ def test_no_history_transport_failure_does_not_count_as_retrieval_benefit():
     assert not mod.evaluate(records)["benefit_demonstrated"]
 
 
+def test_validator_failure_is_not_evidence_of_a_failed_constraint():
+    mod = load()
+    records = [run_record(arm, rep) for rep in range(1, 4) for arm in "ABC"]
+    for record in records:
+        record["verification_error"] = (
+            "verification_failed" if record["arm"] == "A" else None
+        )
+    assert mod.evaluate(records)["retrieval_feasible"]
+    assert not mod.evaluate(records)["benefit_demonstrated"]
+
+
 def test_generated_home_never_contains_upstream_credentials(tmp_path):
     mod = load()
     config = {
@@ -509,7 +521,8 @@ def test_source_gold_requires_captured_tool_results_not_commands():
         mod.source_gold([{"part": part} for part in parts])
 
 
-def test_c_trajectory_requires_real_tool_result_then_subsequent_task_work():
+@pytest.mark.parametrize("work_tool", ["edit", "write", "bash"])
+def test_c_trajectory_requires_real_tool_result_then_subsequent_task_work(work_tool):
     mod = load()
     c = {"type": "text", "content": "quantize each amount with ROUND_DOWN"}
     f = {
@@ -536,7 +549,7 @@ def test_c_trajectory_requires_real_tool_result_then_subsequent_task_work():
     edit = {
         "type": "tool_call",
         "id": "edit",
-        "name": "write",
+        "name": work_tool,
         "arguments": {"path": "invoice_csv.py"},
     }
     history = {
@@ -559,7 +572,7 @@ def test_c_trajectory_requires_real_tool_result_then_subsequent_task_work():
             "toolCallId": "r",
             "args": {"query": "invoice constraints"},
         },
-        {"type": "tool_execution_start", "toolName": "write", "toolCallId": "w"},
+        {"type": "tool_execution_start", "toolName": work_tool, "toolCallId": "w"},
         {
             "type": "tool_execution_end",
             "toolCallId": "r",
@@ -568,8 +581,79 @@ def test_c_trajectory_requires_real_tool_result_then_subsequent_task_work():
             },
         },
     ]
-    assert not mod.retrieval_observations(events, gold, "source")["later_native_edit"]
+    assert not mod.retrieval_observations(events, gold, "source")["later_native_work"]
     events.append(
-        {"type": "tool_execution_start", "toolName": "edit", "toolCallId": "e"}
+        {"type": "tool_execution_start", "toolName": work_tool, "toolCallId": "e"}
     )
-    assert mod.retrieval_observations(events, gold, "source")["later_native_edit"]
+    assert mod.retrieval_observations(events, gold, "source")["later_native_work"]
+
+
+def test_final_health_requires_explicit_available_evidence(tmp_path):
+    mod = load()
+    with pytest.raises(mod.EvaluationError, match="gate_health_unavailable"):
+        mod.final_gate_health(tmp_path)
+    path = tmp_path / "gate-health.json"
+    for value in (
+        {"ready": False, "stopped": "gate_health_unavailable", "budget": None},
+        {"ready": True, "stopped": None},
+        {"ready": True, "stopped": None, "budget": {}},
+        {"ready": True, "budget": mod.AttemptBudget().snapshot()},
+        {"ready": True, "stopped": None, "budget": {"model": {}, "retrieval": {}}},
+        [],
+    ):
+        path.write_bytes(mod.encoded(value))
+        with pytest.raises(mod.EvaluationError, match="gate_health_unavailable"):
+            mod.final_gate_health(tmp_path)
+    health = {"ready": True, "stopped": None, "budget": mod.AttemptBudget().snapshot()}
+    path.write_bytes(mod.encoded(health))
+    assert mod.final_gate_health(tmp_path) == health
+
+
+def test_cleanup_records_closed_health_failure_and_preserves_original_error(
+    tmp_path, monkeypatch
+):
+    from contextlib import nullcontext
+
+    mod = load()
+    records = mod.private_directory(tmp_path / "records")
+    checks = 0
+
+    def health(_name):
+        nonlocal checks
+        checks += 1
+        if checks == 1:
+            return {"ready": True}
+        raise subprocess.TimeoutExpired("private command details", 5)
+
+    removed = []
+    monkeypatch.setattr(mod, "gate_health", health)
+    monkeypatch.setattr(mod, "command", lambda *args, **kwargs: b"")
+    monkeypatch.setattr(mod, "RpcProcess", lambda *args, **kwargs: nullcontext())
+    monkeypatch.setattr(
+        mod.subprocess, "run", lambda args, **kwargs: removed.append(args)
+    )
+    config = dict.fromkeys(
+        (
+            "agent_image",
+            "gate_image",
+            "gateway_url",
+            "gateway_token",
+            "api_url",
+            "retrieval_token",
+            "model",
+        ),
+        "unused",
+    )
+    with pytest.raises(mod.EvaluationError, match="source_evidence_missing"):
+        with mod.isolated_agent(config, records, tmp_path / "workspace", "source"):
+            raise mod.EvaluationError("source_evidence_missing")
+    raw = (records / "gate-health.json").read_bytes()
+    value = json.loads(raw)
+    assert value == {
+        "ready": False,
+        "stopped": "gate_health_unavailable",
+        "budget": None,
+        "error": "timeout",
+    }
+    assert b"private command details" not in raw
+    assert len(removed) == 2

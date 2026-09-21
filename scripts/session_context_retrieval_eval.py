@@ -242,6 +242,7 @@ def evaluate(records: list[dict]) -> dict:
         and r["status"] == "settled"
         and r["behavior_pass"]
         and r["constraint_pass"]
+        and r.get("verification_error", "unavailable") is None
         and 1 <= r["retrieval_calls"] <= RETRIEVAL_CALL_LIMIT
         and r["retrieved_constraint"]
         and r["retrieved_failure"]
@@ -253,7 +254,10 @@ def evaluate(records: list[dict]) -> dict:
         if all((arm, repetition) in by_key for arm in "ABC"):
             a, b, c = [by_key[(arm, repetition)] for arm in "ABC"]
             paired_a_failure |= (
-                a["status"] == "settled" and not a["constraint_pass"] and c in passed_c
+                a["status"] == "settled"
+                and a.get("verification_error", "unavailable") is None
+                and not a["constraint_pass"]
+                and c in passed_c
             )
             comparisons.append(
                 {
@@ -265,6 +269,7 @@ def evaluate(records: list[dict]) -> dict:
                                 "status",
                                 "behavior_pass",
                                 "constraint_pass",
+                                "verification_error",
                                 "usage",
                                 "elapsed_seconds",
                             )
@@ -882,6 +887,29 @@ def gate_health(name: str) -> dict:
     )
 
 
+def final_gate_health(records: Path) -> dict:
+    try:
+        health = json.loads((records / "gate-health.json").read_bytes())
+    except (OSError, ValueError) as exc:
+        raise EvaluationError("gate_health_unavailable") from exc
+    if (
+        not isinstance(health, dict)
+        or health.get("ready") is not True
+        or "stopped" not in health
+        or not isinstance(health.get("budget"), dict)
+        or set(health["budget"]) != {"model", "retrieval"}
+    ):
+        raise EvaluationError("gate_health_unavailable")
+    for counts in health["budget"].values():
+        if (
+            not isinstance(counts, dict)
+            or set(counts) != {"forwarded", "declined"}
+            or any(type(value) is not int or value < 0 for value in counts.values())
+        ):
+            raise EvaluationError("gate_health_unavailable")
+    return health
+
+
 @contextmanager
 def isolated_agent(
     config: dict, records: Path, workspace: Path, arm: str
@@ -962,17 +990,27 @@ def isolated_agent(
             yield rpc
     finally:
         try:
-            write_json(records / "gate-health.json", gate_health(gate_name))
-        except (EvaluationError, OSError, subprocess.TimeoutExpired, ValueError):
-            pass
-        for name in (agent_name, gate_name):
-            subprocess.run(
-                ["docker", "rm", "-f", name],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=20,
-                check=False,
-            )
+            try:
+                health = gate_health(gate_name)
+            except (OSError, subprocess.SubprocessError, ValueError) as exc:
+                health = {
+                    "ready": False,
+                    "stopped": "gate_health_unavailable",
+                    "budget": None,
+                    "error": "timeout"
+                    if isinstance(exc, subprocess.TimeoutExpired)
+                    else "probe_failed",
+                }
+            write_json(records / "gate-health.json", health)
+        finally:
+            for name in (agent_name, gate_name):
+                subprocess.run(
+                    ["docker", "rm", "-f", name],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=20,
+                    check=False,
+                )
 
 
 def freeze(config: dict) -> dict:
@@ -1198,7 +1236,7 @@ def source_run(config: dict, output: Path) -> dict:
         write_json(output / "captured-calls.json", histories)
     if rpc.process.returncode != 0:
         raise EvaluationError("source_shutdown_failed")
-    health = json.loads((records / "gate-health.json").read_bytes())
+    health = final_gate_health(records)
     if health.get("stopped"):
         raise EvaluationError("source_model_failed")
     identity = copy_workspace(workspace, output / "snapshot")
@@ -1265,7 +1303,10 @@ def retrieval_observations(events: list[dict], gold: dict, source: str) -> dict:
         if event.get("type") == "tool_execution_start":
             if event.get("toolName") == "sediment_retrieve_context":
                 pending[event["toolCallId"]] = event.get("args", {})
-            elif event.get("toolName") in {"edit", "write"} and evidence_at is not None:
+            elif (
+                event.get("toolName") in {"edit", "write", "bash"}
+                and evidence_at is not None
+            ):
                 later_work = True
         if (
             event.get("type") != "tool_execution_end"
@@ -1296,7 +1337,7 @@ def retrieval_observations(events: list[dict], gold: dict, source: str) -> dict:
         "calls": calls,
         "retrieved_constraint": constraint,
         "retrieved_failure": failure,
-        "later_native_edit": later_work,
+        "later_native_work": later_work,
     }
 
 
@@ -1310,7 +1351,9 @@ def captured_trajectory(history: dict, gold: dict, source: str) -> bool:
                     part["arguments"].get("query"), str
                 ):
                     calls.add(part["id"])
-                elif part["name"] in {"edit", "write"} and constraint and failure:
+                elif (
+                    part["name"] in {"edit", "write", "bash"} and constraint and failure
+                ):
                     return True
             elif part["type"] == "tool_call_response" and part["id"] in calls:
                 selection = result_selection(part["result"])
@@ -1431,11 +1474,16 @@ def continuation(
         )
     gate = records / "gate"
     traffic = gate_records(gate)
-    if (records / "gate-health.json").exists():
-        health = json.loads((records / "gate-health.json").read_bytes())
+    try:
+        health = final_gate_health(records)
         result["attempt_budget"] = health["budget"]
         if health.get("stopped"):
             result["status"] = health["stopped"]
+    except EvaluationError:
+        result["attempt_budget"] = None
+        result["gate_health_error"] = "gate_health_unavailable"
+        if result["status"] == "settled":
+            result["status"] = "gate_health_unavailable"
     result["model_calls"] = sum(r["route"] == "model" for r in traffic)
     result["usage"] = observed_usage(traffic, gate)
     result["tool_schema_bytes_by_call"] = [
@@ -1472,7 +1520,7 @@ def continuation(
         result["capture_verified"] = True
         if arm == "C":
             result["trajectory_verified"] = observations[
-                "later_native_edit"
+                "later_native_work"
             ] and captured_trajectory(
                 histories[-1], gold, manifest["source_session_id"]
             )
