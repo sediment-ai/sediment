@@ -47,6 +47,100 @@ requires three repetitions across no-history, full-history, and requested-eviden
 arms with independent final checks. Keep detailed records private. Publish all
 outcomes and report unavailable measurements explicitly.
 
+## Run the maintained continuation comparison
+
+The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable
+Python task through three repetitions of each comparison arm. It supports a
+local Docker deployment and the installed Ollama model
+`ministral-3:14b-instruct-2512-q4_K_M`. It doesn't download a model. Keep inference,
+gateway capture, the API, and private records inside your perimeter.
+
+1. Prepare a separate API and PostgreSQL database with operator and ingest
+   credentials. Keep retrieval disabled until the source Session exists.
+   Configure a separate LiteLLM gateway with an OpenAI-compatible route to the
+   local model and the existing `litellm/sediment_callback.py` capture callback.
+   The bundled Anthropic gateway recipe doesn't provide this model route.
+   Disable gateway retries and fallbacks. Configure the model context to 16,384
+   tokens and allow one request at a time.
+2. Build the agent and request-counter images from the checkout:
+
+   ```bash
+   docker build -f shims/pi/Dockerfile.evaluation -t sediment-evaluation-agent .
+   docker build -t sediment-evaluation-gate .
+   docker image inspect sediment-evaluation-agent --format '{{.Id}}'
+   docker image inspect sediment-evaluation-gate --format '{{.Id}}'
+   ```
+
+   Record both immutable image IDs. The agent image pins pi, Node.js, and Python.
+   The controller uses the API image's Python and HTTP client for its separate
+   request counter; it doesn't start an API in that container.
+3. Create a mode-`0600` JSON configuration outside the repository and agent
+   environments. Replace each placeholder with the corresponding local value:
+
+   ```json
+   {
+     "schema_version": 1,
+     "agent_image": "sha256:<agent image ID>",
+     "gate_image": "sha256:<counter image ID>",
+     "gateway_url": "http://host.docker.internal:4011/v1",
+     "gateway_token": "<gateway credential>",
+     "api_url": "http://host.docker.internal:8011",
+     "operator_api_url": "http://127.0.0.1:8011",
+     "operator_token": "<operator credential>",
+     "retrieval_token": "<distinct restricted retrieval credential>",
+     "model": "ministral-3:14b-instruct-2512-q4_K_M"
+   }
+   ```
+
+   `api_url` and `gateway_url` must work from Docker; `operator_api_url` must
+   work from the host. The controller accepts only local endpoints and immutable
+   image references. Agent containers receive temporary per-run credentials.
+   Upstream credentials, raw source Session files, and evaluation answers stay
+   outside them. Only arm B receives full captured history in its initial prompt.
+4. Start and verify the source Session. Choose an output directory that doesn't
+   exist:
+
+   ```bash
+   umask 077
+   uv run python scripts/session_context_retrieval_eval.py source \
+     --config /absolute/private/evaluation.json \
+     --output /absolute/private/source-run
+   ```
+
+   Success prints `status: captured` and the actual `source_session_id`. The
+   controller requires captured constraint and failure evidence, a complete
+   final conversation prefix, and an unchanged source workspace. It preserves
+   the Git index, file bytes, modes, and untracked-file identity. A failed source
+   remains a private record; don't use it for the comparison.
+5. Bind the API's retrieval settings to that Session and the configuration's
+   retrieval credential, then restart the API. Start the comparison with another
+   output directory that doesn't exist:
+
+   ```bash
+   uv run python scripts/session_context_retrieval_eval.py run \
+     --config /absolute/private/evaluation.json \
+     --source /absolute/private/source-run \
+     --output /absolute/private/comparison-run
+   ```
+
+   The controller verifies the source binding and frozen fixture before running
+   the rotated A/B/C, B/C/A, C/A/B order. Every continuation has a fresh Session,
+   home, and identical initial workspace. A separate container checks the final
+   code and material constraint. The command exits nonzero when the benefit
+   criterion fails; agent prose cannot override the independent checks.
+6. Review `comparison.json` and each private `run.json`. Report every arm's
+   outcome, observed input/output/cache usage, elapsed time, tool schema bytes,
+   and retrieval response bytes. Keep unavailable measurements unknown. Publish
+   sanitized counts in the implementation issue, without prompts or credentials.
+
+The counter admits at most 12 model attempts and four retrieval attempts on the
+configured pi transports. It counts failures and doesn't retry. Container
+separation protects private files and credentials; this controller doesn't block
+arbitrary direct networking through the agent's shell tool. Keep that limitation
+with the result. A passing comparison establishes one controlled task's benefit,
+not general improvement, crash recovery, or token savings. Changing the frozen
+fixture or selector after observing outcomes requires a separate evaluation.
+
 ## Prepare access and capture
 
 1. Configure [Inference-call capture](../capture/managed-capture.md#configure-inference-call-capture)
