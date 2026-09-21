@@ -104,6 +104,13 @@ Quarantine-aware PostgreSQL snapshot and fixed source and response limits. The
 CLI publishes the result as a private local packet. Sediment stores no packet,
 checkpoint, retrieval index, or inferred task state.
 
+A pi agent can instead call `sediment_retrieve_context`. The API binds its
+retrieval credential to one configured source Session, reads a bounded complete
+visible population, and runs a pure keyword selector. The response carries
+complete selected parts, exact references, coverage, and counted exclusions.
+No model participates in selection. [Agent-requested Session context](../adr/0022-agent-requested-session-context.md)
+defines this authority and selection boundary.
+
 This path reuses captured Facts without changing Attributed completions,
 Rollouts, reports, or training projections. A consuming agent treats the packet
 as historical data and supplies its own task instructions. No retrieval model

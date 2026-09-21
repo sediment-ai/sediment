@@ -82,10 +82,12 @@ components and network boundaries. The
 [capture guide](docs/explanation/how-capture-works.md) explains what data each
 integration collects, including prompts and source code.
 
-Evidence retrieval uses the API or `sediment evidence inventory`, `inspect`, and
-`fetch`. An operator selects captured parts and gives the resulting packet to an
-agent. The continuation guide uses an intact workspace; Sediment doesn't restore
-files or infer the next task. Available evidence depends on the capture setup.
+A pi agent can call `sediment_retrieve_context` to request keyword-selected
+captured parts from one authorized previous Session. An operator can also select
+parts with `sediment evidence inventory`, `inspect`, and `fetch`. Both paths use
+an intact workspace; Sediment doesn't restore files or infer the next task.
+Available evidence depends on the capture setup. The continuation guide defines
+the authority, limits, and controlled comparison for measuring task benefit.
 
 ## Development
 
