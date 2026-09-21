@@ -61,7 +61,9 @@ gateway capture, the API, and private records inside your perimeter.
    local model and the existing `litellm/sediment_callback.py` capture callback.
    The bundled Anthropic gateway recipe doesn't provide this model route.
    Disable gateway retries and fallbacks. Configure the model context to 16,384
-   tokens and allow one request at a time.
+   tokens and allow one request at a time. Record the Ollama version and installed
+   model digest with your private run records. Verify native tool calls through
+   the same streaming transport; printed tool syntax doesn't execute a tool.
 2. Build the agent and request-counter images from the checkout:
 
    ```bash
@@ -112,6 +114,10 @@ gateway capture, the API, and private records inside your perimeter.
    final conversation prefix, and an unchanged source workspace. It preserves
    the Git index, file bytes, modes, and untracked-file identity. A failed source
    remains a private record; don't use it for the comparison.
+   If the controller reports `capture_prefix_incomplete`, inspect the provider,
+   gateway, and harness representations before retrying. Reused parallel tool
+   indices or differences between an empty text part and an absent part can
+   invalidate the baseline. Don't remove captured parts or weaken the check.
 5. Bind the API's retrieval settings to that Session and the configuration's
    retrieval credential, then restart the API. Start the comparison with another
    output directory that doesn't exist:
