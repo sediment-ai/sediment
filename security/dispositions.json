@@ -8,7 +8,7 @@
         "api/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "api/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -24,7 +24,8 @@
       "reason": "The affected LDAP allocation path remains installed through native dependencies. The reviewed Git transports exclude LDAP and the supplied PostgreSQL authentication configuration uses SCRAM only. Those caller restrictions reduce exposure; they do not remove the library. Custom authentication, SQL extensions, or additional native callers require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-2953",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -33,7 +34,7 @@
         "postgres/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "postgres/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -49,7 +50,8 @@
       "reason": "The affected LDAP allocation path remains installed through native dependencies. The reviewed Git transports exclude LDAP and the supplied PostgreSQL authentication configuration uses SCRAM only. Those caller restrictions reduce exposure; they do not remove the library. Custom authentication, SQL extensions, or additional native callers require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-2953",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -58,7 +60,7 @@
         "api/amd64/zlib1g@1:1.2.13.dfsg-1",
         "api/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -69,7 +71,8 @@
       "reason": "Debian zlib1g does not build the contributed MiniZip code affected by this advisory. The exact image has no MiniZip library. This does not exempt other zlib findings.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-45853",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -78,7 +81,7 @@
         "postgres/amd64/zlib1g@1:1.2.13.dfsg-1",
         "postgres/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -89,7 +92,8 @@
       "reason": "Debian zlib1g does not build the contributed MiniZip code affected by this advisory. The exact image has no MiniZip library. This does not exempt other zlib findings.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-45853",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -98,7 +102,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -114,7 +118,8 @@
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-59375",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -129,7 +134,7 @@
         "api/arm64/ncurses-base@6.4-4",
         "api/arm64/ncurses-bin@6.4-4"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -140,7 +145,8 @@
       "reason": "The affected infocmp executable has been removed from the exact delivered filesystem. Terminal libraries remain inventoried; this disposition covers only the removed command.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-69720",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -155,7 +161,7 @@
         "postgres/arm64/ncurses-base@6.4-4",
         "postgres/arm64/ncurses-bin@6.4-4"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -166,7 +172,8 @@
       "reason": "The affected infocmp executable has been removed from the exact delivered filesystem. Terminal libraries remain inventoried; this disposition covers only the removed command.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-69720",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -175,7 +182,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -190,7 +197,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-7458",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -199,7 +207,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -214,7 +222,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-7458",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -223,7 +232,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -238,7 +247,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11822",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -247,7 +257,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -262,7 +272,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11822",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -271,7 +282,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -286,7 +297,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11824",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -295,7 +307,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -310,7 +322,8 @@
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11824",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -319,7 +332,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "curl_cli_absent"
       ],
@@ -332,7 +345,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-12064",
         "https://curl.se/docs/CVE-2026-12064.html",
         "https://curl.se/docs/CVE-2026-12064.json",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -347,7 +361,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -364,7 +378,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-13221",
         "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -379,7 +394,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -396,7 +411,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-13221",
         "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -407,7 +423,7 @@
         "api/arm64/libsystemd0@252.39-1~deb12u2",
         "api/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -418,7 +434,8 @@
       "reason": "The affected systemd-homed service is absent; the installed shared libraries do not provide that service.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-16742",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -429,7 +446,7 @@
         "postgres/arm64/libsystemd0@252.39-1~deb12u2",
         "postgres/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -440,7 +457,8 @@
       "reason": "The affected systemd-homed service is absent; the installed shared libraries do not provide that service.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-16742",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -449,7 +467,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -465,7 +483,8 @@
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-25210",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -474,7 +493,7 @@
         "api/amd64/gzip@1.12-1",
         "api/arm64/gzip@1.12-1"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -489,7 +508,8 @@
       "reason": "The affected gzip implementation remains installed. PostgreSQL initialization processes trusted initialization files one per gunzip invocation, and Sediment exposes no service path accepting arbitrary compressed archives for this tool. This restriction avoids the documented cross-file LZW/LZH state reuse in the supported path. Arbitrary operator decompression and custom initialization scripts require reassessment; process limits do not repair the code.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-41992",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -498,7 +518,7 @@
         "postgres/amd64/gzip@1.12-1",
         "postgres/arm64/gzip@1.12-1"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -513,7 +533,8 @@
       "reason": "The affected gzip implementation remains installed. PostgreSQL initialization processes trusted initialization files one per gunzip invocation, and Sediment exposes no service path accepting arbitrary compressed archives for this tool. This restriction avoids the documented cross-file LZW/LZH state reuse in the supported path. Arbitrary operator decompression and custom initialization scripts require reassessment; process limits do not repair the code.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-41992",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -528,7 +549,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -545,7 +566,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-42496",
         "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -560,7 +582,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -577,7 +599,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-42496",
         "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -592,7 +615,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -609,7 +632,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-42497",
         "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -624,7 +648,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -641,7 +665,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-42497",
         "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -650,7 +675,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -666,7 +691,8 @@
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-45186",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -681,7 +707,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -698,7 +724,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-48962",
         "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -713,7 +740,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -730,7 +757,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-48962",
         "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -753,7 +781,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -771,7 +799,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-53613",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8gj5-72r3-428g",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -794,7 +823,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -812,7 +841,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-53613",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8gj5-72r3-428g",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -821,7 +851,7 @@
         "api/amd64/libacl1@2.3.1-3",
         "api/arm64/libacl1@2.3.1-3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -838,7 +868,8 @@
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-54369",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -847,7 +878,7 @@
         "postgres/amd64/libacl1@2.3.1-3",
         "postgres/arm64/libacl1@2.3.1-3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -864,7 +895,8 @@
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-54369",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -879,7 +911,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -896,7 +928,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-57432",
         "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -911,7 +944,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -928,7 +961,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-57432",
         "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -943,7 +977,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -960,7 +994,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-57433",
         "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -975,7 +1010,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -992,7 +1027,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-57433",
         "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1001,7 +1037,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1019,7 +1055,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-6276",
         "https://curl.se/docs/CVE-2026-6276.html",
         "https://curl.se/docs/CVE-2026-6276.json",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1028,7 +1065,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1047,7 +1084,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-6653",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/GNOME/libxml2/blob/v2.9.14/valid.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1056,7 +1094,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "libxml_python_bindings_absent"
       ],
@@ -1067,7 +1105,8 @@
       "reason": "This finding concerns libxml2 Python SAX bindings. The exact PostgreSQL image has neither those Python bindings nor their extension module. Native XML findings receive separate dispositions.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-74860",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1090,7 +1129,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1114,7 +1153,8 @@
         "https://github.com/util-linux/util-linux/commit/a15c00a9e545aa8b9cf6ec0f888ff6c7b3eaeedc",
         "https://github.com/util-linux/util-linux/commit/f57cea130839c0af8dc0525274267ae4cfd66bbf",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-m25x-3hj9-m26f",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1137,7 +1177,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1161,7 +1201,8 @@
         "https://github.com/util-linux/util-linux/commit/a15c00a9e545aa8b9cf6ec0f888ff6c7b3eaeedc",
         "https://github.com/util-linux/util-linux/commit/f57cea130839c0af8dc0525274267ae4cfd66bbf",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-m25x-3hj9-m26f",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1184,7 +1225,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1196,7 +1237,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78408",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-55fx-f4gg-cfhj",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1219,7 +1261,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1231,7 +1273,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78408",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-55fx-f4gg-cfhj",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1254,7 +1297,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1266,7 +1309,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78409",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8f2p-47x3-43mv",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1289,7 +1333,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1301,7 +1345,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78409",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8f2p-47x3-43mv",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1324,7 +1369,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1342,7 +1387,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78410",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-rh77-686x-2f2m",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1365,7 +1411,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1383,7 +1429,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-78410",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-rh77-686x-2f2m",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1392,7 +1439,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1410,7 +1457,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-8286",
         "https://curl.se/docs/CVE-2026-8286.html",
         "https://curl.se/docs/CVE-2026-8286.json",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1425,7 +1473,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "perl_64bit"
       ],
@@ -1436,7 +1484,8 @@
       "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-8376",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1451,7 +1500,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "perl_64bit"
       ],
@@ -1462,7 +1511,8 @@
       "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-8376",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1471,7 +1521,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1489,7 +1539,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-8458",
         "https://curl.se/docs/CVE-2026-8458.html",
         "https://curl.se/docs/CVE-2026-8458.json",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1498,7 +1549,7 @@
         "gateway/amd64/zlib@1.3.2-r7",
         "gateway/arm64/zlib@1.3.2-r7"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "gzip_write_api_unreachable"
       ],
@@ -1514,7 +1565,8 @@
         "https://github.com/SAML-Toolkits/python3-saml/blob/6988bdab7a203abfe8dc264992f7e350c67aef3d/src/onelogin/saml2/xml_utils.py",
         "https://github.com/SAML-Toolkits/python3-saml/blob/6988bdab7a203abfe8dc264992f7e350c67aef3d/src/onelogin/saml2/utils.py",
         "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/litellm/proxy/management_endpoints/sso/saml_sso.py",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1523,7 +1575,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1542,7 +1594,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-86140",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/GNOME/libxml2/blob/v2.9.14/valid.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1551,7 +1604,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1569,7 +1622,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-8927",
         "https://curl.se/docs/CVE-2026-8927.html",
         "https://curl.se/docs/CVE-2026-8927.json",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1584,7 +1638,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1601,7 +1655,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1616,7 +1671,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1633,7 +1688,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1642,7 +1698,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1662,7 +1718,8 @@
         "https://github.com/libexpat/libexpat/pull/1331",
         "https://github.com/git/git/blob/v2.39.5/http-push.c",
         "https://github.com/git/git/blob/v2.39.5/remote-curl.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1671,7 +1728,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1691,7 +1748,8 @@
         "https://github.com/GNOME/libxml2/commit/a4cba4b5b5a8c42e155ed42d2d2a44955465a2e4",
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1700,7 +1758,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1720,7 +1778,8 @@
         "https://github.com/GNOME/libxml2/commit/8edbbdb09f24d26a2f900141fddc2b9d014f53b0",
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1729,7 +1788,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1749,7 +1808,8 @@
         "https://github.com/GNOME/libxml2/commit/6b3a736c0edc74ceec3d82f5252499d7911b3a58",
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1758,7 +1818,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1778,7 +1838,8 @@
         "https://github.com/GNOME/libxml2/commit/90f293ba74d28b1d570920382e707586f68ebf35",
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     },
     {
@@ -1787,7 +1848,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
+      "source_digest": "58f14197973fa2a08949f41eabfe2dd51f058c64b1677049b23c30122b2e6a01",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1807,7 +1868,8 @@
         "https://github.com/GNOME/libxml2/commit/b63cd517afecb76582dd9488c55e54ceaf50de61",
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599"
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
+        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785"
       ]
     }
   ]
