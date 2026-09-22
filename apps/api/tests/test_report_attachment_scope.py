@@ -2,6 +2,7 @@
 """Report cohorts cannot hide organization-wide decision ambiguity."""
 
 from datetime import UTC, datetime, timedelta
+import random
 
 import pytest
 from sediment_core import (
@@ -36,6 +37,7 @@ def _population(
     outside_org=None,
     decision_key="shared",
     include_decisions=True,
+    seed=None,
 ):
     def call(identity, session, observed, gateway, provider_id, tool_id):
         return InferenceCall(
@@ -94,7 +96,10 @@ def _population(
     )
     if outside_org is not None:
         outside = outside.model_copy(update={"org_id": outside_org})
-    for fact in (outside, inside):
+    facts = [outside, inside]
+    if seed is not None:
+        random.Random(seed).shuffle(facts)
+    for fact in facts:
         assert store.store_inference_call(fact)
     decisions = [
         DeveloperDecision(
@@ -332,7 +337,9 @@ def test_preloaded_identity_population_is_authoritative_for_public_builders(
 
 
 @pytest.mark.parametrize("path", ["model-outcomes", "accepted-work-lifecycle"])
-def test_report_http_identity_budget_and_ambiguity(client, monkeypatch, tmp_path, path):
+def test_report_http_ambiguity_ignores_unrelated_identity_count(
+    client, monkeypatch, tmp_path, path
+):
     import sys
     from sediment_api import workers
     from sediment_api.config import settings
@@ -382,15 +389,20 @@ def test_report_http_identity_budget_and_ambiguity(client, monkeypatch, tmp_path
         )
     )
     response = get()
-    assert response.status_code == 409
-    assert response.json() == {"detail": "report evidence exceeds the fixed limit"}
+    assert response.status_code == 200
+    report = response.json()["report"]
+    assert (
+        report["rows"][0]["explicit_accepts"]
+        if path == "model-outcomes"
+        else report["accepted_work"]["accepted_calls"]
+    ) == 0
     store.quarantine_fact(
         "testorg", FactTable.INFERENCE_CALLS, "third", reason="budget control"
     )
     assert get().status_code == 200
 
 
-def test_model_cli_identity_budget_and_ambiguity(
+def test_model_cli_ambiguity_ignores_unrelated_identity_count(
     postgres_store, monkeypatch, tmp_path, capsys
 ):
     import json
@@ -398,7 +410,7 @@ def test_model_cli_identity_budget_and_ambiguity(
     from sediment_api.reports import model_report
     from sediment_api.services import operational_reports
 
-    _, outside, _ = _population(postgres_store, datetime.now(UTC))
+    _, outside, decisions = _population(postgres_store, datetime.now(UTC))
     monkeypatch.setattr(
         model_report,
         "one_shot_fact_store",
@@ -422,10 +434,179 @@ def test_model_cli_identity_budget_and_ambiguity(
             update={"inference_call_id": "third", "model_call_id": "third-provider"}
         )
     )
+    assert model_report.main(args) == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["rows"][0]["explicit_accepts"] == 0
+    assert captured.err == ""
+
+    from sediment_core import store as store_module
+
+    monkeypatch.setattr(operational_reports, "_SUPPORTING_FACT_LIMIT", 50_000)
+    monkeypatch.setattr(store_module, "COMPOSITE_FILTER_KEY_LIMIT", 1)
+    postgres_store.store_decision(
+        decisions[0].model_copy(
+            update={"decision_id": "other-decision", "call_id": "other-call"}
+        )
+    )
     assert model_report.main(args) == 1
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "identity population exceeds 2" in captured.err
+    assert "Inference call identity filter exceeds 1 keys" in captured.err
+
+
+@pytest.mark.parametrize("seed", [0, 1])
+@pytest.mark.parametrize(
+    "case",
+    [
+        "unique",
+        "historical",
+        "three",
+        "wrong-session",
+        "future",
+        "boundary",
+        "quarantined",
+        "released",
+        "foreign",
+        "missing",
+    ],
+)
+def test_scoped_report_witnesses_match_complete_identity_oracle(
+    postgres_store, postgres_engine, tmp_path, monkeypatch, case, seed
+):
+    from sqlalchemy import event
+    from sediment_core.store import _FactSnapshot
+
+    boundary = datetime(2026, 9, 1, tzinfo=UTC)
+    _, outside, decisions = _population(
+        postgres_store,
+        boundary,
+        case="older-only" if case == "wrong-session" else "tool-tool",
+        outside_at=(
+            boundary + timedelta(microseconds=1)
+            if case == "future"
+            else boundary
+            if case == "boundary"
+            else None
+        ),
+        outside_org="foreign" if case == "foreign" else None,
+        decision_key=(
+            "inside-provider"
+            if case == "unique"
+            else "absent"
+            if case == "missing"
+            else "shared"
+        ),
+        seed=seed,
+    )
+    if case == "three":
+        postgres_store.store_inference_call(
+            outside.model_copy(
+                update={"inference_call_id": "third", "model_call_id": "third"}
+            )
+        )
+    if case in {"quarantined", "released"}:
+        postgres_store.quarantine_fact(
+            "acme", FactTable.INFERENCE_CALLS, outside.inference_call_id, reason="test"
+        )
+        if case == "released":
+            postgres_store.release_fact(
+                "acme",
+                FactTable.INFERENCE_CALLS,
+                outside.inference_call_id,
+                reason="test",
+            )
+    scope = OperationalReportScope.trailing_days(30, as_of=boundary)
+    mirrors = MirrorManager(tmp_path / "mirrors")
+    complete = _FactSnapshot.read_inference_call_identities
+    indexed = _FactSnapshot.read_inference_call_identity_witnesses
+    statements = []
+
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    def witnesses(snapshot, org_id, *, call_ids, observed_through):
+        assert call_ids == {decision.call_id for decision in decisions}
+        assert observed_through == boundary
+        event.listen(postgres_engine, "before_cursor_execute", capture)
+        try:
+            return indexed(
+                snapshot, org_id, call_ids=call_ids, observed_through=observed_through
+            )
+        finally:
+            event.remove(postgres_engine, "before_cursor_execute", capture)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("scoped report read the complete organization identity population")
+
+    def reports():
+        return (
+            generate_operational_model_report(postgres_store, mirrors, "acme", scope),
+            generate_accepted_work_lifecycle_report(
+                postgres_store, mirrors, "acme", scope=scope
+            ),
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(_FactSnapshot, "read_inference_call_identities", forbidden)
+        patch.setattr(
+            _FactSnapshot, "read_inference_call_identity_witnesses", witnesses
+        )
+        actual = reports()
+    assert statements
+    assert all(
+        name not in statement
+        for statement in statements
+        for name in ("input_messages", "output_messages", ".raw")
+    )
+
+    def oracle(snapshot, org_id, *, call_ids, observed_through):
+        return complete(snapshot, org_id, observed_through=observed_through, limit=10)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(_FactSnapshot, "read_inference_call_identity_witnesses", oracle)
+        assert reports() == actual
+
+
+@pytest.mark.parametrize("path", ["model-outcomes", "accepted-work-lifecycle"])
+def test_report_http_refuses_complete_operation_above_identifier_budget(
+    client, monkeypatch, tmp_path, path
+):
+    import sys
+    from sediment_api import workers
+    from sediment_api.config import settings
+
+    boundary = datetime.now(UTC)
+    store = client.app.state.fact_store
+    _, _, decisions = _population(store, boundary, org_id="testorg")
+    store.store_decision(
+        decisions[0].model_copy(
+            update={"decision_id": "other-decision", "call_id": "other-call"}
+        )
+    )
+    monkeypatch.setattr(settings, "mirror_path", str(tmp_path / "mirrors"))
+    monkeypatch.setattr(
+        workers,
+        "_WORKER_COMMAND",
+        (
+            sys.executable,
+            "-c",
+            "from sediment_api import worker\n"
+            "from sediment_core import store\n"
+            "store.COMPOSITE_FILTER_KEY_LIMIT = 1\n"
+            "raise SystemExit(worker.main())",
+        ),
+    )
+    scope = OperationalReportScope.trailing_days(30, as_of=boundary)
+    response = client.get(
+        f"/v1/reports/{path}",
+        params={
+            key: getattr(scope, key).isoformat()
+            for key in ("cohort_start", "cohort_end", "as_of")
+        },
+        headers={"Authorization": "Bearer test-operator-token-3a7e-2f6c"},
+    )
+    assert response.status_code == 409
+    assert response.json() == {"detail": "report evidence exceeds the fixed limit"}
 
 
 @pytest.mark.parametrize("include_decisions", [True, False])

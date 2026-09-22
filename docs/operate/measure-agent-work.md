@@ -77,12 +77,13 @@ use the declared cohort. A later `as_of` admits supporting evidence without
 moving that cohort. Trend buckets start at `cohort_start`; model and funnel
 rows display the cohort duration rounded up to a whole day.
 
-Before attaching Decisions, a scoped report reads all visible call identities in
-the organization through `as_of`, including calls before the cohort. This read
-rejects more than 50,000 rows; HTTP returns 409 and the model CLI exits 1.
-Narrowing the cohort cannot remove older ambiguity witnesses. The cap limits
-rows, not output-message bytes or database scan work. Metrics count only cohort
-calls after the shared uniqueness check.
+Before attaching Decisions, a scoped report checks every requested identifier
+against visible organization history through `as_of`, including older calls.
+Two matching Facts establish ambiguity without reading their message content.
+More than 30,000 distinct non-null Decision identifiers refuses the complete
+report: HTTP returns 409, and the CLI exits 1. Narrowing the cohort doesn't hide
+older collisions. Metrics count only cohort calls after this check. Other cohort,
+supporting-evidence, and execution limits still apply.
 
 Compare two models under the same report window:
 
@@ -100,8 +101,8 @@ aggregate difference, inspect the report's sample sizes and repository
 stratification.
 
 `--since-days` fixes `as_of` when the command starts. It reads evidence related
-to the selected Inference-call cohort plus complete organization-wide identity
-witnesses through `as_of`. If you omit `--since-days`, the command reads all
+to the selected Inference-call cohort plus organization-wide ambiguity
+witnesses for its Decision identifiers through `as_of`. If you omit `--since-days`, the command reads all
 retained history for offline analysis.
 
 For a bounded report, the Attribution-share window ends at `as_of` and spans

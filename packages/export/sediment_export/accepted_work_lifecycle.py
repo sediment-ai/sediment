@@ -696,8 +696,14 @@ def generate_accepted_work_lifecycle_report(
         decision_identities = (
             calls
             if scope is None
-            else snapshot.read_inference_call_identities(
-                org_id, observed_through=scope.as_of, limit=_SUPPORTING_FACT_LIMIT
+            else snapshot.read_inference_call_identity_witnesses(
+                org_id,
+                call_ids={
+                    decision.call_id
+                    for decision in decisions
+                    if decision.call_id is not None
+                },
+                observed_through=scope.as_of,
             )
             if any(decision.call_id is not None for decision in decisions)
             else []
