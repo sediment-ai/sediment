@@ -48,9 +48,10 @@ def _worker_service(monkeypatch, service_name: str, source: str, extra: str = ""
     code = (
         "from sediment_api import worker\n"
         "from sediment_api.routers import reports\n"
+        "from sediment_api.services import operational_reports\n"
         + source
         + "\n"
-        + f"worker.{service_name} = replacement\n"
+        + f"operational_reports.{service_name} = replacement\n"
         + extra
         + "\nraise SystemExit(worker.main())\n"
     )
