@@ -30,6 +30,8 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
                 "evidence-manifest",
                 "evidence-read",
                 "context-retrieve",
+                "context-discover",
+                "context-selected",
             ):
                 result = await supervisor.run(kind, {})
                 assert result.status_code == 503
@@ -46,7 +48,10 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
     asyncio.run(check())
 
 
-@pytest.mark.parametrize("kind", ["evidence-read", "context-retrieve"])
+@pytest.mark.parametrize(
+    "kind",
+    ["evidence-read", "context-retrieve", "context-discover", "context-selected"],
+)
 @pytest.mark.parametrize("finish", ["cancel", "deadline", "failure", "representation"])
 def test_evidence_releases_both_admission_slots(monkeypatch, tmp_path, finish, kind):
     from sediment_api import workers

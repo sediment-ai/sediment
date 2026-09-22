@@ -57,7 +57,7 @@ OPERATOR_AUTH = (
 RETRIEVAL_AUTH = (
     "retrieval or operator",
     "Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or "
-    "`$SEDIMENT_OPERATOR_TOKEN`. Both read the one configured source Session. "
+    "`$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. "
     "Missing or invalid credentials return 401; ingest authority returns 403.",
 )
 PROBE_AUTH = (
@@ -195,13 +195,53 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
         "and canonical parts at 2048. Reasoning and non-finite parts are counted exclusions.",
         {
             "400": "Malformed JSON body.",
-            "404": "Retrieval is disabled for this deployment.",
+            "404": "Retrieval is disabled or plural configuration requires explicit Session selection.",
             "409": "Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), "
             "evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), "
             "evidence_response_limit (limit), or non_finite_number. No partial scan succeeds.",
             "413": "The streamed body exceeds 16 KiB before JSON decoding.",
             "422": "Invalid version, query, byte budget, or undeclared field; content is omitted.",
             "503": "The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL.",
+        },
+    ),
+    "/query/context/discover": (
+        "Discover relevant candidates within the authorized Session set.",
+        "Accepts schema_version=1, query and optional max_bytes with the fixed retrieval bounds, "
+        "and an optional complete commit anchor (repository_provider, repository_host, repository_id, "
+        "commit_sha). Returns policy/schema version 1, quarantine_revision, the anchor or null, "
+        "unknown capture completeness, matched/no_match/budget_exhausted status, complete coverage, "
+        "closed part/Session exclusion counts, and at most eight candidate Sessions. Each has "
+        "session_id, score, matched_parts, an exact EvidenceReadItem preview or null, and "
+        "commit_match (observation_id, source_push_id, captured_at) or null. Commit matches require "
+        "a visible exact source Push with equal provider identity. Complete visible source limits "
+        "of 1000 calls, 8 MiB selected stored columns, and 2048 parts apply across the entire grant. "
+        "Scores count distinct query-token overlap; exact commit matches rank first. Whole candidates "
+        "fit the requested strict ASCII JSON response budget; Cache-Control is no-store. "
+        "A commit hint never grants access or proves repository ownership of Session content.",
+        {
+            "400": "Malformed JSON body.",
+            "404": "Retrieval is disabled for this deployment.",
+            "409": "Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason.",
+            "413": "The streamed body exceeds 16 KiB before JSON decoding.",
+            "422": "Invalid version, query, budget, complete commit identity, or undeclared field.",
+            "503": "Shared evidence worker or database unavailable; the existing 30-second deadline applies.",
+        },
+    ),
+    "/query/context/selected": (
+        "Retrieve exact context from a selected authorized Session.",
+        "Accepts schema_version=1, session_id, query, and optional max_bytes. The query, budget, "
+        "source limits, and version-1 ContextRetrievalResult match /query/context. Membership "
+        "is checked before storage lookup and again in the worker. Each request uses its own "
+        "snapshot and rechecks Quarantine; a previous discovery result grants no additional authority. "
+        "An authorized known Session with no eligible content returns an empty selection.",
+        {
+            "400": "Malformed JSON body.",
+            "403": "The selected Session is outside the configured set, regardless of whether it exists.",
+            "404": "Retrieval is disabled for this deployment.",
+            "409": "evidence_unavailable or an existing evidence capacity/representation reason in detail.reason.",
+            "413": "The streamed body exceeds 16 KiB before JSON decoding.",
+            "422": "Invalid version, Session identifier, query, budget, or undeclared field.",
+            "503": "Shared evidence worker or database unavailable; the existing 30-second deadline applies.",
         },
     ),
     "/query/evidence": (
@@ -330,7 +370,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
     ),
     "/v1/me": (
         "Auth probe: tenant, version, authority, and configured client.",
-        '`{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id. These identifiers never select tenancy.',
+        '`{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id under singleton configuration or sorted source_session_ids under plural configuration. These identifiers never select tenancy.',
         {},
     ),
     "/v1/facts": (

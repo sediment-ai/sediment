@@ -416,8 +416,9 @@ def test_cli_later_quarantine_refuses_packet_for_previously_visible_reference(
     )
 
 
+@pytest.mark.parametrize("discovery", [False, True])
 def test_context_retrieval_preserves_nonempty_pipeline_outputs(
-    client, captured_calls, training_corpus, tmp_path, monkeypatch
+    client, captured_calls, training_corpus, tmp_path, monkeypatch, discovery
 ):
     from pydantic import SecretStr
     from sediment_api.config import settings
@@ -425,12 +426,26 @@ def test_context_retrieval_preserves_nonempty_pipeline_outputs(
     monkeypatch.setattr(
         settings, "retrieval_token", SecretStr("retrieval-test-token-long-enough")
     )
-    monkeypatch.setattr(settings, "retrieval_session_id", SESSION)
+    monkeypatch.setattr(
+        settings, "retrieval_session_id", None if discovery else SESSION
+    )
+    monkeypatch.setattr(
+        settings,
+        "retrieval_session_ids",
+        (SESSION, FRESH_SESSION) if discovery else None,
+    )
     before = _pipeline_snapshot(client, training_corpus, tmp_path / "before-context")
+    headers = {"Authorization": "Bearer retrieval-test-token-long-enough"}
+    body = {"schema_version": 1, "query": "function signature dependency passed"}
+    if discovery:
+        candidates = client.post("/query/context/discover", headers=headers, json=body)
+        assert candidates.status_code == 200
+        assert [item["session_id"] for item in candidates.json()["items"]] == [SESSION]
+        body["session_id"] = candidates.json()["items"][0]["session_id"]
     result = client.post(
-        "/query/context",
-        headers={"Authorization": "Bearer retrieval-test-token-long-enough"},
-        json={"schema_version": 1, "query": "function signature dependency passed"},
+        "/query/context/selected" if discovery else "/query/context",
+        headers=headers,
+        json=body,
     )
     assert result.status_code == 200
     assert result.json()["status"] == "matched"

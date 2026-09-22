@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -330,7 +332,16 @@ def test_compose_separates_database_network_and_scoped_credentials(tmp_path):
         assert not any("docker.sock" in str(v) for v in service.get("volumes", []))
 
 
-def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(tmp_path):
+@pytest.mark.parametrize(
+    "source_setting,source_value",
+    [
+        ("SEDIMENT_RETRIEVAL_SESSION_ID", "one-source-session"),
+        ("SEDIMENT_RETRIEVAL_SESSION_IDS", '["source-one","source-two"]'),
+    ],
+)
+def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(
+    tmp_path, source_setting, source_value
+):
     values = _core_environment()
     project = _compose_project(tmp_path, values)
     environment = {
@@ -347,7 +358,7 @@ def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(tmp_path)
 
     retrieval = {
         "SEDIMENT_RETRIEVAL_TOKEN": "retrieval-test-token-long-enough",
-        "SEDIMENT_RETRIEVAL_SESSION_ID": "one-source-session",
+        source_setting: source_value,
     }
     # Both shell variables and Compose's private .env must work.
     for from_file in (False, True):

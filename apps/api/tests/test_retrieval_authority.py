@@ -83,14 +83,26 @@ BEARER_ROUTES = [
     for path, item in app.openapi()["paths"].items()
     for method, operation in item.items()
     if any(p.get("name") == "authorization" for p in operation.get("parameters", []))
-    and path not in {"/v1/me", "/query/context"}
+    and path
+    not in {
+        "/v1/me",
+        "/query/context",
+        "/query/context/discover",
+        "/query/context/selected",
+    }
 ]
 
 
 @pytest.mark.parametrize("route", BEARER_ROUTES, ids=lambda route: route[1])
+@pytest.mark.parametrize("plural", [False, True])
 def test_retrieval_cannot_use_existing_bearer_routes(
-    client, retrieval_credential, route
+    client, retrieval_credential, route, plural, monkeypatch
 ):
+    if plural:
+        monkeypatch.setattr(settings, "retrieval_session_id", None)
+        monkeypatch.setattr(
+            settings, "retrieval_session_ids", ["source-session", "other"]
+        )
     response = client.request(
         route[0], route[1], headers={"Authorization": f"Bearer {TOKEN}"}, json={}
     )

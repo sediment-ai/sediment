@@ -34,6 +34,7 @@ from sediment_core import (
     AgentHarness,
     CIProvider,
     CIResult,
+    ContextCommitAnchor,
     FactStore,
     EVIDENCE_REFERENCE_LIMIT,
     EvidenceInventory,
@@ -81,6 +82,7 @@ from sediment_derive.context_retrieval import (
     CONTEXT_MAX_RESPONSE_BYTES,
     CONTEXT_QUERY_BYTES_LIMIT,
     ContextRetrievalResult,
+    ContextDiscoveryResult,
     context_query_tokens,
 )
 from sediment_derive.repository_identity import (
@@ -95,7 +97,13 @@ from sediment_derive.repository_identity import (
 )
 
 from ..config import settings
-from ..deps import get_store, verify_operator_token, verify_retrieval_token
+from ..deps import (
+    get_store,
+    require_context_session,
+    verify_context_grant_token,
+    verify_operator_token,
+    verify_retrieval_token,
+)
 
 _SESSION_DOSSIER_LIMIT = 500
 
@@ -253,11 +261,7 @@ class ContextRetrievalRequest(BaseModel):
     @classmethod
     def _declared_fields_only(cls, value):
         # Extra-field locations would echo arbitrary caller-supplied key text.
-        if isinstance(value, dict) and value.keys() - {
-            "schema_version",
-            "query",
-            "max_bytes",
-        }:
+        if isinstance(value, dict) and value.keys() - cls.model_fields.keys():
             raise ValueError("unsupported context request field")
         return value
 
@@ -299,6 +303,91 @@ async def query_context(
     """
     return await _evidence_worker_response(
         request, "context-retrieve", body.model_dump(mode="python")
+    )
+
+
+class ContextDiscoveryRequest(ContextRetrievalRequest):
+    """Search only the deployment grant, with an optional exact commit anchor."""
+
+    commit: ContextCommitAnchor | None = None
+
+    @field_validator("commit", mode="before")
+    @classmethod
+    def _declared_commit_fields_only(cls, value):
+        if isinstance(value, dict) and value.keys() - {
+            "repository_provider",
+            "repository_host",
+            "repository_id",
+            "commit_sha",
+        }:
+            raise ValueError("unsupported commit anchor field")
+        return value
+
+
+class ContextSelectedRequest(ContextRetrievalRequest):
+    """Select one authorized Session without changing the retrieval contract."""
+
+    session_id: NonEmptyId = Field(strict=True)
+
+
+_CONTEXT_GRANT_RESPONSES = {
+    400: {"description": "Malformed JSON body."},
+    401: {"description": "Unknown or absent bearer credential."},
+    403: {
+        "description": "Retrieval or operator authority required, or Session outside the configured grant."
+    },
+    404: {"description": "Context retrieval is disabled."},
+    409: {
+        "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+    },
+    413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
+    503: {
+        "description": "Database unavailable, or shared work capacity or 30-second execution budget exceeded."
+    },
+}
+
+
+@router.post(
+    "/context/discover",
+    response_model=ContextDiscoveryResult,
+    responses=_CONTEXT_GRANT_RESPONSES,
+)
+async def query_context_discover(
+    body: ContextDiscoveryRequest,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Find at most eight Sessions within the deployment's explicit grant.
+
+    Version 1 searches English/code keywords under aggregate source bounds.
+    An optional provider/host/repository-ID/SHA anchor prioritizes directly
+    observed commit relationships. Each candidate carries exact evidence or
+    an observed commit witness. Discovery persists nothing and grants no access.
+    """
+    return await _evidence_worker_response(
+        request, "context-discover", body.model_dump(mode="python")
+    )
+
+
+@router.post(
+    "/context/selected",
+    response_model=ContextRetrievalResult,
+    responses=_CONTEXT_GRANT_RESPONSES,
+)
+async def query_context_selected(
+    body: ContextSelectedRequest,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Retrieve exact evidence from one explicitly selected authorized Session.
+
+    Membership is checked before storage access and again in the worker.
+    The read rechecks Quarantine and retains the singleton retrieval response.
+    Evidence remains historical data, not instructions to execute.
+    """
+    require_context_session(body.session_id)
+    return await _evidence_worker_response(
+        request, "context-selected", body.model_dump(mode="python")
     )
 
 

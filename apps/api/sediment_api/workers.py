@@ -34,7 +34,14 @@ MAX_REQUEST_BYTES = 1024 * 1024
 MIRROR_FREE_BYTES = 1024 * 1024 * 1024
 _WORKER_COMMAND = (sys.executable, "-m", "sediment_api.worker")
 _EVIDENCE_KINDS = frozenset(
-    {"evidence-inventory", "evidence-manifest", "evidence-read", "context-retrieve"}
+    {
+        "evidence-inventory",
+        "evidence-manifest",
+        "evidence-read",
+        "context-retrieve",
+        "context-discover",
+        "context-selected",
+    }
 )
 _QUERY_KINDS = (
     frozenset({"commit", "session", "model-report", "lifecycle-report"})
@@ -120,7 +127,15 @@ async def _read_result(stream: asyncio.StreamReader) -> Response:
     # Status line precedes the raw response body, avoiding a base64 copy of a
     # 64 MiB report. No worker-controlled response headers cross this boundary.
     status = await stream.readline()
-    if status not in {b"200\n", b"409\n", b"422\n", b"500\n", b"503\n"}:
+    if status not in {
+        b"200\n",
+        b"403\n",
+        b"404\n",
+        b"409\n",
+        b"422\n",
+        b"500\n",
+        b"503\n",
+    }:
         raise _WorkerFailure
     body = bytearray()
     while chunk := await stream.read(64 * 1024):
@@ -209,6 +224,16 @@ def _child_environment() -> dict[str, str]:
             else None,
         ),
         ("SEDIMENT_RETRIEVAL_SESSION_ID", settings.retrieval_session_id),
+        (
+            "SEDIMENT_RETRIEVAL_SESSION_IDS",
+            json.dumps(
+                settings.retrieval_session_ids,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            if settings.retrieval_session_ids is not None
+            else None,
+        ),
     ):
         if value is None:
             environment.pop(name, None)
