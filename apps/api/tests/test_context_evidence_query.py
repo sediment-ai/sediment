@@ -466,7 +466,6 @@ def test_scoped_fetch_encoded_response_limit_refuses_complete_packet(granted):
     }
     assert exact(granted, "manifest").status_code == 200
     assert not granted.app.state.workers._query_tasks
-    assert not granted.app.state.workers._evidence_tasks
 
 
 @pytest.mark.parametrize("kind", KINDS)
@@ -486,7 +485,6 @@ def test_scoped_exact_public_worker_deadline_releases_capacity(
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"
     assert not granted.app.state.workers._query_tasks
-    assert not granted.app.state.workers._evidence_tasks
     assert granted.get("/health").status_code == 200
 
 

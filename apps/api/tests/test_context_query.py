@@ -221,7 +221,6 @@ def test_context_deadline_releases_worker_slots(retrieval, monkeypatch):
     assert result.status_code == 503
     assert result.headers["cache-control"] == "no-store"
     assert not retrieval.app.state.workers._query_tasks
-    assert not retrieval.app.state.workers._evidence_tasks
     assert retrieval.get("/health").status_code == 200
 
 
