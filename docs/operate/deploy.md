@@ -387,7 +387,7 @@ Measure upgrade duration against a restored copy of the deployment database.
 For `0011_inference_call_aliases`, stop every API replica and direct Fact writer
 before provisioning. The migration copies provider and output tool-call
 identifiers from every retained Inference call, including quarantined history,
-and builds the physical lookup index in one transaction. It blocks parent writes
+and builds the physical lookup index in one transaction. It blocks parent reads and writes
 and decodes one output row at a time; memory depends on the largest output and
 its identifiers. Measure duration and disk growth on a restored database before
 scheduling the maintenance window. Restart only the matching API build after

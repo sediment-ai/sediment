@@ -52,7 +52,7 @@ The count does not become a canonical Fact field or independently prove index
 completeness. Atomic supported writes and a complete migration establish that
 invariant; a foreign key alone does not.
 
-The forward migration locks parent writes and backfills every retained Fact,
+The forward migration locks parent reads and writes and backfills every retained Fact,
 including quarantined Facts. A frozen Python decoder reads only output messages
 and existing scalar identifiers. It retains exceptional descriptive values in
 the parent and copies only canonical identifier fields. It processes one output
