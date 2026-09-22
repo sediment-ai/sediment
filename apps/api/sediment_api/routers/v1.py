@@ -39,7 +39,7 @@ _SESSION_FACT_TABLES = (
 
 
 @router.get("/me")
-def me(identity: CredentialIdentity = Depends(verify_token)) -> dict[str, str]:
+def me(identity: CredentialIdentity = Depends(verify_token)) -> dict[str, Any]:
     """Auth probe for ``sediment login``: the deployment's tenant and the API
     version, reported verbatim so the client can detect skew."""
     result = {
@@ -49,7 +49,10 @@ def me(identity: CredentialIdentity = Depends(verify_token)) -> dict[str, str]:
         "client_id": identity.client_id,
     }
     if identity.authority == "retrieval":
-        result["source_session_id"] = settings.retrieval_session_id
+        if settings.retrieval_session_ids is not None:
+            result["source_session_ids"] = list(settings.context_session_ids)
+        else:
+            result["source_session_id"] = settings.retrieval_session_id
     return result
 
 

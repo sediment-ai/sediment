@@ -14,10 +14,14 @@ from pydantic import BeforeValidator, ConfigDict, Field, TypeAdapter
 
 from .models import (
     AwareDatetime,
+    CommitSha,
+    ForgeHost,
+    ForgeProvider,
     InferenceMessage,
     InferenceMessagePart,
     ModelName,
     NonEmptyId,
+    ProviderRepositoryId,
     ScalarIdentity,
 )
 
@@ -27,6 +31,7 @@ EVIDENCE_REQUEST_BYTES_LIMIT = 64 * 1024
 EVIDENCE_SOURCE_BYTES_LIMIT = 8 * 1024 * 1024
 EVIDENCE_RESPONSE_BYTES_LIMIT = 1024 * 1024
 CONTEXT_SOURCE_PART_LIMIT = 2_048
+CONTEXT_DISCOVERY_SESSION_LIMIT = 32
 
 EvidenceSide = Literal["input", "output"]
 EvidenceIndex = Annotated[int, Field(strict=True, ge=0)]
@@ -160,6 +165,71 @@ class EvidenceContextSource:
     visible_inference_calls: EvidenceIndex
     quarantined_inference_calls: EvidenceIndex
     items: tuple[EvidenceReadItem, ...]
+
+
+@dataclass(frozen=True)
+class ContextCommitAnchor:
+    """An exact repository-qualified commit hint, never read authority."""
+
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    repository_provider: ForgeProvider
+    repository_host: ForgeHost
+    repository_id: ProviderRepositoryId
+    commit_sha: CommitSha
+
+    def __post_init__(self) -> None:
+        for name, kind in (
+            ("repository_provider", ForgeProvider),
+            ("repository_host", ForgeHost),
+            ("repository_id", ProviderRepositoryId),
+            ("commit_sha", CommitSha),
+        ):
+            object.__setattr__(
+                self, name, TypeAdapter(kind).validate_python(getattr(self, name))
+            )
+
+
+@dataclass(frozen=True)
+class ContextCommitMatch:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    observation_id: NonEmptyId
+    source_push_id: NonEmptyId
+    captured_at: AwareDatetime
+
+
+@dataclass(frozen=True)
+class ContextDiscoverySession:
+    """Visible canonical parts and an optional exact relationship witness."""
+
+    session_id: NonEmptyId
+    items: tuple[EvidenceReadItem, ...]
+    commit_match: ContextCommitMatch | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContextDiscoverySource:
+    """Complete bounded authorized population, owned by one read snapshot."""
+
+    authorized_sessions: EvidenceIndex
+    quarantine_revision: EvidenceIndex
+    visible_inference_calls: EvidenceIndex
+    quarantined_inference_calls: EvidenceIndex
+    sessions: tuple[ContextDiscoverySession, ...]
+    commit: ContextCommitAnchor | None
+
+
+def validate_context_session_ids(session_ids) -> tuple[NonEmptyId, ...]:
+    """Validate the complete deployment grant before entering a database read."""
+    if not isinstance(session_ids, (list, tuple, set, frozenset)) or not (
+        1 <= len(session_ids) <= CONTEXT_DISCOVERY_SESSION_LIMIT
+    ):
+        raise ValueError("invalid context Session grant")
+    normalized = tuple(_ID.validate_python(value) for value in session_ids)
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("invalid context Session grant")
+    return tuple(sorted(normalized))
 
 
 class EvidenceReadError(ValueError):

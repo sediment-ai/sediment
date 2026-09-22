@@ -25,7 +25,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-2953",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -51,7 +52,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-2953",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -72,7 +74,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-45853",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -93,7 +96,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2023-45853",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -119,7 +123,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-59375",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -146,7 +151,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-69720",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -173,7 +179,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-69720",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -198,7 +205,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-7458",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -223,7 +231,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2025-7458",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -248,7 +257,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11822",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -273,7 +283,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11822",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -298,7 +309,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11824",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -323,7 +335,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-11824",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -346,7 +359,8 @@
         "https://curl.se/docs/CVE-2026-12064.html",
         "https://curl.se/docs/CVE-2026-12064.json",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -379,7 +393,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-13221",
         "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -412,7 +427,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-13221",
         "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -435,7 +451,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-16742",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -458,7 +475,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-16742",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -484,7 +502,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-25210",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -509,7 +528,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-41992",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -534,7 +554,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-41992",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -567,7 +588,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-42496",
         "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -600,7 +622,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-42496",
         "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -633,7 +656,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-42497",
         "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -666,7 +690,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-42497",
         "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -692,7 +717,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-45186",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -725,7 +751,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-48962",
         "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -758,7 +785,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-48962",
         "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -800,7 +828,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-53613",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8gj5-72r3-428g",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -842,7 +871,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-53613",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8gj5-72r3-428g",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -869,7 +899,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-54369",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -896,7 +927,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-54369",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -929,7 +961,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-57432",
         "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -962,7 +995,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-57432",
         "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -995,7 +1029,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-57433",
         "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1028,7 +1063,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-57433",
         "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1056,7 +1092,8 @@
         "https://curl.se/docs/CVE-2026-6276.html",
         "https://curl.se/docs/CVE-2026-6276.json",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1085,7 +1122,8 @@
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/GNOME/libxml2/blob/v2.9.14/valid.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1106,7 +1144,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-74860",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1154,7 +1193,8 @@
         "https://github.com/util-linux/util-linux/commit/f57cea130839c0af8dc0525274267ae4cfd66bbf",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-m25x-3hj9-m26f",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1202,7 +1242,8 @@
         "https://github.com/util-linux/util-linux/commit/f57cea130839c0af8dc0525274267ae4cfd66bbf",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-m25x-3hj9-m26f",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1238,7 +1279,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78408",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-55fx-f4gg-cfhj",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1274,7 +1316,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78408",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-55fx-f4gg-cfhj",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1310,7 +1353,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78409",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8f2p-47x3-43mv",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1346,7 +1390,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78409",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-8f2p-47x3-43mv",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1388,7 +1433,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78410",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-rh77-686x-2f2m",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1430,7 +1476,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-78410",
         "https://github.com/util-linux/util-linux/security/advisories/GHSA-rh77-686x-2f2m",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1458,7 +1505,8 @@
         "https://curl.se/docs/CVE-2026-8286.html",
         "https://curl.se/docs/CVE-2026-8286.json",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1485,7 +1533,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-8376",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1512,7 +1561,8 @@
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-8376",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1540,7 +1590,8 @@
         "https://curl.se/docs/CVE-2026-8458.html",
         "https://curl.se/docs/CVE-2026-8458.json",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1566,7 +1617,8 @@
         "https://github.com/SAML-Toolkits/python3-saml/blob/6988bdab7a203abfe8dc264992f7e350c67aef3d/src/onelogin/saml2/utils.py",
         "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/litellm/proxy/management_endpoints/sso/saml_sso.py",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1595,7 +1647,8 @@
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/GNOME/libxml2/blob/v2.9.14/valid.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1623,7 +1676,8 @@
         "https://curl.se/docs/CVE-2026-8927.html",
         "https://curl.se/docs/CVE-2026-8927.json",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1656,7 +1710,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1689,7 +1744,8 @@
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1719,7 +1775,8 @@
         "https://github.com/git/git/blob/v2.39.5/http-push.c",
         "https://github.com/git/git/blob/v2.39.5/remote-curl.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1749,7 +1806,8 @@
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1779,7 +1837,8 @@
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1809,7 +1868,8 @@
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1839,7 +1899,8 @@
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     },
     {
@@ -1869,7 +1930,8 @@
         "https://sources.debian.org/src/libxml2/2.9.14%2Bdfsg-1.3~deb12u6/",
         "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/utils/adt/xml.c",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896"
+        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
+        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932"
       ]
     }
   ]

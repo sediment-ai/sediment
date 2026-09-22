@@ -233,7 +233,7 @@ Grouped by reader intent; `docs/` subdirectories mirror these groups.
 | Credentials, repository identity, and commit investigation | `docs/adr/0018-static-credential-authorities.md`; `docs/adr/0022-agent-requested-session-context.md`; `docs/adr/0019-repository-identity-and-renames.md`; `docs/adr/0024-targeted-commit-investigations.md` |
 | Pipeline acceptance and release artifacts | `docs/operate/rehearse-release.md`; `docs/agents/exports-and-stats.md` |
 | Contributor setup and issue maintenance | `CONTRIBUTING.md`; `docs/agents/issue-tracker.md` |
-| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; `docs/adr/0021-bounded-evidence-access.md`; `docs/superpowers/specs/2026-09-21-context-evidence-design.md`; `docs/superpowers/specs/2026-09-21-evidence-store-positioning-design.md`; `docs/superpowers/specs/2026-09-21-session-context-retrieval-design.md` (agent-requested retrieval specification) |
+| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; `docs/adr/0021-bounded-evidence-access.md`; `docs/adr/0025-authorized-session-candidate-discovery.md`; `docs/superpowers/specs/2026-09-21-context-evidence-design.md`; `docs/superpowers/specs/2026-09-21-evidence-store-positioning-design.md`; `docs/superpowers/specs/2026-09-21-session-context-retrieval-design.md`; `docs/superpowers/specs/2026-09-22-session-candidate-discovery-design.md` (authorized candidate discovery) |
 
 Maintained documentation and ADRs carry contributor-facing contracts.
 
