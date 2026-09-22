@@ -25,11 +25,21 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from collections.abc import Mapping
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
-from sediment_core import CommitSha, FactStore, NonEmptyId, OrgId, Push, RepoSlug
+from sediment_core import (
+    CommitSha,
+    FactStore,
+    NonEmptyId,
+    OrgId,
+    Push,
+    RepoSlug,
+    normalize_commit_sha,
+)
+from sediment_core.store import AttributionPush
 
 from .diff import is_code_file, parse_diff_sections
 from .inference_call import (
@@ -46,9 +56,12 @@ from .repository_identity import (
     CommitKey,
     IdentifiedRepositoryKey,
     RepositoryContext,
+    RepositoryKey,
     RepositoryIdentity,
     RepositoryResolution,
     repository_identity_evidence_of,
+    repository_identity_of,
+    repository_read_key,
 )
 from .session_commit import bind_session_commit_keys_result
 from .scoring import JaccardScorer, Scorer
@@ -165,6 +178,171 @@ class AttributionResult:
     def __init__(self) -> None:
         self.attributions = []
         self.skipped = Counter()
+
+
+def derive_commit_attributions(
+    store: FactStore,
+    mirrors: MirrorManager,
+    org_id: OrgId,
+    commit_sha: CommitSha,
+    policy: AttributionPolicy | None = None,
+    *,
+    repository_context: RepositoryContext,
+    note_session_ids_by_commit: Mapping[CommitKey, frozenset[str]],
+    repository_key: RepositoryKey | None = None,
+    scorer: Scorer | None = None,
+    policy_digest: str | None = None,
+) -> list[Attribution]:
+    """Score one commit after finding its earliest eligible stored Push owners.
+
+    The caller supplies complete repository metadata and captured note bindings
+    from the same snapshot. An empty note map is authoritative. Stored Push
+    projections qualify through their captured identity and name; arbitrary
+    preloaded Facts must continue using the stricter full Derivation API.
+    """
+    commit_sha = normalize_commit_sha(commit_sha)
+    if repository_context.org_id != org_id:
+        raise ValueError("repository context must match organization")
+    if repository_key is not None:
+        repository_read_key(repository_key)
+        if repository_key.org_id != org_id:
+            raise ValueError("repository selector must match organization")
+    policy = policy or AttributionPolicy()
+    scorer = scorer or JaccardScorer()
+    keys = (
+        (repository_key,)
+        if repository_key is not None
+        else repository_context.repository_keys()
+    )
+    with store.read_snapshot() as snapshot:
+        owners = []
+        result = AttributionResult()
+        for key in keys:
+            try:
+                repo = repository_context.repo_for(key)
+            except KeyError:
+                result.skipped["repository_identity_unresolved"] += 1
+                continue
+            mirror = mirrors.open_repository(key)
+            if mirror is None:
+                result.skipped["mirror_absent"] += 1
+                logger.debug("mirror_absent", extra={"repo": repo})
+                continue
+            if not mirror.commit_exists(commit_sha):
+                continue
+            with closing(
+                snapshot.iter_attribution_pushes(
+                    org_id,
+                    captured_through=repository_context.as_of,
+                    repository_key=repository_read_key(key),
+                )
+            ) as pushes:
+                for push in pushes:
+                    resolved = repository_context.resolve_reference(
+                        push.org_id,
+                        push.repo,
+                        repository_identity=repository_identity_of(push),
+                    )
+                    if resolved.key != key:
+                        result.skipped[resolved.reason] += 1
+                        logger.warning(
+                            "Attribution repository declined reason=%s count=1",
+                            resolved.reason,
+                        )
+                        continue
+                    if push.after_sha != commit_sha:
+                        if (
+                            push.forced
+                            or not push.before_sha.strip("0")
+                            or push.before_sha in (commit_sha, push.after_sha)
+                        ):
+                            continue
+                        if commit_sha not in mirror.list_push_commits(
+                            push, policy.max_commits_per_push
+                        ):
+                            continue
+                    # Ownership precedes candidate availability and matching.
+                    owners.append((push, resolved, mirror))
+                    break
+        provenance = Provenance(
+            policy_version=policy.policy_version,
+            quarantine_revision=snapshot.quarantine_revision(org_id),
+            policy_digest=policy_digest,
+        )
+        for push, resolved, mirror in sorted(
+            owners, key=lambda item: (item[0].captured_at, item[0].push_id)
+        ):
+            result.attributions.extend(
+                _attribute_owned_commit(
+                    snapshot,
+                    mirror,
+                    push,
+                    commit_sha,
+                    resolved,
+                    policy,
+                    scorer,
+                    provenance,
+                    repository_context.as_of,
+                    note_session_ids_by_commit.get(
+                        CommitKey(resolved.key, commit_sha), frozenset()
+                    ),
+                    result.skipped,
+                )
+            )
+        for reason, count in sorted(result.skipped.items()):
+            logger.debug("Commit Attribution skipped reason=%s count=%d", reason, count)
+        return result.attributions
+
+
+def _attribute_owned_commit(
+    store,
+    mirror: RepoMirror,
+    push: AttributionPush,
+    commit_sha: CommitSha,
+    resolved: RepositoryResolution,
+    policy: AttributionPolicy,
+    scorer: Scorer,
+    provenance: Provenance,
+    as_of: datetime,
+    note_session_ids: frozenset[str],
+    skipped: Counter[str],
+) -> list[Attribution]:
+    """Materialize one owner's exact population, releasing it before the next."""
+    upper = min(
+        as_of,
+        push.captured_at + timedelta(minutes=policy.post_push_grace_period_minutes),
+    )
+    calls = store.read_attribution_candidates(
+        push.org_id,
+        observed_between=(
+            push.captured_at
+            - timedelta(minutes=policy.jaccard.lookback_window_minutes),
+            upper,
+        ),
+        note_session_ids=set(note_session_ids),
+        notes_observed_between=(
+            push.captured_at
+            - timedelta(minutes=policy.git_notes.lookback_window_minutes),
+            upper,
+        ),
+    )
+    candidates = [(call, tokenize(render_scoring_text(call))) for call in calls]
+    if not candidates:
+        skipped["no_inference_call_candidates"] += 1
+        return []
+    return _attribute_commit(
+        mirror,
+        push,
+        commit_sha,
+        _window(candidates, push, policy.jaccard.lookback_window_minutes, policy),
+        _window(candidates, push, policy.git_notes.lookback_window_minutes, policy),
+        policy,
+        provenance,
+        scorer,
+        skipped,
+        repository_resolution=resolved,
+        note_session_ids=note_session_ids,
+    )
 
 
 def derive_attributions(
@@ -453,7 +631,7 @@ def _qualify_legacy_note_sessions(
 
 def _attribute_commit(
     mirror: RepoMirror,
-    push: Push,
+    push: Push | AttributionPush,
     commit_sha: str,
     org_candidates: list[_Candidate],
     git_notes_candidates: list[_Candidate],
@@ -571,7 +749,10 @@ def _scope_candidates(
 
 
 def _window(
-    candidates: list[_Candidate], push: Push, minutes: int, policy: AttributionPolicy
+    candidates: list[_Candidate],
+    push: Push | AttributionPush,
+    minutes: int,
+    policy: AttributionPolicy,
 ) -> list[_Candidate]:
     """Inference calls captured in the ``minutes`` before the push (plus the
     capture slack after it). Anchored on the push fact's captured_at — not

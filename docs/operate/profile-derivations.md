@@ -66,6 +66,40 @@ A profile refusal remains a failed capacity probe for that requested workload.
 If a capacity check refuses the full workload, record a failed capacity gate.
 Do not substitute a smaller cohort or treat the refusal as an eligibility skip.
 
+## Measure commit investigations
+
+Use a fixed commit, repository selector, and `as_of` for paired requests to
+`GET /query/commit/{sha}`. Compare complete response values and record latency,
+worker memory, PostgreSQL buffers, returned projection rows, and Git subprocess
+counts. Run both an identity-qualified request and an unqualified request;
+the latter can search several repository mirrors.
+
+Vary these populations separately:
+
+- Repeated Push and repository evidence history with unchanged names and claims.
+- Distinct repository identities, names, and rename relationships.
+- Earlier Pushes that require range inspection to discover a non-head target.
+- Calls and output bytes inside the target owner's eligible candidate windows.
+
+Include a missing commit and a capped non-head commit. A benchmark that requests
+only Push heads doesn't cover complete owner discovery. Preserve captured
+Session observations so mutable Git notes can't supply missing historical
+evidence.
+
+Target Attribution reads organization-wide candidates in the owner's Jaccard
+window and observed note Sessions in the longer note window. Repository
+witnesses reduce repeated rows transferred to Python; PostgreSQL still groups
+scalar history. Git discovery can still inspect earlier Pushes. An improvement
+in one component doesn't establish a proportional whole-query improvement.
+
+Repeat the successful workload through the HTTP worker boundary and under the
+supported concurrent query load. Record 409 capacity refusals, 503 admission or
+deadline failures, concurrent ingest receipts, and health latency. The two worker
+slots and 30-second deadline retain their operational meaning. Synthetic results
+qualify only the declared fixture and resources; verify the partner workload
+separately. [ADR 0024](../adr/0024-targeted-commit-investigations.md) defines the
+selection and evidence contracts.
+
 ## Provide private disk storage
 
 The Compose `operator` service sets `TMPDIR` to the private `sediment-staging`

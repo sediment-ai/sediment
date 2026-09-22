@@ -8,7 +8,7 @@
         "api/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "api/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -33,7 +33,7 @@
         "postgres/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "postgres/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -58,7 +58,7 @@
         "api/amd64/zlib1g@1:1.2.13.dfsg-1",
         "api/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -78,7 +78,7 @@
         "postgres/amd64/zlib1g@1:1.2.13.dfsg-1",
         "postgres/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -98,7 +98,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -129,7 +129,7 @@
         "api/arm64/ncurses-base@6.4-4",
         "api/arm64/ncurses-bin@6.4-4"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -155,7 +155,7 @@
         "postgres/arm64/ncurses-base@6.4-4",
         "postgres/arm64/ncurses-bin@6.4-4"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -175,7 +175,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -199,7 +199,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -223,7 +223,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -247,7 +247,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -271,7 +271,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -295,7 +295,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -319,7 +319,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "curl_cli_absent"
       ],
@@ -347,7 +347,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -379,7 +379,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -407,7 +407,7 @@
         "api/arm64/libsystemd0@252.39-1~deb12u2",
         "api/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -429,7 +429,7 @@
         "postgres/arm64/libsystemd0@252.39-1~deb12u2",
         "postgres/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -449,7 +449,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -474,7 +474,7 @@
         "api/amd64/gzip@1.12-1",
         "api/arm64/gzip@1.12-1"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -498,7 +498,7 @@
         "postgres/amd64/gzip@1.12-1",
         "postgres/arm64/gzip@1.12-1"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -528,7 +528,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -560,7 +560,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -592,7 +592,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -624,7 +624,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -650,7 +650,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -681,7 +681,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -713,7 +713,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -753,7 +753,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -794,7 +794,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -821,7 +821,7 @@
         "api/amd64/libacl1@2.3.1-3",
         "api/arm64/libacl1@2.3.1-3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -847,7 +847,7 @@
         "postgres/amd64/libacl1@2.3.1-3",
         "postgres/arm64/libacl1@2.3.1-3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -879,7 +879,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -911,7 +911,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -943,7 +943,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -975,7 +975,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1001,7 +1001,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1028,7 +1028,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1056,7 +1056,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "libxml_python_bindings_absent"
       ],
@@ -1090,7 +1090,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1137,7 +1137,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1184,7 +1184,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1219,7 +1219,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1254,7 +1254,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1289,7 +1289,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1324,7 +1324,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1365,7 +1365,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1392,7 +1392,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1425,7 +1425,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "perl_64bit"
       ],
@@ -1451,7 +1451,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "perl_64bit"
       ],
@@ -1471,7 +1471,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1498,7 +1498,7 @@
         "gateway/amd64/zlib@1.3.2-r7",
         "gateway/arm64/zlib@1.3.2-r7"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "gzip_write_api_unreachable"
       ],
@@ -1523,7 +1523,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1551,7 +1551,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1584,7 +1584,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1616,7 +1616,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1642,7 +1642,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1671,7 +1671,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1700,7 +1700,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1729,7 +1729,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1758,7 +1758,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1787,7 +1787,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "source_digest": "e515a56a8e50b12dc2a8d42105ea82ee889fcade6ad2710f1b848d636ab6bb72",
+      "source_digest": "dd1007f2fb3be49a435e9f8a692d0457c694d3b3706bfa24d08cdcfd79872292",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",

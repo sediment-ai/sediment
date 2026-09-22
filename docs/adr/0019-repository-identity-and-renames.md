@@ -93,6 +93,10 @@ quarantine, repeatable-read snapshot, and inclusive capture boundary as their
 consumers. Capture time controls evidence availability; it does not order
 renames or CI attempts.
 
+[ADR 0024](0024-targeted-commit-investigations.md) permits compact source witnesses
+for commit investigations while preserving complete names, claims, and queried
+source identity. Complete bundle and report populations retain this contract.
+
 ### One pure repository resolver
 
 The shared resolver consumes captured identity projections, rename Facts,
