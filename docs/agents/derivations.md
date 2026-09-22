@@ -1,7 +1,6 @@
 # Derivations playbook — `packages/derive`
 
-Values drift, so the cited file wins. Citations take the form `path` or
-`path::symbol`. `docs/explanation/attribution.md` holds the Attribution semantics: Attribution sources, purity constraints, tie-breaks, and the
+Values drift, so the cited file wins. Citations take the form `path` or `path::symbol`. `docs/explanation/attribution.md` holds the Attribution semantics: Attribution sources, purity constraints, tie-breaks, and the
 trigger. [Segment](../../CONTEXT.md#segment) holds the segment semantics.
 This file carries only what those two do not. Runtime callers use PostgreSQL; multi-artifact Derivations reuse one read-only `REPEATABLE READ` snapshot and stamp its quarantine revision into `Provenance`.
 
@@ -9,9 +8,9 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 
 | Module | Purpose |
 |---|---|
-| `attribution.py` | `derive_attributions(store, mirrors, org_id, policy, *, pushes, scorer, candidates)` → per-(qualified repository, sha, file) `Attribution`; snapshot-scoped git-notes first, bounded jaccard fallback |
+| `attribution.py` | `derive_attributions(store, mirrors, org_id, policy, *, pushes, scorer, candidates)` → per-(qualified repository, sha, file) `Attribution`; snapshot-scoped git-notes first, bounded jaccard fallback; stored-only `derive_commit_attributions` selects target owners before content |
 | `repository_identity.py` | Pure immutable repository/commit keys, complete-evidence resolver, source-role validation, unambiguous operator selectors, and deterministic labels (ADR 0019) |
-| `repository_context.py` | Bounded complete evidence reads inside the caller's snapshot; explicit boundary or latest captured repository Fact, with declared legacy-only supplements for direct APIs |
+| `repository_context.py` | Bounded complete evidence reads inside the caller's snapshot; explicit boundary or latest captured repository Fact, with declared legacy-only supplements for direct APIs; `read_repository_witness_context` compacts commit-investigation metadata with exact source support |
 | `provenance.py` | Structured `Provenance` shared by canonical derived artifacts |
 | `context_retrieval.py` | Pure version-1 keyword retrieval and authorized Session candidate discovery; exact references, commit witnesses, counted exclusions, and whole-item byte packing |
 | `similarity.py` | `tokenize()` + `jaccard_tokens()` — the only similarity math |
@@ -47,7 +46,7 @@ Attribution retains `source_push_id`; every repository-bearing derived row carri
 `context_retrieval.py::retrieve_context` reads no store and writes no Fact. `ContextRetrievalPolicy` version 1 reuses `similarity.tokenize`, removes the fixed query stopword set, and ranks distinct-token overlap by score, UTC observation time, Fact ID, side, and indices. Response-only repeated-content suppression preserves the first ranked exact occurrence. It doesn't change database deduplication or training evidence.
 Closed skips, in precedence order: `reasoning_part`, `non_finite_number`, `no_match`, `repeated_content`, `item_limit`, `response_budget`. Every scanned part is selected or counted once. Packing keeps at most eight complete parts inside a requested 4–64 KiB response with a 2 KiB envelope reserve. Core's shared strict encoder validates the complete response; unsupported metadata or source capacity refuses the operation. No match doesn't prove an event absent.
 
-`discover_context` applies `ContextDiscoveryPolicy` version 1 to a complete authorized source. It ranks exact commit witnesses first, then each Session's best keyword score, then Session ID. The preview uses the existing total occurrence order. Its part skips are `reasoning_part`, `non_finite_number`, and `unmatched_part`; Session skips are `unmatched_session`, `candidate_limit`, and `response_budget`. At most eight complete candidates fit the 4–64 KiB response. Commit-only matches have no invented preview. See [ADR 0023](../adr/0023-authorized-session-candidate-discovery.md).
+`discover_context` applies `ContextDiscoveryPolicy` version 1 to a complete authorized source. It ranks exact commit witnesses first, then each Session's best keyword score, then Session ID. The preview uses the existing total occurrence order. Its part skips are `reasoning_part`, `non_finite_number`, and `unmatched_part`; Session skips are `unmatched_session`, `candidate_limit`, and `response_budget`. At most eight complete candidates fit the 4–64 KiB response. Commit-only matches have no invented preview. See [ADR 0025](../adr/0025-authorized-session-candidate-discovery.md).
 
 ## The knobs, and who else they re-tune
 
@@ -76,6 +75,7 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
 - A commit reachable from several pushes attributes once, against the
   **earliest** push's window. The `seen` set in `attribution.py` enforces
   that, and pushes order by `(captured_at, push_id)`.
+- `derive_commit_attributions` streams stored Push metadata, selects the target's earliest owner in each qualified repository, and scores only that commit. Its required captured-note map makes empty evidence authoritative. Candidate SQL admits the owner's Jaccard window plus the longer window for observed note Sessions, bounded by `as_of`. General and preloaded Derivations retain complete-source validation; see [ADR 0024](../adr/0024-targeted-commit-investigations.md).
 - Only source-code files with non-blank added lines score.
   `diff.py::CODE_EXTENSIONS` is an allowlist. `diff.py::SKIP_PATTERNS` matches
   by **substring**.

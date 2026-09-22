@@ -22,7 +22,7 @@ from .postgres_engine import (
     verify_minimum_server_version,
 )
 
-HEAD_REVISION = "0010_repository_identity"
+HEAD_REVISION = "0011_inference_call_aliases"
 MIGRATION_LOCK_KEY = 7_315_324_899_385_581_412
 
 

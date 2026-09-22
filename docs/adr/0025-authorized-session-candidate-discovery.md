@@ -1,4 +1,4 @@
-# ADR 0023 — Discover candidates within an authorized Session set
+# ADR 0025 — Discover candidates within an authorized Session set
 
 Status: implemented; maintainer review pending
 

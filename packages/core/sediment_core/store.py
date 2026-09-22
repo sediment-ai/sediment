@@ -24,9 +24,10 @@ from sqlalchemy import (
     or_,
     select,
     tuple_,
+    true,
     values,
 )
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import ARRAY, array, insert
 from sqlalchemy.engine import Connection, Engine
 
 from . import evidence
@@ -88,6 +89,7 @@ from .postgres_schema import (
     developer_decisions,
     edit_observations,
     fact_quarantine,
+    inference_call_aliases,
     inference_calls,
     pull_request_merges,
     pull_request_revisions,
@@ -162,6 +164,19 @@ class RepositoryIdentityEvidence:
     repository_id: ProviderRepositoryId | None
     captured_at: AwareDatetime
     source_push_id: NonEmptyId | None = None
+
+
+RepositorySourceReadKey = tuple[FactTable, NonEmptyId, Literal["repo", "head_repo"]]
+_REPOSITORY_SOURCE_KEY = TypeAdapter(RepositorySourceReadKey)
+_REPOSITORY_SOURCE_ROLES = (
+    (FactTable.PUSHES, "repo"),
+    (FactTable.CI_OUTCOMES, "repo"),
+    (FactTable.SESSION_COMMIT_OBSERVATIONS, "repo"),
+    (FactTable.PULL_REQUEST_MERGES, "repo"),
+    (FactTable.PULL_REQUEST_MERGES, "head_repo"),
+    (FactTable.PULL_REQUEST_REVISIONS, "repo"),
+    (FactTable.PULL_REQUEST_REVISIONS, "head_repo"),
+)
 
 
 _REPOSITORY_COMPONENTS = ("repository_provider", "repository_host", "repository_id")
@@ -310,6 +325,7 @@ RepositoryCommitReadKey = tuple[RepositoryReadKey, CommitSha]
 RepositoryPRReadKey = tuple[
     RepositoryReadKey, Annotated[int, Field(ge=1, le=2**63 - 1, strict=True)]
 ]
+_COMMIT_SHA = TypeAdapter(CommitSha)
 _REPOSITORY_READ_KEY = TypeAdapter(RepositoryReadKey)
 _REPOSITORY_COMMIT_READ_KEY = TypeAdapter(RepositoryCommitReadKey)
 _REPOSITORY_PR_READ_KEY = TypeAdapter(RepositoryPRReadKey)
@@ -685,6 +701,22 @@ class SessionDossierProjection:
 
 
 @dataclass(frozen=True)
+class AttributionPush:
+    """Stored Push fields needed to discover and score a commit's owner."""
+
+    push_id: NonEmptyId
+    org_id: OrgId
+    repo: RepoSlug
+    before_sha: CommitSha
+    after_sha: CommitSha
+    forced: bool
+    captured_at: AwareDatetime
+    repository_provider: ForgeProvider | None
+    repository_host: ForgeHost | None
+    repository_id: ProviderRepositoryId | None
+
+
+@dataclass(frozen=True)
 class PushProjection:
     """Push navigation metadata without clone credentials."""
 
@@ -782,11 +814,21 @@ class FactStore:
         release an existing Fact. Conflicting identities expose no retained ID.
         """
         call, redaction_counts = redact_fact(call)
+        aliases = {
+            part.id
+            for message in call.output_messages
+            for part in message.parts
+            if isinstance(part, ToolCallPart)
+        }
+        if call.model_call_id is not None:
+            aliases.add(call.model_call_id)
+        aliases = sorted(aliases)
         values = call.model_dump(
             exclude={"input_messages", "output_messages", "raw"},
             mode="python",
         )
         values.update(
+            call_alias_count=len(aliases),
             input_messages=_serialize(
                 [message.model_dump(mode="python") for message in call.input_messages]
             ),
@@ -805,6 +847,21 @@ class FactStore:
             stored = connection.execute(statement).scalar_one_or_none() is not None
             if stored:
                 connection.execute(_session_upsert(call, call.observed_at))
+                for start in range(0, len(aliases), 1000):
+                    connection.execute(
+                        insert(inference_call_aliases),
+                        [
+                            {
+                                "inference_call_id": call.inference_call_id,
+                                "org_id": call.org_id,
+                                "ordinal": ordinal,
+                                "call_id": alias,
+                            }
+                            for ordinal, alias in enumerate(
+                                aliases[start : start + 1000], start
+                            )
+                        ],
+                    )
                 fact_id = call.inference_call_id
             else:
                 identity = inference_calls.c.inference_call_id == call.inference_call_id
@@ -1195,6 +1252,7 @@ class FactStore:
         include_quarantined: bool = False,
         *,
         captured_through: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         limit: int | None = None,
@@ -1205,6 +1263,7 @@ class FactStore:
                 org_id,
                 include_quarantined,
                 captured_through=captured_through,
+                commit_sha=commit_sha,
                 repo_commits=repo_commits,
                 repository_commits=repository_commits,
                 limit=limit,
@@ -1290,6 +1349,19 @@ class FactStore:
                 limit=limit,
             )
 
+    def iter_attribution_pushes(
+        self,
+        org_id: str,
+        *,
+        captured_through: datetime,
+        repository_key: RepositoryReadKey,
+    ) -> Iterator[AttributionPush]:
+        """Stream one repository's visible stored Push metadata chronologically."""
+        with self.read_snapshot() as snapshot:
+            yield from snapshot.iter_attribution_pushes(
+                org_id, captured_through=captured_through, repository_key=repository_key
+            )
+
     def read_stored_push_id(self, push: Push) -> str | None:
         """Return the persisted identity for a Push natural key."""
         statement = select(pushes.c.push_id).where(
@@ -1338,6 +1410,7 @@ class FactStore:
         org_id: str,
         *,
         as_of: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         session_ids: set[str] | None = None,
@@ -1350,6 +1423,7 @@ class FactStore:
                 org_id,
                 include_quarantined,
                 as_of=as_of,
+                commit_sha=commit_sha,
                 repo_commits=repo_commits,
                 repository_commits=repository_commits,
                 session_ids=session_ids,
@@ -1451,6 +1525,23 @@ class FactStore:
         with self.read_snapshot() as snapshot:
             return snapshot.read_repository_identities(
                 org_id, captured_through=captured_through, limit=limit
+            )
+
+    def read_repository_context_witnesses(
+        self,
+        org_id: OrgId,
+        *,
+        captured_through: datetime,
+        source_keys: set[RepositorySourceReadKey],
+        limit: int = REPOSITORY_IDENTITY_LIMIT,
+    ) -> tuple[list[RepositoryIdentityEvidence], list[RepositoryRename]]:
+        """Read complete name/claim witnesses and exact requested source proofs."""
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_repository_context_witnesses(
+                org_id,
+                captured_through=captured_through,
+                source_keys=source_keys,
+                limit=limit,
             )
 
     def read_pull_request_revisions(
@@ -1563,11 +1654,24 @@ class FactStore:
         org_id: str,
         *,
         observed_between: tuple[datetime, datetime] | None = None,
+        inference_call_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         with self.read_snapshot() as snapshot:
             return snapshot.read_inference_call_summaries(
-                org_id, observed_between=observed_between, limit=limit
+                org_id,
+                observed_between=observed_between,
+                inference_call_ids=inference_call_ids,
+                limit=limit,
+            )
+
+    def read_inference_call_identity_witnesses(
+        self, org_id: str, *, call_ids: set[str], observed_through: datetime
+    ) -> list[InferenceCallIdentity]:
+        """Find unique owners or two witnesses of ambiguity for requested aliases."""
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_inference_call_identity_witnesses(
+                org_id, call_ids=call_ids, observed_through=observed_through
             )
 
     def read_inference_call_identities(
@@ -1585,10 +1689,16 @@ class FactStore:
         *,
         observed_between: tuple[datetime, datetime],
         limit: int | None = None,
+        note_session_ids: set[str] | None = None,
+        notes_observed_between: tuple[datetime, datetime] | None = None,
     ) -> list[AttributionInferenceCall]:
         with self.read_snapshot() as snapshot:
             return snapshot.read_attribution_candidates(
-                org_id, observed_between=observed_between, limit=limit
+                org_id,
+                observed_between=observed_between,
+                limit=limit,
+                note_session_ids=note_session_ids,
+                notes_observed_between=notes_observed_between,
             )
 
     def read_report_inference_calls(
@@ -2256,6 +2366,22 @@ class _FactSnapshot:
             self._connection, org_id, captured_through=captured_through, limit=limit
         )
 
+    def read_repository_context_witnesses(
+        self,
+        org_id: OrgId,
+        *,
+        captured_through: datetime,
+        source_keys: set[RepositorySourceReadKey],
+        limit: int = REPOSITORY_IDENTITY_LIMIT,
+    ) -> tuple[list[RepositoryIdentityEvidence], list[RepositoryRename]]:
+        return _read_repository_context_witnesses(
+            self._connection,
+            org_id,
+            captured_through=captured_through,
+            source_keys=source_keys,
+            limit=limit,
+        )
+
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
         self._cache: dict[tuple[object, ...], tuple[object, ...]] = {}
@@ -2396,6 +2522,7 @@ class _FactSnapshot:
         org_id: str,
         *,
         captured_through: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         limit: int | None = None,
@@ -2406,6 +2533,7 @@ class _FactSnapshot:
             org_id,
             include_quarantined,
             captured_through=captured_through,
+            commit_sha=commit_sha,
             repo_commits=repo_commits,
             repository_commits=repository_commits,
             limit=limit,
@@ -2431,11 +2559,39 @@ class _FactSnapshot:
             limit=limit,
         )
 
+    def iter_attribution_pushes(
+        self,
+        org_id: str,
+        *,
+        captured_through: datetime,
+        repository_key: RepositoryReadKey,
+    ) -> Iterator[AttributionPush]:
+        """Stream source fields only; closing the iterator releases its cursor."""
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
+        if captured_through.utcoffset() is None:
+            raise ValueError("captured_through must be timezone-aware")
+        statement = (
+            select(*(pushes.c[name] for name in AttributionPush.__dataclass_fields__))
+            .where(
+                *_fact_conditions(org_id, FactTable.PUSHES, False),
+                pushes.c.captured_at <= captured_through,
+                _repository_selector_condition(pushes, repository_key),
+            )
+            # Match the full Derivation's Python ID tie-break in every locale.
+            .order_by(pushes.c.captured_at, pushes.c.push_id.collate("C"))
+        )
+        with self._connection.execute(
+            statement.execution_options(yield_per=256)
+        ) as rows:
+            for row in rows.mappings():
+                yield AttributionPush(**row)
+
     def read_session_commit_observations(
         self,
         org_id: str,
         *,
         as_of: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         session_ids: set[str] | None = None,
@@ -2447,6 +2603,7 @@ class _FactSnapshot:
             org_id,
             include_quarantined,
             as_of=as_of,
+            commit_sha=commit_sha,
             repo_commits=repo_commits,
             repository_commits=repository_commits,
             session_ids=session_ids,
@@ -2623,11 +2780,16 @@ class _FactSnapshot:
         org_id: str,
         *,
         observed_between: tuple[datetime, datetime] | None = None,
+        inference_call_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         if limit is not None and (type(limit) is not int or limit <= 0):
             raise ValueError("Inference call cohort limit must be positive")
         conditions = list(_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False))
+        selected_ids = None
+        if inference_call_ids is not None:
+            selected_ids = _validated_identity_filter(inference_call_ids)
+            conditions.append(inference_calls.c.inference_call_id.in_(selected_ids))
         if observed_between is not None:
             lower, upper = observed_between
             if lower.tzinfo is None or upper.tzinfo is None:
@@ -2642,7 +2804,13 @@ class _FactSnapshot:
                     inference_calls.c.observed_at < upper,
                 ]
             )
-        key = ("inference_call_summaries", org_id, observed_between, limit)
+        key = (
+            "inference_call_summaries",
+            org_id,
+            observed_between,
+            selected_ids,
+            limit,
+        )
         if key in self._cache:
             return list(self._cache[key])
         statement = (
@@ -2681,6 +2849,83 @@ class _FactSnapshot:
                 }
             )
             for row in rows
+        )
+        self._cache[key] = result
+        return list(result)
+
+    def read_inference_call_identity_witnesses(
+        self, org_id: str, *, call_ids: set[str], observed_through: datetime
+    ) -> list[InferenceCallIdentity]:
+        """Read at most two visible owners per requested alias in this snapshot.
+
+        Two owners prove ambiguity; these partial aliases must never replace the
+        complete identity population required by a self-contained bundle.
+        """
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
+        identifiers = _validated_identity_filter(call_ids)
+        if observed_through.utcoffset() is None:
+            raise ValueError("observed_through must be timezone-aware")
+        observed_through = observed_through.astimezone(UTC)
+        if not identifiers:
+            return []
+        key = (
+            "inference_call_identity_witnesses",
+            org_id,
+            observed_through,
+            identifiers,
+        )
+        if key in self._cache:
+            return list(self._cache[key])
+        requested = values(
+            sql_column("call_id", inference_call_aliases.c.call_id.type),
+            name="requested_aliases",
+        ).data([(identifier,) for identifier in identifiers])
+        owners = (
+            select(
+                inference_calls.c.inference_call_id,
+                inference_calls.c.org_id,
+                inference_calls.c.session_id,
+                inference_calls.c.observed_at,
+            )
+            .select_from(inference_call_aliases.join(inference_calls))
+            .where(
+                array(
+                    [inference_call_aliases.c.org_id, inference_call_aliases.c.call_id]
+                )
+                == array([org_id, requested.c.call_id]).cast(
+                    ARRAY(inference_call_aliases.c.call_id.type)
+                ),
+                *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
+                inference_calls.c.observed_at <= observed_through,
+            )
+            .distinct()
+            .order_by(inference_calls.c.inference_call_id)
+            .limit(2)
+            .correlate(requested)
+            .lateral("alias_owners")
+        )
+        statement = select(*owners.c, requested.c.call_id).select_from(
+            requested.join(owners, true())
+        )
+        identities = {}
+        aliases = {}
+        for row in self._connection.execute(statement).mappings():
+            fact_id = row["inference_call_id"]
+            identities[fact_id] = {name: row[name] for name in owners.c.keys()}
+            aliases.setdefault(fact_id, set()).add(row["call_id"])
+        result = tuple(
+            sorted(
+                (
+                    InferenceCallIdentity(
+                        **row, call_ids=tuple(sorted(aliases[fact_id]))
+                    )
+                    for fact_id, row in identities.items()
+                ),
+                key=lambda item: (
+                    item.observed_at.astimezone(UTC),
+                    item.inference_call_id,
+                ),
+            )
         )
         self._cache[key] = result
         return list(result)
@@ -2758,12 +3003,43 @@ class _FactSnapshot:
         *,
         observed_between: tuple[datetime, datetime],
         limit: int | None = None,
+        note_session_ids: set[str] | None = None,
+        notes_observed_between: tuple[datetime, datetime] | None = None,
     ) -> list[AttributionInferenceCall]:
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
         lower, upper = observed_between
-        if lower.tzinfo is None or upper.tzinfo is None:
+        if lower.utcoffset() is None or upper.utcoffset() is None:
             raise ValueError("observed_between bounds must be timezone-aware")
+        if lower > upper:
+            raise ValueError("observed_between lower bound must not exceed upper")
         if limit is not None and (type(limit) is not int or limit <= 0):
             raise ValueError("Attribution candidate limit must be positive")
+        population = and_(
+            inference_calls.c.observed_at >= lower,
+            inference_calls.c.observed_at <= upper,
+        )
+        if (note_session_ids is None) != (notes_observed_between is None):
+            raise ValueError(
+                "note Sessions and their observation window are required together"
+            )
+        if note_session_ids is not None:
+            identifiers = _validated_identity_filter(note_session_ids)
+            note_lower, note_upper = notes_observed_between
+            if note_lower.utcoffset() is None or note_upper.utcoffset() is None:
+                raise ValueError("notes_observed_between bounds must be timezone-aware")
+            if note_lower > note_upper:
+                raise ValueError(
+                    "notes_observed_between lower bound must not exceed upper"
+                )
+            if identifiers:
+                population = or_(
+                    population,
+                    and_(
+                        inference_calls.c.session_id.in_(identifiers),
+                        inference_calls.c.observed_at >= note_lower,
+                        inference_calls.c.observed_at <= note_upper,
+                    ),
+                )
         statement = (
             select(
                 inference_calls.c.inference_call_id,
@@ -2774,8 +3050,7 @@ class _FactSnapshot:
             )
             .where(
                 *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
-                inference_calls.c.observed_at >= lower,
-                inference_calls.c.observed_at <= upper,
+                population,
             )
             .order_by(
                 inference_calls.c.observed_at,
@@ -2822,7 +3097,11 @@ class _FactSnapshot:
         statement = (
             select(
                 *_columns_except(
-                    inference_calls, "schema_version", "input_messages", "raw"
+                    inference_calls,
+                    "schema_version",
+                    "input_messages",
+                    "raw",
+                    "call_alias_count",
                 )
             )
             .where(*conditions)
@@ -2866,7 +3145,7 @@ class _FactSnapshot:
         """
         _validate_bounded_fact_read(observed_through, None, "Inference call Session")
         statement = (
-            select(*_columns_except(inference_calls, "raw"))
+            select(*_columns_except(inference_calls, "raw", "call_alias_count"))
             .where(
                 *_inference_content_conditions(
                     org_id, observed_through=observed_through
@@ -2890,7 +3169,7 @@ class _FactSnapshot:
     def read_rollout_inference_calls(self, org_id: str) -> list[RolloutInferenceCall]:
         """Explicitly materialize all Rollout content without a snapshot cache."""
         statement = (
-            select(*_columns_except(inference_calls, "raw"))
+            select(*_columns_except(inference_calls, "raw", "call_alias_count"))
             .where(*_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False))
             .order_by(
                 inference_calls.c.observed_at, inference_calls.c.inference_call_id
@@ -3222,9 +3501,18 @@ def _read_inference_calls(
 
 def _inference_call_from_row(row: Mapping) -> InferenceCall:
     values = dict(row)
+    values.pop("call_alias_count", None)
     for name in ("input_messages", "output_messages", "raw"):
         values[name] = json.loads(values[name])
     return InferenceCall.model_validate(values)
+
+
+def _validated_identity_filter(identifiers: set[str]) -> tuple[str, ...]:
+    if len(identifiers) > COMPOSITE_FILTER_KEY_LIMIT:
+        raise OperationalReportLimitExceeded(
+            f"Inference call identity filter exceeds {COMPOSITE_FILTER_KEY_LIMIT} keys"
+        )
+    return tuple(sorted({_EVIDENCE_ID.validate_python(value) for value in identifiers}))
 
 
 def _rollout_inference_call(row: Mapping) -> RolloutInferenceCall:
@@ -3570,6 +3858,7 @@ def _read_ci_outcomes(
     *,
     outcome_ids: set[str] | None = None,
     captured_through: datetime | None = None,
+    commit_sha: CommitSha | None = None,
     repo_commits: set[tuple[str, str]] | None = None,
     repository_commits: set[RepositoryCommitReadKey] | None = None,
     limit: int | None = None,
@@ -3581,7 +3870,7 @@ def _read_ci_outcomes(
         literal_keys=repo_commits,
         qualified_keys=repository_commits,
         pr=False,
-        extra_bindings=len(outcome_ids or ()),
+        extra_bindings=len(outcome_ids or ()) + (commit_sha is not None),
     )
     conditions = list(
         _fact_conditions(org_id, FactTable.CI_OUTCOMES, include_quarantined)
@@ -3590,6 +3879,10 @@ def _read_ci_outcomes(
         conditions.append(ci_outcomes.c.outcome_id.in_(sorted(outcome_ids)))
     if captured_through is not None:
         conditions.append(ci_outcomes.c.captured_at <= captured_through)
+    if commit_sha is not None:
+        conditions.append(
+            ci_outcomes.c.commit_sha == _COMMIT_SHA.validate_python(commit_sha)
+        )
     if repository_condition is not None:
         conditions.append(repository_condition)
     statement = (
@@ -3636,62 +3929,186 @@ def _read_repository_renames(
     return [RepositoryRename.model_validate(row) for row in rows]
 
 
+def _repository_projection_columns(fact_table, role):
+    table = _FACT_TABLES[fact_table]
+    prefix = "head_repository" if role == "head_repo" else "repository"
+    columns = [
+        table.c.org_id,
+        _FACT_PRIMARY_KEYS[fact_table].label("source_fact_id"),
+        table.c[role].label("repo"),
+        table.c.captured_at,
+        *(
+            table.c[f"{prefix}_{field}"].label(f"repository_{field}")
+            for field in ("provider", "host", "id")
+        ),
+    ]
+    if fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS:
+        columns.append(table.c.source_push_id)
+    return columns
+
+
+def _repository_evidence(row, fact_table, role):
+    values = dict(row)
+    values["repository_provider"] = _coerce_repository_provider(
+        values["repository_provider"]
+    )
+    return RepositoryIdentityEvidence(source_table=fact_table, role=role, **values)
+
+
+def _read_repository_context_witnesses(
+    connection, org_id, *, captured_through, source_keys, limit
+):
+    """Compact scalar states; the pure resolver still interprets every witness.
+
+    Stored primary/delivery uniqueness rules out contradictory source copies.
+    Distinct observation states include source availability and raw source
+    identity/name, so invalid sources cannot conceal successful name witnesses.
+    This population proves names and claims, not complete source counts.
+    """
+    org_id = _EVIDENCE_ORG.validate_python(org_id)
+    if captured_through is None:
+        raise ValueError("repository witnesses require a capture boundary")
+    _repository_read_bounds(captured_through, limit)
+    # Queries separate table/role branches, binding only one ID per key. The
+    # existing 50,000-source ceiling leaves room below 65,535 parameters.
+    if len(source_keys) > REPOSITORY_IDENTITY_LIMIT:
+        raise OperationalReportLimitExceeded(
+            f"Repository source filter exceeds {REPOSITORY_IDENTITY_LIMIT} keys"
+        )
+    requested = {}
+    for value in source_keys:
+        fact_table, fact_id, role = _REPOSITORY_SOURCE_KEY.validate_python(value)
+        if (fact_table, role) not in _REPOSITORY_SOURCE_ROLES:
+            raise ValueError("invalid repository source role")
+        requested.setdefault((fact_table, role), set()).add(fact_id)
+
+    sources = {}
+
+    def retain(row, fact_table, role):
+        item = _repository_evidence(row, fact_table, role)
+        sources[(fact_table, item.source_fact_id, role)] = item
+        if len(sources) > limit:
+            raise OperationalReportLimitExceeded(
+                f"Repository identity witness population exceeds {limit}"
+            )
+
+    anchor = (
+        select(*_repository_projection_columns(FactTable.PUSHES, "repo"))
+        .where(
+            *_fact_conditions(org_id, FactTable.PUSHES, False),
+            pushes.c.captured_at <= captured_through,
+        )
+        .subquery("eligible_source_push")
+    )
+    for fact_table, role in _REPOSITORY_SOURCE_ROLES:
+        table = _FACT_TABLES[fact_table]
+        columns = _repository_projection_columns(fact_table, role)
+        state = [
+            column
+            for column in columns
+            if column.name in (*_REPOSITORY_COMPONENTS, "repo")
+        ]
+        statement = select(*columns).where(
+            *_fact_conditions(org_id, fact_table, False),
+            table.c.captured_at <= captured_through,
+        )
+        is_observation = fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS
+        if is_observation:
+            statement = statement.outerjoin(
+                anchor, anchor.c.source_fact_id == table.c.source_push_id
+            ).add_columns(
+                *(column.label(f"anchor_{column.name}") for column in anchor.c)
+            )
+            state.extend(
+                (
+                    anchor.c.source_fact_id.is_not(None),
+                    anchor.c.repository_provider,
+                    anchor.c.repository_host,
+                    anchor.c.repository_id,
+                    anchor.c.repo,
+                )
+            )
+        queries = [
+            statement.distinct(*state).order_by(*state, _FACT_PRIMARY_KEYS[fact_table])
+        ]
+        if identifiers := requested.get((fact_table, role)):
+            queries.append(
+                statement.where(
+                    _FACT_PRIMARY_KEYS[fact_table].in_(sorted(identifiers))
+                ).order_by(_FACT_PRIMARY_KEYS[fact_table])
+            )
+        for query in queries:
+            for row in connection.execute(query.limit(limit + 1)).mappings():
+                retain(
+                    {column.name: row[column.name] for column in columns},
+                    fact_table,
+                    role,
+                )
+                if is_observation and row["anchor_source_fact_id"] is not None:
+                    retain(
+                        {
+                            column.name: row[f"anchor_{column.name}"]
+                            for column in anchor.c
+                        },
+                        FactTable.PUSHES,
+                        "repo",
+                    )
+
+    rename_state = [
+        repository_renames.c[field]
+        for field in (*_REPOSITORY_COMPONENTS, "old_repo", "new_repo")
+    ]
+    rename_rows = _bounded_fact_rows(
+        connection,
+        select(repository_renames)
+        .where(
+            *_fact_conditions(org_id, FactTable.REPOSITORY_RENAMES, False),
+            repository_renames.c.captured_at <= captured_through,
+        )
+        .distinct(*rename_state)
+        .order_by(*rename_state, repository_renames.c.rename_id),
+        limit,
+        "Repository rename witness",
+    )
+    return (
+        sorted(
+            sources.values(),
+            key=lambda item: (
+                item.captured_at.astimezone(UTC),
+                item.source_table,
+                item.source_fact_id,
+                item.role,
+            ),
+        ),
+        sorted(
+            (RepositoryRename.model_validate(row) for row in rename_rows),
+            key=lambda item: (item.captured_at.astimezone(UTC), item.rename_id),
+        ),
+    )
+
+
 def _read_repository_identities(connection, org_id, *, captured_through, limit):
     if captured_through is None:
         raise ValueError("repository identities require a capture boundary")
     _repository_read_bounds(captured_through, limit)
     result = []
-    for fact_table in (
-        FactTable.PUSHES,
-        FactTable.CI_OUTCOMES,
-        FactTable.SESSION_COMMIT_OBSERVATIONS,
-        FactTable.PULL_REQUEST_MERGES,
-        FactTable.PULL_REQUEST_REVISIONS,
-    ):
+    for fact_table, role in _REPOSITORY_SOURCE_ROLES:
         table = _FACT_TABLES[fact_table]
-        roles = (
-            ("repo", "head_repo")
-            if fact_table
-            in (FactTable.PULL_REQUEST_MERGES, FactTable.PULL_REQUEST_REVISIONS)
-            else ("repo",)
-        )
-        for role in roles:
-            prefix = "head_repository" if role == "head_repo" else "repository"
-            columns = [
-                table.c.org_id,
-                _FACT_PRIMARY_KEYS[fact_table].label("source_fact_id"),
-                table.c[role].label("repo"),
-                table.c.captured_at,
-            ]
-            columns.extend(
-                table.c[f"{prefix}_{field}"].label(f"repository_{field}")
-                for field in ("provider", "host", "id")
+        rows = connection.execute(
+            select(*_repository_projection_columns(fact_table, role))
+            .where(
+                *_fact_conditions(org_id, fact_table, False),
+                table.c.captured_at <= captured_through,
             )
-            if fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS:
-                columns.append(table.c.source_push_id)
-            rows = connection.execute(
-                select(*columns)
-                .where(
-                    *_fact_conditions(org_id, fact_table, False),
-                    table.c.captured_at <= captured_through,
+            .order_by(table.c.captured_at, _FACT_PRIMARY_KEYS[fact_table])
+            .limit(limit + 1 - len(result))
+        ).mappings()
+        for row in rows:
+            result.append(_repository_evidence(row, fact_table, role))
+            if len(result) > limit:
+                raise OperationalReportLimitExceeded(
+                    f"Repository identity population exceeds {limit}"
                 )
-                .order_by(table.c.captured_at, _FACT_PRIMARY_KEYS[fact_table])
-                .limit(limit + 1 - len(result))
-            ).mappings()
-            for row in rows:
-                values = dict(row)
-                values["repository_provider"] = _coerce_repository_provider(
-                    values["repository_provider"]
-                )
-                result.append(
-                    RepositoryIdentityEvidence(
-                        source_table=fact_table, role=role, **values
-                    )
-                )
-                if len(result) > limit:
-                    raise OperationalReportLimitExceeded(
-                        f"Repository identity population exceeds {limit}"
-                    )
     return sorted(
         result,
         key=lambda item: (
@@ -3709,6 +4126,7 @@ def _read_session_commit_observations(
     include_quarantined: bool,
     *,
     as_of: datetime | None = None,
+    commit_sha: CommitSha | None = None,
     repo_commits: set[tuple[str, str]] | None = None,
     repository_commits: set[RepositoryCommitReadKey] | None = None,
     session_ids: set[str] | None = None,
@@ -3724,7 +4142,7 @@ def _read_session_commit_observations(
         literal_keys=repo_commits,
         qualified_keys=repository_commits,
         pr=False,
-        extra_bindings=len(session_ids or ()),
+        extra_bindings=len(session_ids or ()) + (commit_sha is not None),
     )
     conditions = list(
         _fact_conditions(
@@ -3733,6 +4151,11 @@ def _read_session_commit_observations(
     )
     if as_of is not None:
         conditions.append(session_commit_observations.c.captured_at <= as_of)
+    if commit_sha is not None:
+        conditions.append(
+            session_commit_observations.c.commit_sha
+            == _COMMIT_SHA.validate_python(commit_sha)
+        )
     if repository_condition is not None:
         conditions.append(repository_condition)
     if session_ids is not None:

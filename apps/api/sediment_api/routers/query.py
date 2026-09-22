@@ -36,6 +36,7 @@ from sediment_core import (
     CIResult,
     ContextCommitAnchor,
     FactStore,
+    FactTable,
     EVIDENCE_REFERENCE_LIMIT,
     EvidenceInventory,
     EvidenceManifest,
@@ -59,6 +60,7 @@ from sediment_core.evidence import EvidenceReadError, encode_evidence_json
 from sediment_core.models import AwareDatetime
 from sediment_core.store import (
     CIOutcomeProjection,
+    InferenceCallSummary,
     PushProjection,
     SessionDossierProjection,
     SessionTimelineProjection,
@@ -66,16 +68,13 @@ from sediment_core.store import (
 from sediment_derive import (
     AttributionSource,
     MirrorManager,
-    InferenceCall,
-    derive_attributions,
-    inference_fact_id,
+    derive_commit_attributions,
     inference_gateway_provider,
     inference_model,
     inference_user_id,
     join_decisions_by_call_id,
 )
 
-from sediment_derive.repository_context import read_repository_context
 from sediment_derive.context_retrieval import (
     CONTEXT_DEFAULT_RESPONSE_BYTES,
     CONTEXT_MIN_RESPONSE_BYTES,
@@ -84,6 +83,10 @@ from sediment_derive.context_retrieval import (
     ContextRetrievalResult,
     ContextDiscoveryResult,
     context_query_tokens,
+)
+from sediment_derive.repository_context import (
+    read_repository_context,
+    read_repository_witness_context,
 )
 from sediment_derive.repository_identity import (
     RepositoryIdentity,
@@ -1089,20 +1092,28 @@ def _run_query(
     """Read exact CI/Session evidence beside labeled inferred call diagnostics."""
     boundary = as_of if as_of is not None else datetime.now(UTC)
     with store.read_snapshot() as snapshot:
-        context = read_repository_context(snapshot, settings.org_id, as_of=boundary)
+        observations = snapshot.read_session_commit_observations(
+            settings.org_id, as_of=boundary, commit_sha=commit_sha
+        )
+        outcomes = snapshot.read_ci_outcomes(
+            settings.org_id, captured_through=boundary, commit_sha=commit_sha
+        )
+        context = read_repository_witness_context(
+            snapshot,
+            settings.org_id,
+            as_of=boundary,
+            source_keys={
+                (FactTable.SESSION_COMMIT_OBSERVATIONS, row.observation_id, "repo")
+                for row in observations
+            }
+            | {(FactTable.CI_OUTCOMES, row.outcome_id, "repo") for row in outcomes},
+        )
         selected = repo is not None or repository_identity is not None
         selected_key = (
             _query_repository(context, repo, repository_identity) if selected else None
         )
         if selected and selected_key is None:
             return {"commit_sha": commit_sha, "attributed": False}
-        observations = [
-            item
-            for item in snapshot.read_session_commit_observations(
-                settings.org_id, as_of=boundary
-            )
-            if item.commit_sha == commit_sha
-        ]
         binding_result = bind_session_commit_keys_result(
             observations,
             settings.org_id,
@@ -1115,17 +1126,23 @@ def _run_query(
             if not selected or key[0].repository == selected_key
         }
         skipped = Counter(binding_result.skipped)
+        note_sessions = {}
+        for commit, session_id in binding_result.bindings:
+            note_sessions.setdefault(commit, set()).add(session_id)
         matching = {}
         if settings.mirror_path:
-            for item in derive_attributions(
+            for item in derive_commit_attributions(
                 snapshot,
                 MirrorManager(settings.mirror_path),
                 settings.org_id,
+                commit_sha,
                 repository_context=context,
-                as_of=boundary,
+                note_session_ids_by_commit={
+                    commit: frozenset(sessions)
+                    for commit, sessions in note_sessions.items()
+                },
+                repository_key=selected_key,
             ):
-                if item.commit_sha != commit_sha:
-                    continue
                 resolution = context.resolve_reference(
                     item.org_id,
                     item.repo,
@@ -1138,11 +1155,7 @@ def _run_query(
                     matching.setdefault(resolution.key, []).append(item)
         commit_ci = {}
         unresolved_ci = []
-        for item in snapshot.read_ci_outcomes(
-            settings.org_id, captured_through=boundary
-        ):
-            if item.commit_sha != commit_sha:
-                continue
+        for item in outcomes:
             resolution = context.resolve_fact(item)
             if resolution.key is None:
                 skipped[resolution.reason] += 1
@@ -1153,16 +1166,34 @@ def _run_query(
                 commit_ci.setdefault(resolution.key, []).append(item)
         if not bindings and not matching and not commit_ci and not skipped:
             return {"commit_sha": commit_sha, "attributed": False}
-        stored = [
-            item
-            for item in snapshot.read_inference_calls(settings.org_id)
-            if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
-        ]
-        by_inference_call_id = {inference_fact_id(item): item for item in stored}
-        joined = join_decisions_by_call_id(
-            stored,
-            snapshot.read_decisions(settings.org_id, captured_through=boundary),
-        )
+        by_inference_call_id = {}
+        joined = {}
+        if matching:
+            matched_ids = {
+                item.inference_call_id for items in matching.values() for item in items
+            }
+            by_inference_call_id = {
+                item.inference_call_id: item
+                for item in snapshot.read_inference_call_summaries(
+                    settings.org_id, inference_call_ids=matched_ids
+                )
+                if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
+            }
+            decisions = snapshot.read_decisions(
+                settings.org_id,
+                captured_through=boundary,
+                session_ids={item.session_id for item in by_inference_call_id.values()},
+            )
+            call_ids = {item.call_id for item in decisions if item.call_id is not None}
+            if call_ids:
+                # Witnesses establish uniqueness across eligible organization
+                # history, including collisions outside the selected Sessions.
+                identities = snapshot.read_inference_call_identity_witnesses(
+                    settings.org_id,
+                    call_ids=call_ids,
+                    observed_through=boundary,
+                )
+                joined = join_decisions_by_call_id(identities, decisions)
         repository_keys = (
             set(matching)
             | set(commit_ci)
@@ -1236,7 +1267,7 @@ def _run_query(
 
 
 def _build_inference_calls(
-    by_inference_call_id: dict[str, InferenceCall],
+    by_inference_call_id: dict[str, InferenceCallSummary],
     entries: Sequence[tuple[str, str, str]],
 ) -> list[dict[str, Any]]:
     """Resolve inference-call, session, and attribution-source triples into the

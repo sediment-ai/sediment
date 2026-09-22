@@ -543,6 +543,54 @@ def test_max_commits_zero_or_negative_degrades_to_head(tmp_path: Path) -> None:
     assert mirror.list_push_commits(push, max_commits=-1) == [c3]
 
 
+def test_native_commit_cap_matches_merge_graph_with_clock_skew(tmp_path, monkeypatch):
+    from sediment_derive import mirror as mirror_module
+
+    work = make_work_repo(tmp_path)
+
+    def date(value):
+        monkeypatch.setenv("GIT_AUTHOR_DATE", value)
+        monkeypatch.setenv("GIT_COMMITTER_DATE", value)
+
+    date("2020-01-01T00:00:00+00:00")
+    (work / "README.md").write_text("root\n")
+    base = commit_all(work, "root")
+    run_git(work, "checkout", "-q", "-b", "feature")
+    date("2022-01-01T00:00:00+00:00")
+    (work / "feature.py").write_text(FIB)
+    commit_all(work, "feature")
+    run_git(work, "checkout", "-q", "main")
+    date("2021-01-01T00:00:00+00:00")
+    (work / "main.py").write_text(CART)
+    commit_all(work, "main")
+    date("2023-01-01T00:00:00+00:00")
+    run_git(work, "merge", "-q", "--no-ff", "-m", "merge", "feature")
+    date("2020-06-01T00:00:00+00:00")
+    (work / "skew.py").write_text("clock = 'earlier'\n")
+    head = commit_all(work, "clock skew")
+    remote = make_remote(tmp_path, work)
+    push = _push(remote, base, head)
+    mirror = MirrorManager(str(tmp_path / "mirrors")).ensure(push)
+    complete = run_git(
+        mirror.path, "rev-list", "--end-of-options", f"{base}..{head}"
+    ).split()
+    calls = []
+    original = mirror_module._git
+
+    def recording_git(path, *args):
+        output = original(path, *args)
+        calls.append((args, len(output.split())))
+        return output
+
+    monkeypatch.setattr(mirror_module, "_git", recording_git)
+    for cap in (1, 2, 3, 10):
+        assert mirror.list_push_commits(push, max_commits=cap) == list(
+            reversed(complete[:cap])
+        )
+        assert f"--max-count={cap}" in calls[-1][0]
+        assert calls[-1][1] <= cap
+
+
 def test_fetch_prunes_refs_deleted_on_remote(tmp_path: Path) -> None:
     # A branch deleted on the remote must disappear from the mirror on the
     # next push fetch — a stale ref would mislead squash aliasing.

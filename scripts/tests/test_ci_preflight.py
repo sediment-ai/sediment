@@ -54,6 +54,7 @@ def repository(tmp_path):
     [
         "CONTEXT.md",
         "CHANGELOG.md",
+        "README.md",
         "docs/explanation/example.md",
         "docs/agents/writing-style.md",
         "docs/adr/0020-example.md",
@@ -72,7 +73,7 @@ def test_prose_only_changes_avoid_full_validation(repository, event, name):
 @pytest.mark.parametrize(
     "name",
     [
-        "README.md",
+        "docs/README.md",
         "docs/quickstart.md",
         "docs/operate/deploy.md",
         "docs/capture/local-capture.md",
@@ -99,19 +100,22 @@ def test_unknown_or_executable_surfaces_always_get_full_validation(repository, n
 @pytest.mark.parametrize(
     "mutation", ["mixed", "deleted", "rename", "symlink", "executable"]
 )
-def test_prose_path_cannot_hide_other_changes(repository, mutation):
+@pytest.mark.parametrize("name", ["CONTEXT.md", "README.md"])
+def test_prose_path_cannot_hide_other_changes(repository, mutation, name):
     root, git, base = repository
-    (root / "CONTEXT.md").write_text("prose\n")
+    path = root / name
+    path.write_text("prose\n")
     if mutation == "mixed":
         (root / "scripts/example.py").write_text("changed\n")
     elif mutation == "deleted":
-        (root / "docs/explanation/example.md").unlink()
+        path.unlink()
     elif mutation == "rename":
         git("mv", "scripts/example.py", "docs/explanation/moved.md")
     elif mutation == "executable":
-        (root / "CONTEXT.md").chmod(0o755)
+        path.chmod(0o755)
     else:
-        (root / "docs/explanation/link.md").symlink_to("../../scripts/example.py")
+        path.unlink()
+        path.symlink_to("scripts/example.py")
     git("add", "-A")
     git("commit", "-qm", "changes")
     assert preflight().requires_full_validation(root, "push", base)
@@ -120,20 +124,23 @@ def test_prose_path_cannot_hide_other_changes(repository, mutation):
 @pytest.mark.parametrize(
     "event,base",
     [
-        ("workflow_dispatch", None),
-        ("release", None),
-        ("workflow_call", None),
+        ("workflow_dispatch", "valid"),
+        ("release", "valid"),
+        ("workflow_call", "valid"),
         ("push", ""),
         ("pull_request", "0" * 40),
         ("push", "--output=/tmp/unsafe"),
     ],
 )
-def test_manual_release_or_missing_base_defaults_to_full(repository, event, base):
+@pytest.mark.parametrize("name", ["CONTEXT.md", "README.md"])
+def test_manual_release_or_missing_base_defaults_to_full(repository, event, base, name):
     root, git, original = repository
-    (root / "CONTEXT.md").write_text("prose\n")
+    (root / name).write_text("prose\n")
     git("add", ".")
     git("commit", "-qm", "prose")
-    assert preflight().requires_full_validation(root, event, base or "")
+    assert preflight().requires_full_validation(
+        root, event, original if base == "valid" else base
+    )
 
 
 def test_empty_diff_defaults_to_full(repository):

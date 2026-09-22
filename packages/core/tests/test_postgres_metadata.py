@@ -44,12 +44,21 @@ def _postgres_sql(ddl: object) -> str:
 
 
 def test_postgres_metadata_defines_complete_fact_and_session_schema() -> None:
-    assert set(metadata.tables) == {"sessions", *_FACT_MODELS}
+    assert set(metadata.tables) == {"sessions", "inference_call_aliases", *_FACT_MODELS}
     for table_name, model in _FACT_MODELS.items():
         columns = set(metadata.tables[table_name].columns.keys())
         if table_name == "fact_quarantine":
             columns.remove("quarantine_revision")
+        if table_name == "inference_calls":
+            columns.remove("call_alias_count")
         assert columns == set(model.model_fields)
+
+    assert set(metadata.tables["inference_call_aliases"].c.keys()) == {
+        "inference_call_id",
+        "ordinal",
+        "org_id",
+        "call_id",
+    }
 
     assert set(metadata.tables["sessions"].columns.keys()) == {
         "org_id",

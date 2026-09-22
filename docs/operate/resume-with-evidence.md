@@ -84,7 +84,7 @@ The requested response budget remains 4–64 KiB, default 16 KiB. Closed counts
 report unmatched or omitted candidates. The selector does not summarize or clip
 previews. No match does not establish absence or capture completeness.
 
-The [discovery contract](../adr/0023-authorized-session-candidate-discovery.md)
+The [discovery contract](../adr/0025-authorized-session-candidate-discovery.md)
 describes authority and source identity. The keyword baseline makes no external
 model call and adds no learned ranking. Git remains the source of code evolution;
 the optional commit anchor only exposes recorded Session relationships.
