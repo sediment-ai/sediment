@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 dependencies = [
     "alembic>=1.20.0",
-    "psycopg>=3.3.5",
+    "psycopg>=3.3.6",
     "pydantic>=2.13.5",
     "sqlalchemy>=2.0.54",
 ]

@@ -4577,7 +4577,7 @@
       ]
     },
     "pypi/psycopg": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Release 3.3.6 (tag 3.3.6, 39 commits after 3.3.5) contains maintainer-merged bug fixes for prepared-statement discard, cancellation timeouts, numeric binary limits, and pool checks; runtime dependencies are unchanged, and PyPI and OSV list no advisory for either release. The locked environment keeps 3.3.5; a fresh client resolution installs 3.3.6. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Release 3.3.6 (tag 3.3.6, 39 commits after 3.3.5) contains maintainer-merged bug fixes for prepared-statement discard, cancellation timeouts, numeric binary limits, and pool checks; runtime dependencies are unchanged, and PyPI and OSV list no advisory for either release. The locked environment and a fresh client resolution install 3.3.6. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
       "evidence": "https://pypi.org/project/psycopg/",
       "provider": "Upstream project",
       "source": "https://github.com/psycopg/psycopg",

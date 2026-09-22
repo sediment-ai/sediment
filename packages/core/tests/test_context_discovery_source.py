@@ -222,7 +222,12 @@ def test_opaque_content_outside_grant_is_not_loaded(postgres_store, postgres_eng
         ("other-org", "other", "granted"),
     ):
         values = call(identifier, session, org=org).model_dump(mode="python")
-        values.update(input_messages="invalid JSON", output_messages="[]", raw="{}")
+        values.update(
+            input_messages="invalid JSON",
+            output_messages="[]",
+            raw="{}",
+            call_alias_count=0,
+        )
         with postgres_engine.begin() as connection:
             connection.execute(inference_calls.insert().values(values))
     statements, record = record_sql(postgres_engine)
