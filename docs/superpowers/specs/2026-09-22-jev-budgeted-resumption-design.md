@@ -77,7 +77,8 @@ Quarantine revision. Reject a source changed since its frozen manifest.
 
 C and D read the same final-call candidate corpus through the factual routes.
 The keyword baseline reuses version-1 tokenization, overlap scoring, ordering,
-and exclusions on that corpus. It doesn't claim to reproduce the entire
+and reasoning exclusion on that corpus. Both selectors retain distinct
+occurrences without content deduplication. It doesn't claim to reproduce the entire
 Session scan performed by `/query/context`. This avoids giving the selectors
 different occurrence populations. Both arms count all candidate prefetches.
 
