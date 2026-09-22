@@ -19,7 +19,7 @@ from typing import Any
 
 from fastapi import Depends, Header, HTTPException, Request
 from sediment_capture import verify_signature
-from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore
+from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore, NonEmptyId
 
 from .config import settings
 
@@ -67,7 +67,11 @@ class BodySizeLimitMiddleware:
             # FastAPI parses model envelopes before running dependencies. Keep
             # this operation's smaller bound ahead of that allocation too.
             limit = min(limit, EVIDENCE_REQUEST_BYTES_LIMIT)
-        elif scope["method"] == "POST" and path == "/query/context":
+        elif scope["method"] == "POST" and path in {
+            "/query/context",
+            "/query/context/discover",
+            "/query/context/selected",
+        }:
             limit = min(limit, CONTEXT_REQUEST_BYTES_LIMIT)
         received = 0
 
@@ -84,7 +88,22 @@ class BodySizeLimitMiddleware:
                     )
             return message
 
-        await self.app(scope, capped_receive, send)
+        async def context_send(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                message["headers"] = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() != b"cache-control"
+                ] + [(b"cache-control", b"no-store")]
+            await send(message)
+
+        await self.app(
+            scope,
+            capped_receive,
+            context_send
+            if path in {"/query/context/discover", "/query/context/selected"}
+            else send,
+        )
 
 
 @dataclass(frozen=True)
@@ -155,6 +174,25 @@ def verify_retrieval_token(
     if settings.retrieval_session_id is None:
         raise HTTPException(status_code=404, detail="Context retrieval is disabled")
     return identity
+
+
+def verify_context_grant_token(
+    identity: CredentialIdentity = Depends(verify_token),
+) -> CredentialIdentity:
+    """Discovery and selection share the configured Session grant."""
+    if identity.authority not in {"retrieval", "operator"}:
+        raise HTTPException(status_code=403, detail="Retrieval authority required")
+    if not settings.context_session_ids:
+        raise HTTPException(status_code=404, detail="Context retrieval is disabled")
+    return identity
+
+
+def require_context_session(session_id: NonEmptyId) -> None:
+    """Refuse before any storage lookup, independent of Session existence."""
+    if session_id not in settings.context_session_ids:
+        raise HTTPException(
+            status_code=403, detail="Session is outside the context grant"
+        )
 
 
 def get_store(request: Request) -> FactStore:
