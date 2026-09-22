@@ -183,18 +183,20 @@
       ]
     },
     "apk/libexpat1": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
+      "basis": "Reviewed exact Wolfi libexpat1 2.8.5-r0 packages for x86_64 and aarch64 against signed-repository index and package-control digests. The aarch64 package is https://packages.wolfi.dev/os/aarch64/libexpat1-2.8.5-r0.apk; both select upstream R_2_8_5 commit 4b3f0b06f39fb5529cead381694f8929901bc273. The package review is recorded at https://github.com/sediment-ai/sediment/pull/87#issuecomment-5784328678. Rolling distribution maintenance; no fixed upstream support date, vulnerability suppression, or reachability verdict is inferred. Issue 88 tracks the separate advisory-coverage and reachability audit.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/libexpat1-2.8.5-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
       "source_package": "expat",
       "source_versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ]
     },
     "apk/libffi": {
@@ -4090,15 +4092,16 @@
       ]
     },
     "pypi/mako": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/HEAD/.github/SECURITY.md",
+      "basis": "Reviewed the unwithdrawn Mako 1.4.3 release against https://pypi.org/project/Mako/1.4.3/ and the upstream security policy at https://raw.githubusercontent.com/sqlalchemy/mako/HEAD/.github/SECURITY.md. The exact release review is recorded at https://github.com/sediment-ai/sediment/pull/87#issuecomment-5784328678. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "evidence": "https://github.com/sqlalchemy/mako/releases/tag/rel_1_4_3",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/mako",
       "source_updated_at": "2026-08-18T17:07:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "1.4.1"
+        "1.4.1",
+        "1.4.3"
       ]
     },
     "pypi/mangum": {
