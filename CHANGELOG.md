@@ -20,6 +20,9 @@
 - Defer migration-only imports during evidence reads. Reject batches of earlier
   Pushes with a native Git ancestry proof before exact owner checks; uncertain
   and divergent batches retain existing range checks.
+- Use indexed organization-wide identifier witnesses for scoped model and
+  lifecycle report Decision attachment. Historical ambiguity and Quarantine
+  remain complete; more than 30,000 requested identifiers refuses the report.
 - Add a PostgreSQL storage calibration with repeated and varied message content,
   measured native compression, separate capacity refusals, and verified native
   backup/restore. Distinct Facts and the physical production schema stay intact.
