@@ -47,12 +47,7 @@ from sqlalchemy.exc import (
 from .config import settings
 from .deps import require_context_session
 from .workers import MAX_REQUEST_BYTES
-from .routers import forge, query, reports
-from .services.operational_reports import (
-    LifecycleReportRequest,
-    generate_lifecycle_report,
-    model_report_payload,
-)
+from .routers import query
 
 
 class _Diagnostics(logging.Handler):
@@ -248,6 +243,13 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 exclude_none=True,
             )
         case "model-report" | "lifecycle-report":
+            from .routers import reports
+            from .services.operational_reports import (
+                LifecycleReportRequest,
+                generate_lifecycle_report,
+                model_report_payload,
+            )
+
             bounds = reports.ReportScopeResponse.model_validate(payload)
             scope = reports._build_scope(
                 bounds.cohort_start, bounds.cohort_end, bounds.as_of
@@ -274,6 +276,8 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 reports.ReportEnvelope(scope=bounds, report=result)
             )
         case "push":
+            from .routers import forge
+
             push = Push.model_validate(payload["push"])
             if push.org_id != settings.org_id:
                 raise ValueError("worker organization mismatch")
