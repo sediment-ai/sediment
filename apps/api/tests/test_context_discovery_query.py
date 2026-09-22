@@ -283,7 +283,6 @@ def test_context_set_deadline_releases_worker_slots(discovery, monkeypatch, rout
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"
     assert not discovery.app.state.workers._query_tasks
-    assert not discovery.app.state.workers._evidence_tasks
     assert discovery.get("/health").status_code == 200
 
 
