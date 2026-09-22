@@ -273,7 +273,7 @@ Status codes:
 | `403` | The credential lacks the authority required by this route. |
 | `409` | The closed detail.reason is evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. The complete operation is declined. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## GET /query/evidence/manifest
 
@@ -301,7 +301,7 @@ Status codes:
 | `403` | The credential lacks the authority required by this route. |
 | `409` | The closed detail.reason is evidence_unavailable for any absent, foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, limit); evidence_response_limit (limit); or non_finite_number. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## POST /query/evidence/read
 
@@ -332,7 +332,7 @@ Status codes:
 | `409` | The closed detail.reason is evidence_unavailable or evidence_part_absent (reference_index), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. Unavailability does not disclose its cause. Failures decline all items. |
 | `413` | Request body exceeds 64 KiB, including when Content-Length is absent. |
 | `422` | Malformed envelope, unsupported version, invalid indices, unknown fields, duplicate references, or selection outside 1–32 references. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## POST /query/context
 
@@ -364,7 +364,7 @@ Status codes:
 | `409` | Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), evidence_response_limit (limit), or non_finite_number. No partial scan succeeds. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, query, byte budget, or undeclared field; content is omitted. |
-| `503` | The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL. |
+| `503` | The shared read pool is full, the 30-second deadline expires, or PostgreSQL is unavailable. |
 
 ## POST /query/context/discover
 
@@ -397,7 +397,7 @@ Status codes:
 | `409` | Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, query, budget, complete commit identity, or undeclared field. |
-| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+| `503` | Shared read capacity or database unavailable; the existing 30-second deadline applies. |
 
 ## POST /query/context/selected
 
@@ -430,7 +430,7 @@ Status codes:
 | `409` | evidence_unavailable or an existing evidence capacity/representation reason in detail.reason. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, Session identifier, query, budget, or undeclared field. |
-| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+| `503` | Shared read capacity or database unavailable; the existing 30-second deadline applies. |
 
 ## GET /query/context/evidence
 
@@ -458,7 +458,7 @@ Status codes:
 | `404` | Context retrieval is disabled for this deployment. |
 | `409` | The closed detail.reason is evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. The complete operation is declined. |
 | `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## GET /query/context/evidence/manifest
 
@@ -487,7 +487,7 @@ Status codes:
 | `404` | Context retrieval is disabled for this deployment. |
 | `409` | The closed detail.reason is evidence_unavailable for any absent, foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, limit); evidence_response_limit (limit); or non_finite_number. |
 | `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## POST /query/context/evidence/read
 
@@ -519,7 +519,7 @@ Status codes:
 | `409` | The closed detail.reason is evidence_unavailable or evidence_part_absent (reference_index), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. Unavailability does not disclose its cause. Failures decline all items. |
 | `413` | Request body exceeds 64 KiB, including when Content-Length is absent. |
 | `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
-| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+| `503` | Evidence shares both query/report slots; reports have no reserved slot. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## GET /query/ci/outcome
 

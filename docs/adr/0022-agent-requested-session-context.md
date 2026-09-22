@@ -73,8 +73,8 @@ The response carries at most eight exact parts, source references, the
 Quarantine revision, coverage, and unknown capture completeness. A shared bounded
 strict encoder preserves canonical scalars and the existing evidence bytes.
 
-The query shares the existing one-evidence-worker admission limit within two
-query/report slots and the 30-second deadline. Every request rechecks Quarantine.
+The query shares two query/report slots under the amended admission contract
+in ADR 0021 and retains the 30-second deadline. Every request rechecks Quarantine.
 `Cache-Control: no-store` prohibits response caching. Retrieval writes no Fact,
 summary, index, checkpoint, or cache. Training and Attribution paths retain their
 existing interpretation.

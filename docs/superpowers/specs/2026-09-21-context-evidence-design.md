@@ -224,6 +224,9 @@ not create another service or unbounded queue. Evidence traffic alone cannot
 occupy both query/report slots. Busy or timed-out workers retain HTTP 503 behavior.
 This reserves admission capacity, not a database or latency guarantee.
 
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original reservation. See the [concurrency specification](2026-09-22-shared-evidence-admission-design.md).
+
 ### Live reads and visibility
 
 Scope checks, Quarantine, preflight, content selection, and response construction

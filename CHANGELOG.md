@@ -11,6 +11,10 @@
 
 ### Operational evidence
 
+- Let evidence use both existing query/report worker slots. The total remains
+  two active reads per API process, with immediate capacity refusal for a third.
+  Reports no longer have a reserved slot. Deadlines, cleanup, source limits,
+  authority, and Quarantine checks remain unchanged.
 - Add grant-scoped factual inventory, manifest, and exact part reads with native
   pi tools. Consumers can inspect authorized evidence independently of keyword
   selection, including uncommitted requirements, failed attempts, and readable
