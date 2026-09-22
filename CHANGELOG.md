@@ -17,6 +17,12 @@
   24 weeks of history. Add resource-free workload planning with explicit limits
   and concurrent exact retrieval to the capture/report/export rehearsal.
   A declared profile does not establish passing capacity.
+- Defer migration-only imports during evidence reads. Reject batches of earlier
+  Pushes with a native Git ancestry proof before exact owner checks; uncertain
+  and divergent batches retain existing range checks.
+- Add a PostgreSQL storage calibration with repeated and varied message content,
+  measured native compression, separate capacity refusals, and verified native
+  backup/restore. Distinct Facts and the physical production schema stay intact.
 - Let evidence use both existing query/report worker slots. The total remains
   two active reads per API process, with immediate capacity refusal for a third.
   Reports no longer have a reserved slot. Deadlines, cleanup, source limits,

@@ -345,3 +345,44 @@ actual SQL plans. Diagnostic stage times are not public request latencies.
 The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
 and host limits separately. A scripted chooser exercises transport; it measures
 neither decision-model quality nor inference cost.
+
+## Measure repeated-history storage
+
+Use `scripts/storage_history_benchmark.py` to measure one growing synthetic
+Session through PostgreSQL. Set `SEDIMENT_TEST_DATABASE_URL` to an owned
+disposable cluster with database creation and removal authority. Install native
+`pg_dump` and `pg_restore` clients that support the server version.
+
+```bash
+uv run python scripts/storage_history_benchmark.py \
+  --out /data/storage-varied-pglz \
+  --checkpoints 1,10,100,250 --input-bytes 8192 --output-bytes 2048 \
+  --entropy varied --compression pglz \
+  --pg-dump /path/to/pg_dump --pg-restore /path/to/pg_restore \
+  --timeout 1200
+```
+
+Use an unused output directory. Run comparisons sequentially, away from latency
+qualification. Compare `varied/pglz`, `varied/lz4`, and `repeated/pglz` using the
+same checkpoints and body sizes. If the PostgreSQL build lacks LZ4 compression,
+the command fails visibly; record that unavailable comparison. `varied` generates
+distinct deterministic text per turn. Later calls repeat those exact earlier
+messages. `repeated` uses highly compressible text and cannot establish typical
+storage costs.
+
+Read `report.json` for logical input/output/raw bytes, compressed datum sizes,
+heap and index sizes, and TOAST (PostgreSQL's oversized-value storage) sizes.
+Inclusive table totals already contain TOAST; don't add them again. The report
+records streamed Fact reads, exact-reference reads, and full-Session/context
+capacity refusals separately. The command checks exact values, distinct Facts,
+redelivery, Quarantine, and a native compressed backup restored into another
+owned database. It removes both databases and the verified archive, retaining
+content-free measurements. Exit status 0 means that calibration and restore
+checks passed; it doesn't qualify the pilot.
+
+Read costs follow insertion and storage scans, so they don't represent cold
+caches. Python peak memory excludes PostgreSQL and native clients. Database
+sizes exclude write-ahead logs, mirrors, and training artifacts. A projection
+from one Session to 2,400 Sessions is a sample-based estimate; record its formula,
+compression, content distribution, and omitted costs. A storage representation
+change requires separate migration and restore evidence.
