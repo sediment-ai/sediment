@@ -108,9 +108,10 @@ gateway capture, the API, and private records inside your perimeter.
    Before capturing the comparison source, [verify native tool use](#verify-native-tool-use)
    on the unrelated preflight fixture.
 4. Start and verify the source Session. Choose an output directory that doesn't
-   exist. The default task is `invoice`. If you choose the separate environment
-   profile parser task, add `--task env-profile` to both the `source` and `run`
-   commands:
+   exist. The default task is `invoice`. If you choose the environment profile
+   parser task, add `--task env-profile` to both the `source` and `run` commands.
+   For the [instructed-lookup protocol](#compare-instructed-retrieval), use
+   `--task shipment-totals` on both commands:
 
    ```bash
    umask 077
@@ -158,6 +159,27 @@ arbitrary direct networking through the agent's shell tool. Keep that limitation
 with the result. A passing comparison establishes one controlled task's benefit,
 not general improvement, crash recovery, or token savings. Changing the frozen
 fixture or selector after observing outcomes requires a separate evaluation.
+
+### Compare instructed retrieval
+
+Select `--task shipment-totals` before source capture to measure instructed
+retrieval and application on a separate task. All three arms receive the same
+visible goal and conditional instruction: inspect with `read`, then use a
+prior-Session retrieval tool, if available, before any `edit`, `write`, or `bash`
+call. The agent chooses its question. Arm B uses the supplied full history;
+arm A reports missing history honestly and continues the visible goal.
+
+Review `lookup_before_work` in each arm C `run.json`. This post-run compliance
+check requires a successful, nonempty retrieval result for the bound source
+Session before the first edit, write, or shell invocation. A failed early work
+invocation still violates the ordering. The controller observes native events;
+it doesn't prevent tool calls or inject selected evidence.
+
+All three C runs must satisfy this additional check and the existing evidence,
+captured trajectory, and independent final checks. The paired A failure and B
+reporting requirements still apply. Report this protocol explicitly: it doesn't
+test whether the agent decides to retrieve without an instruction. Keep earlier
+task results separate and preserve their unchanged fixtures.
 
 ## Verify native tool use
 

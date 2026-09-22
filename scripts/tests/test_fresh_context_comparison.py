@@ -239,8 +239,9 @@ def test_fresh_gold_uses_observed_parts_and_keeps_exact_references():
 
 
 @pytest.mark.parametrize("operation", ["source", "run"])
+@pytest.mark.parametrize("task", ["env-profile", "shipment-totals"])
 def test_cli_passes_selected_task_to_source_and_comparison(
-    tmp_path, monkeypatch, operation
+    tmp_path, monkeypatch, operation, task
 ):
     mod = load()
     monkeypatch.setattr(mod, "load_config", lambda _: {})
@@ -265,8 +266,8 @@ def test_cli_passes_selected_task_to_source_and_comparison(
             "--source",
             str(tmp_path / "source"),
             "--task",
-            "env-profile",
+            task,
         ],
     )
     assert mod.main() == 0
-    assert calls[0][-1] == "env-profile"
+    assert calls[0][-1] == task

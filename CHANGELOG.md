@@ -15,6 +15,10 @@
 - Add `--task env-profile` for a separate environment-profile parsing comparison.
   Freeze task selection and require it to match the source. Preserve the default
   invoice fixture, generation settings, attempt budgets, and acceptance rules.
+- Add `--task shipment-totals` for instructed retrieval before task work. Its
+  post-run check requires successful source retrieval before the first edit,
+  write, or shell invocation. This protocol measures instructed retrieval and
+  application, not an autonomous decision to retrieve.
 - Preserve empty assistant content during pinned pi evaluation replay so the
   strict captured-prefix check can verify the single-user, text-only baseline.
 - Add a native tool preflight with three fresh read, edit, and shell cycles on an

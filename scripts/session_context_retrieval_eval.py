@@ -231,7 +231,7 @@ def assemble_history(manifest: dict, items: list[dict]) -> dict:
     return history
 
 
-def evaluate(records: list[dict]) -> dict:
+def evaluate(records: list[dict], task: str = "invoice") -> dict:
     expected = {(arm, repetition) for arm in "ABC" for repetition in range(1, 4)}
     keys = [(r["arm"], r["repetition"]) for r in records]
     ids = [r.get("session_id") for r in records]
@@ -251,6 +251,7 @@ def evaluate(records: list[dict]) -> dict:
         and r["retrieved_constraint"]
         and r["retrieved_failure"]
         and r["trajectory_verified"]
+        and (task != "shipment-totals" or r.get("lookup_before_work") is True)
     ]
     comparisons = []
     paired_a_failure = False
@@ -1027,6 +1028,8 @@ def task_fixture(task: str) -> Path:
         return FIXTURES
     if task == "env-profile":
         return FIXTURES.with_name("env_profile_retrieval")
+    if task == "shipment-totals":
+        return FIXTURES.with_name("shipment_totals_retrieval")
     raise EvaluationError("unknown_task")
 
 
@@ -1196,6 +1199,9 @@ def source_gold(items: list[dict], task: str = "invoice") -> dict:
     elif task == "env-profile":
         constraint_terms = ("FIRST observed value", "repeated exact keys")
         distractor_error = "RuntimeError: optional_schema_linter unavailable"
+    elif task == "shipment-totals":
+        constraint_terms = ("trimmed channel", "'replay'", "must NOT contribute")
+        distractor_error = "RuntimeError: optional_manifest_linter unavailable"
     else:
         raise EvaluationError("unknown_task")
     constraint, failure, distractor = [], [], []
@@ -1386,6 +1392,47 @@ def captured_trajectory(history: dict, gold: dict, source: str) -> bool:
     return False
 
 
+def lookup_before_work(events: list[dict], source: str) -> bool:
+    """Observe completed native retrieval before the first work invocation."""
+    from pydantic import TypeAdapter
+    from sediment_derive.context_retrieval import ContextRetrievalResult
+
+    pending = set()
+    received = False
+    for event in events:
+        identifier = event.get("toolCallId")
+        if event.get("type") == "tool_execution_start":
+            if event.get("toolName") in {"edit", "write", "bash"}:
+                return received
+            if (
+                event.get("toolName") == "sediment_retrieve_context"
+                and isinstance(identifier, str)
+                and identifier
+            ):
+                pending.add(identifier)
+        elif event.get("type") == "tool_execution_end" and identifier in pending:
+            pending.remove(identifier)
+            content = event.get("result", {}).get("content", [])
+            if (
+                event.get("isError") is not False
+                or len(content) != 1
+                or content[0].get("type") != "text"
+            ):
+                continue
+            try:
+                selection = TypeAdapter(ContextRetrievalResult).validate_json(
+                    content[0].get("text")
+                )
+            except (ValueError, TypeError):
+                continue
+            received |= (
+                selection.status == "matched"
+                and selection.source_session_id == source
+                and bool(selection.items)
+            )
+    return False
+
+
 def validate_workspace(
     config: dict, workspace: Path, records: Path, task: str = "invoice"
 ) -> dict:
@@ -1479,6 +1526,8 @@ def continuation(
         "retrieved_failure": False,
         "trajectory_verified": False,
     }
+    if task == "shipment-totals" and arm == "C":
+        result["lookup_before_work"] = False
     write_bytes(records / "prompt.txt", prompt.encode())
     try:
         with isolated_agent(config, records, workspace, arm) as rpc:
@@ -1518,6 +1567,10 @@ def continuation(
     ]
     try:
         events = read_events(records / "rpc.jsonl")
+        if task == "shipment-totals" and arm == "C":
+            result["lookup_before_work"] = lookup_before_work(
+                events, manifest["source_session_id"]
+            )
         if any(
             e.get("type") == "message_end"
             and e.get("message", {}).get("role") == "assistant"
@@ -1625,7 +1678,7 @@ def run_comparison(
                 ),
                 flush=True,
             )
-    result = evaluate(records)
+    result = evaluate(records, task)
     result["task"] = task
     result["all_capture_verified"] = all(r.get("capture_verified") for r in records)
     result["benefit_demonstrated"] &= result["all_capture_verified"]
@@ -2043,7 +2096,7 @@ def main() -> int:
     parser.add_argument("--source", type=Path)
     parser.add_argument(
         "--task",
-        choices=("invoice", "env-profile"),
+        choices=("invoice", "env-profile", "shipment-totals"),
         default="invoice",
         help="source/run task (default: invoice)",
     )

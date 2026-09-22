@@ -405,6 +405,19 @@ provider cache. The prompt tells every arm to inspect the workspace and preserve
 earlier constraints, and to report missing information honestly. Only B receives
 the earlier constraint up front; C must retrieve it.
 
+The separate `shipment-totals` task uses an instructed-lookup protocol. Every
+arm receives the same visible goal and conditional instruction: inspect the
+workspace with `read`; if a prior-Session retrieval tool is available, invoke
+it for earlier constraints and relevant failure evidence before any `edit`,
+`write`, or `bash` call. The agent chooses the question. The prompt provides no
+query text, source references, material constraint, or selected evidence. Arm B
+uses supplied full history. If neither history nor a retrieval tool is available,
+the agent reports missing context honestly and continues the visible goal.
+
+This protocol measures instructed retrieval and application. It doesn't establish
+that an agent decides to retrieve without an instruction. The invoice and
+environment-profile tasks retain their earlier prompts and acceptance rules.
+
 Limit each continuation to 12 model calls and four retrieval calls. Enforce the
 limits through the evaluation controller and record a budget stop as an outcome.
 Don't impose an untracked retry that changes only one arm. Final checks run
@@ -432,6 +445,11 @@ The live demonstration passes when:
   tokens isn't a pass requirement for this slice.
 - The captured C trajectory connects a question to returned source references
   and subsequent task work; no person injects a selected packet after startup.
+- For `shipment-totals`, every C run also passes a post-run ordering check: a
+  successful, nonempty native retrieval result for the configured source Session
+  precedes the first `edit`, `write`, or `bash` start. `read` may precede retrieval.
+  Even a failed early work invocation violates the order. This check observes
+  recorded native events; it doesn't block tools or supply evidence at runtime.
 
 This is a controlled demonstration on one task, not statistical evidence of
 general improvement or crash recovery. Don't tune the selector against these
