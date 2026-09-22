@@ -60,6 +60,7 @@ def test_postgres_upgrade_creates_complete_schema_and_is_idempotent(
             "alembic_version",
             "sessions",
             "inference_calls",
+            "inference_call_aliases",
             "developer_decisions",
             "edit_observations",
             "rejected_edits",
@@ -283,7 +284,7 @@ def test_postgres_baseline_revision_is_frozen_from_live_metadata() -> None:
 
 
 def test_cursor_agent_harness_migration_replaces_all_four_checks() -> None:
-    assert postgres_migrations.HEAD_REVISION == "0010_repository_identity"
+    assert postgres_migrations.HEAD_REVISION == "0011_inference_call_aliases"
     constraints = {
         "developer_decisions": "ck_decisions_agent_harness",
         "edit_observations": "ck_edit_observations_agent_harness",

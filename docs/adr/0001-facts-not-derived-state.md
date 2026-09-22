@@ -19,6 +19,11 @@ by the policy that produced them. A webhook is a *trigger* that may refresh a
 derivation cache; the cache is never a source of truth and can always be
 dropped and rebuilt.
 
+[ADR 0023](0023-indexed-call-identifiers.md) permits an exact physical index
+representation of identifiers already present in Inference call Facts. It
+stores no attachment verdict or policy output; canonical Facts remain the
+source of truth.
+
 ## Consequences
 
 - No idempotency machinery beyond `UNIQUE` indexes on fact tables; no

@@ -393,6 +393,7 @@ class RepoMirror:
             revs = _git(
                 self.path,
                 "rev-list",
+                f"--max-count={max(1, max_commits)}",
                 "--end-of-options",
                 f"{push.before_sha}..{push.after_sha}",
             ).split()
@@ -404,7 +405,7 @@ class RepoMirror:
             return [push.after_sha]
         # Clamp: a 0/negative cap (config typo) must still keep the head —
         # never silently attribute a stray subset or nothing.
-        return list(reversed(revs[: max(1, max_commits)])) or [push.after_sha]
+        return list(reversed(revs)) or [push.after_sha]
 
     def commit_exists(self, commit_sha: str) -> bool:
         """Whether ``commit_sha`` resolves to a commit object in this mirror.

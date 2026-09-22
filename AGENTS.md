@@ -16,7 +16,7 @@ ADRs in `docs/adr/` (0001–0005 core, 0006 the open-core boundary, 0007
 client-side transcript parsing, 0008 structured inference calls, 0009 canonical
 Attribution, 0010 canonical CI outcomes, 0011 training-objective evidence, and
 0012 the PostgreSQL-only Fact store, 0013 Git-note observation boundaries, 0014 factual outcomes and training evidence,
-0015 lossless representation and bundle v2, 0016 bundle derivation consistency, 0017 bounded sender transport storage, 0018 credential authorities, and 0019 repository identity and renames)
+0015 lossless representation and bundle v2, 0016 bundle derivation consistency, 0017 bounded sender transport storage, 0018 credential authorities, 0019 repository identity and renames, 0023 indexed call identifiers, and 0024 targeted commit investigations)
 — read them before changing anything structural. Current status is `CHANGELOG.md` plus the GitHub milestones.
 
 Python 3.12 for pipeline code. Only `shims/` permits TypeScript (pi requires it).
@@ -25,7 +25,7 @@ CI scopes Node to `shims/`; nothing else may add a second toolchain.
 
 ## The Non-Negotiable Rules
 
-1. **Facts are the only persisted domain state.** ADR 0017 permits an opt-in transport buffer that Derivations never read. A Fact is something that happened:
+1. **Facts are the only persisted domain state.** ADR 0017 permits an opt-in transport buffer that Derivations never read. ADR 0023 permits exact physical copies of captured call identifiers for indexed lookup; no attachment or policy output belongs there. A Fact is something that happened:
    an inference call, a decision, a push, a CI outcome. Facts are appended, never
    mutated. If you find yourself writing an UPDATE on a Fact table or storing
    the output of a matcher/policy, stop — that belongs in a Derivation.
@@ -224,13 +224,13 @@ Grouped by reader intent; `docs/` subdirectories mirror these groups.
 
 | Topic | Read |
 |---|---|
-| PostgreSQL schema, migrations, snapshots, and runtime boundary | `docs/agents/postgresql.md` |
+| PostgreSQL schema, migrations, snapshots, and runtime boundary | `docs/agents/postgresql.md`; `docs/adr/0023-indexed-call-identifiers.md` |
 | Capture observations, source coverage, and final Fate | `docs/explanation/how-capture-works.md`; `docs/agents/capture-clients.md` |
 | Merge retention and accepted-work lifecycle | `docs/operate/lifecycle-report.md`; `docs/agents/derivations.md` |
 | Immutable Git-note Session-to-commit observations | `docs/adr/0013-git-note-observation-facts.md` |
 | Factual outcomes and canonical representation | `docs/adr/0014-factual-outcomes-and-training-evidence.md`; `docs/adr/0015-lossless-values-and-bundle-v2.md`; `docs/adr/0016-bundle-derivation-consistency.md` |
 | Sender delivery and replay | `docs/adr/0017-sender-transport-replay.md`; `docs/capture/local-capture.md` |
-| Credentials and repository identity | `docs/adr/0018-static-credential-authorities.md`; `docs/adr/0019-repository-identity-and-renames.md` |
+| Credentials, repository identity, and commit investigation | `docs/adr/0018-static-credential-authorities.md`; `docs/adr/0019-repository-identity-and-renames.md`; `docs/adr/0024-targeted-commit-investigations.md` |
 | Pipeline acceptance and release artifacts | `docs/operate/rehearse-release.md`; `docs/agents/exports-and-stats.md` |
 | Contributor setup and issue maintenance | `CONTRIBUTING.md`; `docs/agents/issue-tracker.md` |
 | Bounded evidence reads and controlled agent continuation | `docs/operate/resume-with-evidence.md`; `docs/adr/0021-bounded-evidence-access.md`; `docs/superpowers/specs/2026-09-21-context-evidence-design.md`; `docs/superpowers/specs/2026-09-21-evidence-store-positioning-design.md` |
