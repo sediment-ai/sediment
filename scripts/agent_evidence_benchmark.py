@@ -387,7 +387,7 @@ def request(client, method, route, **kwargs):
         "sha256": hashlib.sha256(response.content).hexdigest(),
         "reason": detail
         if isinstance(detail, str)
-        else detail.get("reason")
+        else detail.get("reason") or detail.get("code")
         if isinstance(detail, dict)
         else None,
     }
@@ -502,9 +502,10 @@ def live_probe(endpoint, token, stop, writes, health, *, prefix="live", count=20
                     "payload": payload,
                 },
             )
-            record.update(value)
-            if value.get("stored") is not True or not value.get("fact_id"):
-                raise RuntimeError("ingest_not_stored")
+            if record["status"] == 200:
+                record.update(value)
+                if value.get("stored") is not True or not value.get("fact_id"):
+                    raise RuntimeError("ingest_not_stored")
             writes.append(record)
             health.append(request(client, "GET", "/health")[0])
             index += 1
@@ -672,7 +673,7 @@ def run(args):
                         for concurrency in args.clients:
                             rows, flows = [], []
                             count = args.samples if concurrency == 1 else args.waves
-                            if concurrency > 1 and not sender.is_alive():
+                            if concurrency > 1 and sender.ident is None:
                                 sender.start()
                             stamp = time.perf_counter()
                             with ThreadPoolExecutor(max_workers=concurrency) as pool:

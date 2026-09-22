@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Benchmark accounting preserves refusals and exact synthetic evidence."""
 
+import json
+import threading
+from types import SimpleNamespace
+
 import pytest
 import httpx
 
@@ -142,3 +146,88 @@ def test_exact_validation_refuses_wrong_occurrence_even_when_content_matches():
         benchmark.verify_selected(
             {"items": [item]}, "exact", benchmark.KNOWN_REFERENCE, item["part"]
         )
+
+
+@pytest.mark.parametrize(
+    "detail,reason",
+    [
+        ("work capacity exceeded", "work capacity exceeded"),
+        ({"reason": "work unavailable"}, "work unavailable"),
+        (
+            {"code": "database_unavailable", "message": "PostgreSQL unavailable"},
+            "database_unavailable",
+        ),
+    ],
+)
+def test_live_probe_records_refusal_then_distinct_stored_attempt(
+    monkeypatch, detail, reason
+):
+    client_type = httpx.Client
+    sent = []
+
+    def handle(request):
+        if request.url.path == "/health":
+            return httpx.Response(200, json={"status": "ok"})
+        sent.append(json.loads(request.content)["payload"]["litellm_call_id"])
+        if len(sent) == 1:
+            return httpx.Response(503, json={"detail": detail})
+        return httpx.Response(200, json={"fact_id": "stored-fact", "stored": True})
+
+    monkeypatch.setattr(
+        httpx,
+        "Client",
+        lambda **kwargs: client_type(**kwargs, transport=httpx.MockTransport(handle)),
+    )
+    writes, health = [], []
+    benchmark.live_probe(
+        "http://benchmark.test",
+        "synthetic-token",
+        threading.Event(),
+        writes,
+        health,
+        prefix="probe",
+        count=2,
+    )
+    assert sent == ["probe-000000", "probe-000001"]
+    assert [write["status"] for write in writes] == [503, 200]
+    assert "fact_id" not in writes[0] and "stored" not in writes[0]
+    assert writes[1]["fact_id"] == "stored-fact" and writes[1]["stored"] is True
+    summary = benchmark.summarize(writes)
+    assert summary["refusal"]["count"] == summary["success"]["count"] == 1
+    assert summary["reasons"] == {reason: 1}
+    assert len(health) == 2 and all(row["status"] == 200 for row in health)
+
+
+def test_failed_live_probe_reaches_later_real_http_tier_without_thread_restart(
+    monkeypatch, tmp_path, postgres_admin_url
+):
+    original_probe = benchmark.live_probe
+
+    def failed_live_probe(*args, **kwargs):
+        if kwargs.get("prefix") == "control":
+            return original_probe(*args, **kwargs)
+        raise RuntimeError("injected_live_probe_failure")
+
+    monkeypatch.setenv("SEDIMENT_TEST_DATABASE_URL", postgres_admin_url)
+    monkeypatch.syspath_prepend(str(benchmark.ROOT / "scripts"))
+    monkeypatch.setattr(benchmark, "live_probe", failed_live_probe)
+    output = tmp_path / "failed-probe"
+    args = SimpleNamespace(
+        output=output,
+        runtime=benchmark.ROOT,
+        sessions=1,
+        background=0,
+        samples=1,
+        waves=1,
+        clients=[5, 10],
+        modes=["known"],
+        diagnostic_only=False,
+    )
+    with pytest.raises(RuntimeError, match="^probe_cleanup_or_sampling_failed$"):
+        benchmark.run(args)
+    report = json.loads((output / "report.json").read_text())
+    assert [scenario["clients"] for scenario in report["scenarios"]] == [5, 10]
+    assert all(
+        scenario["flow_summary"]["success"]["count"] >= 1
+        for scenario in report["scenarios"]
+    )
