@@ -11,6 +11,10 @@
 
 ### Operational evidence
 
+- Declare the pilot target as 100 Sessions per week, 100 calls per Session, and
+  24 weeks of history. Add resource-free workload planning with explicit limits
+  and concurrent exact retrieval to the capture/report/export rehearsal.
+  A declared profile does not establish passing capacity.
 - Let evidence use both existing query/report worker slots. The total remains
   two active reads per API process, with immediate capacity refusal for a third.
   Reports no longer have a reserved slot. Deadlines, cleanup, source limits,

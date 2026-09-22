@@ -227,8 +227,29 @@ The `receipts/` journals retain acknowledged gateway identities, timings, and
 byte counts, including when a later gate fails. They contain no message bodies.
 The report's `failures` list retains recorded failure categories. Its `reason`
 field identifies the first recorded category, which can come from cleanup.
-After the smoke run passes, repeat with `sim/profiles/capacity-pilot.json` and a
-different output path. Exit status 0 qualifies the declared synthetic profile;
+After the smoke run passes, inspect the pilot target before allocating resources:
+
+```bash
+uv run python scripts/capacity_rehearsal.py \
+  --profile sim/profiles/capacity-pilot.json \
+  --out /data/capacity-pilot-plan --plan-only
+```
+
+The pilot declares 100 total team Sessions per week, 100 calls per Session, and
+24 weeks: 2,400 Sessions and 240,000 calls. `plan.json` reports an **unmeasured**
+target, known limits, and repeated text bytes. Plan-only exit status 0 means that
+planning succeeded; it never qualifies the workload. Text estimates exclude raw
+payloads, serialization, indexes, and PostgreSQL compression. They cannot size a
+deployment's physical disk.
+
+If the plan exceeds a runtime limit, a full rehearsal can record that refusal;
+the target remains unqualified. In particular, complete bundle identity evidence
+has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, above keyword
+retrieval's 2,048-part source ceiling. Exact-reference reads have separate limits.
+Do not truncate Facts or treat a smaller probe as proof of the full target.
+
+If resources permit the declared workload, repeat without `--plan-only` and use
+a different output path. Exit status 0 qualifies the declared synthetic profile;
 status 1 records a failed probe, and status 2 identifies an invocation failure.
 
 Edit a copy of the profile to declare your workload. Every field is required;
@@ -251,9 +272,14 @@ PostgreSQL memory, container memory, and database storage. Its checks don't enfo
 memory or filesystem ceilings. Record those deployment budgets separately.
 
 The runner seeds the existing semantic scenarios, then starts a loopback HTTP
-server. Live gateway capture continues during weekly reports, an unscoped
-Derivation, and SFT and RLVR exports. Each operation must contain a completed
-capture request. The runner checks duplicate receipts, reconciles receipts with
+server. Live gateway capture and one in-flight exact evidence read continue
+during weekly reports, an unscoped Derivation, and SFT and RLVR exports. The
+reader uses a retrieval credential restricted to one synthetic Session and checks
+the complete selected part. `exact_retrieval` separates successful latency from
+capacity refusals; `receipts/exact.jsonl` records content-free timings and hashes.
+Each operation must contain a completed capture request. At least one operation
+must contain a completed successful exact read; each job reports its own overlap
+count. The runner checks duplicate receipts, reconciles receipts with
 stored Inference calls, and requires positive training rows. It stops capture
 before comparing repeated canonical builds from fixed inputs.
 
@@ -266,7 +292,8 @@ doesn't certify completion of a second background refresh. The probe doesn't
 guarantee contention on a mirror lock or exercise the full mirror queue.
 
 If a job has no completed capture request within its execution interval, the
-probe fails with `no_ingest_overlap`. That means the run lacks coexistence
+probe fails with `no_ingest_overlap`. If no operation contains a completed exact
+read, it fails with `no_exact_read_overlap`. Those results mean the run lacks coexistence
 evidence; it doesn't establish a deployment capacity failure. Choose a shorter
 live interval or a larger declared workload before repeating the probe.
 

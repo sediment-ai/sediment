@@ -58,10 +58,16 @@ sizes. They don't infer calls or storage from lines of code. Token and cost
 measurements remain absent because byte sizes don't establish either.
 
 `scripts/capacity_rehearsal.py` seeds the semantic catalog before starting a real
-loopback API and concurrent capture. It checks reports, canonical builds,
-positive training exports, receipt conservation, and fixed-input determinism.
+loopback API and concurrent capture and exact evidence reads. It checks reports,
+canonical builds, positive training exports, receipt conservation, and fixed-input
+determinism. Successful reads and capacity refusals have separate timings.
 The smoke profile contains 24 historical calls; the pilot profile contains
-1,600 calls in 160 Sessions. Both qualify their declared synthetic populations.
+240,000 calls in 2,400 Sessions: 100 Sessions per week for 24 weeks, with 100 calls
+per Session. A declared target is not a passing qualification. Use `--plan-only`
+to inspect repeated-text estimates and known population and retrieval limits
+without creating a database. The generator permits up to 300,000 calls so that
+the target and explicit runtime-refusal cases can be exercised; production
+limits retain their separate contracts.
 Follow [Profile reports and Derivations](../docs/operate/profile-derivations.md#rehearse-capture-alongside-batch-work)
 for database ownership, commands, profile fields, and measurement limits.
 
