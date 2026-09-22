@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 from uuid import uuid4
 
 from psycopg import sql
-from sqlalchemy import create_engine, text
+from sqlalchemy import MetaData, Table, create_engine, text
 from sqlalchemy.engine import make_url
 
 import pytest
@@ -255,7 +256,7 @@ def test_db_upgrade_permission_failure_exits_nonzero_without_credentials(
 
 
 def _behind_database_url(postgres_database_factory) -> str:
-    """Create a database migrated to 0008 (one revision below head).
+    """Create a database migrated to 0008 (before descriptive-text encoding).
 
     The CLI one-shot quarantine verbs write ``fact_quarantine.reason`` through
     ``_SerializedText``; against a pre-0009 database the 0009 migration would
@@ -377,9 +378,13 @@ def test_preupgrade_facts_preserve_real_counts_and_show_missing_tables(
     engine = create_engine(database_url)
     try:
         store = FactStore(engine)
-        for fact_id in ("visible", "hidden"):
-            store.store_inference_call(
-                InferenceCall(
+        # Seed the historical physical shape, without the current alias writer.
+        with engine.begin() as connection:
+            legacy = MetaData()
+            calls = Table("inference_calls", legacy, autoload_with=connection)
+            sessions = Table("sessions", legacy, autoload_with=connection)
+            for fact_id in ("visible", "hidden"):
+                call = InferenceCall(
                     inference_call_id=fact_id,
                     org_id="testorg",
                     session_id="old-session",
@@ -387,6 +392,17 @@ def test_preupgrade_facts_preserve_real_counts_and_show_missing_tables(
                     input_messages=[],
                     output_messages=[],
                     observed_at=datetime(2026, 9, 1, tzinfo=UTC),
+                )
+                values = call.model_dump(mode="python")
+                for name in ("input_messages", "output_messages", "raw"):
+                    values[name] = json.dumps(values[name], ensure_ascii=True)
+                connection.execute(calls.insert().values(**values))
+            connection.execute(
+                sessions.insert().values(
+                    org_id=call.org_id,
+                    session_id=call.session_id,
+                    first_observed_at=call.observed_at,
+                    last_observed_at=call.observed_at,
                 )
             )
         # Seed the pre-0009 representation directly, as the prior writer did.
