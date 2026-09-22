@@ -293,13 +293,29 @@ def _find_commit_owner(
     # only if measurements show branch diversity dominates owner discovery.
     for batch in batched(pushes, 256):
         candidates = []
-        head_owner = None
         for push in batch:
             resolved = context.resolve_reference(
                 push.org_id,
                 push.repo,
                 repository_identity=repository_identity_of(push),
             )
+            needs_range = (
+                resolved.key == key
+                and push.after_sha != commit_sha
+                and not push.forced
+                and bool(push.before_sha.strip("0"))
+                and push.before_sha not in (commit_sha, push.after_sha)
+            )
+            candidates.append((push, resolved, needs_range))
+            if resolved.key == key and push.after_sha == commit_sha:
+                break
+        ranges_possible = not mirror.heads_precede_commit(
+            commit_sha,
+            (push.after_sha for push, _, needs_range in candidates if needs_range),
+        )
+        # Evaluate diagnostics in source order, stopping at either kind of owner.
+        # A direct head cannot bypass an earlier non-head owner in its batch.
+        for push, resolved, needs_range in candidates:
             if resolved.key != key:
                 skipped[resolved.reason] += 1
                 logger.warning(
@@ -308,24 +324,13 @@ def _find_commit_owner(
                 )
                 continue
             if push.after_sha == commit_sha:
-                head_owner = (push, resolved)
-                break
+                return push, resolved
             if (
-                push.forced
-                or not push.before_sha.strip("0")
-                or push.before_sha in (commit_sha, push.after_sha)
+                needs_range
+                and ranges_possible
+                and commit_sha in mirror.list_push_commits(push, max_commits)
             ):
-                continue
-            candidates.append((push, resolved))
-        # A direct head cannot bypass an earlier non-head owner in its batch.
-        if candidates and not mirror.heads_precede_commit(
-            commit_sha, (push.after_sha for push, _ in candidates)
-        ):
-            for push, resolved in candidates:
-                if commit_sha in mirror.list_push_commits(push, max_commits):
-                    return push, resolved
-        if head_owner is not None:
-            return head_owner
+                return push, resolved
     return None
 
 
