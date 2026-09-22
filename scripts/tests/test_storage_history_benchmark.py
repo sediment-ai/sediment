@@ -73,6 +73,25 @@ def test_controls_preserve_distinct_facts_redelivery_and_quarantine(postgres_sto
     }
 
 
+def test_read_costs_compare_the_retained_redacted_fact(postgres_store):
+    from sediment_core import InferenceMessage, TextPart
+
+    call = next(benchmark.fixture_calls(benchmark.Workload((1,), 32, 16)))
+    call = call.model_copy(
+        update={
+            "output_messages": [
+                InferenceMessage(
+                    role="assistant", parts=[TextPart(content="sk-" + "x" * 48)]
+                )
+            ]
+        }
+    )
+    expected = benchmark.store_calls(postgres_store, [call])
+    assert benchmark.read_costs(postgres_store, call, expected)["exact_output"][
+        "status"
+    ] == "success"
+
+
 def test_native_backup_restore_is_verified_and_source_is_not_admin(
     tmp_path, postgres_admin_url
 ):
