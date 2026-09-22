@@ -13,6 +13,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
+    ForeignKey,
     Identity,
     Index,
     MetaData,
@@ -24,8 +25,10 @@ from sqlalchemy import (
     func,
     or_,
 )
+from sqlalchemy.dialects.postgresql import array
 
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy.sql.expression import Grouping
 
 from .models import (
     CIProvider,
@@ -160,9 +163,13 @@ inference_calls = Table(
     Column("output_tokens", BigInteger),
     Column("duration_ms", BigInteger),
     Column("model_call_id", Text),
+    Column("call_alias_count", BigInteger, nullable=False),
     Column("observed_at", DateTime(timezone=True), nullable=False),
     Column("raw", Text, nullable=False),
     CheckConstraint("schema_version = 1", name="ck_inference_calls_schema_version"),
+    CheckConstraint(
+        "call_alias_count >= 0", name="ck_inference_calls_call_alias_count"
+    ),
     CheckConstraint(
         _non_empty_sql("inference_call_id"),
         name="ck_inference_calls_inference_call_id",
@@ -206,6 +213,36 @@ Index(
     inference_calls.c.session_id,
     inference_calls.c.observed_at,
     inference_calls.c.inference_call_id,
+)
+
+# Physical copies of canonical identifiers, not independently captured Facts.
+inference_call_aliases = Table(
+    "inference_call_aliases",
+    metadata,
+    Column(
+        "inference_call_id",
+        Text,
+        ForeignKey("inference_calls.inference_call_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("ordinal", BigInteger, nullable=False),
+    Column("org_id", Text, nullable=False),
+    Column("call_id", Text, nullable=False),
+    PrimaryKeyConstraint(
+        "inference_call_id", "ordinal", name="pk_inference_call_aliases"
+    ),
+    CheckConstraint("ordinal >= 0", name="ck_inference_call_aliases_ordinal"),
+    CheckConstraint(_org_sql(), name="ck_inference_call_aliases_org_id"),
+    CheckConstraint(
+        _non_empty_sql("call_id"), name="ck_inference_call_aliases_call_id"
+    ),
+)
+Index(
+    "ix_inference_call_aliases_lookup",
+    Grouping(
+        array([inference_call_aliases.c.org_id, inference_call_aliases.c.call_id])
+    ),
+    postgresql_using="hash",
 )
 
 developer_decisions = Table(

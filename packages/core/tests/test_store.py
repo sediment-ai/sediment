@@ -41,6 +41,7 @@ from sediment_core.postgres_engine import DatabaseOperationError
 from sediment_core.postgres_schema import developer_decisions
 from sediment_core.redaction import REDACTION_MARKER
 from sediment_core import store as store_module
+from test_inference_alias_migration import insert_legacy
 
 T0 = datetime(2026, 8, 22, 12, 0, tzinfo=UTC)
 
@@ -2138,7 +2139,8 @@ def test_postgres_bulk_quarantine_apply_refuses_pre_0009_database(
     engine, _url = _behind_engine(postgres_database_factory)
     try:
         store = FactStore(engine)
-        store.store_inference_call(_inference_call(inference_call_id="call-1"))
+        with engine.begin() as connection:
+            insert_legacy(connection, _inference_call(inference_call_id="call-1"))
         with pytest.raises(DatabaseOperationError, match="quarantine-inference-calls"):
             store.quarantine_inference_calls_where("acme", reason="incident")
         with pytest.raises(DatabaseOperationError, match="quarantine-inference-calls"):
@@ -2171,7 +2173,8 @@ def test_postgres_bulk_quarantine_dry_run_still_works_against_pre_0009_database(
     engine, _url = _behind_engine(postgres_database_factory)
     try:
         store = FactStore(engine)
-        store.store_inference_call(_inference_call(inference_call_id="call-1"))
+        with engine.begin() as connection:
+            insert_legacy(connection, _inference_call(inference_call_id="call-1"))
         assert (
             store.quarantine_inference_calls_where(
                 "acme",
