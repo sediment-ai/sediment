@@ -84,6 +84,10 @@ the 30-second process deadline. Authentication precedes semantic validation.
 No error or diagnostic echoes queries, credentials, captured content, or
 arbitrary caller-supplied field names.
 
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original worker reservation. The [concurrency specification](2026-09-22-shared-evidence-admission-design.md)
+defines the replacement acceptance criteria.
+
 ### Discover candidates
 
 `POST /query/context/discover` accepts only:

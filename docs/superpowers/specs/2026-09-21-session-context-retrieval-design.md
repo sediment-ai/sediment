@@ -234,6 +234,10 @@ inside the existing two query/report slots and the 30-second deadline. It
 inherits cancellation, process-group cleanup, bounded diagnostics, and capacity
 refusal. It creates no additional worker pool or unbounded queue.
 
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original worker reservation. The [concurrency specification](2026-09-22-shared-evidence-admission-design.md)
+defines the replacement acceptance criteria.
+
 Every request rechecks Quarantine. A concurrent change after snapshot creation
 applies to the next request, as with existing evidence reads. Returned content
 cannot be recalled. Send `Cache-Control: no-store`; retain no cross-request
