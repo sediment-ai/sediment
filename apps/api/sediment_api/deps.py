@@ -19,7 +19,7 @@ from typing import Any
 
 from fastapi import Depends, Header, HTTPException, Request
 from sediment_capture import verify_signature
-from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore
+from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore, NonEmptyId
 
 from .config import settings
 
@@ -31,6 +31,7 @@ from .config import settings
 # body before its auth dependency runs, so every door's read is pre-auth.
 # ponytail: fixed constant; make it a setting only if a non-GitHub forge needs it
 MAX_BODY_BYTES = 25 * 1024 * 1024
+CONTEXT_REQUEST_BYTES_LIMIT = 16 * 1024
 
 
 class BodySizeLimitMiddleware:
@@ -66,6 +67,12 @@ class BodySizeLimitMiddleware:
             # FastAPI parses model envelopes before running dependencies. Keep
             # this operation's smaller bound ahead of that allocation too.
             limit = min(limit, EVIDENCE_REQUEST_BYTES_LIMIT)
+        elif scope["method"] == "POST" and path in {
+            "/query/context",
+            "/query/context/discover",
+            "/query/context/selected",
+        }:
+            limit = min(limit, CONTEXT_REQUEST_BYTES_LIMIT)
         received = 0
 
         async def capped_receive() -> Any:
@@ -81,19 +88,34 @@ class BodySizeLimitMiddleware:
                     )
             return message
 
-        await self.app(scope, capped_receive, send)
+        async def context_send(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                message["headers"] = [
+                    (key, value)
+                    for key, value in message.get("headers", [])
+                    if key.lower() != b"cache-control"
+                ] + [(b"cache-control", b"no-store")]
+            await send(message)
+
+        await self.app(
+            scope,
+            capped_receive,
+            context_send
+            if path in {"/query/context/discover", "/query/context/selected"}
+            else send,
+        )
 
 
 @dataclass(frozen=True)
 class CredentialIdentity:
     """Configured authority only; never a tenant or captured developer identity."""
 
-    authority: Literal["ingest", "operator"]
+    authority: Literal["ingest", "operator", "retrieval"]
     client_id: str
 
 
 def verify_token(authorization: str | None = Header(None)) -> CredentialIdentity:
-    """Authenticate either fixed authority without logging credential material."""
+    """Authenticate configured authorities without logging credential material."""
     scheme, _, credential = (authorization or "").partition(" ")
     credential = credential.strip()
     if scheme.lower() != "bearer" or not credential:
@@ -104,6 +126,12 @@ def verify_token(authorization: str | None = Header(None)) -> CredentialIdentity
         (
             settings.operator_token.get_secret_value(),
             CredentialIdentity("operator", "operator"),
+        ),
+        (
+            settings.retrieval_token.get_secret_value()
+            if settings.retrieval_token is not None
+            else "",
+            CredentialIdentity("retrieval", "retrieval"),
         ),
         (settings.api_bearer_token, CredentialIdentity("ingest", "legacy")),
         *(
@@ -123,6 +151,8 @@ def verify_ingest_token(
     identity: CredentialIdentity = Depends(verify_token),
 ) -> CredentialIdentity:
     """Capture accepts ingest clients and explicit operator demonstrations."""
+    if identity.authority not in {"ingest", "operator"}:
+        raise HTTPException(status_code=403, detail="Ingest authority required")
     return identity
 
 
@@ -133,6 +163,36 @@ def verify_operator_token(
     if identity.authority != "operator":
         raise HTTPException(status_code=403, detail="Operator authority required")
     return identity
+
+
+def verify_retrieval_token(
+    identity: CredentialIdentity = Depends(verify_token),
+) -> CredentialIdentity:
+    """Read the deployment's fixed source without broadening operator reads."""
+    if identity.authority not in {"retrieval", "operator"}:
+        raise HTTPException(status_code=403, detail="Retrieval authority required")
+    if settings.retrieval_session_id is None:
+        raise HTTPException(status_code=404, detail="Context retrieval is disabled")
+    return identity
+
+
+def verify_context_grant_token(
+    identity: CredentialIdentity = Depends(verify_token),
+) -> CredentialIdentity:
+    """Discovery and selection share the configured Session grant."""
+    if identity.authority not in {"retrieval", "operator"}:
+        raise HTTPException(status_code=403, detail="Retrieval authority required")
+    if not settings.context_session_ids:
+        raise HTTPException(status_code=404, detail="Context retrieval is disabled")
+    return identity
+
+
+def require_context_session(session_id: NonEmptyId) -> None:
+    """Refuse before any storage lookup, independent of Session existence."""
+    if session_id not in settings.context_session_ids:
+        raise HTTPException(
+            status_code=403, detail="Session is outside the context grant"
+        )
 
 
 def get_store(request: Request) -> FactStore:

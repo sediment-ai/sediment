@@ -32,12 +32,18 @@ from sqlalchemy.engine import Connection, Engine
 
 from . import evidence
 from .evidence import (
+    ContextCommitAnchor,
+    ContextCommitMatch,
+    ContextDiscoverySession,
+    ContextDiscoverySource,
     EvidenceCallMetadata,
+    EvidenceContextSource,
     EvidenceInventory,
     EvidenceManifest,
     EvidenceMessageSource,
     EvidenceRead,
     EvidenceReadError,
+    EvidenceReadItem,
     EvidenceReference,
     project_evidence_inventory,
     project_evidence_manifest,
@@ -1583,6 +1589,25 @@ class FactStore:
         with self.read_snapshot() as snapshot:
             return snapshot.read_evidence_inventory(org_id, session_id)
 
+    def read_context_source(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceContextSource:
+        """Read a complete bounded Session without hydrating raw Fact payloads."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_context_source(org_id, session_id)
+
+    def read_context_discovery_source(
+        self,
+        org_id: OrgId,
+        session_ids: Sequence[NonEmptyId] | set[NonEmptyId],
+        commit: ContextCommitAnchor | None = None,
+    ) -> ContextDiscoverySource:
+        """Read one bounded deployment grant without broadening its authority."""
+        org_id, session_ids = _context_discovery_scope(org_id, session_ids, commit)
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_context_discovery_source(org_id, session_ids, commit)
+
     def read_evidence_manifest(
         self, org_id: OrgId, session_id: NonEmptyId, inference_call_id: NonEmptyId
     ) -> EvidenceManifest:
@@ -2049,6 +2074,190 @@ class _FactSnapshot:
             found=found,
             calls=calls,
             quarantined_inference_calls=quarantined,
+        )
+
+    def read_context_source(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> EvidenceContextSource:
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        inventory = self.read_evidence_inventory(org_id, session_id)
+        if not inventory.found:
+            raise EvidenceReadError("evidence_unavailable")
+        conditions = _evidence_conditions(org_id, session_id)
+        _, size = _evidence_preflight(
+            self._connection,
+            conditions,
+            (*_EVIDENCE_METADATA_TEXT_COLUMNS, "input_messages", "output_messages"),
+        )
+        _check_evidence_bytes(size)
+        items = []
+        part_count = 0
+        rows = self._connection.execute(
+            select(
+                *_evidence_metadata_columns(),
+                inference_calls.c.input_messages,
+                inference_calls.c.output_messages,
+            ).where(*conditions)
+        ).mappings()
+        for row in rows:
+            for side in ("input", "output"):
+                for message_index, message in enumerate(
+                    _messages(row[f"{side}_messages"])
+                ):
+                    part_count += len(message.parts)
+                    # Keep counting the complete bounded source so refusal reports
+                    # an exact count; never build a successful partial population.
+                    if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+                        continue
+                    for part_index, part in enumerate(message.parts):
+                        items.append(
+                            EvidenceReadItem(
+                                reference=EvidenceReference(
+                                    row["inference_call_id"],
+                                    side,
+                                    message_index,
+                                    part_index,
+                                ),
+                                observed_at=row["observed_at"],
+                                role=message.role,
+                                finish_reason=message.finish_reason,
+                                part=part,
+                            )
+                        )
+        if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+            raise EvidenceReadError(
+                "retrieval_part_limit",
+                count=part_count,
+                limit=evidence.CONTEXT_SOURCE_PART_LIMIT,
+            )
+        return EvidenceContextSource(
+            session_id=inventory.session_id,
+            quarantine_revision=inventory.quarantine_revision,
+            visible_inference_calls=inventory.visible_inference_calls,
+            quarantined_inference_calls=inventory.quarantined_inference_calls,
+            items=tuple(items),
+        )
+
+    def read_context_discovery_source(
+        self,
+        org_id: OrgId,
+        session_ids: Sequence[NonEmptyId] | set[NonEmptyId],
+        commit: ContextCommitAnchor | None = None,
+    ) -> ContextDiscoverySource:
+        org_id, session_ids = _context_discovery_scope(org_id, session_ids, commit)
+        revision = self.quarantine_revision(org_id)
+        found = tuple(
+            self._connection.execute(
+                select(sessions.c.session_id)
+                .where(
+                    sessions.c.org_id == org_id, sessions.c.session_id.in_(session_ids)
+                )
+                .order_by(sessions.c.session_id)
+            ).scalars()
+        )
+        conditions = [
+            *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
+            inference_calls.c.session_id.in_(session_ids),
+        ]
+        count, size = _evidence_preflight(
+            self._connection,
+            conditions,
+            (
+                "session_id",
+                *_EVIDENCE_METADATA_TEXT_COLUMNS,
+                "input_messages",
+                "output_messages",
+            ),
+        )
+        if count > evidence.EVIDENCE_INVENTORY_LIMIT:
+            raise EvidenceReadError(
+                "evidence_inventory_limit",
+                count=count,
+                limit=evidence.EVIDENCE_INVENTORY_LIMIT,
+            )
+        matches_statement = None
+        if commit is not None:
+            matches_statement = _context_commit_matches(org_id, session_ids, commit)
+            match_source = matches_statement.subquery()
+            match_bytes = sum(
+                func.octet_length(match_source.c[name])
+                for name in ("session_id", "observation_id", "source_push_id")
+            )
+            size += int(
+                self._connection.execute(
+                    select(func.coalesce(func.sum(match_bytes), 0))
+                ).scalar_one()
+            )
+        _check_evidence_bytes(size)
+        total = self._connection.execute(
+            select(func.count())
+            .select_from(inference_calls)
+            .where(
+                inference_calls.c.org_id == org_id,
+                inference_calls.c.session_id.in_(session_ids),
+            )
+        ).scalar_one()
+        matches = (
+            {}
+            if matches_statement is None
+            else {
+                row["session_id"]: ContextCommitMatch(
+                    row["observation_id"], row["source_push_id"], row["captured_at"]
+                )
+                for row in self._connection.execute(matches_statement).mappings()
+            }
+        )
+        items = {session_id: [] for session_id in found}
+        part_count = 0
+        rows = self._connection.execute(
+            select(
+                inference_calls.c.session_id,
+                *_evidence_metadata_columns(),
+                inference_calls.c.input_messages,
+                inference_calls.c.output_messages,
+            ).where(*conditions)
+        ).mappings()
+        for row in rows:
+            for side in ("input", "output"):
+                for message_index, message in enumerate(
+                    _messages(row[f"{side}_messages"])
+                ):
+                    part_count += len(message.parts)
+                    if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+                        continue
+                    for part_index, part in enumerate(message.parts):
+                        items[row["session_id"]].append(
+                            EvidenceReadItem(
+                                EvidenceReference(
+                                    row["inference_call_id"],
+                                    side,
+                                    message_index,
+                                    part_index,
+                                ),
+                                row["observed_at"],
+                                message.role,
+                                message.finish_reason,
+                                part,
+                            )
+                        )
+        if part_count > evidence.CONTEXT_SOURCE_PART_LIMIT:
+            raise EvidenceReadError(
+                "retrieval_part_limit",
+                count=part_count,
+                limit=evidence.CONTEXT_SOURCE_PART_LIMIT,
+            )
+        return ContextDiscoverySource(
+            authorized_sessions=len(session_ids),
+            quarantine_revision=revision,
+            visible_inference_calls=count,
+            quarantined_inference_calls=int(total) - count,
+            sessions=tuple(
+                ContextDiscoverySession(
+                    identifier, tuple(items[identifier]), matches.get(identifier)
+                )
+                for identifier in found
+            ),
+            commit=commit,
         )
 
     def read_evidence_manifest(
@@ -3167,6 +3376,49 @@ _EVIDENCE_ID = TypeAdapter(NonEmptyId)
 _EVIDENCE_ORG = TypeAdapter(OrgId)
 _EVIDENCE_METADATA = TypeAdapter(EvidenceCallMetadata)
 _EVIDENCE_METADATA_TEXT_COLUMNS = ("inference_call_id", "model_provider", "model")
+
+
+def _context_discovery_scope(org_id, session_ids, commit):
+    if commit is not None and not isinstance(commit, ContextCommitAnchor):
+        raise ValueError("invalid context commit anchor")
+    return _EVIDENCE_ORG.validate_python(org_id), evidence.validate_context_session_ids(
+        session_ids
+    )
+
+
+def _context_commit_matches(org_id, session_ids, commit):
+    """Select direct identity witnesses; no repository-name resolution is implied."""
+    observations = session_commit_observations
+    return (
+        select(
+            observations.c.session_id,
+            observations.c.observation_id,
+            observations.c.source_push_id,
+            observations.c.captured_at,
+        )
+        .select_from(
+            observations.join(
+                pushes,
+                and_(
+                    pushes.c.org_id == observations.c.org_id,
+                    pushes.c.push_id == observations.c.source_push_id,
+                    *(
+                        pushes.c[name] == observations.c[name]
+                        for name in _REPOSITORY_COMPONENTS
+                    ),
+                ),
+            )
+        )
+        .where(
+            *_fact_conditions(org_id, FactTable.SESSION_COMMIT_OBSERVATIONS, False),
+            *_fact_conditions(org_id, FactTable.PUSHES, False),
+            observations.c.session_id.in_(session_ids),
+            observations.c.repository_provider == commit.repository_provider.value,
+            observations.c.repository_host == commit.repository_host,
+            observations.c.repository_id == commit.repository_id,
+            observations.c.commit_sha == commit.commit_sha,
+        )
+    )
 
 
 def _evidence_scope(org_id: OrgId, session_id: NonEmptyId) -> tuple[OrgId, NonEmptyId]:

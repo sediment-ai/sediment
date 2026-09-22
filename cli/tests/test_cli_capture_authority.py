@@ -132,7 +132,7 @@ def test_install_uses_only_proven_ingest_in_shell_fish_and_codex(tmp_path, monke
         assert path.stat().st_mode & 0o777 == 0o600
 
 
-@pytest.mark.parametrize("authority", ["ingest", "operator", None])
+@pytest.mark.parametrize("authority", ["ingest", "operator", "retrieval", None])
 def test_explicit_capture_override_requires_live_ingest_authority(
     tmp_path, monkeypatch, authority
 ):
@@ -281,3 +281,33 @@ def test_doctor_rejects_unreadable_identity_without_reproducing_response(
     attribution._doctor_server(findings)
     assert findings[0][0] == attribution.DOCTOR_FAIL
     assert "private-response" not in str(findings)
+
+
+@pytest.mark.parametrize("capture", [False, True])
+@pytest.mark.parametrize("plural", [False, True])
+def test_retrieval_credential_cannot_enroll_or_replace_operator_login(
+    app_transport, monkeypatch, capsys, capture, plural
+):
+    from pydantic import SecretStr
+    from sediment_api.config import settings
+
+    token = "retrieval-test-token-long-enough"
+    monkeypatch.setattr(settings, "retrieval_token", SecretStr(token))
+    monkeypatch.setattr(
+        settings, "retrieval_session_id", None if plural else "source-session"
+    )
+    monkeypatch.setattr(
+        settings, "retrieval_session_ids", ("source-session",) if plural else None
+    )
+    original = {
+        "current": "https://testserver",
+        "servers": {"https://testserver": {"token": OPERATOR}},
+    }
+    api_client.write_config(original)
+    monkeypatch.setattr(sys, "stdin", io.StringIO(token + "\n"))
+    args = ["login", "https://testserver", "--with-token"]
+    if capture:
+        args.append("--capture")
+    assert cli.main(args) == 1
+    assert "authority required" in capsys.readouterr().err
+    assert api_client.read_config() == original

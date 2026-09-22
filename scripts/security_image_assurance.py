@@ -580,6 +580,51 @@ printf '}\n'
 """
 
 
+GATEWAY_CALLER_PROBE = r"""
+import hashlib
+import json
+import os
+import sysconfig
+from pathlib import Path
+
+root = Path(sysconfig.get_paths()["purelib"])
+handler = root / "litellm/proxy/management_endpoints/sso/saml_sso.py"
+saml = root / "onelogin/saml2"
+
+
+def require_regular(path, *, directory=False):
+    if any(parent.is_symlink() for parent in (path, *path.parents)):
+        raise RuntimeError("gateway caller path is a symlink")
+    if not (path.is_dir() if directory else path.is_file()):
+        raise RuntimeError("gateway caller path is absent or not regular")
+
+
+def walk_error(error):
+    raise RuntimeError("gateway caller directory cannot be read") from None
+
+
+require_regular(handler)
+require_regular(saml, directory=True)
+files = [handler]
+for base, directories, names in os.walk(saml, followlinks=False, onerror=walk_error):
+    for directory in directories:
+        require_regular(Path(base) / directory, directory=True)
+    for name in names:
+        if name.endswith(".py"):
+            path = Path(base) / name
+            require_regular(path)
+            files.append(path)
+if len(files) == 1:
+    raise RuntimeError("gateway SAML caller sources are absent")
+result = {}
+for path in sorted(files):
+    with path.open("rb") as source:
+        digest = hashlib.file_digest(source, "sha256").hexdigest()
+    result[path.relative_to(root).as_posix()] = digest
+print(json.dumps(result, sort_keys=True))
+"""
+
+
 def _container_probe(image_id: str, script: str, *, root_user: bool = False) -> dict:
     # Read-search permits a complete file inventory through private directories.
     # It is exclusive to this networkless, read-only inventory container.
@@ -679,6 +724,31 @@ def probe_image(image_id: str, artifact: str, architecture: str) -> dict:
             "gzip_write_api_unreachable": gzip_write_api_unreachable(image_id),
         },
     }
+
+
+def probe_gateway_callers(image_id: str) -> dict[str, str]:
+    """Retain exact caller file identities for manual review, never a verdict."""
+    if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
+        raise AssuranceFailure("exact gateway image identifier required")
+    files = _container_probe(
+        image_id, "python - <<'PY'\n" + GATEWAY_CALLER_PROBE + "\nPY\n"
+    )
+    handler = "litellm/proxy/management_endpoints/sso/saml_sso.py"
+    if (
+        handler not in files
+        or not any(name.startswith("onelogin/saml2/") for name in files)
+        or any(
+            not isinstance(name, str)
+            or (name != handler and not name.startswith("onelogin/saml2/"))
+            or not name.endswith(".py")
+            or ".." in Path(name).parts
+            or not isinstance(digest, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", digest)
+            for name, digest in files.items()
+        )
+    ):
+        raise AssuranceFailure("gateway caller file evidence is incomplete")
+    return files
 
 
 def probe_postgres(image_id: str, root: Path = ROOT) -> dict:
@@ -811,6 +881,8 @@ def collect_assurance(
         "postgres": postgres,
         "deployment": deployment,
     }
+    if artifact == "gateway":
+        record["gateway_caller_files"] = probe_gateway_callers(image_id)
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{artifact}-{architecture}.assurance.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n"

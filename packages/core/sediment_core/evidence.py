@@ -3,19 +3,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from datetime import UTC
-from typing import Annotated, Literal
+import json
+import math
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import asdict, dataclass, is_dataclass
+from datetime import UTC, datetime
+from typing import Annotated, Any, Literal
 
 from pydantic import BeforeValidator, ConfigDict, Field, TypeAdapter
 
 from .models import (
     AwareDatetime,
+    CommitSha,
+    ForgeHost,
+    ForgeProvider,
     InferenceMessage,
     InferenceMessagePart,
     ModelName,
     NonEmptyId,
+    ProviderRepositoryId,
     ScalarIdentity,
 )
 
@@ -24,6 +30,8 @@ EVIDENCE_REFERENCE_LIMIT = 32
 EVIDENCE_REQUEST_BYTES_LIMIT = 64 * 1024
 EVIDENCE_SOURCE_BYTES_LIMIT = 8 * 1024 * 1024
 EVIDENCE_RESPONSE_BYTES_LIMIT = 1024 * 1024
+CONTEXT_SOURCE_PART_LIMIT = 2_048
+CONTEXT_DISCOVERY_SESSION_LIMIT = 32
 
 EvidenceSide = Literal["input", "output"]
 EvidenceIndex = Annotated[int, Field(strict=True, ge=0)]
@@ -146,6 +154,84 @@ class EvidenceMessageSource:
     messages: tuple[InferenceMessage, ...]
 
 
+@dataclass(frozen=True, kw_only=True)
+class EvidenceContextSource:
+    """Complete bounded visible Session content, owned by one read snapshot."""
+
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    session_id: NonEmptyId
+    quarantine_revision: EvidenceIndex
+    visible_inference_calls: EvidenceIndex
+    quarantined_inference_calls: EvidenceIndex
+    items: tuple[EvidenceReadItem, ...]
+
+
+@dataclass(frozen=True)
+class ContextCommitAnchor:
+    """An exact repository-qualified commit hint, never read authority."""
+
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    repository_provider: ForgeProvider
+    repository_host: ForgeHost
+    repository_id: ProviderRepositoryId
+    commit_sha: CommitSha
+
+    def __post_init__(self) -> None:
+        for name, kind in (
+            ("repository_provider", ForgeProvider),
+            ("repository_host", ForgeHost),
+            ("repository_id", ProviderRepositoryId),
+            ("commit_sha", CommitSha),
+        ):
+            object.__setattr__(
+                self, name, TypeAdapter(kind).validate_python(getattr(self, name))
+            )
+
+
+@dataclass(frozen=True)
+class ContextCommitMatch:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    observation_id: NonEmptyId
+    source_push_id: NonEmptyId
+    captured_at: AwareDatetime
+
+
+@dataclass(frozen=True)
+class ContextDiscoverySession:
+    """Visible canonical parts and an optional exact relationship witness."""
+
+    session_id: NonEmptyId
+    items: tuple[EvidenceReadItem, ...]
+    commit_match: ContextCommitMatch | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContextDiscoverySource:
+    """Complete bounded authorized population, owned by one read snapshot."""
+
+    authorized_sessions: EvidenceIndex
+    quarantine_revision: EvidenceIndex
+    visible_inference_calls: EvidenceIndex
+    quarantined_inference_calls: EvidenceIndex
+    sessions: tuple[ContextDiscoverySession, ...]
+    commit: ContextCommitAnchor | None
+
+
+def validate_context_session_ids(session_ids) -> tuple[NonEmptyId, ...]:
+    """Validate the complete deployment grant before entering a database read."""
+    if not isinstance(session_ids, (list, tuple, set, frozenset)) or not (
+        1 <= len(session_ids) <= CONTEXT_DISCOVERY_SESSION_LIMIT
+    ):
+        raise ValueError("invalid context Session grant")
+    normalized = tuple(_ID.validate_python(value) for value in session_ids)
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("invalid context Session grant")
+    return tuple(sorted(normalized))
+
+
 class EvidenceReadError(ValueError):
     """Content-free complete-response refusal, mapped to HTTP 409 by the API."""
 
@@ -157,6 +243,8 @@ class EvidenceReadError(ValueError):
             "evidence_response_limit",
             "evidence_unavailable",
             "evidence_part_absent",
+            "retrieval_part_limit",
+            "non_finite_number",
         ],
         **details: int,
     ) -> None:
@@ -259,7 +347,8 @@ def project_evidence_read(
             part = message.parts[reference.part_index]
         except IndexError:
             raise EvidenceReadError(
-                "evidence_part_absent", reference_index=index
+                "evidence_part_absent",
+                reference_index=index,
             ) from None
         items.append(
             EvidenceReadItem(
@@ -276,3 +365,79 @@ def project_evidence_read(
         quarantine_revision=quarantine_revision,
         items=tuple(items),
     )
+
+
+def validate_evidence_numbers(value: Any) -> None:
+    """Refuse non-finite JSON numbers without including captured values."""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise EvidenceReadError("non_finite_number")
+    if isinstance(value, dict):
+        for key, item in value.items():
+            validate_evidence_numbers(key)
+            validate_evidence_numbers(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            validate_evidence_numbers(item)
+
+
+def _json_chunks(value: Any) -> Iterator[str]:
+    """Match compact ASCII JSON while bounding each escaped string fragment."""
+    if isinstance(value, str):
+        yield '"'
+        # JSONEncoder.iterencode emits a whole scalar at once. Split before
+        # escaping so an oversized source part cannot allocate its full encoding.
+        for offset in range(0, len(value), 1024):
+            yield json.dumps(value[offset : offset + 1024], ensure_ascii=True)[1:-1]
+        yield '"'
+    elif isinstance(value, (list, tuple)):
+        yield "["
+        for index, item in enumerate(value):
+            if index:
+                yield ","
+            yield from _json_chunks(item)
+        yield "]"
+    elif isinstance(value, dict):
+        yield "{"
+        for index, (key, item) in enumerate(value.items()):
+            if index:
+                yield ","
+            if not isinstance(key, str):
+                if key is None or isinstance(key, (bool, int, float)):
+                    key = json.dumps(key, allow_nan=False)
+                else:
+                    raise TypeError("unsupported query response object key")
+            yield from _json_chunks(key)
+            yield ":"
+            yield from _json_chunks(item)
+        yield "}"
+    elif isinstance(value, datetime):
+        yield from _json_chunks(TypeAdapter(datetime).dump_python(value, mode="json"))
+    elif value is None or isinstance(value, (bool, int, float)):
+        yield json.dumps(value, allow_nan=False, separators=(",", ":"))
+    else:
+        raise TypeError(f"unsupported query response value: {type(value).__name__}")
+
+
+def encode_evidence_json(
+    value: Any,
+    contract: Any,
+    *,
+    exclude_none: bool = False,
+    max_bytes: int | None = None,
+) -> bytes:
+    """Validate a Python contract, then emit exact bounded strict ASCII JSON.
+
+    Python-mode serialization preserves descriptive surrogates for escaping.
+    HTTP exception translation belongs to the API, not this shared encoder.
+    """
+    adapter = TypeAdapter(contract)
+    validated = adapter.validate_python(asdict(value) if is_dataclass(value) else value)
+    payload = adapter.dump_python(validated, mode="python", exclude_none=exclude_none)
+    validate_evidence_numbers(payload)
+    bounded = bytearray()
+    for chunk in _json_chunks(payload):
+        # All output is ASCII; characters and bytes have the same length.
+        if max_bytes is not None and len(bounded) + len(chunk) > max_bytes:
+            raise EvidenceReadError("evidence_response_limit", limit=max_bytes)
+        bounded.extend(chunk.encode("ascii"))
+    return bytes(bounded)

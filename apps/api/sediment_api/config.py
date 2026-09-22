@@ -5,9 +5,10 @@ import json
 import re
 from typing import Annotated
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-from sediment_core import ForgeHost, normalize_org_id
+from sediment_core import ForgeHost, NonEmptyId, normalize_org_id
+from sediment_core.evidence import CONTEXT_DISCOVERY_SESSION_LIMIT
 
 # Token values that mean "operator never configured a real secret".
 _INSECURE_DEFAULTS = {
@@ -27,6 +28,7 @@ _CLIENT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$")
 # unthrottled online guesser (see docs/adr/0018) meaningfully more than a
 # short word does.
 _MIN_SECRET_LENGTH = 24
+_RETRIEVAL_GRANT_BYTES_LIMIT = 16 * 1024
 
 
 class Settings(BaseSettings):
@@ -63,6 +65,9 @@ class Settings(BaseSettings):
     # Auth
     api_bearer_token: str = Field(default="", repr=False)
     operator_token: SecretStr = SecretStr("")
+    retrieval_token: SecretStr | None = None
+    retrieval_session_id: NonEmptyId | None = None
+    retrieval_session_ids: Annotated[list[NonEmptyId] | None, NoDecode] = None
     ingest_tokens: Annotated[dict[str, SecretStr], NoDecode] = Field(
         default_factory=dict
     )
@@ -113,6 +118,48 @@ class Settings(BaseSettings):
     def _strip_operator_token(cls, value: SecretStr) -> SecretStr:
         return SecretStr(value.get_secret_value().strip())
 
+    @field_validator("retrieval_token")
+    @classmethod
+    def _strip_retrieval_token(cls, value: SecretStr | None) -> SecretStr | None:
+        return None if value is None else SecretStr(value.get_secret_value().strip())
+
+    @field_validator("retrieval_session_ids", mode="before")
+    @classmethod
+    def _parse_retrieval_sessions(cls, value):
+        if value is None:
+            return None
+        try:
+            encoded = (
+                value
+                if isinstance(value, str)
+                else json.dumps(value, ensure_ascii=False)
+            )
+            if len(encoded.encode("utf-8")) > _RETRIEVAL_GRANT_BYTES_LIMIT:
+                raise ValueError
+            if isinstance(value, str):
+                value = json.loads(value)
+            if (
+                not isinstance(value, list)
+                or not 1 <= len(value) <= CONTEXT_DISCOVERY_SESSION_LIMIT
+                or any(not isinstance(item, str) for item in value)
+            ):
+                raise ValueError
+            normalized = TypeAdapter(list[NonEmptyId]).validate_python(value)
+            if len(set(normalized)) != len(normalized):
+                raise ValueError
+        except (ValueError, TypeError, RecursionError):
+            raise ValueError(
+                "retrieval_session_ids must be a JSON array of 1–32 unique valid IDs within 16 KiB"
+            ) from None
+        return normalized
+
+    @property
+    def context_session_ids(self) -> tuple[NonEmptyId, ...]:
+        """The deployment grant, with no first-member singleton default."""
+        if self.retrieval_session_id is not None:
+            return (self.retrieval_session_id,)
+        return tuple(sorted(self.retrieval_session_ids or ()))
+
     @field_validator("ingest_tokens", mode="before")
     @classmethod
     def _parse_ingest_tokens(cls, value):
@@ -140,7 +187,7 @@ class Settings(BaseSettings):
             if (
                 not isinstance(client_id, str)
                 or not _CLIENT_ID.fullmatch(client_id)
-                or client_id in {"operator", "legacy"}
+                or client_id in {"operator", "legacy", "retrieval"}
             ):
                 raise ValueError(
                     "ingest_tokens contains an invalid or reserved client identifier"
@@ -151,6 +198,40 @@ class Settings(BaseSettings):
                 raise ValueError("ingest_tokens must map client identifiers to secrets")
             normalized[client_id] = SecretStr(secret.strip())
         return normalized
+
+    @model_validator(mode="after")
+    def _validate_retrieval(self) -> "Settings":
+        # Agent read authority never inherits development-mode exemptions.
+        source_count = sum(
+            source is not None
+            for source in (self.retrieval_session_id, self.retrieval_session_ids)
+        )
+        if source_count != int(self.retrieval_token is not None):
+            raise ValueError(
+                "retrieval_token requires exactly one of retrieval_session_id or retrieval_session_ids"
+            )
+        if self.retrieval_token is None:
+            return self
+        token = self.retrieval_token.get_secret_value()
+        if (
+            token.lower() in _INSECURE_DEFAULTS
+            or len(token) < _MIN_SECRET_LENGTH
+            or any(not 33 <= ord(char) <= 126 for char in token)
+        ):
+            raise ValueError(
+                "retrieval_token must be a strong printable ASCII secret of at least 24 characters"
+            )
+        other_secrets = {
+            self.operator_token.get_secret_value(),
+            self.api_bearer_token,
+            self.github_webhook_secret,
+            *(secret.get_secret_value() for secret in self.ingest_tokens.values()),
+        }
+        if token in other_secrets:
+            raise ValueError(
+                "retrieval_token must differ from all other configured secrets"
+            )
+        return self
 
     def validate_production_security(self) -> list[str]:
         """Return human-readable security problems for a production boot.

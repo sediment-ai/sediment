@@ -63,6 +63,13 @@ pi, and Copilot Chat. Available signals vary by agent.
 [Architecture and network boundaries](docs/explanation/architecture.md) ·
 [Captured data and privacy](docs/explanation/how-capture-works.md)
 
+A pi agent can call `sediment_retrieve_context` to request keyword-selected
+captured parts from one authorized previous Session. An operator can also select
+parts with `sediment evidence inventory`, `inspect`, and `fetch`. Both paths use
+an intact workspace; Sediment doesn't restore files or infer the next task.
+Available evidence depends on the capture setup. The continuation guide defines
+the authority, limits, and controlled comparison for measuring task benefit.
+
 ## Development
 
 [Contributing](CONTRIBUTING.md) ·

@@ -145,6 +145,13 @@ only for a Session routed through a gateway. The
 provides a concrete `models.json` entry. [Configure local capture](local-capture.md)
 defines the shared endpoint, git hook, and transcript privacy behavior.
 
+To enable agent-requested evidence from one previous Session, configure the
+independent `SEDIMENT_RETRIEVAL_ENDPOINT` and `SEDIMENT_RETRIEVAL_TOKEN` pair
+in an isolated agent environment. This registers `sediment_retrieve_context`
+without changing capture settings. The [continuation guide](../operate/resume-with-evidence.md#enable-agent-requested-retrieval)
+defines source authorization and response limits. Retrieval never falls back to
+your ingest token or operator login.
+
 ## GitHub Copilot Chat
 
 Sediment translates Copilot Chat's `copilot_chat.edit.feedback`,

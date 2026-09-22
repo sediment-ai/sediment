@@ -2,12 +2,18 @@
 """Sediment core: fact models and the PostgreSQL fact store."""
 
 from .evidence import (
+    ContextCommitAnchor,
+    ContextCommitMatch,
+    ContextDiscoverySession,
+    ContextDiscoverySource,
     EVIDENCE_INVENTORY_LIMIT,
     EVIDENCE_REFERENCE_LIMIT,
     EVIDENCE_REQUEST_BYTES_LIMIT,
     EVIDENCE_SOURCE_BYTES_LIMIT,
     EVIDENCE_RESPONSE_BYTES_LIMIT,
     EvidenceCallMetadata,
+    EvidenceContextSource,
+    encode_evidence_json,
     EvidenceInventory,
     EvidenceManifest,
     EvidenceManifestMessage,
@@ -97,12 +103,18 @@ from .store import (
 )
 
 __all__ = [
+    "ContextCommitAnchor",
+    "ContextCommitMatch",
+    "ContextDiscoverySession",
+    "ContextDiscoverySource",
     "EVIDENCE_INVENTORY_LIMIT",
     "EVIDENCE_REFERENCE_LIMIT",
     "EVIDENCE_REQUEST_BYTES_LIMIT",
     "EVIDENCE_SOURCE_BYTES_LIMIT",
     "EVIDENCE_RESPONSE_BYTES_LIMIT",
     "EvidenceCallMetadata",
+    "EvidenceContextSource",
+    "encode_evidence_json",
     "EvidenceInventory",
     "EvidenceManifest",
     "EvidenceManifestMessage",

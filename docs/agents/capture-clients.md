@@ -1,7 +1,7 @@
 # What a harness client sends
 
 Implement sections 1–3 only where the harness supplies evidence. Sections 4–5
-cover gateway calls. The pi shim (`shims/pi/`) is the reference client.
+cover gateway calls. The pi shim (`shims/pi/`) is the reference client. Its independent `SEDIMENT_RETRIEVAL_ENDPOINT` / `SEDIMENT_RETRIEVAL_TOKEN` opt-in registers `sediment_retrieve_context` under [ADR 0022](../adr/0022-agent-requested-session-context.md); reads never substitute for capture.
 
 Contributor doc. It is not published to the docs site.
 

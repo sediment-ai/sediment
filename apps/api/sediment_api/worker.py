@@ -26,6 +26,12 @@ from sediment_core import (
 from sediment_core.models import AwareDatetime, CommitSha, RepoSlug, RequiredRepoSlug
 from sediment_core.postgres_engine import create_postgres_engine
 from sediment_derive import MirrorManager
+from sediment_derive.context_retrieval import (
+    ContextDiscoveryResult,
+    ContextRetrievalResult,
+    discover_context,
+    retrieve_context,
+)
 from sediment_derive.repository_identity import (
     REPOSITORY_IDENTITY_SKIP_REASONS,
     RepositoryIdentity,
@@ -39,6 +45,7 @@ from sqlalchemy.exc import (
 )
 
 from .config import settings
+from .deps import require_context_session
 from .workers import MAX_REQUEST_BYTES
 from .routers import forge, query, reports
 from .services.operational_reports import (
@@ -107,6 +114,9 @@ class WorkerRequest:
         "evidence-inventory",
         "evidence-manifest",
         "evidence-read",
+        "context-retrieve",
+        "context-discover",
+        "context-selected",
     ]
     payload: dict[str, Any]
 
@@ -114,6 +124,55 @@ class WorkerRequest:
 def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
     payload = request.payload
     match request.kind:
+        case "context-discover":
+            selection = query.ContextDiscoveryRequest.model_validate(payload)
+            session_ids = settings.context_session_ids
+            if not session_ids:
+                raise HTTPException(
+                    status_code=404, detail="Context retrieval is disabled"
+                )
+            try:
+                with store.read_snapshot() as snapshot:
+                    source = snapshot.read_context_discovery_source(
+                        settings.org_id, session_ids, commit=selection.commit
+                    )
+                    value = discover_context(
+                        source, selection.query, max_bytes=selection.max_bytes
+                    )
+                    return query._query_response(
+                        value, ContextDiscoveryResult, max_bytes=selection.max_bytes
+                    )
+            except EvidenceReadError as exc:
+                raise HTTPException(status_code=409, detail=exc.detail) from None
+        case "context-retrieve" | "context-selected":
+            if request.kind == "context-selected":
+                selection = query.ContextSelectedRequest.model_validate(payload)
+                if not settings.context_session_ids:
+                    raise HTTPException(
+                        status_code=404, detail="Context retrieval is disabled"
+                    )
+                require_context_session(selection.session_id)
+                session_id = selection.session_id
+            else:
+                selection = query.ContextRetrievalRequest.model_validate(payload)
+                if settings.retrieval_session_id is None:
+                    raise HTTPException(
+                        status_code=404, detail="Context retrieval is disabled"
+                    )
+                session_id = TypeAdapter(NonEmptyId).validate_python(
+                    settings.retrieval_session_id
+                )
+            try:
+                with store.read_snapshot() as snapshot:
+                    source = snapshot.read_context_source(settings.org_id, session_id)
+                    value = retrieve_context(
+                        source, selection.query, selection.max_bytes
+                    )
+                    return query._query_response(
+                        value, ContextRetrievalResult, max_bytes=selection.max_bytes
+                    )
+            except EvidenceReadError as exc:
+                raise HTTPException(status_code=409, detail=exc.detail) from None
         case "evidence-inventory" | "evidence-manifest" | "evidence-read":
             session_id = TypeAdapter(NonEmptyId).validate_python(payload["session_id"])
             try:

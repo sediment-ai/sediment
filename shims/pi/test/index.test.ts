@@ -178,3 +178,25 @@ test("installed sediment command drives attribution and transcripts", async () =
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("source-installed retrieval registers without node_modules and preserves capture handlers", () => {
+  const root = mkdtempSync(join(tmpdir(), "sediment-pi-retrieval-source-"));
+  try {
+    cpSync(new URL("../index.ts", import.meta.url), join(root, "index.ts"));
+    cpSync(new URL("../lib", import.meta.url), join(root, "lib"), { recursive: true });
+    writeFileSync(join(root, "package.json"), '{"type":"module"}');
+    for (const token of ["restricted-token", ""]) {
+      const output = execFileSync(process.execPath, ["--input-type=module", "-e", `
+        import sedimentPi from "./index.ts";
+        const handlers = new Map();
+        const tools = [];
+        sedimentPi({ on: (name, handler) => handlers.set(name, handler), registerTool: (tool) => tools.push(tool.name) });
+        console.log(JSON.stringify({ tools, captures: handlers.has("tool_execution_end") && handlers.has("session_shutdown") && handlers.has("before_provider_headers") }));
+      `], {
+        cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, SEDIMENT_RETRIEVAL_ENDPOINT: "https://retrieval.example.com", SEDIMENT_RETRIEVAL_TOKEN: token },
+      });
+      assert.deepEqual(JSON.parse(output), { tools: token ? ["sediment_retrieve_context"] : [], captures: true });
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

@@ -13,21 +13,28 @@ from sediment_derive.session_commit import bind_session_commit_keys_result
 import base64
 import binascii
 import json
-import math
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 from sediment_core import (
     AgentHarness,
     CIProvider,
     CIResult,
+    ContextCommitAnchor,
     FactStore,
     FactTable,
     EVIDENCE_REFERENCE_LIMIT,
@@ -49,6 +56,7 @@ from sediment_core import (
     WorkflowName,
     normalize_commit_sha,
 )
+from sediment_core.evidence import EvidenceReadError, encode_evidence_json
 from sediment_core.models import AwareDatetime
 from sediment_core.store import (
     CIOutcomeProjection,
@@ -71,6 +79,15 @@ from sediment_derive.repository_context import (
     read_repository_context,
     read_repository_witness_context,
 )
+from sediment_derive.context_retrieval import (
+    CONTEXT_DEFAULT_RESPONSE_BYTES,
+    CONTEXT_MIN_RESPONSE_BYTES,
+    CONTEXT_MAX_RESPONSE_BYTES,
+    CONTEXT_QUERY_BYTES_LIMIT,
+    ContextRetrievalResult,
+    ContextDiscoveryResult,
+    context_query_tokens,
+)
 from sediment_derive.repository_identity import (
     RepositoryIdentity,
     RepositoryIdentitySkipReason,
@@ -83,7 +100,13 @@ from sediment_derive.repository_identity import (
 )
 
 from ..config import settings
-from ..deps import get_store, verify_operator_token
+from ..deps import (
+    get_store,
+    require_context_session,
+    verify_context_grant_token,
+    verify_operator_token,
+    verify_retrieval_token,
+)
 
 _SESSION_DOSSIER_LIMIT = 500
 
@@ -101,19 +124,6 @@ _QUERY_REPRESENTATION_RESPONSES = {
 }
 
 
-def _validate_query_numbers(value: Any) -> None:
-    """Decline only non-finite numbers, including nested content and object keys."""
-    if isinstance(value, float) and not math.isfinite(value):
-        raise HTTPException(status_code=409, detail={"reason": "non_finite_number"})
-    if isinstance(value, dict):
-        for key, item in value.items():
-            _validate_query_numbers(key)
-            _validate_query_numbers(item)
-    elif isinstance(value, (list, tuple)):
-        for item in value:
-            _validate_query_numbers(item)
-
-
 def _query_response(
     value: Any,
     contract: Any,
@@ -121,41 +131,13 @@ def _query_response(
     exclude_none: bool = False,
     max_bytes: int | None = None,
 ) -> Response:
-    """Validate the declared response, then preserve content through ASCII JSON.
-
-    Pydantic's JSON serializer requires UTF-8 for every string. Python-mode
-    serialization keeps canonical descriptive surrogates for JSON escaping.
-    """
-    adapter = TypeAdapter(contract)
-    validated = adapter.validate_python(asdict(value) if is_dataclass(value) else value)
-    payload = adapter.dump_python(validated, mode="python", exclude_none=exclude_none)
-    _validate_query_numbers(payload)
-
-    def encode_timestamp(item: Any) -> str:
-        if isinstance(item, datetime):
-            return TypeAdapter(datetime).dump_python(item, mode="json")
-        raise TypeError(f"unsupported query response value: {type(item).__name__}")
-
-    encoder = json.JSONEncoder(
-        ensure_ascii=True,
-        allow_nan=False,
-        separators=(",", ":"),
-        default=encode_timestamp,
-    )
-    if max_bytes is None:
-        content = encoder.encode(payload)
-    else:
-        # All output is ASCII, so character count equals byte count. Retain
-        # at most the admitted bytes even when one escaped scalar exceeds it.
-        bounded = bytearray()
-        for chunk in encoder.iterencode(payload):
-            if len(bounded) + len(chunk) > max_bytes:
-                raise HTTPException(
-                    status_code=409,
-                    detail={"reason": "evidence_response_limit", "limit": max_bytes},
-                )
-            bounded.extend(chunk.encode("ascii"))
-        content = bytes(bounded)
+    """Publish the shared lossless encoding with HTTP refusal translation."""
+    try:
+        content = encode_evidence_json(
+            value, contract, exclude_none=exclude_none, max_bytes=max_bytes
+        )
+    except EvidenceReadError as exc:
+        raise HTTPException(status_code=409, detail=exc.detail) from None
     return Response(content=content, media_type="application/json")
 
 
@@ -261,6 +243,154 @@ async def query_evidence_read(
     """
     return await _evidence_worker_response(
         request, "evidence-read", body.model_dump(mode="python")
+    )
+
+
+class ContextRetrievalRequest(BaseModel):
+    """Question and byte budget; the deployment fixes the source Session."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: EvidenceSchemaVersion
+    query: str = Field(strict=True, max_length=CONTEXT_QUERY_BYTES_LIMIT)
+    max_bytes: int = Field(
+        default=CONTEXT_DEFAULT_RESPONSE_BYTES,
+        strict=True,
+        ge=CONTEXT_MIN_RESPONSE_BYTES,
+        le=CONTEXT_MAX_RESPONSE_BYTES,
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _declared_fields_only(cls, value):
+        # Extra-field locations would echo arbitrary caller-supplied key text.
+        if isinstance(value, dict) and value.keys() - cls.model_fields.keys():
+            raise ValueError("unsupported context request field")
+        return value
+
+    @field_validator("query")
+    @classmethod
+    def _valid_query(cls, value: str) -> str:
+        context_query_tokens(value)
+        return value
+
+
+@router.post(
+    "/context",
+    response_model=ContextRetrievalResult,
+    responses={
+        400: {"description": "Malformed JSON body."},
+        403: {"description": "Retrieval or operator authority required."},
+        404: {"description": "Context retrieval is disabled."},
+        409: {
+            "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+        },
+        413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
+        503: {
+            "description": "Database unavailable, or work capacity or execution budget exceeded."
+        },
+    },
+)
+async def query_context(
+    body: ContextRetrievalRequest,
+    request: Request,
+    _: None = Depends(verify_retrieval_token),
+) -> Response:
+    """Select exact evidence from the deployment's one configured Session.
+
+    Version 1 accepts English/code keywords, excludes reasoning, and returns
+    at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB).
+    Scores count distinct token overlap; capture completeness remains unknown.
+    The operation rechecks Quarantine, persists nothing, and shares the
+    evidence worker admission limit and 30-second deadline.
+    """
+    return await _evidence_worker_response(
+        request, "context-retrieve", body.model_dump(mode="python")
+    )
+
+
+class ContextDiscoveryRequest(ContextRetrievalRequest):
+    """Search only the deployment grant, with an optional exact commit anchor."""
+
+    commit: ContextCommitAnchor | None = None
+
+    @field_validator("commit", mode="before")
+    @classmethod
+    def _declared_commit_fields_only(cls, value):
+        if isinstance(value, dict) and value.keys() - {
+            "repository_provider",
+            "repository_host",
+            "repository_id",
+            "commit_sha",
+        }:
+            raise ValueError("unsupported commit anchor field")
+        return value
+
+
+class ContextSelectedRequest(ContextRetrievalRequest):
+    """Select one authorized Session without changing the retrieval contract."""
+
+    session_id: NonEmptyId = Field(strict=True)
+
+
+_CONTEXT_GRANT_RESPONSES = {
+    400: {"description": "Malformed JSON body."},
+    401: {"description": "Unknown or absent bearer credential."},
+    403: {
+        "description": "Retrieval or operator authority required, or Session outside the configured grant."
+    },
+    404: {"description": "Context retrieval is disabled."},
+    409: {
+        "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+    },
+    413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
+    503: {
+        "description": "Database unavailable, or shared work capacity or 30-second execution budget exceeded."
+    },
+}
+
+
+@router.post(
+    "/context/discover",
+    response_model=ContextDiscoveryResult,
+    responses=_CONTEXT_GRANT_RESPONSES,
+)
+async def query_context_discover(
+    body: ContextDiscoveryRequest,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Find at most eight Sessions within the deployment's explicit grant.
+
+    Version 1 searches English/code keywords under aggregate source bounds.
+    An optional provider/host/repository-ID/SHA anchor prioritizes directly
+    observed commit relationships. Each candidate carries exact evidence or
+    an observed commit witness. Discovery persists nothing and grants no access.
+    """
+    return await _evidence_worker_response(
+        request, "context-discover", body.model_dump(mode="python")
+    )
+
+
+@router.post(
+    "/context/selected",
+    response_model=ContextRetrievalResult,
+    responses=_CONTEXT_GRANT_RESPONSES,
+)
+async def query_context_selected(
+    body: ContextSelectedRequest,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Retrieve exact evidence from one explicitly selected authorized Session.
+
+    Membership is checked before storage access and again in the worker.
+    The read rechecks Quarantine and retains the singleton retrieval response.
+    Evidence remains historical data, not instructions to execute.
+    """
+    require_context_session(body.session_id)
+    return await _evidence_worker_response(
+        request, "context-selected", body.model_dump(mode="python")
     )
 
 

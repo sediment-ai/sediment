@@ -5,6 +5,284 @@ private evidence packet for an agent. This guide also describes an optional
 controlled restart in pi with the original workspace intact. Evidence reads
 don't recover a lost workspace or establish complete Session capture.
 
+## Enable agent-requested retrieval
+
+To let a fresh pi Session choose its own evidence, enable the fixed source
+Session in your [deployment settings](deploy.md). Restart the API after setting
+`SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_ID`. The source Session
+must contain captured Inference calls. Transcript capture alone is insufficient.
+
+In the isolated agent environment, set `SEDIMENT_RETRIEVAL_ENDPOINT` to your API
+base URL and `SEDIMENT_RETRIEVAL_TOKEN` to that restricted credential. Both are
+independent of capture configuration. Use HTTPS except for literal loopback.
+The extension rejects redirects and doesn't read operator login or deployment
+configuration. Keep those credentials and files outside the agent environment.
+
+The pi extension registers `sediment_retrieve_context`. The agent supplies a
+question with relevant English/code terms and an optional `max_bytes` budget.
+The default budget is 16 KiB; allowed values are 4–64 KiB. The response contains
+at most eight exact captured parts and their occurrence references. It doesn't
+generate an answer. The agent can use those parts while continuing work in a
+preserved workspace.
+
+The keyword selector excludes reasoning, counts non-finite tool values, and
+suppresses repeated content within each response. Coverage describes the entire
+visible scan within fixed source limits: 1,000 calls, 8 MiB of selected stored
+columns, and 2,048 parts. Overflow refuses the request. Repeated histories count
+toward source capacity. Selection can omit relevant evidence; `no_match` doesn't
+prove absence. `budget_exhausted` means that no positive match fits. Capture
+completeness remains unknown. Read the [HTTP contract](../reference/api.md#post-querycontext)
+for closed errors and response fields.
+
+The server shares one evidence worker across all evidence reads. It applies a
+30-second deadline. The tool combines pi cancellation with a 35-second deadline
+and makes no automatic retry. Each request rechecks Quarantine. Exact JSON text
+passes through the tool without rounding large integers. The tool doesn't replay
+historical commands or turn stored roles into privileged instructions.
+
+This tool supports a controlled continuation experiment; passing transport tests
+doesn't establish continuation benefit or lower cost. The
+[comparison specification](../superpowers/specs/2026-09-21-session-context-retrieval-design.md#controlled-continuation-evaluation)
+requires three repetitions across no-history, full-history, and requested-evidence
+arms with independent final checks. Keep detailed records private. Publish all
+outcomes and report unavailable measurements explicitly.
+
+## Discover a previous Session
+
+If the relevant source Session is unknown to the agent, configure a bounded set
+of authorized Sessions on the API. Each source needs captured Inference calls
+to supply conversation content. The operator chooses the permitted set; a
+repository name, commit, or model judgment cannot expand it.
+
+1. In the private deployment configuration, set a fresh
+   `SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_IDS` to a JSON array
+   of 1–32 actual Session IDs. Remove `SEDIMENT_RETRIEVAL_SESSION_ID` and restart
+   the API. Changing the set requires token rotation and another restart.
+2. In the isolated agent environment, set the independent endpoint/token pair
+   from the fixed-Session procedure and set `SEDIMENT_RETRIEVAL_DISCOVERY=true`.
+   Leave the Session list, operator credentials, and database settings outside
+   that environment.
+3. Have the agent call `sediment_discover_context` with task keywords. If it has
+   a complete repository-qualified commit, it can also supply `commit` with
+   `repository_provider`, `repository_host`, `repository_id`, and `commit_sha`.
+   A SHA or repository name alone cannot identify a repository lifetime.
+4. Inspect the returned candidates, then call `sediment_retrieve_context` with
+   the selected `session_id` and a more specific query. The selected read checks
+   authorization and Quarantine again. Use its exact evidence while continuing
+   work in the preserved workspace.
+
+Discovery returns at most eight candidate Sessions. A candidate has an exact
+whole-part preview, a recorded commit relationship, or both. Commit matches
+rank first; keyword matches also find uncommitted work. A commit-only candidate
+has no invented preview and may have no available conversation content.
+The recorded observation and source Push must both remain visible.
+
+The complete authorized set shares the 1,000-call, 8 MiB, and 2,048-part source
+limits. These limits do not apply separately to each Session. Source overflow
+refuses the complete operation; narrow the configured set and rotate its token.
+The requested response budget remains 4–64 KiB, default 16 KiB. Closed counts
+report unmatched or omitted candidates. The selector does not summarize or clip
+previews. No match does not establish absence or capture completeness.
+
+The [discovery contract](../adr/0025-authorized-session-candidate-discovery.md)
+describes authority and source identity. The keyword baseline makes no external
+model call and adds no learned ranking. Git remains the source of code evolution;
+the optional commit anchor only exposes recorded Session relationships.
+
+To verify the native discovery path from a checkout, install the locked pi
+dependencies and put Node 24 on `PATH`. Set `SEDIMENT_TEST_DATABASE_URL` to a
+disposable PostgreSQL test cluster, then run
+`uv run python scripts/pi_context_discovery_acceptance.py`. The check creates
+and removes its own database and loopback API. A scripted pi model discovers a
+previously unspecified source, receives exact content, and checks an
+out-of-grant refusal. Only the API receives database settings. This check uses
+development mode and synthetic Facts; it proves integration, not autonomous
+model judgment, production database-role confinement, or lower inference cost.
+
+## Run the maintained continuation comparison
+
+The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable
+Python task through three repetitions of each comparison arm. It supports a
+local Docker deployment and the installed Ollama model
+`ministral-3:14b-instruct-2512-q4_K_M`. It doesn't download a model. Keep inference,
+gateway capture, the API, and private records inside your perimeter.
+
+1. Prepare a separate API and PostgreSQL database with operator and ingest
+   credentials. Keep retrieval disabled until the source Session exists.
+   Configure a separate LiteLLM gateway with an OpenAI-compatible route to the
+   local model and the existing `litellm/sediment_callback.py` capture callback.
+   The bundled Anthropic gateway recipe doesn't provide this model route.
+   Disable gateway retries and fallbacks. Configure the model context to 16,384
+   tokens and allow one request at a time. Record the Ollama version, backend model
+   alias, installed model digest, and exact template SHA-256 hash alongside the
+   private freeze record. A gateway model name can resolve to a different backend
+   alias. Verify native tool calls through the same streaming transport; printed
+   tool syntax doesn't execute a tool.
+2. Build the agent and request-counter images from the checkout:
+
+   ```bash
+   docker build -f shims/pi/Dockerfile.evaluation -t sediment-evaluation-agent .
+   docker build -t sediment-evaluation-gate .
+   docker image inspect sediment-evaluation-agent --format '{{.Id}}'
+   docker image inspect sediment-evaluation-gate --format '{{.Id}}'
+   ```
+
+   Record both immutable image IDs. The agent image pins pi, Node.js, and Python.
+   The controller uses the API image's Python and HTTP client for its separate
+   request counter; it doesn't start an API in that container.
+   The pinned pi profile preserves empty assistant content during replay through
+   `requiresAssistantAfterToolResult`. These single-user, text-only runs don't
+   exercise that flag's additional message-insertion paths. The controller hash
+   in `freeze.json` records the profile; the prefix check remains exact.
+3. Create a mode-`0600` JSON configuration outside the repository and agent
+   environments. Replace each placeholder with the corresponding local value:
+
+   ```json
+   {
+     "schema_version": 1,
+     "agent_image": "sha256:<agent image ID>",
+     "gate_image": "sha256:<counter image ID>",
+     "gateway_url": "http://host.docker.internal:4011/v1",
+     "gateway_token": "<gateway credential>",
+     "api_url": "http://host.docker.internal:8011",
+     "operator_api_url": "http://127.0.0.1:8011",
+     "operator_token": "<operator credential>",
+     "retrieval_token": "<distinct restricted retrieval credential>",
+     "model": "ministral-3:14b-instruct-2512-q4_K_M"
+   }
+   ```
+
+   `api_url` and `gateway_url` must work from Docker; `operator_api_url` must
+   work from the host. The controller accepts only local endpoints and immutable
+   image references. Agent containers receive temporary per-run credentials.
+   Upstream credentials, raw source Session files, and evaluation answers stay
+   outside them. Only arm B receives full captured history in its initial prompt.
+   Before capturing the comparison source, [verify native tool use](#verify-native-tool-use)
+   on the unrelated preflight fixture.
+4. Start and verify the source Session. Choose an output directory that doesn't
+   exist. The default task is `invoice`. If you choose the environment profile
+   parser task, add `--task env-profile` to both the `source` and `run` commands.
+   For the [instructed-lookup protocol](#compare-instructed-retrieval), use
+   `--task shipment-totals` on both commands:
+
+   ```bash
+   umask 077
+   uv run python scripts/session_context_retrieval_eval.py source \
+     --config /absolute/private/evaluation.json \
+     --output /absolute/private/source-run
+   ```
+
+   Success prints `status: captured` and the actual `source_session_id`. The
+   controller requires captured constraint and failure evidence, a complete
+   final conversation prefix, and an unchanged source workspace. It preserves
+   the Git index, file bytes, modes, and untracked-file identity. A failed source
+   remains a private record; don't use it for the comparison.
+   The freeze record names the selected task and hashes its fixture files.
+   A comparison with another task or changed fixture refuses to run.
+   If the controller reports `capture_prefix_incomplete`, inspect the provider,
+   gateway, and harness representations before retrying. Reused parallel tool
+   indices or differences between an empty text part and an absent part can
+   invalidate the baseline. Don't remove captured parts or weaken the check.
+5. Bind the API's retrieval settings to that Session and the configuration's
+   retrieval credential, then restart the API. Start the comparison with another
+   output directory that doesn't exist:
+
+   ```bash
+   uv run python scripts/session_context_retrieval_eval.py run \
+     --config /absolute/private/evaluation.json \
+     --source /absolute/private/source-run \
+     --output /absolute/private/comparison-run
+   ```
+
+   The controller verifies the source binding and frozen fixture before running
+   the rotated A/B/C, B/C/A, C/A/B order. Every continuation has a fresh Session,
+   home, and identical initial workspace. A separate container checks the final
+   code and material constraint. The command exits nonzero when the benefit
+   criterion fails; agent prose cannot override the independent checks.
+6. Review `comparison.json` and each private `run.json`. Report every arm's
+   outcome, observed input/output/cache usage, elapsed time, tool schema bytes,
+   and retrieval response bytes. Keep unavailable measurements unknown. Publish
+   sanitized counts in the implementation issue, without prompts or credentials.
+
+The counter admits at most 12 model attempts and four retrieval attempts on the
+configured pi transports. It counts failures and doesn't retry. Container
+separation protects private files and credentials; this controller doesn't block
+arbitrary direct networking through the agent's shell tool. Keep that limitation
+with the result. A passing comparison establishes one controlled task's benefit,
+not general improvement, crash recovery, or token savings. Changing the frozen
+fixture or selector after observing outcomes requires a separate evaluation.
+
+### Compare instructed retrieval
+
+Select `--task shipment-totals` before source capture to measure instructed
+retrieval and application on a separate task. All three arms receive the same
+visible goal and conditional instruction: inspect with `read`, then use a
+prior-Session retrieval tool, if available, before any `edit`, `write`, or `bash`
+call. The agent chooses its question. Arm B uses the supplied full history;
+arm A reports missing history honestly and continues the visible goal.
+
+Review `lookup_before_work` in each arm C `run.json`. This post-run compliance
+check requires a successful, nonempty retrieval result for the bound source
+Session before the first edit, write, or shell invocation. A failed early work
+invocation still violates the ordering. The controller observes native events;
+it doesn't prevent tool calls or inject selected evidence.
+
+All three C runs must satisfy this additional check and the existing evidence,
+captured trajectory, and independent final checks. The paired A failure and B
+reporting requirements still apply. Report this protocol explicitly: it doesn't
+test whether the agent decides to retrieve without an instruction. Keep earlier
+task results separate and preserve their unchanged fixtures.
+
+## Verify native tool use
+
+Use the [comparison configuration](#run-the-maintained-continuation-comparison)
+to check the model, harness, gateway, and capture path before a continuation
+comparison. Choose an output directory that doesn't exist:
+
+```bash
+umask 077
+uv run python scripts/session_context_retrieval_eval.py preflight \
+  --config /absolute/private/evaluation.json \
+  --output /absolute/private/coding-preflight
+```
+
+The controller runs three fresh Sessions in sequence. Each agent must use native
+`read`, `edit`, and `bash` calls, in that order, on an unrelated JSON fixture. The
+controller independently checks the final boolean value and preserved canary.
+It matches each native execution to a captured Inference call and requires the
+complete result in a later model request. Valid JSON results must retain their
+exact parsed value in capture and their original text in the forwarded request.
+All three cycles must pass for `preflight.json` to report `coding_verified`.
+This result exits zero but retains `passed: false`; retrieval remains unverified.
+
+If you have an accepted source directory from the `source` operation, bind the
+API's retrieval credential to that historical Session. Keep the source files
+private. Then run the preflight with another unused output directory:
+
+```bash
+uv run python scripts/session_context_retrieval_eval.py preflight \
+  --config /absolute/private/evaluation.json \
+  --source /absolute/private/source-run \
+  --output /absolute/private/retrieval-preflight
+```
+
+This command repeats the three coding cycles and adds one fresh retrieval cycle.
+It checks the accepted source file hashes and the API's source binding before
+inference. The retrieval tool must return nonempty evidence for that Session.
+The controller independently reads each exact occurrence reference and checks
+the complete result in a subsequent model request. It reports `passed` only
+when all four cycles pass. A failed check exits nonzero and preserves the records;
+the controller doesn't retry a cycle.
+
+Keep `freeze.json`, `preflight.json`, and the per-cycle records private. Record the
+backend identity and template hash with them. The preflight uses the same
+transport budgets and container boundaries as the comparison. It doesn't alter
+the comparison fixture. Success establishes execution on the configured fixture;
+it doesn't establish robustness across other files, continuation benefit, cost
+savings, or a passing result for an earlier failed comparison. If a failed
+preflight leads you to change fixture formatting, preserve that failure and
+record the adjustment with the separate run.
+
 ## Prepare access and capture
 
 1. Configure [Inference-call capture](../capture/managed-capture.md#configure-inference-call-capture)

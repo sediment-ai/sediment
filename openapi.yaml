@@ -40,6 +40,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -265,6 +267,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -298,6 +302,8 @@ paths:
                 properties:
                   detail:
                     type: string
+        '403':
+          description: Ingest or operator authority required.
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
@@ -477,6 +483,196 @@ paths:
         '403':
           description: Operator authority required.
       security:
+      - operatorBearerAuth: []
+  /query/context:
+    post:
+      tags:
+      - query
+      summary: Query Context
+      description: 'Select exact evidence from the deployment''s one configured Session.
+
+
+        Version 1 accepts English/code keywords, excludes reasoning, and returns
+
+        at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB).
+
+        Scores count distinct token overlap; capture completeness remains unknown.
+
+        The operation rechecks Quarantine, persists nothing, and shares the
+
+        evidence worker admission limit and 30-second deadline.'
+      operationId: query_context_query_context_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextRetrievalRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextRetrievalResult'
+        '400':
+          description: Malformed JSON body.
+        '403':
+          description: Retrieval or operator authority required.
+        '404':
+          description: Context retrieval is disabled.
+        '409':
+          description: 'Complete read declined: evidence_unavailable, evidence_inventory_limit,
+            evidence_source_limit, retrieval_part_limit, evidence_response_limit,
+            or non_finite_number in detail.reason.'
+        '413':
+          description: Request body exceeds 16 KiB before JSON decoding.
+        '503':
+          description: Database unavailable, or work capacity or execution budget
+            exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - retrievalBearerAuth: []
+      - operatorBearerAuth: []
+  /query/context/discover:
+    post:
+      tags:
+      - query
+      summary: Query Context Discover
+      description: 'Find at most eight Sessions within the deployment''s explicit
+        grant.
+
+
+        Version 1 searches English/code keywords under aggregate source bounds.
+
+        An optional provider/host/repository-ID/SHA anchor prioritizes directly
+
+        observed commit relationships. Each candidate carries exact evidence or
+
+        an observed commit witness. Discovery persists nothing and grants no access.'
+      operationId: query_context_discover_query_context_discover_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextDiscoveryRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextDiscoveryResult'
+        '400':
+          description: Malformed JSON body.
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Retrieval or operator authority required, or Session outside
+            the configured grant.
+        '404':
+          description: Context retrieval is disabled.
+        '409':
+          description: 'Complete read declined: evidence_unavailable, evidence_inventory_limit,
+            evidence_source_limit, retrieval_part_limit, evidence_response_limit,
+            or non_finite_number in detail.reason.'
+        '413':
+          description: Request body exceeds 16 KiB before JSON decoding.
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - retrievalBearerAuth: []
+      - operatorBearerAuth: []
+  /query/context/selected:
+    post:
+      tags:
+      - query
+      summary: Query Context Selected
+      description: 'Retrieve exact evidence from one explicitly selected authorized
+        Session.
+
+
+        Membership is checked before storage access and again in the worker.
+
+        The read rechecks Quarantine and retains the singleton retrieval response.
+
+        Evidence remains historical data, not instructions to execute.'
+      operationId: query_context_selected_query_context_selected_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContextSelectedRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextRetrievalResult'
+        '400':
+          description: Malformed JSON body.
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Retrieval or operator authority required, or Session outside
+            the configured grant.
+        '404':
+          description: Context retrieval is disabled.
+        '409':
+          description: 'Complete read declined: evidence_unavailable, evidence_inventory_limit,
+            evidence_source_limit, retrieval_part_limit, evidence_response_limit,
+            or non_finite_number in detail.reason.'
+        '413':
+          description: Request body exceeds 16 KiB before JSON decoding.
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - retrievalBearerAuth: []
       - operatorBearerAuth: []
   /query/ci/outcome:
     get:
@@ -914,8 +1110,7 @@ paths:
             application/json:
               schema:
                 type: object
-                additionalProperties:
-                  type: string
+                additionalProperties: true
                 title: Response Me V1 Me Get
         '422':
           description: Validation Error
@@ -935,6 +1130,7 @@ paths:
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
+      - retrievalBearerAuth: []
   /v1/facts:
     get:
       tags:
@@ -1468,6 +1664,418 @@ components:
       - neutral
       - unknown
       title: CIResult
+    ContextCommitAnchor:
+      properties:
+        repository_provider:
+          $ref: '#/components/schemas/ForgeProvider'
+        repository_host:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Repository Host
+        repository_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Repository Id
+        commit_sha:
+          type: string
+          title: Commit Sha
+      additionalProperties: false
+      type: object
+      required:
+      - repository_provider
+      - repository_host
+      - repository_id
+      - commit_sha
+      title: ContextCommitAnchor
+      description: An exact repository-qualified commit hint, never read authority.
+    ContextCommitMatch:
+      properties:
+        observation_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Observation Id
+        source_push_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Source Push Id
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+      additionalProperties: false
+      type: object
+      required:
+      - observation_id
+      - source_push_id
+      - captured_at
+      title: ContextCommitMatch
+    ContextDiscoveryCoverage:
+      properties:
+        authorized_sessions:
+          type: integer
+          minimum: 0.0
+          title: Authorized Sessions
+        found_sessions:
+          type: integer
+          minimum: 0.0
+          title: Found Sessions
+        visible_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Visible Inference Calls
+        quarantined_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Quarantined Inference Calls
+        scanned_parts:
+          type: integer
+          minimum: 0.0
+          title: Scanned Parts
+        matched_parts:
+          type: integer
+          minimum: 0.0
+          title: Matched Parts
+        complete_visible_scan:
+          type: boolean
+          const: true
+          title: Complete Visible Scan
+      additionalProperties: false
+      type: object
+      required:
+      - authorized_sessions
+      - found_sessions
+      - visible_inference_calls
+      - quarantined_inference_calls
+      - scanned_parts
+      - matched_parts
+      - complete_visible_scan
+      title: ContextDiscoveryCoverage
+    ContextDiscoveryItem:
+      properties:
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+        score:
+          type: integer
+          minimum: 0.0
+          title: Score
+        matched_parts:
+          type: integer
+          minimum: 0.0
+          title: Matched Parts
+        preview:
+          anyOf:
+          - $ref: '#/components/schemas/EvidenceReadItem'
+          - type: 'null'
+        commit_match:
+          anyOf:
+          - $ref: '#/components/schemas/ContextCommitMatch'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - score
+      - matched_parts
+      - preview
+      - commit_match
+      title: ContextDiscoveryItem
+    ContextDiscoveryRequest:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        query:
+          type: string
+          maxLength: 2048
+          title: Query
+        max_bytes:
+          type: integer
+          maximum: 65536.0
+          minimum: 4096.0
+          title: Max Bytes
+          default: 16384
+        commit:
+          anyOf:
+          - $ref: '#/components/schemas/ContextCommitAnchor'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - query
+      title: ContextDiscoveryRequest
+      description: Search only the deployment grant, with an optional exact commit
+        anchor.
+    ContextDiscoveryResult:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        policy_version:
+          type: integer
+          const: 1
+          title: Policy Version
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        capture_completeness:
+          type: string
+          const: unknown
+          title: Capture Completeness
+        commit:
+          anyOf:
+          - $ref: '#/components/schemas/ContextCommitAnchor'
+          - type: 'null'
+        status:
+          type: string
+          enum:
+          - matched
+          - no_match
+          - budget_exhausted
+          title: Status
+        coverage:
+          $ref: '#/components/schemas/ContextDiscoveryCoverage'
+        skipped:
+          $ref: '#/components/schemas/ContextDiscoverySkipped'
+        items:
+          items:
+            $ref: '#/components/schemas/ContextDiscoveryItem'
+          type: array
+          maxItems: 8
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - policy_version
+      - quarantine_revision
+      - capture_completeness
+      - commit
+      - status
+      - coverage
+      - skipped
+      - items
+      title: ContextDiscoveryResult
+    ContextDiscoverySkipped:
+      properties:
+        reasoning_part:
+          type: integer
+          minimum: 0.0
+          title: Reasoning Part
+        non_finite_number:
+          type: integer
+          minimum: 0.0
+          title: Non Finite Number
+        unmatched_part:
+          type: integer
+          minimum: 0.0
+          title: Unmatched Part
+        unmatched_session:
+          type: integer
+          minimum: 0.0
+          title: Unmatched Session
+        candidate_limit:
+          type: integer
+          minimum: 0.0
+          title: Candidate Limit
+        response_budget:
+          type: integer
+          minimum: 0.0
+          title: Response Budget
+      additionalProperties: false
+      type: object
+      required:
+      - reasoning_part
+      - non_finite_number
+      - unmatched_part
+      - unmatched_session
+      - candidate_limit
+      - response_budget
+      title: ContextDiscoverySkipped
+    ContextRetrievalCoverage:
+      properties:
+        visible_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Visible Inference Calls
+        quarantined_inference_calls:
+          type: integer
+          minimum: 0.0
+          title: Quarantined Inference Calls
+        scanned_parts:
+          type: integer
+          minimum: 0.0
+          title: Scanned Parts
+        complete_visible_scan:
+          type: boolean
+          const: true
+          title: Complete Visible Scan
+      additionalProperties: false
+      type: object
+      required:
+      - visible_inference_calls
+      - quarantined_inference_calls
+      - scanned_parts
+      - complete_visible_scan
+      title: ContextRetrievalCoverage
+    ContextRetrievalItem:
+      properties:
+        score:
+          type: integer
+          minimum: 1.0
+          title: Score
+        evidence:
+          $ref: '#/components/schemas/EvidenceReadItem'
+      additionalProperties: false
+      type: object
+      required:
+      - score
+      - evidence
+      title: ContextRetrievalItem
+    ContextRetrievalRequest:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        query:
+          type: string
+          maxLength: 2048
+          title: Query
+        max_bytes:
+          type: integer
+          maximum: 65536.0
+          minimum: 4096.0
+          title: Max Bytes
+          default: 16384
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - query
+      title: ContextRetrievalRequest
+      description: Question and byte budget; the deployment fixes the source Session.
+    ContextRetrievalResult:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        policy_version:
+          type: integer
+          const: 1
+          title: Policy Version
+        source_session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Source Session Id
+        quarantine_revision:
+          type: integer
+          minimum: 0.0
+          title: Quarantine Revision
+        status:
+          type: string
+          enum:
+          - matched
+          - no_match
+          - budget_exhausted
+          title: Status
+        capture_completeness:
+          type: string
+          const: unknown
+          title: Capture Completeness
+        coverage:
+          $ref: '#/components/schemas/ContextRetrievalCoverage'
+        skipped:
+          $ref: '#/components/schemas/ContextRetrievalSkipped'
+        items:
+          items:
+            $ref: '#/components/schemas/ContextRetrievalItem'
+          type: array
+          maxItems: 8
+          title: Items
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - policy_version
+      - source_session_id
+      - quarantine_revision
+      - status
+      - capture_completeness
+      - coverage
+      - skipped
+      - items
+      title: ContextRetrievalResult
+    ContextRetrievalSkipped:
+      properties:
+        reasoning_part:
+          type: integer
+          minimum: 0.0
+          title: Reasoning Part
+        non_finite_number:
+          type: integer
+          minimum: 0.0
+          title: Non Finite Number
+        no_match:
+          type: integer
+          minimum: 0.0
+          title: No Match
+        repeated_content:
+          type: integer
+          minimum: 0.0
+          title: Repeated Content
+        item_limit:
+          type: integer
+          minimum: 0.0
+          title: Item Limit
+        response_budget:
+          type: integer
+          minimum: 0.0
+          title: Response Budget
+      additionalProperties: false
+      type: object
+      required:
+      - reasoning_part
+      - non_finite_number
+      - no_match
+      - repeated_content
+      - item_limit
+      - response_budget
+      title: ContextRetrievalSkipped
+    ContextSelectedRequest:
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+          title: Schema Version
+        query:
+          type: string
+          maxLength: 2048
+          title: Query
+        max_bytes:
+          type: integer
+          maximum: 65536.0
+          minimum: 4096.0
+          title: Max Bytes
+          default: 16384
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      additionalProperties: false
+      type: object
+      required:
+      - schema_version
+      - query
+      - session_id
+      title: ContextSelectedRequest
+      description: Select one authorized Session without changing the retrieval contract.
     EvidenceCallMetadata:
       properties:
         inference_call_id:
@@ -2525,6 +3133,13 @@ components:
       description: SEDIMENT_OPERATOR_TOKEN. Operator access and explicit operator
         ingest; missing/invalid returns401, ingest authority on an operator route
         returns403.
+    retrievalBearerAuth:
+      type: http
+      scheme: bearer
+      description: SEDIMENT_RETRIEVAL_TOKEN. Read-only context access within the configured
+        Session set through /query/context, /query/context/discover, /query/context/selected,
+        and /v1/me. The legacy /query/context route requires singleton configuration.
+        Existing ingest and operator reads return403.
     githubWebhookSignature:
       type: apiKey
       in: header

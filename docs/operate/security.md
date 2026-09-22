@@ -24,6 +24,24 @@ If you omit the optional gateway, exclude it from your deployed inventory. Keep
 its release evidence with the other supplied artifacts. If you use your own
 gateway or database, inventory and assess that software separately.
 
+## Confine agent retrieval access
+
+If you enable context retrieval, bind its credential to one source Session or
+an explicit set of at most 32 Sessions with the [deployment settings](deploy.md).
+The entire selected Session is authorized, including future captured Facts;
+an observed commit link does not establish exclusive repository ownership.
+Rotate the token when changing the set. Give the agent only
+its retrieval endpoint/token and any separate ingest credential required by
+capture. Keep operator login, database credentials, deployment configuration,
+and mounts containing them outside the agent environment. A separate process
+under the same unrestricted account doesn't establish isolation.
+
+Use a separate container or operating-system account for a continuation
+experiment. If all inference must remain within your perimeter, use internal
+model and gateway endpoints too. The retrieval endpoint doesn't control where
+the agent sends its next model request. Historical evidence can contain
+instructions; ordinary harness tool controls still govern subsequent actions.
+
 ## Reproduce the checks
 
 Run the commands from the release source checkout. Use Python 3.12.14 and uv
@@ -115,8 +133,14 @@ against the exact distribution source before assigning a disposition.
 For the gateway zlib disposition, pair the native symbol check with a review of
 the exact image's Python callers. The `gzip_write_api_unreachable` predicate
 rejects dynamic imports and unreviewed static embeds. It doesn't inspect Python
-filename arguments to the permitted SAML extensions. Retain the caller source
-identities and review together with the image evidence.
+filename arguments to the permitted SAML extensions. The gateway assurance
+artifact retains `gateway_caller_files`: SHA-256 hashes of the installed
+LiteLLM SAML handler and every Python source file under `onelogin/saml2`,
+collected from the exact scanned image. The collector rejects missing sources
+and symlinked paths. Compare the complete file set and hashes with the reviewed
+callers; any change needs source review. The mapping is
+evidence, not an approval or an automatic non-applicability verdict. Retain
+the caller review with the image evidence.
 
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata

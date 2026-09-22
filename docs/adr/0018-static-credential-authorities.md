@@ -1,6 +1,6 @@
 # ADR 0018 — Separate capture and operator credentials
 
-Status: accepted
+Status: accepted; [ADR 0022](0022-agent-requested-session-context.md) adds fixed Session retrieval authority; [ADR 0025](0025-authorized-session-candidate-discovery.md) extends it to an explicit Session set.
 
 ## Context
 

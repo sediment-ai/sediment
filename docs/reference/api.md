@@ -41,11 +41,14 @@ Every route, in ingest → read order:
 | [`GET /query/evidence`](#get-queryevidence) | operator | Complete bounded metadata inventory for one Session. |
 | [`GET /query/evidence/manifest`](#get-queryevidencemanifest) | operator | Message and part references for one captured Inference call. |
 | [`POST /query/evidence/read`](#post-queryevidenceread) | operator | Read-only fetch of complete canonical parts by exact occurrence reference. |
+| [`POST /query/context`](#post-querycontext) | retrieval or operator | Agent-requested evidence from the configured previous Session. |
+| [`POST /query/context/discover`](#post-querycontextdiscover) | retrieval or operator | Discover relevant candidates within the authorized Session set. |
+| [`POST /query/context/selected`](#post-querycontextselected) | retrieval or operator | Retrieve exact context from a selected authorized Session. |
 | [`GET /query/ci/outcome`](#get-querycioutcome) | operator | One CI outcome identified by provider run and attempt. |
 | [`GET /query/ci/failures`](#get-querycifailures) | operator | Bounded failure-first CI outcome search. |
 | [`GET /query/session/{session_id}`](#get-querysessionsession_id) | operator | Metadata evidence dossier for one Session. |
 | [`GET /query/commit/{sha}`](#get-querycommitsha) | operator | Observed Sessions and inferred call associations for one commit. |
-| [`GET /v1/me`](#get-v1me) | ingest or operator | Auth probe: tenant, version, authority, and configured client. |
+| [`GET /v1/me`](#get-v1me) | ingest, operator, or retrieval | Auth probe: tenant, version, authority, and configured client. |
 | [`GET /v1/facts`](#get-v1facts) | operator | Fact counts per table, total, and visible. |
 | [`GET /v1/facts/session/{session_id}`](#get-v1factssessionsession_id) | operator | Session-scoped fact counts for write verification. |
 | [`GET /v1/facts/session/{session_id}/inference-calls`](#get-v1factssessionsession_idinference-calls) | operator | Session-scoped Inference call fields for usage reconciliation. |
@@ -56,7 +59,7 @@ Every route, in ingest → read order:
 
 ## POST /ingest/gateway
 
-**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401.
+**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401; retrieval authority returns 403.
 
 **Response:** Stores one inference-call fact: `{"fact_id": "<uuid>", "stored": <bool>}`. `stored: false` means a redelivery collapsed on a UNIQUE index (ADR 0003) — success, not an error. A call whose session cannot be resolved is declined with 200 `{"skipped": true, "reason": "no_session"}`.
 
@@ -77,6 +80,7 @@ Status codes:
 | `200` | Success — the response shape above. |
 | `400` | `provider` names a gateway with no adapter. |
 | `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | Primary and natural Inference call identities conflict; `detail.code` is `inference_call_identity_conflict`. No foreign Fact ID is returned. |
 | `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
@@ -184,7 +188,7 @@ Status codes:
 
 ## POST /ingest/ci
 
-**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401.
+**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401; retrieval authority returns 403.
 
 **Response:** `{"fact_id": "<uuid>", "stored": <bool>}`. The envelope forbids unknown fields: a caller naming an org or inventing a field is rejected at the door, not ignored.
 
@@ -219,6 +223,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | Repository identity conflicts with a retained receipt; `detail.code` is `repository_identity_conflict`. No foreign Fact ID is returned. |
 | `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
@@ -226,7 +231,7 @@ Status codes:
 
 ## POST /v1/logs
 
-**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401.
+**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401; retrieval authority returns 403.
 
 **Response:** Returns `{}` — the empty OTLP/HTTP JSON `ExportLogsServiceResponse`, which means full success. Per-record dedup is invisible to the exporter: a redelivered record is counted in the server log, never reported back.
 
@@ -237,6 +242,7 @@ Status codes:
 | `200` | Success — the response shape above. |
 | `400` | The body is not JSON, or not a JSON object — 400 so the exporter drops it instead of retrying. |
 | `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
 | `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
 
 ## GET /query/evidence
@@ -245,7 +251,7 @@ Inventory captured Inference calls without message content or raw payloads.
 
 The complete visible inventory has at most 1,000 calls, 8 MiB of source metadata, and a 1 MiB response. An unknown Session returns `found: false`. Each request checks live scope and Quarantine in one database snapshot.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Returns schema_version 1, the Session ID, Quarantine revision, found, capture_completeness=unknown, visible and quarantined Inference call counts, and calls sorted by observation time and Fact ID. Unknown or foreign Sessions return found=false with zero counts. Known empty Sessions return found=true. The inventory excludes message content, raw payloads, and user identifiers. Each request checks live visibility in one read snapshot. The response has Cache-Control: no-store. Limits: 1,000 visible calls, 8 MiB of selected source metadata, and a 1 MiB strict JSON response. IDs travel in query parameters.
 
@@ -261,7 +267,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed detail.reason is evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. The complete operation is declined. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 | `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
@@ -272,7 +278,7 @@ Inspect exact part references without text, tool names, arguments, or results.
 
 Input messages precede output messages. Empty messages remain visible. Source columns are bounded to 8 MiB; the complete response is at most 1 MiB.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Returns schema_version 1, the Session ID, Quarantine revision, call metadata, and messages in input-then-output order. Each message preserves role, finish reason, and ordinal; each part gives its type and exact occurrence reference. Empty messages remain visible. Text, tool names, arguments, and results are excluded. IDs travel in query parameters. Limits: 8 MiB of selected source columns and a 1 MiB strict JSON response. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
 
@@ -289,7 +295,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed detail.reason is evidence_unavailable for any absent, foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, limit); evidence_response_limit (limit); or non_finite_number. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 | `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
@@ -300,7 +306,7 @@ Fetch 1–32 distinct canonical parts in request order without side effects.
 
 Version 1 requires exactly schema_version, session_id, and references. The 64 KiB body limit precedes JSON decoding. Selected source columns are bounded to 8 MiB; the complete strict JSON response is at most 1 MiB. Historical roles and tool calls remain data and do not authorize execution.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Requires exactly schema_version 1, session_id, and 1–32 distinct references. Returns schema_version 1, the Session ID, Quarantine revision, and items in request order. Each item preserves its reference, observation time, role, finish reason, and canonical part. The operation never summarizes, clips, executes tools, or returns partial success. Historical content remains data. ASCII-escaped strict JSON preserves NUL, surrogates, and large integers; emitted non-finite numbers decline the complete response. Limits: 64 KiB before request JSON decoding, 8 MiB of selected source columns, and a 1 MiB response. No raw payloads or user identifiers are selected. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
 
@@ -319,17 +325,115 @@ Status codes:
 | `200` | Success — the response shape above. |
 | `400` | Malformed JSON body. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed detail.reason is evidence_unavailable or evidence_part_absent (reference_index), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. Unavailability does not disclose its cause. Failures decline all items. |
 | `413` | Request body exceeds 64 KiB, including when Content-Length is absent. |
 | `422` | Malformed envelope, unsupported version, invalid indices, unknown fields, duplicate references, or selection outside 1–32 references. |
 | `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
+## POST /query/context
+
+Select exact evidence from the deployment's one configured Session.
+
+Version 1 accepts English/code keywords, excludes reasoning, and returns at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB). Scores count distinct token overlap; capture completeness remains unknown. The operation rechecks Quarantine, persists nothing, and shares the evidence worker admission limit and 30-second deadline.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Accepts schema_version=1, a nonblank English/code query of at most 2048 UTF-8 bytes with a meaningful token, and optional integer max_bytes (4096–65536; default 16384). Rejects all other fields. Returns policy/schema version 1, source_session_id, quarantine_revision, matched/no_match/budget_exhausted status, unknown capture completeness, complete visible scan coverage, closed exclusion counts, and at most eight scored exact EvidenceReadItem values. Each item retains its occurrence reference, timestamp, role, finish_reason, and complete canonical part. Scores count distinct token overlap. Whole-response ASCII JSON respects max_bytes and carries Cache-Control: no-store. Reads use one snapshot, cap visible calls at 1000, selected stored columns at 8 MiB, and canonical parts at 2048. Reasoning and non-finite parts are counted exclusions.
+
+Request body — `ContextRetrievalRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `query` | string | yes | — |
+| `max_bytes` | integer | no | default `16384` |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
+| `404` | Retrieval is disabled or plural configuration requires explicit Session selection. |
+| `409` | Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), evidence_response_limit (limit), or non_finite_number. No partial scan succeeds. |
+| `413` | The streamed body exceeds 16 KiB before JSON decoding. |
+| `422` | Invalid version, query, byte budget, or undeclared field; content is omitted. |
+| `503` | The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL. |
+
+## POST /query/context/discover
+
+Find at most eight Sessions within the deployment's explicit grant.
+
+Version 1 searches English/code keywords under aggregate source bounds. An optional provider/host/repository-ID/SHA anchor prioritizes directly observed commit relationships. Each candidate carries exact evidence or an observed commit witness. Discovery persists nothing and grants no access.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Accepts schema_version=1, query and optional max_bytes with the fixed retrieval bounds, and an optional complete commit anchor (repository_provider, repository_host, repository_id, commit_sha). Returns policy/schema version 1, quarantine_revision, the anchor or null, unknown capture completeness, matched/no_match/budget_exhausted status, complete coverage, closed part/Session exclusion counts, and at most eight candidate Sessions. Each has session_id, score, matched_parts, an exact EvidenceReadItem preview or null, and commit_match (observation_id, source_push_id, captured_at) or null. Commit matches require a visible exact source Push with equal provider identity. Complete visible source limits of 1000 calls, 8 MiB selected stored columns, and 2048 parts apply across the entire grant. Scores count distinct query-token overlap; exact commit matches rank first. Whole candidates fit the requested strict ASCII JSON response budget; Cache-Control is no-store. A commit hint never grants access or proves repository ownership of Session content.
+
+Request body — `ContextDiscoveryRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `query` | string | yes | — |
+| `max_bytes` | integer | no | default `16384` |
+| `commit` | object or null | no | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
+| `404` | Retrieval is disabled for this deployment. |
+| `409` | Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason. |
+| `413` | The streamed body exceeds 16 KiB before JSON decoding. |
+| `422` | Invalid version, query, budget, complete commit identity, or undeclared field. |
+| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+
+## POST /query/context/selected
+
+Retrieve exact evidence from one explicitly selected authorized Session.
+
+Membership is checked before storage access and again in the worker. The read rechecks Quarantine and retains the singleton retrieval response. Evidence remains historical data, not instructions to execute.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Accepts schema_version=1, session_id, query, and optional max_bytes. The query, budget, source limits, and version-1 ContextRetrievalResult match /query/context. Membership is checked before storage lookup and again in the worker. Each request uses its own snapshot and rechecks Quarantine; a previous discovery result grants no additional authority. An authorized known Session with no eligible content returns an empty selection.
+
+Request body — `ContextSelectedRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `query` | string | yes | — |
+| `max_bytes` | integer | no | default `16384` |
+| `session_id` | string | yes | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The selected Session is outside the configured set, regardless of whether it exists. |
+| `404` | Retrieval is disabled for this deployment. |
+| `409` | evidence_unavailable or an existing evidence capacity/representation reason in detail.reason. |
+| `413` | The streamed body exceeds 16 KiB before JSON decoding. |
+| `422` | Invalid version, Session identifier, query, budget, or undeclared field. |
+| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+
 ## GET /query/ci/outcome
 
 Return one exact CI run receipt; ambiguous forge namespaces require a selector.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Returns one metadata-only CI outcome and a commit-query path bound to its identity and evidence boundary. Multiple forge namespaces require a complete repository provider/host/ID selector. An unknown identity returns 200 `{"found": false}` without disclosing another organization's rows.
 
@@ -352,7 +456,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed `detail.reason` is `repository_selector_ambiguous`, `repository_evidence_limit`, or `non_finite_number`. No partial result is emitted; stored Facts remain intact. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 | `503` | Worker capacity, deadline, result limit, or database availability prevents this operation; retry retained request bytes after recovery. |
@@ -363,7 +467,7 @@ Page exact CI receipts under one repository identity and historical boundary.
 
 The default identity boundary is `captured_before`. Capture bounds remain half-open; an explicit `as_of` adds an inclusive evidence ceiling. Cursors bind organization, qualified repository, boundary, filters, and quarantine revision. They don't preserve a database transaction between requests.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Returns one keyset-paginated page for a repository and capture-time window. The normalized result defaults to `failed`; callers can request another result for comparison. Each row links to its commit query with the same identity and boundary. The default `as_of` is `captured_before`; an explicit boundary is inclusive. Cursors bind the organization, qualified repository, boundary, filters, and quarantine revision. They don't retain a transaction between requests.
 
@@ -390,7 +494,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed `detail.reason` is `repository_selector_ambiguous`, `repository_evidence_limit`, or `non_finite_number`. No partial result is emitted; stored Facts remain intact. |
 | `422` | Required bounds are absent or invalid, the start doesn't precede the end, identity is incomplete, a supplied name contradicts the selected identity, or the cursor no longer matches its scope. |
 | `503` | Worker capacity, deadline, result limit, or database availability prevents this operation; retry retained request bytes after recovery. |
@@ -401,7 +505,7 @@ Return one bounded, metadata-only Session evidence dossier.
 
 Observation-backed commit edges keep `attribution_sources` empty. Similarity extrema and `attributed_files` are unavailable and omitted from JSON.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Returns a bounded timeline, visible and quarantined counts, capture gaps, captured Session commit observations, exact-head Push receipts, and matching CI outcomes under one complete repository context. Repository identity accompanies each delivery summary; `repository_skipped` counts declined observation sources. Captured content, user identity, file paths, and the free-form CI reason remain absent. An unknown Session returns 200 `{"found": false}`.
 
@@ -417,7 +521,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | Emitted content contains a non-finite number (`detail.reason=non_finite_number`), or the Session or its linked delivery evidence exceeds the fixed cap. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 | `503` | The bounded read worker is busy, exceeds its 30-second deadline or result limit, or cannot access PostgreSQL. |
@@ -428,7 +532,7 @@ Investigate exact commit evidence in separate repository lifetimes.
 
 Captured observations establish Session associations. Call-to-file Attribution remains inferred. Optional repository selectors and an inclusive `as_of` bound all supporting evidence; otherwise one request instant supplies the bound. A bounded child process owns the Derivation and its database connection. Capacity and execution deadlines return 503 after process cleanup.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** Observed Session edges, inferred calls and decisions, and exact CI Facts, grouped by repository lifetime with identity and observed names. Unresolved CI remains separate; declined source counts stay visible. Select with a complete provider/host/ID triple or an unambiguous name. An inclusive `as_of` bounds all supporting evidence. No evidence returns `{"commit_sha": "<sha>", "attributed": false}` at 200, not an error. The derivation runs per request and is never persisted (ADR 0001).
 
@@ -449,7 +553,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The closed `detail.reason` is `repository_selector_ambiguous`, `repository_evidence_limit`, or `non_finite_number`. No partial result is emitted; stored Facts remain intact. |
 | `422` | Invalid SHA, incomplete identity, or a supplied name that contradicts the selected identity. |
 | `503` | The bounded read worker is busy, exceeds its 30-second deadline or result limit, or cannot access PostgreSQL. It runs off the event loop, so the ingest doors stay responsive meanwhile. |
@@ -458,9 +562,9 @@ Status codes:
 
 Auth probe for `sediment login`: the deployment's tenant and the API version, reported verbatim so the client can detect skew.
 
-**Auth:** Either configured bearer authority. The response identifies the configured authority and client, never the token. Missing or invalid credentials return 401.
+**Auth:** Any configured bearer authority. The response identifies the configured authority and client, never the token. Missing or invalid credentials return 401.
 
-**Response:** `{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest or operator>", "client_id": "<configured client>"}`. These identifiers never select tenancy.
+**Response:** `{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id under singleton configuration or sorted source_session_ids under plural configuration. These identifiers never select tenancy.
 
 Status codes:
 
@@ -473,7 +577,7 @@ Status codes:
 
 One entry per `FactTable`: total rows and the derivation-facing ("visible" = not quarantined) count. Sessions are upserted metadata, not quarantinable facts, so they carry a bare count with no visible column — the same shape `sediment facts` prints.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** `{"sessions": <int>, "tables": {"<table>": {"total": <int>, "visible": <int>}}, "quarantine_revision": <int>}`. `quarantine_revision` is the org's provenance token: the numeric quarantine-log high-water mark, `0` when nothing is quarantined.
 
@@ -483,13 +587,13 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 
 ## GET /v1/facts/session/{session_id}
 
 Fact counts for one session, so a client can verify its own writes without treating unrelated organization-wide totals as evidence.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** `{"session_id": "<session id>", "tables": {"<session table>": {"total": <int>, "visible": <int>}}}`. The tables are inference calls, developer decisions, edit observations, rejected edits, and retry linkages. The demo command uses these counts so unrelated organization-wide facts cannot mask a dropped demo record.
 
@@ -505,7 +609,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 
 ## GET /v1/facts/session/{session_id}/inference-calls
@@ -514,7 +618,7 @@ Return the narrow fields needed to reconcile one Session's usage.
 
 Prompts, responses, raw provider payloads, and user identity stay absent.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** `{"session_id": "<session id>", "inference_calls": [{"inference_call_id": "<id>", "model_call_id": "<id or null>", "gateway_provider": "<provider>", "model_provider": "<provider or null>", "model": "<model>", "input_tokens": <int or null>, "output_tokens": <int or null>, "duration_ms": <int or null>}]}`. Prompts, responses, raw provider payloads, and user identity are absent.
 
@@ -530,7 +634,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The Session exceeds the bounded reconciliation read. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 
@@ -538,7 +642,7 @@ Status codes:
 
 Return bounded decision, Edit observation, and inference join fields.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** `{"session_id": "<session id>", "inference_calls": [{"tool_call_ids": ["<response tool-call id>"]}], "developer_decisions": [{"agent_harness": "<harness>", "accepted": <bool>, "explicit": <bool>, "interaction_mode": "<mode>", "call_id": "<id or null>"}], "edit_observations": [{"agent_harness": "<harness>", "call_id": "<id>"}]}`. Captured content, raw payloads, paths, user identity, and Fact identifiers are absent.
 
@@ -554,7 +658,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The Session exceeds a bounded evidence read. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 
@@ -562,7 +666,7 @@ Status codes:
 
 Return a bounded model-outcome report.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** A version 1 envelope containing the explicit report scope and the canonical base model-outcome report. The route uses the deployment org and doesn't persist Derivation output.
 
@@ -580,7 +684,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The cohort, supporting Fact population, or serialized response exceeds its fixed cap. |
 | `422` | A bound is absent or invalid, or the half-open cohort exceeds 31 days. |
 | `503` | The bounded read worker is busy, exceeds its deadline or result limit, or cannot access PostgreSQL. |
@@ -589,7 +693,7 @@ Status codes:
 
 Return a bounded accepted-work lifecycle report.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; an ingest token returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
 **Response:** A version 1 envelope containing the explicit report scope and the canonical accepted-work lifecycle report. The route uses the deployment org and doesn't persist Derivation output.
 
@@ -607,7 +711,7 @@ Status codes:
 |---|---|
 | `200` | Success — the response shape above. |
 | `401` | Missing or invalid credentials. |
-| `403` | The credential lacks operator authority. |
+| `403` | The credential lacks the authority required by this route. |
 | `409` | The cohort, supporting Fact population, or serialized response exceeds its fixed cap. |
 | `422` | A bound is absent or invalid, or the half-open cohort exceeds 31 days. |
 | `503` | The bounded read worker is busy, exceeds its deadline or result limit, or cannot access PostgreSQL. |

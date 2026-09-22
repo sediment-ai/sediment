@@ -1,6 +1,6 @@
 # ADR 0021 — Bounded evidence reads preserve source identity
 
-Status: implemented
+Status: implemented; [ADR 0022](0022-agent-requested-session-context.md) extends this boundary with agent-requested selection.
 
 Date: 2026-09-21
 

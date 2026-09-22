@@ -27,6 +27,7 @@ import {
   type PiLike,
 } from "./lib/register.ts";
 import { runCaptureProcess } from "./lib/process.ts";
+import { registerRetrieval } from "./lib/retrieval.ts";
 
 const POST_TIMEOUT_MS = 10_000;
 const MAX_ACKNOWLEDGMENT_BYTES = 16_384;
@@ -138,12 +139,13 @@ function resolveScripts(): Deps["scripts"] {
     ? resolved : null;
 }
 
-export default function (pi: PiLike) {
+export default function (pi: PiLike & Parameters<typeof registerRetrieval>[0]) {
   const version = /^(22|24)\.(\d+)\.\d+$/.exec(process.versions.node);
   if (!version || (version[1] === "22" && Number(version[2]) < 18)) {
     console.error("sediment-pi: unsupported Node runtime; use Node 24 or Node 22.18+");
     return;
   }
+  registerRetrieval(pi, process.env);
   register(pi, {
     post,
     runScript,
