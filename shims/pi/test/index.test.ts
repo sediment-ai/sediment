@@ -196,7 +196,7 @@ test("source-installed retrieval registers without node_modules and preserves ca
         cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
         env: { ...process.env, SEDIMENT_RETRIEVAL_ENDPOINT: "https://retrieval.example.com", SEDIMENT_RETRIEVAL_TOKEN: token },
       });
-      assert.deepEqual(JSON.parse(output), { tools: token ? ["sediment_retrieve_context"] : [], captures: true });
+      assert.deepEqual(JSON.parse(output), { tools: token ? ["sediment_list_context_sessions", "sediment_evidence_inventory", "sediment_evidence_manifest", "sediment_read_evidence", "sediment_retrieve_context"] : [], captures: true });
     }
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
