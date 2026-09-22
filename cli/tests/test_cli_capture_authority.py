@@ -284,15 +284,21 @@ def test_doctor_rejects_unreadable_identity_without_reproducing_response(
 
 
 @pytest.mark.parametrize("capture", [False, True])
+@pytest.mark.parametrize("plural", [False, True])
 def test_retrieval_credential_cannot_enroll_or_replace_operator_login(
-    app_transport, monkeypatch, capsys, capture
+    app_transport, monkeypatch, capsys, capture, plural
 ):
     from pydantic import SecretStr
     from sediment_api.config import settings
 
     token = "retrieval-test-token-long-enough"
     monkeypatch.setattr(settings, "retrieval_token", SecretStr(token))
-    monkeypatch.setattr(settings, "retrieval_session_id", "source-session")
+    monkeypatch.setattr(
+        settings, "retrieval_session_id", None if plural else "source-session"
+    )
+    monkeypatch.setattr(
+        settings, "retrieval_session_ids", ("source-session",) if plural else None
+    )
     original = {
         "current": "https://testserver",
         "servers": {"https://testserver": {"token": OPERATOR}},

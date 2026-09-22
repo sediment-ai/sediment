@@ -4,6 +4,12 @@
 
 ### Operational evidence
 
+- Add bounded candidate discovery across an operator-authorized set of up to
+  32 Sessions, with exact previews and optional repository-qualified commit
+  witnesses. Pi can discover a source and retrieve its context under the same
+  restricted credential. Aggregate source limits, counted output omissions,
+  and fresh authorization and Quarantine checks preserve the evidence boundary.
+  The fixed-Session tool remains the default; no learned selector is added.
 - Add pi's opt-in `sediment_retrieve_context` tool and `POST /query/context` for
   keyword-selected exact evidence from one configured previous Session. Restrict
   retrieval credentials to that Session, preserve Quarantine and exact references,

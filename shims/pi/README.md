@@ -101,9 +101,21 @@ defines the validation boundary.
 
 ## Environment
 
+If the API authorizes several Sessions, set `SEDIMENT_RETRIEVAL_DISCOVERY=true`
+with the independent retrieval endpoint/token pair. The extension registers
+`sediment_discover_context` and requires `session_id` on `sediment_retrieve_context`.
+Discover with task keywords, select a returned Session, then request its evidence.
+An optional complete repository-qualified commit prioritizes an observed
+relationship; it cannot expand the authorized set. The operator's Session list
+stays on the API. See [Discover a previous Session](../../docs/operate/resume-with-evidence.md#discover-a-previous-session).
+Absent or `false` preserves the fixed-Session tool. Other flag values disable
+retrieval with a safe configuration diagnostic.
+
 - `SEDIMENT_RETRIEVAL_ENDPOINT` / `SEDIMENT_RETRIEVAL_TOKEN` — independent
-  opt-in pair for the fixed Session retrieval tool. The endpoint is an API base
+  opt-in pair for Session retrieval tools. The endpoint is an API base
   URL; capture credentials never supply retrieval authority.
+- `SEDIMENT_RETRIEVAL_DISCOVERY` — `true` enables candidate discovery and explicit
+  Session selection; absent or `false` retains the fixed-Session schema.
 - `SEDIMENT_PROVIDER_ID` / `SEDIMENT_PROVIDER_API` — provider and API that receive
   the Session header (defaults `sediment` / `anthropic-messages`). The native
   header hook reads the Session identifier for each request. It replaces stale

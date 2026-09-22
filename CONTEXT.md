@@ -331,7 +331,7 @@ The frozen dataclass of knobs a Derivation is versioned by.
 completions and Rollouts. It contains `attribution.git_notes`,
 `attribution.jaccard`, and `split`. Component policies include
 `AttributionPolicy`, `CIResolutionPolicy`, `RolloutPolicy`, `RecoveryPolicy`, `AttributedCompletionPolicy`,
-`ContextRetrievalPolicy` (read-only evidence selection), `OutcomeReportPolicy`, `LabelConfidencePolicy`, `FatePolicy`, and `AttributionSharePolicy`. Tuning any knob bumps
+`ContextRetrievalPolicy` and `ContextDiscoveryPolicy` (read-only evidence selection), `OutcomeReportPolicy`, `LabelConfidencePolicy`, `FatePolicy`, and `AttributionSharePolicy`. Tuning any knob bumps
 `policy_version`. A policy embedding another (`default_factory`) does not
 share its tuning — each embed is tuned separately. _Avoid:_ "config",
 "settings" (env-loaded `BaseSettings` are a different layer).

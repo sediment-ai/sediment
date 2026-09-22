@@ -2,6 +2,10 @@
 
 Status: implementation in progress
 
+[ADR 0023](0023-authorized-session-candidate-discovery.md) extends this contract
+with discovery and selected retrieval within an explicit bounded Session set.
+The fixed-source route described here retains its version-1 shape.
+
 Date: 2026-09-21
 
 Amends [ADR 0018](0018-static-credential-authorities.md) and extends

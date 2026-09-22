@@ -1,6 +1,6 @@
 # ADR 0023 — Discover candidates within an authorized Session set
 
-Status: implementation in progress
+Status: implemented; maintainer review pending
 
 Date: 2026-09-22
 

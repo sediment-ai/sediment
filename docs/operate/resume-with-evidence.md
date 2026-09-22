@@ -47,6 +47,58 @@ requires three repetitions across no-history, full-history, and requested-eviden
 arms with independent final checks. Keep detailed records private. Publish all
 outcomes and report unavailable measurements explicitly.
 
+## Discover a previous Session
+
+If the relevant source Session is unknown to the agent, configure a bounded set
+of authorized Sessions on the API. Each source needs captured Inference calls
+to supply conversation content. The operator chooses the permitted set; a
+repository name, commit, or model judgment cannot expand it.
+
+1. In the private deployment configuration, set a fresh
+   `SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_IDS` to a JSON array
+   of 1–32 actual Session IDs. Remove `SEDIMENT_RETRIEVAL_SESSION_ID` and restart
+   the API. Changing the set requires token rotation and another restart.
+2. In the isolated agent environment, set the independent endpoint/token pair
+   from the fixed-Session procedure and set `SEDIMENT_RETRIEVAL_DISCOVERY=true`.
+   Leave the Session list, operator credentials, and database settings outside
+   that environment.
+3. Have the agent call `sediment_discover_context` with task keywords. If it has
+   a complete repository-qualified commit, it can also supply `commit` with
+   `repository_provider`, `repository_host`, `repository_id`, and `commit_sha`.
+   A SHA or repository name alone cannot identify a repository lifetime.
+4. Inspect the returned candidates, then call `sediment_retrieve_context` with
+   the selected `session_id` and a more specific query. The selected read checks
+   authorization and Quarantine again. Use its exact evidence while continuing
+   work in the preserved workspace.
+
+Discovery returns at most eight candidate Sessions. A candidate has an exact
+whole-part preview, a recorded commit relationship, or both. Commit matches
+rank first; keyword matches also find uncommitted work. A commit-only candidate
+has no invented preview and may have no available conversation content.
+The recorded observation and source Push must both remain visible.
+
+The complete authorized set shares the 1,000-call, 8 MiB, and 2,048-part source
+limits. These limits do not apply separately to each Session. Source overflow
+refuses the complete operation; narrow the configured set and rotate its token.
+The requested response budget remains 4–64 KiB, default 16 KiB. Closed counts
+report unmatched or omitted candidates. The selector does not summarize or clip
+previews. No match does not establish absence or capture completeness.
+
+The [discovery contract](../adr/0023-authorized-session-candidate-discovery.md)
+describes authority and source identity. The keyword baseline makes no external
+model call and adds no learned ranking. Git remains the source of code evolution;
+the optional commit anchor only exposes recorded Session relationships.
+
+To verify the native discovery path from a checkout, install the locked pi
+dependencies and put Node 24 on `PATH`. Set `SEDIMENT_TEST_DATABASE_URL` to a
+disposable PostgreSQL test cluster, then run
+`uv run python scripts/pi_context_discovery_acceptance.py`. The check creates
+and removes its own database and loopback API. A scripted pi model discovers a
+previously unspecified source, receives exact content, and checks an
+out-of-grant refusal. Only the API receives database settings. This check uses
+development mode and synthetic Facts; it proves integration, not autonomous
+model judgment, production database-role confinement, or lower inference cost.
+
 ## Run the maintained continuation comparison
 
 The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable

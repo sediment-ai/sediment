@@ -75,13 +75,19 @@ map, webhook secret, and optional retrieval settings. The operator profile recei
 The gateway receives an ingest token and provider credentials. It has no
 database credentials or database-network membership.
 
-If you enable agent-requested retrieval, add both `SEDIMENT_RETRIEVAL_TOKEN` and
-`SEDIMENT_RETRIEVAL_SESSION_ID` to the private `.env`. Use a distinct printable
-ASCII token of at least 24 characters. Use the actual source Session identifier.
-The API validates this pair even in development mode. Leave both unset to disable
-retrieval; empty values are invalid. Compose passes the pair only to the API.
-Restart the API after changing either setting. Rotate the token when changing
-the Session. Removing both settings and restarting revokes access.
+If you enable agent-requested retrieval, add `SEDIMENT_RETRIEVAL_TOKEN` and exactly
+one source setting to the private `.env`: `SEDIMENT_RETRIEVAL_SESSION_ID` for a
+fixed source, or `SEDIMENT_RETRIEVAL_SESSION_IDS` for a JSON array of 1–32 unique
+Session IDs. The plural JSON setting must fit 16 KiB. Use a distinct printable
+ASCII token of at least 24 characters and actual Session identifiers. The API
+validates this configuration even in development mode. Leave all three settings
+unset to disable retrieval; empty values are invalid. Compose passes them only
+to the API. Restart after changing configuration. Rotate the token whenever the
+authorized set changes; the service cannot detect reuse across restarts.
+Removing the token and source setting and restarting revokes access. The grant
+includes future Facts in those Sessions and does not claim repository ownership.
+See [Discover a previous Session](resume-with-evidence.md#discover-a-previous-session)
+for agent configuration and the aggregate source limits.
 If an ingest client is named `retrieval`, rename that entry before upgrading.
 The identifier is reserved; its old secret isn't reclassified.
 

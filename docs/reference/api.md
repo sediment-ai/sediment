@@ -42,6 +42,8 @@ Every route, in ingest → read order:
 | [`GET /query/evidence/manifest`](#get-queryevidencemanifest) | operator | Message and part references for one captured Inference call. |
 | [`POST /query/evidence/read`](#post-queryevidenceread) | operator | Read-only fetch of complete canonical parts by exact occurrence reference. |
 | [`POST /query/context`](#post-querycontext) | retrieval or operator | Agent-requested evidence from the configured previous Session. |
+| [`POST /query/context/discover`](#post-querycontextdiscover) | retrieval or operator | Discover relevant candidates within the authorized Session set. |
+| [`POST /query/context/selected`](#post-querycontextselected) | retrieval or operator | Retrieve exact context from a selected authorized Session. |
 | [`GET /query/ci/outcome`](#get-querycioutcome) | operator | One CI outcome identified by provider run and attempt. |
 | [`GET /query/ci/failures`](#get-querycifailures) | operator | Bounded failure-first CI outcome search. |
 | [`GET /query/session/{session_id}`](#get-querysessionsession_id) | operator | Metadata evidence dossier for one Session. |
@@ -335,7 +337,7 @@ Select exact evidence from the deployment's one configured Session.
 
 Version 1 accepts English/code keywords, excludes reasoning, and returns at most eight complete parts within max_bytes (4–64 KiB; default 16 KiB). Scores count distinct token overlap; capture completeness remains unknown. The operation rechecks Quarantine, persists nothing, and shares the evidence worker admission limit and 30-second deadline.
 
-**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both read the one configured source Session. Missing or invalid credentials return 401; ingest authority returns 403.
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
 
 **Response:** Accepts schema_version=1, a nonblank English/code query of at most 2048 UTF-8 bytes with a meaningful token, and optional integer max_bytes (4096–65536; default 16384). Rejects all other fields. Returns policy/schema version 1, source_session_id, quarantine_revision, matched/no_match/budget_exhausted status, unknown capture completeness, complete visible scan coverage, closed exclusion counts, and at most eight scored exact EvidenceReadItem values. Each item retains its occurrence reference, timestamp, role, finish_reason, and complete canonical part. Scores count distinct token overlap. Whole-response ASCII JSON respects max_bytes and carries Cache-Control: no-store. Reads use one snapshot, cap visible calls at 1000, selected stored columns at 8 MiB, and canonical parts at 2048. Reasoning and non-finite parts are counted exclusions.
 
@@ -355,11 +357,77 @@ Status codes:
 | `400` | Malformed JSON body. |
 | `401` | Missing or invalid credentials. |
 | `403` | The credential lacks the authority required by this route. |
-| `404` | Retrieval is disabled for this deployment. |
+| `404` | Retrieval is disabled or plural configuration requires explicit Session selection. |
 | `409` | Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), evidence_response_limit (limit), or non_finite_number. No partial scan succeeds. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, query, byte budget, or undeclared field; content is omitted. |
 | `503` | The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL. |
+
+## POST /query/context/discover
+
+Find at most eight Sessions within the deployment's explicit grant.
+
+Version 1 searches English/code keywords under aggregate source bounds. An optional provider/host/repository-ID/SHA anchor prioritizes directly observed commit relationships. Each candidate carries exact evidence or an observed commit witness. Discovery persists nothing and grants no access.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Accepts schema_version=1, query and optional max_bytes with the fixed retrieval bounds, and an optional complete commit anchor (repository_provider, repository_host, repository_id, commit_sha). Returns policy/schema version 1, quarantine_revision, the anchor or null, unknown capture completeness, matched/no_match/budget_exhausted status, complete coverage, closed part/Session exclusion counts, and at most eight candidate Sessions. Each has session_id, score, matched_parts, an exact EvidenceReadItem preview or null, and commit_match (observation_id, source_push_id, captured_at) or null. Commit matches require a visible exact source Push with equal provider identity. Complete visible source limits of 1000 calls, 8 MiB selected stored columns, and 2048 parts apply across the entire grant. Scores count distinct query-token overlap; exact commit matches rank first. Whole candidates fit the requested strict ASCII JSON response budget; Cache-Control is no-store. A commit hint never grants access or proves repository ownership of Session content.
+
+Request body — `ContextDiscoveryRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `query` | string | yes | — |
+| `max_bytes` | integer | no | default `16384` |
+| `commit` | object or null | no | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
+| `404` | Retrieval is disabled for this deployment. |
+| `409` | Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason. |
+| `413` | The streamed body exceeds 16 KiB before JSON decoding. |
+| `422` | Invalid version, query, budget, complete commit identity, or undeclared field. |
+| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+
+## POST /query/context/selected
+
+Retrieve exact evidence from one explicitly selected authorized Session.
+
+Membership is checked before storage access and again in the worker. The read rechecks Quarantine and retains the singleton retrieval response. Evidence remains historical data, not instructions to execute.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Accepts schema_version=1, session_id, query, and optional max_bytes. The query, budget, source limits, and version-1 ContextRetrievalResult match /query/context. Membership is checked before storage lookup and again in the worker. Each request uses its own snapshot and rechecks Quarantine; a previous discovery result grants no additional authority. An authorized known Session with no eligible content returns an empty selection.
+
+Request body — `ContextSelectedRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `query` | string | yes | — |
+| `max_bytes` | integer | no | default `16384` |
+| `session_id` | string | yes | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | The selected Session is outside the configured set, regardless of whether it exists. |
+| `404` | Retrieval is disabled for this deployment. |
+| `409` | evidence_unavailable or an existing evidence capacity/representation reason in detail.reason. |
+| `413` | The streamed body exceeds 16 KiB before JSON decoding. |
+| `422` | Invalid version, Session identifier, query, budget, or undeclared field. |
+| `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
 
 ## GET /query/ci/outcome
 
@@ -496,7 +564,7 @@ Auth probe for `sediment login`: the deployment's tenant and the API version, re
 
 **Auth:** Any configured bearer authority. The response identifies the configured authority and client, never the token. Missing or invalid credentials return 401.
 
-**Response:** `{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id. These identifiers never select tenancy.
+**Response:** `{"org_id": "<tenant>", "version": "<api version>", "authority": "<ingest, operator, or retrieval>", "client_id": "<configured client>"}`. Retrieval authority also receives source_session_id under singleton configuration or sorted source_session_ids under plural configuration. These identifiers never select tenancy.
 
 Status codes:
 

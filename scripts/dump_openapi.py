@@ -42,6 +42,8 @@ BEARER = {
     "/query/evidence/manifest",
     "/query/evidence/read",
     "/query/context",
+    "/query/context/discover",
+    "/query/context/selected",
     "/query/ci/outcome",
     "/query/ci/failures",
     "/query/session/{session_id}",
@@ -54,7 +56,11 @@ BEARER = {
     "/v1/reports/accepted-work-lifecycle",
 }
 INGEST = {"/ingest/gateway", "/ingest/ci", "/v1/logs"}
-RETRIEVAL = {"/query/context"}
+RETRIEVAL = {
+    "/query/context",
+    "/query/context/discover",
+    "/query/context/selected",
+}
 OPERATOR = BEARER - INGEST - RETRIEVAL - {"/v1/me"}
 HMAC = {
     "/ingest/github/push",
@@ -81,7 +87,7 @@ SECURITY_SCHEMES = {
     "retrievalBearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "SEDIMENT_RETRIEVAL_TOKEN. Read-only access to the configured source Session through /query/context and /v1/me; all existing ingest and operator reads return403.",
+        "description": "SEDIMENT_RETRIEVAL_TOKEN. Read-only context access within the configured Session set through /query/context, /query/context/discover, /query/context/selected, and /v1/me. The legacy /query/context route requires singleton configuration. Existing ingest and operator reads return403.",
     },
     "githubWebhookSignature": {
         "type": "apiKey",
