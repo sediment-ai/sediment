@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Target Attribution preserves the complete Derivation over real Git and Facts."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -351,6 +352,89 @@ def test_failed_batch_proof_preserves_non_head_owner_before_direct_head(
         [owner.push_id] if early_match else []
     )
     assert "commit_owner_prefilter_unavailable" in caplog.text
+
+
+@pytest.mark.parametrize("missing_name_before_owner", [False, True])
+def test_owner_diagnostics_stop_before_later_absent_repository_name(
+    tmp_path, postgres_store, caplog, missing_name_before_owner
+):
+    mirrors, first, second, target = _history(tmp_path, postgres_store)
+    owner = first.model_copy(
+        update={
+            "push_id": "identified-owner",
+            "repository_provider": ForgeProvider.GITHUB,
+            "repository_host": "github.com",
+            "repository_id": "123",
+            "ref": "refs/heads/identified",
+            "after_sha": second.after_sha,
+        }
+    )
+    missing_name = owner.model_copy(
+        update={
+            "push_id": "missing-name",
+            "repo": "",
+            "ref": "refs/heads/missing-name",
+            "captured_at": T0
+            + timedelta(minutes=-1 if missing_name_before_owner else 1),
+        }
+    )
+    # Captured identity does not make the optional repository name mandatory.
+    assert Push.model_validate(missing_name.model_dump()) == missing_name
+    for push in (missing_name, owner):
+        assert postgres_store.store_push(push)
+    postgres_store.store_inference_call(_call("owner-call", FIB))
+    context = read_repository_context(
+        postgres_store, ORG, as_of=T0 + timedelta(minutes=1)
+    )
+    mirrors.ensure(owner, repository_context=context)
+    key = context.resolve_reference(
+        ORG, owner.repo, repository_identity=repository_identity_of(owner)
+    ).key
+    assert (
+        context.resolve_reference(
+            ORG,
+            missing_name.repo,
+            repository_identity=repository_identity_of(missing_name),
+        ).reason
+        == "repository_identity_absent"
+    )
+    expected = [
+        row
+        for row in derive_attributions(
+            postgres_store,
+            mirrors,
+            ORG,
+            repository_context=context,
+            note_session_ids_by_commit={},
+        )
+        if row.commit_sha == target
+    ]
+    caplog.clear()
+    caplog.set_level(logging.DEBUG, logger="sediment.derive.attribution")
+    actual = attribution.derive_commit_attributions(
+        postgres_store,
+        mirrors,
+        ORG,
+        target,
+        repository_context=context,
+        repository_key=key,
+        note_session_ids_by_commit={},
+    )
+    assert actual == expected
+    assert [row.source_push_id for row in actual] == [owner.push_id]
+    declined = [
+        record
+        for record in caplog.records
+        if record.message
+        == "Attribution repository declined reason=repository_identity_absent count=1"
+    ]
+    counted = [
+        record
+        for record in caplog.records
+        if record.message
+        == "Commit Attribution skipped reason=repository_identity_absent count=1"
+    ]
+    assert len(declined) == len(counted) == int(missing_name_before_owner)
 
 
 @pytest.mark.parametrize("earlier_id", ["a-first", "Z-first"])
