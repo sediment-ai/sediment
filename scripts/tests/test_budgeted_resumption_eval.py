@@ -259,7 +259,8 @@ def test_runtime_evidence_is_bound_without_copying_private_content(
     assert run.protocol_identity(config) != before
 
 
-def test_delivery_checks_both_forwarded_request_and_captured_fact(tmp_path):
+@pytest.mark.parametrize("text_array", [False, True])
+def test_delivery_checks_both_forwarded_request_and_captured_fact(tmp_path, text_array):
     run = module()
     gate = tmp_path / "gate"
     gate.mkdir()
@@ -267,7 +268,8 @@ def test_delivery_checks_both_forwarded_request_and_captured_fact(tmp_path):
     (gate / "1.meta.json").write_text(
         json.dumps({"id": "1", "route": "model", "started_unix": 0})
     )
-    request = {"messages": [{"role": "user", "content": prompt}]}
+    content = [{"type": "text", "text": prompt}] if text_array else prompt
+    request = {"messages": [{"role": "user", "content": content}]}
     (gate / "1.request.json").write_text(json.dumps(request))
     history = {
         "input_messages": [
@@ -276,6 +278,18 @@ def test_delivery_checks_both_forwarded_request_and_captured_fact(tmp_path):
         "output_messages": [],
     }
     run.verify_context_delivery(prompt, [history], tmp_path)
+    if text_array:
+        for invalid in (
+            [{"type": "text", "text": prompt + "altered"}],
+            [*content, {"type": "text", "text": "extra"}],
+            [{"type": "text", "text": prompt, "extra": True}],
+        ):
+            request["messages"][0]["content"] = invalid
+            (gate / "1.request.json").write_text(json.dumps(request))
+            with pytest.raises(legacy.EvaluationError, match="context_not_forwarded"):
+                run.verify_context_delivery(prompt, [history], tmp_path)
+        request["messages"][0]["content"] = content
+        (gate / "1.request.json").write_text(json.dumps(request))
     history["input_messages"][0]["parts"][0]["content"] = "counterfeit"
     with pytest.raises(legacy.EvaluationError, match="context_not_captured"):
         run.verify_context_delivery(prompt, [history], tmp_path)

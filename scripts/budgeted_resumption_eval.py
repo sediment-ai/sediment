@@ -296,7 +296,8 @@ def verify_context_delivery(prompt: str, histories: list[dict], records: Path) -
         (records / "gate" / f"{models[0]['id']}.request.json").read_bytes()
     )
     if not any(
-        message.get("role") == "user" and message.get("content") == prompt
+        message.get("role") == "user"
+        and message.get("content") in (prompt, [{"type": "text", "text": prompt}])
         for message in first.get("messages", [])
     ):
         raise legacy.EvaluationError("context_not_forwarded")
