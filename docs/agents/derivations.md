@@ -75,7 +75,7 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
 - A commit reachable from several pushes attributes once, against the
   **earliest** push's window. The `seen` set in `attribution.py` enforces
   that, and pushes order by `(captured_at, push_id)`.
-- `derive_commit_attributions` streams stored Push metadata, selects the target's earliest owner in each qualified repository, and scores only that commit. Its required captured-note map makes empty evidence authoritative. Candidate SQL admits the owner's Jaccard window plus the longer window for observed note Sessions, bounded by `as_of`. General and preloaded Derivations retain complete-source validation; see [ADR 0024](../adr/0024-targeted-commit-investigations.md).
+- `derive_commit_attributions` streams stored Push metadata in groups of at most 256, selects the target's earliest owner in each qualified repository, and scores only that commit. Native Git rejects a group only when its possible heads all strictly precede the target; unknown ancestry retains exact per-Push range checks. Its required captured-note map makes empty evidence authoritative. Candidate SQL admits the owner's Jaccard window plus the longer window for observed note Sessions, bounded by `as_of`. General and preloaded Derivations retain complete-source validation; see [ADR 0024](../adr/0024-targeted-commit-investigations.md).
 - Only source-code files with non-blank added lines score.
   `diff.py::CODE_EXTENSIONS` is an allowlist. `diff.py::SKIP_PATTERNS` matches
   by **substring**.

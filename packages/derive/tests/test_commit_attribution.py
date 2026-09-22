@@ -4,7 +4,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from gitfixtures import CART, FIB, commit_all, make_remote, make_work_repo
+from gitfixtures import CART, FIB, commit_all, make_remote, make_work_repo, run_git
 from sediment_core import (
     FactTable,
     ForgeProvider,
@@ -47,10 +47,13 @@ def _call(identifier, text, at=T0, session="session"):
     )
 
 
-def _history(tmp_path, store):
+def _history(tmp_path, store, *, older_commit=False):
     work = make_work_repo(tmp_path)
     (work / "README.md").write_text("root\n")
     base = commit_all(work, "root")
+    if older_commit:
+        (work / "README.md").write_text("earlier history\n")
+        base = commit_all(work, "earlier")
     (work / "fib.py").write_text(FIB)
     target = commit_all(work, "target")
     (work / "cart.py").write_text(CART)
@@ -80,6 +83,63 @@ def _history(tmp_path, store):
     mirrors = MirrorManager(str(tmp_path / "mirrors"))
     mirrors.ensure(first)
     return mirrors, first, second, target
+
+
+@pytest.mark.parametrize("count", [255, 256, 257, 1000])
+def test_old_push_batches_preserve_owner_without_per_push_git(
+    tmp_path, postgres_store, monkeypatch, count
+):
+    from sediment_derive import mirror as mirror_module
+
+    mirrors, first, _, target = _history(tmp_path, postgres_store, older_commit=True)
+    mirror = mirrors.open(ORG, REPO)
+    before = run_git(mirror.path, "rev-parse", f"{first.before_sha}^").strip()
+    for index in reversed(range(count)):
+        postgres_store.store_push(
+            first.model_copy(
+                update={
+                    "push_id": f"history-{index:04}",
+                    "ref": f"refs/heads/history-{index:04}",
+                    "before_sha": before,
+                    "after_sha": first.before_sha,
+                    "captured_at": T0 - timedelta(days=1, seconds=count - index),
+                }
+            )
+        )
+    postgres_store.store_inference_call(_call("target-call", FIB))
+    context = read_repository_context(postgres_store, ORG, as_of=T0)
+    expected = [
+        row
+        for row in derive_attributions(
+            postgres_store,
+            mirrors,
+            ORG,
+            repository_context=context,
+            note_session_ids_by_commit={},
+        )
+        if row.commit_sha == target
+    ]
+    commands = []
+    original = mirror_module._run_git
+
+    def recording_git(path, *args):
+        commands.append(args)
+        return original(path, *args)
+
+    monkeypatch.setattr(mirror_module, "_run_git", recording_git)
+    actual = attribution.derive_commit_attributions(
+        postgres_store,
+        mirrors,
+        ORG,
+        target,
+        repository_context=context,
+        note_session_ids_by_commit={},
+    )
+    assert actual == expected
+    assert [row.source_push_id for row in actual] == [first.push_id]
+    assert not any(".." in argument for command in commands for argument in command)
+    # One target existence check, one rejection per batch, and two diff reads.
+    assert len(commands) == (count + 255) // 256 + 3
 
 
 def test_target_matches_full_history_and_reads_only_target_diff(
@@ -251,6 +311,48 @@ def test_head_fallback_ownership(tmp_path, postgres_store, mode):
     assert rows[0].source_push_id == owner.push_id
 
 
+@pytest.mark.parametrize("early_match", [False, True])
+def test_failed_batch_proof_preserves_non_head_owner_before_direct_head(
+    tmp_path, postgres_store, early_match, caplog
+):
+    mirrors, first, second, target = _history(tmp_path, postgres_store)
+    postgres_store.quarantine_fact(ORG, FactTable.PUSHES, first.push_id, reason="test")
+    missing = first.model_copy(
+        update={
+            "push_id": "missing-head",
+            "ref": "refs/heads/missing",
+            "after_sha": "f" * 40,
+            "captured_at": T0 - timedelta(days=1),
+        }
+    )
+    owner = first.model_copy(
+        update={
+            "push_id": "non-head-owner",
+            "ref": "refs/heads/range",
+            "after_sha": second.after_sha,
+        }
+    )
+    later = first.model_copy(
+        update={
+            "push_id": "later-head",
+            "ref": "refs/heads/later",
+            "captured_at": T0 + timedelta(days=2),
+        }
+    )
+    for push in (later, owner, missing):
+        postgres_store.store_push(push)
+    if early_match:
+        postgres_store.store_inference_call(_call("early-match", FIB))
+    postgres_store.store_inference_call(_call("late-match", FIB, later.captured_at))
+    rows = _target_and_oracle(
+        postgres_store, mirrors, target, boundary=later.captured_at
+    )
+    assert [row.source_push_id for row in rows] == (
+        [owner.push_id] if early_match else []
+    )
+    assert "commit_owner_prefilter_unavailable" in caplog.text
+
+
 @pytest.mark.parametrize("earlier_id", ["a-first", "Z-first"])
 def test_equal_time_pushes_and_shuffled_ingestion(
     tmp_path, postgres_store, postgres_store_factory, earlier_id
@@ -371,6 +473,8 @@ def test_missing_mirror_and_unknown_commit_avoid_candidate_content(
     for manager, sha in (
         (MirrorManager(str(tmp_path / "missing")), target),
         (mirrors, "f" * 40),
+        # The mirror contains the later head, but its Push is beyond as_of.
+        (mirrors, second.after_sha),
     ):
         assert (
             attribution.derive_commit_attributions(
