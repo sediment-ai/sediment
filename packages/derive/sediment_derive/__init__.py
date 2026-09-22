@@ -41,6 +41,7 @@ from .attribution import (
     SimilarityPolicy,
     derive_attribution_result,
     derive_attributions,
+    derive_commit_attributions,
 )
 from .ci_resolution import (
     CI_RESOLUTION_SKIP_REASONS,
@@ -189,6 +190,7 @@ from .survival_scoring import four_gram_containment, four_gram_survival
 # The notes wire-contract models (notes.py) are deliberately not re-exported:
 # they are internal to the derivation, not package API.
 __all__ = [
+    "derive_commit_attributions",
     "CIOutcomeIndexResult",
     "SessionCommitBindingResult",
     "bind_session_commit_keys_result",

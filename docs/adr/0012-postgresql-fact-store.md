@@ -62,6 +62,10 @@ If a future query needs a value that exists only inside `raw`, a new fact
 schema version promotes that value to a validated typed column. The database
 does not reinterpret an opaque provider payload as a query contract.
 
+[ADR 0023](0023-indexed-call-identifiers.md) permits the storage seam to copy
+already-validated provider and typed output tool-call identifiers into a physical
+lookup table. PostgreSQL indexes those scalar copies without parsing content.
+
 ### Migrations and startup
 
 Deployments run `sediment db upgrade` before starting API replicas. The

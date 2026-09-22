@@ -43,6 +43,11 @@ parse this content. Projected reads decode selected content in Python without
 loading unrelated `raw`. The compatibility inference-evidence read extracts
 tool-call IDs from canonical typed parts and removes its JSONB cast.
 
+[ADR 0023](0023-indexed-call-identifiers.md) adds a physical index over exact
+copies of typed call identifiers for interactive attachment. Capture and a
+forward migration extract those copies in Python. The canonical messages and
+their exceptional values retain this lossless contract.
+
 A forward-only Alembic revision converts affected descriptive columns without
 changing logical Facts. SQL NULL stays NULL; decoded empty string stays distinct.
 Constraints measure logical values at canonical validation, not encoded text

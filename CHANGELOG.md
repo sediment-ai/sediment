@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Contributor checks
+
+- Route changes to the root `README.md` through the existing prose checks in
+  continuous integration (CI). Mixed changes, executable files, symlinks,
+  deletions, renames, manual runs, and unavailable Git history retain full
+  validation.
+
 ### Operational evidence
 
 - Add pi's opt-in `sediment_retrieve_context` tool and `POST /query/context` for
@@ -28,7 +35,21 @@
 - Reserve the ingest client name `retrieval`. Rename an existing client with that
   name before upgrading. Retrieval configuration validates even in development
   mode; changing the source Session requires rotating its token.
-
+- Scope commit Attribution to the requested commit before loading call content.
+  Stream Push metadata, retain the earliest eligible owner, and read only its
+  candidate windows. Compact repeated repository evidence into original source
+  witnesses while preserving names, ambiguity, historical bounds, and Quarantine.
+  Captured observations supply note Sessions even when the eligible map is empty;
+  mutable Git notes cannot alter a historical commit investigation.
+- Investigate a commit without loading unrelated Inference call inputs and raw
+  payloads. Supporting reads select exact-commit observations and CI outcomes,
+  and decisions from the inferred calls' Sessions. Decision attachment preserves
+  organization-wide call ambiguity, Quarantine, and historical boundaries.
+  Indexed call-identifier lookup preserves ambiguity without parsing unrelated
+  outputs. It retains at most two visible Fact witnesses per requested identifier;
+  Attribution keeps its separate payload limits. A physical identifier table and
+  parent count migrate from retained Facts, requiring a maintenance window.
+  Canonical Fact schemas and complete bundle/report identity reads stay unchanged.
 - Inventory a Session, inspect captured Inference-call structure, and fetch up to
   32 exact parts through operator-authenticated API routes and `sediment evidence`.
   Reads enforce fixed source and response limits and recheck Quarantine. The CLI

@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PROSE_FILES = {"CONTEXT.md", "CHANGELOG.md"}
+PROSE_FILES = {"CONTEXT.md", "CHANGELOG.md", "README.md"}
 PROSE_DIRS = ("docs/explanation/", "docs/agents/", "docs/adr/")
 SHIM_FILES = {
     "cli/sediment_cli/delivery.py",

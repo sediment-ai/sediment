@@ -30,7 +30,12 @@ class DatabasePrivilegeError(DatabaseOperationError):
 
 
 def _tables() -> dict[str, tuple[str, ...]]:
-    if set(metadata.tables) != {"sessions", "fact_quarantine", *FactTable}:
+    if set(metadata.tables) != {
+        "sessions",
+        "fact_quarantine",
+        "inference_call_aliases",
+        *FactTable,
+    }:
         raise DatabasePrivilegeError("database permission coverage differs from schema")
     return {
         **{name: tuple(table.c.keys()) for name, table in metadata.tables.items()},
@@ -187,7 +192,7 @@ def _apply_grants(connection: Connection) -> None:
                 )
         for role in (RUNTIME_ROLE, OPERATOR_ROLE):
             _ddl(connection, "GRANT SELECT ON {} TO {}", table, sql.Identifier(role))
-        if name in {*FactTable, "sessions"}:
+        if name in {*FactTable, "sessions", "inference_call_aliases"}:
             _ddl(
                 connection,
                 "GRANT INSERT ON {} TO {}",
@@ -455,7 +460,10 @@ def _validate_privileges(connection: Connection, role: str) -> None:
                     "database columns differ from permission coverage"
                 )
         insert = known and (
-            (role == RUNTIME_ROLE and name in {*FactTable, "sessions"})
+            (
+                role == RUNTIME_ROLE
+                and name in {*FactTable, "sessions", "inference_call_aliases"}
+            )
             or (role == OPERATOR_ROLE and name == "fact_quarantine")
         )
         for permission in (

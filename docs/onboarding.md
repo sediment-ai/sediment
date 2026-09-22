@@ -10,7 +10,7 @@ locally, and how to contribute your first pull request.
 | 1. [`README.md`](../README.md) | The evidence store and its uses: evaluate agent work, reuse context, and build training datasets |
 | 2. [`AGENTS.md`](../AGENTS.md) | The router: non-negotiable rules, package map, topical docs. Claude Code reaches it via [`CLAUDE.md`](../CLAUDE.md) and a `SessionStart` hook |
 | 3. [`CONTEXT.md`](../CONTEXT.md) | The domain vocabulary: Facts, Derivations, Attributed completions, and Rollouts. Use its terms exactly. |
-| 4. [`docs/adr/`](adr/) | The binding decisions: 0001–0005 core, 0006 open-core boundary, 0007 client-side transcript parsing, 0008 structured inference calls, 0009 canonical Attribution, [0010 canonical continuous integration outcomes](adr/0010-canonical-ci-outcome-facts.md), [0011 training-objective evidence](adr/0011-training-objectives-own-evidence-interpretation.md), [0012 PostgreSQL-only storage](adr/0012-postgresql-fact-store.md), [0013 Git-note observation Facts](adr/0013-git-note-observation-facts.md), [0014 factual outcomes and training evidence](adr/0014-factual-outcomes-and-training-evidence.md), [0015 lossless representation and bundle v2](adr/0015-lossless-values-and-bundle-v2.md), [0016 bundle derivation consistency](adr/0016-bundle-derivation-consistency.md), [0017 bounded sender transport storage](adr/0017-sender-transport-replay.md), [0018 credential authorities](adr/0018-static-credential-authorities.md), and [0019 repository identity](adr/0019-repository-identity-and-renames.md) |
+| 4. [`docs/adr/`](adr/) | The binding decisions: 0001–0005 core, 0006 open-core boundary, 0007 client-side transcript parsing, 0008 structured inference calls, 0009 canonical Attribution, [0010 canonical continuous integration outcomes](adr/0010-canonical-ci-outcome-facts.md), [0011 training-objective evidence](adr/0011-training-objectives-own-evidence-interpretation.md), [0012 PostgreSQL-only storage](adr/0012-postgresql-fact-store.md), [0013 Git-note observation Facts](adr/0013-git-note-observation-facts.md), [0014 factual outcomes and training evidence](adr/0014-factual-outcomes-and-training-evidence.md), [0015 lossless representation and bundle v2](adr/0015-lossless-values-and-bundle-v2.md), [0016 bundle derivation consistency](adr/0016-bundle-derivation-consistency.md), [0017 bounded sender transport storage](adr/0017-sender-transport-replay.md), [0018 credential authorities](adr/0018-static-credential-authorities.md), [0019 repository identity](adr/0019-repository-identity-and-renames.md), and [0023 indexed call identifiers](adr/0023-indexed-call-identifiers.md) |
 | 5. The playbook for your area | AGENTS.md's package map (`Read first` column) routes you into [`docs/agents/`](agents/) |
 | 6. [The issue tracker](agents/issue-tracker.md) | Labels, milestones, and how to pick up work |
 
@@ -108,10 +108,11 @@ the local checks and retain their results; hosted validation remains pending.
 
 CI runs lint, formatting, and documentation checks before database setup. An
 added or modified Markdown file in `docs/explanation/`, `docs/agents/`, or
-`docs/adr/`, or a change to `CONTEXT.md` or `CHANGELOG.md`, qualifies for the
-prose path only when every changed file qualifies. That path keeps secret scans,
-generated references, and contributor and documentation contract tests. It skips
-PostgreSQL, the full Python suite, release rehearsal, and artifact security scans.
+`docs/adr/`, or a change to `CONTEXT.md`, `CHANGELOG.md`, or the root `README.md`,
+qualifies for the prose path only when every changed file qualifies. That path
+keeps secret scans, generated references, and contributor and documentation
+contract tests. It skips PostgreSQL, the full Python suite, release rehearsal,
+native server checks, and artifact security scans.
 Other paths, executable files, symlinks, deletions, renames, and unavailable Git
 history select full validation. Manual and reusable release runs always select
 full validation. `scripts/ci_preflight.py` owns the selection.
