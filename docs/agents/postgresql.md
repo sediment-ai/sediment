@@ -49,8 +49,8 @@ databases block startup.
 
 ## FactStore and runtime boundary
 
-`FactStore` implements all Fact operations, atomic batches,
-order-independent Sessions, quarantine, counts, health, and keyset Push reads.
+`FactStore` implements all Fact operations, atomic batches, order-independent Sessions, quarantine, counts, health, and keyset Push reads.
+The quarantine write gate loads revision inspection on demand; evidence workers don't import Alembic or its template engine.
 Tests terminate owned workers before and after the real transaction commit. Before commit, Facts and Session upserts roll back together; after commit, replay retains stored identities and canonical payloads. These checks cover process interruption, not host power loss. Retry requires the sender to retain the original event; database deduplication cannot guarantee delivery of events never sent.
 Writes redact first and use database-owned `ON CONFLICT` deduplication;
 quarantine visibility follows the greatest `BIGINT IDENTITY` revision.
