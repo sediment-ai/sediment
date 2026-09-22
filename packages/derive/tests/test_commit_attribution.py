@@ -251,22 +251,21 @@ def test_head_fallback_ownership(tmp_path, postgres_store, mode):
     assert rows[0].source_push_id == owner.push_id
 
 
+@pytest.mark.parametrize("earlier_id", ["a-first", "Z-first"])
 def test_equal_time_pushes_and_shuffled_ingestion(
-    tmp_path, postgres_store, postgres_store_factory
+    tmp_path, postgres_store, postgres_store_factory, earlier_id
 ):
     mirrors, first, second, target = _history(tmp_path, postgres_store)
-    earlier_id = first.model_copy(
-        update={"push_id": "a-first", "ref": "refs/heads/tie"}
-    )
-    postgres_store.store_push(earlier_id)
-    calls = [_call("z-call", FIB), _call("a-call", FIB)]
+    earlier = first.model_copy(update={"push_id": earlier_id, "ref": "refs/heads/tie"})
+    postgres_store.store_push(earlier)
+    calls = [_call("a-call", FIB), _call("Z-call", FIB)]
     for call in calls:
         postgres_store.store_inference_call(call)
     expected = _target_and_oracle(postgres_store, mirrors, target, boundary=T0)
-    assert expected[0].source_push_id == "a-first"
-    assert expected[0].inference_call_id == "a-call"
+    assert expected[0].source_push_id == earlier_id
+    assert expected[0].inference_call_id == "Z-call"
     _, shuffled = postgres_store_factory()
-    for push in (earlier_id, second, first):
+    for push in (earlier, second, first):
         shuffled.store_push(push)
     for call in reversed(calls):
         shuffled.store_inference_call(call)

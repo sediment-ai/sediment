@@ -2368,7 +2368,8 @@ class _FactSnapshot:
                 pushes.c.captured_at <= captured_through,
                 _repository_selector_condition(pushes, repository_key),
             )
-            .order_by(pushes.c.captured_at, pushes.c.push_id)
+            # Match the full Derivation's Python ID tie-break in every locale.
+            .order_by(pushes.c.captured_at, pushes.c.push_id.collate("C"))
         )
         with self._connection.execute(
             statement.execution_options(yield_per=256)

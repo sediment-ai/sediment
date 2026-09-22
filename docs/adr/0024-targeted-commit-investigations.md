@@ -31,6 +31,7 @@ The target-only entry point reads its Push metadata from the caller's Fact
 snapshot. It selects the earliest eligible Push, ordered by capture time and
 Fact ID, whose capped commit list contains the target in each qualified
 repository. Ownership doesn't depend on whether that Push produces a match.
+SQL uses `C` collation for Fact IDs to match Python's tie-break in every locale.
 The commit cap, range fallbacks, similarity thresholds, and tie-breaking rules
 retain their meanings.
 

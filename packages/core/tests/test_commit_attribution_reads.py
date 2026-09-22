@@ -4,7 +4,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sediment_core import (
     FactTable,
     ForgeProvider,
@@ -49,12 +49,26 @@ def test_attribution_candidates_admit_only_notes_sessions_in_long_window(
     assert {row.inference_call_id for row in rows} == {"jaccard", "noted"}
 
 
-def test_attribution_push_iterator_filters_scope_and_does_not_fabricate_facts(
-    postgres_store,
+@pytest.mark.parametrize("collation", ["C", "en-US-x-icu"])
+def test_attribution_push_iterator_filters_scope_and_preserves_python_id_order(
+    postgres_store_factory, collation
 ):
+    _, postgres_store = postgres_store_factory()
+    with postgres_store._engine.begin() as connection:
+        if not connection.execute(
+            text("SELECT 1 FROM pg_collation WHERE collname = :name"),
+            {"name": collation},
+        ).scalar():
+            pytest.skip(f"PostgreSQL collation {collation} is unavailable")
+        connection.execute(
+            text(
+                f'ALTER TABLE pushes ALTER COLUMN push_id TYPE text COLLATE "{collation}"'
+            )
+        )
     for identifier, repo, at in (
-        ("b", "target/repo", T0),
+        ("é", "target/repo", T0),
         ("a", "target/repo", T0),
+        ("Z", "target/repo", T0),
         ("foreign-repo", "target/other", T0),
         ("late", "target/repo", T0 + timedelta(seconds=1)),
     ):
@@ -78,7 +92,7 @@ def test_attribution_push_iterator_filters_scope_and_does_not_fabricate_facts(
             repository_key="target/repo",
         )
     )
-    assert [row.push_id for row in rows] == ["a", "b"]
+    assert [row.push_id for row in rows] == ["Z", "a", "é"]
     assert all(row.org_id == "target" for row in rows)
     assert all(not hasattr(row, "clone_url") for row in rows)
 
