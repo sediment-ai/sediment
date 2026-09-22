@@ -2891,12 +2891,14 @@
       "source": "https://sources.debian.org/src/tzdata/",
       "source_package": "tzdata",
       "source_versions": [
-        "2026b-0+deb12u1"
+        "2026b-0+deb12u1",
+        "2026c-0+deb12u1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2026b-0+deb12u1"
+        "2026b-0+deb12u1",
+        "2026c-0+deb12u1"
       ]
     },
     "deb/ucf": {
