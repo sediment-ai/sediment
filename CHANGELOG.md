@@ -11,6 +11,10 @@
 
 ### Operational evidence
 
+- Investigate a commit without loading unrelated Inference call inputs and raw
+  payloads. Supporting reads select exact-commit observations and CI outcomes,
+  and decisions from the inferred calls' Sessions. Decision attachment preserves
+  organization-wide call ambiguity, Quarantine, and historical boundaries.
 - Inventory a Session, inspect captured Inference-call structure, and fetch up to
   32 exact parts through operator-authenticated API routes and `sediment evidence`.
   Reads enforce fixed source and response limits and recheck Quarantine. The CLI
