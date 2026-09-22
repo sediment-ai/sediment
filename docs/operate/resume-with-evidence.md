@@ -143,6 +143,80 @@ by keyword discovery, and preserves exact captured values in its next model
 turn. Subsequent phases check a known reference after Quarantine and release.
 The script removes its database and loopback API after the check.
 
+## Compare budgeted resumption with JEV
+
+Use `scripts/budgeted_resumption_eval.py` to compare no history, complete history,
+keyword selection, and JEV selection before the first coding call. This separate
+experiment uses three synthetic profiles and 36 fresh continuations. The
+[budgeted-resumption specification](../superpowers/specs/2026-09-22-jev-budgeted-resumption-design.md)
+defines its fixed budgets, thresholds, and interpretation limits.
+
+1. Prepare the isolated local runtime and private configuration described in
+   [Run the maintained continuation comparison](#run-the-maintained-continuation-comparison).
+   For this script, set both `api_url` and `operator_api_url` to the host-reachable
+   API address. The selector runs on the host. Keep `gateway_url` reachable from
+   Docker. Disable retrieval until the source Sessions exist.
+2. Record the runtime image IDs, backend version, model digest, and exact model
+   template hash in a private JSON file. The controller binds this file's hash
+   into its protocol freeze. Verify these identities against the running
+   services; hashing a record alone doesn't attest to a service's configuration.
+   Preserve the file throughout preflight, capture, and comparison.
+3. Put a TypeSafe provider key in a mode-`0600` file outside the repository.
+   The direct JEV API receives the synthetic visible task and candidate evidence.
+   Keep customer traces out of this experiment. The key stays in the consumer
+   process. Run the native coding preflight and the separate JEV contract check:
+
+   ```bash
+   uv run python scripts/budgeted_resumption_eval.py preflight \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --jev-key-file /absolute/private/typesafe-key \
+     --output /absolute/private/budgeted-preflight
+   ```
+
+   Require `passed: true`. An unavailable credential or malformed JEV response
+   blocks the live proof. The controller doesn't substitute mock decisions.
+   A valid `insufficient` or `no_history` decision passes the contract check;
+   the recorded decision doesn't establish selection quality.
+4. Capture the three source Sessions without editing their preserved workspaces:
+
+   ```bash
+   uv run python scripts/budgeted_resumption_eval.py source \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --output /absolute/private/budgeted-source
+   ```
+
+   Require `status: captured`. Source capture costs remain separate from
+   per-resumption costs. Source capture rejects oversized catalogs before a
+   comparison starts. Bind the retrieval credential to exactly the three
+   returned Session IDs with `SEDIMENT_RETRIEVAL_SESSION_IDS`, then restart
+   the isolated API. Don't change the private consumer configuration.
+5. Run the frozen comparison into a directory that doesn't exist:
+
+   ```bash
+   uv run python scripts/budgeted_resumption_eval.py run \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --jev-key-file /absolute/private/typesafe-key \
+     --source /absolute/private/budgeted-source \
+     --preflight /absolute/private/budgeted-preflight \
+     --output /absolute/private/budgeted-comparison
+   ```
+
+6. Inspect `comparison.json` and every `run.json`. A complete experiment can show
+   an unfavorable JEV result. Missing usage prevents a token-saving conclusion.
+   The 8,192-byte historical envelope is a byte limit, not an exact token limit.
+   Totals include all coding prompts and JEV input, with separate model and cache
+   counters. Local compute cost remains unknown. Keep traffic and credentials
+   private; publish only sanitized outcomes and limits. Retain failures and
+   refusals instead of rerunning them in place.
+
+The script checks the delivered context in the raw first coding request and its
+captured Fact. Independent checks include quoted newlines and the historical
+business constraint. This diagnostic measures consumer-triggered initial
+selection; it doesn't demonstrate autonomous retrieval during an ongoing Session.
+
 ## Run the maintained continuation comparison
 
 The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable

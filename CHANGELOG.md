@@ -11,6 +11,12 @@
 
 ### Operational evidence
 
+- Add a separate budgeted-resumption experiment with no history, full history,
+  keyword selection, and JEV selection before the first coding call. Freeze
+  three synthetic profiles and measure 36 fresh continuations with independent
+  CSV checks, exact evidence delivery, and selector-inclusive token accounting.
+  Live JEV validation requires provider access; implementation alone doesn't
+  establish cost savings or autonomous retrieval.
 - Add grant-scoped factual inventory, manifest, and exact part reads with native
   pi tools. Consumers can inspect authorized evidence independently of keyword
   selection, including uncommitted requirements, failed attempts, and readable

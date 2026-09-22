@@ -21,6 +21,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 | `scripts/capacity_rehearsal.py`; `scripts/agent_evidence_benchmark.py` | Disposable capture/report/export and agent-evidence measurements; strict profiles, complete histories, receipt conservation, and scoped resource measurements. See [Profile reports and Derivations](../operate/profile-derivations.md#rehearse-capture-alongside-batch-work) |
 | `scripts/cursor_enterprise_fixture.py` | Guides one Cursor Enterprise macOS fixture run; isolates git and project hooks, retrieves optional enterprise evidence, sanitizes artifacts, and writes one ZIP |
 | `scripts/turn_worktree_observation_spike.py`; `scripts/session_context_retrieval_eval.py`; `scripts/pi_context_discovery_acceptance.py` | Local turn-boundary diagnostic; isolated pi comparison with frozen tasks and transport budgets; scripted native discovery and factual reads through a disposable PostgreSQL/API deployment, respectively. See [Continue a task](../operate/resume-with-evidence.md) |
+| `scripts/budgeted_resumption_eval.py`; `scripts/budgeted_context_selection.py` | Separate 36-continuation diagnostic with frozen runtime evidence, grant-scoped exact reads, common keyword/JEV candidate occurrences, bounded initial context, and complete selection accounting. See [Compare budgeted resumption](../operate/resume-with-evidence.md#compare-budgeted-resumption-with-jev) |
 | `sim/` | Synthetic scenario suite: `gen_repo.py` deterministic sim repo; `scenarios.py` catalog (in-process, org `simcorp`); `precision_report.py` notes/jaccard P/R gate |
 | `sim/driver/` | Live-agent driver: `seed_remote.py` seeds the remote and hooks a clone; `tasks.py` scripted tasks; `run.py` drives agents, fails on any empty funnel layer; `drift_report.py` wire drift vs frozen fixtures. Operator-gated — `seed_remote.py` force-pushes, `run.py` pushes; neither belongs in the unattended allowlist |
 ## Service invariants (`apps/api`)
@@ -130,9 +131,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Three stay script-only by design, because each takes a positional input
   rather than the store. `calibration_check.py` requires recipe and source
   metadata on each human label and reports Brier, ECE, AUROC, and bucket
-  inversions per stratum. `corpus_sizing.py` does
-  store-free planning math. `threshold_drift_report.py` reads a labelled-case
-  manifest, and `--check-drift` exits 0 whatever the verdict.
+  inversions per stratum. `corpus_sizing.py` does store-free planning math.
+  `threshold_drift_report.py` reads a labelled-case manifest; `--check-drift` exits 0 whatever the verdict.
 - `sediment_attribution.py` is the stdlib-only notes client; `install --fleet`
   mutates developer git config — an operator action, never a test fixture.
 - `sediment_transcript.py` is the stdlib checkout shim for packaged `sediment transcript`.
