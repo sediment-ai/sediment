@@ -87,9 +87,10 @@ def test_read_costs_compare_the_retained_redacted_fact(postgres_store):
         }
     )
     expected = benchmark.store_calls(postgres_store, [call])
-    assert benchmark.read_costs(postgres_store, call, expected)["exact_output"][
-        "status"
-    ] == "success"
+    assert (
+        benchmark.read_costs(postgres_store, call, expected)["exact_output"]["status"]
+        == "success"
+    )
 
 
 def test_native_backup_restore_is_verified_and_source_is_not_admin(
