@@ -1296,6 +1296,18 @@ def test_commit_query_omits_inference_histories_and_unrelated_decisions(
     ]
     assert decision_reads
     assert all("developer_decisions.session_id IN" in sql for sql in decision_reads)
+    summary_reads = [
+        statement
+        for statement in statements
+        if "inference_calls.input_tokens" in statement
+    ]
+    assert summary_reads
+    assert all("inference_calls.inference_call_id IN" in sql for sql in summary_reads)
+    witness_reads = [
+        statement for statement in statements if "inference_call_aliases" in statement
+    ]
+    assert witness_reads
+    assert all("inference_calls.output_messages" not in sql for sql in witness_reads)
 
 
 def test_commit_query_without_inferred_calls_avoids_call_and_decision_reads(
@@ -1324,7 +1336,8 @@ def test_commit_query_without_inferred_calls_avoids_call_and_decision_reads(
 
 
 @pytest.mark.parametrize(
-    "witness", ["old", "boundary", "future", "quarantined", "foreign"]
+    "witness",
+    ["old", "boundary", "future", "quarantined", "released", "foreign", "three_owners"],
 )
 def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
     client: TestClient, seeded_attribution: str, postgres_database_factory, witness
@@ -1348,7 +1361,8 @@ def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
             InferenceMessage(
                 role="assistant",
                 parts=[
-                    ToolCallPart(id=original.model_call_id, name="Edit", arguments={})
+                    ToolCallPart(id=original.model_call_id, name="Edit", arguments={}),
+                    ToolCallPart(id=original.model_call_id, name="Edit", arguments={}),
                 ],
             )
         ],
@@ -1361,15 +1375,35 @@ def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
         ),
     )
     store.store_inference_call(collision)
+    if witness == "three_owners":
+        store.store_inference_call(
+            InferenceCall(
+                inference_call_id="third-alias-owner",
+                org_id=ORG,
+                session_id="third-session",
+                gateway_provider=GatewayProvider.PORTKEY,
+                input_messages=[],
+                output_messages=[],
+                model_call_id=original.model_call_id,
+                observed_at=boundary,
+            )
+        )
     store.store_ci_outcome(_ci_outcome(commit_sha=seeded_attribution))
     store.store_ci_outcome(_ci_outcome(outcome_id="unrelated-ci", run_id="unrelated"))
-    if witness == "quarantined":
+    if witness in {"quarantined", "released"}:
         store.quarantine_fact(
             ORG,
             FactTable.INFERENCE_CALLS,
             collision.inference_call_id,
             reason="excluded",
         )
+        if witness == "released":
+            store.release_fact(
+                ORG,
+                FactTable.INFERENCE_CALLS,
+                collision.inference_call_id,
+                reason="restored",
+            )
 
     class AllHistorySnapshot:
         """Retain the pre-projection read populations as a response oracle."""
@@ -1380,10 +1414,12 @@ def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
         def __getattr__(self, name):
             return getattr(self.snapshot, name)
 
-        def read_inference_call_summaries(self, org_id):
+        def read_inference_call_summaries(self, org_id, *, inference_call_ids):
             return self.snapshot.read_inference_calls(org_id)
 
-        def read_inference_call_identities(self, org_id, *, observed_through, limit):
+        def read_inference_call_identity_witnesses(
+            self, org_id, *, call_ids, observed_through
+        ):
             return [
                 call
                 for call in self.snapshot.read_inference_calls(org_id)
@@ -1419,7 +1455,7 @@ def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
 
     expected = _run_query(seeded_attribution, AllHistoryStore(), as_of=boundary)
     assert expected["repos"][0]["decisions"] == (
-        0 if witness in {"old", "boundary"} else 1
+        0 if witness in {"old", "boundary", "released", "three_owners"} else 1
     )
     assert _run_query(seeded_attribution, store, as_of=boundary) == expected
 
@@ -1452,22 +1488,29 @@ def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
         engine.dispose()
 
 
-def test_commit_query_refuses_oversized_alias_evidence_without_partial_response(
-    client: TestClient, seeded_attribution: str, monkeypatch
+@pytest.mark.parametrize("in_candidate_window", [False, True])
+def test_commit_query_only_bounds_output_needed_for_attribution(
+    client: TestClient, seeded_attribution: str, monkeypatch, in_candidate_window
 ) -> None:
     from sediment_api import workers
 
     store = app.state.fact_store
+    [original] = store.read_inference_calls(ORG)
     unrelated = InferenceCall(
         inference_call_id="oversized-alias-source",
         org_id=ORG,
         session_id="old-unrelated-session",
         gateway_provider=GatewayProvider.LITELLM,
+        model_call_id="unrelated-call",
         input_messages=[],
         output_messages=[
             InferenceMessage(role="assistant", parts=[TextPart(content="x" * 20_000)])
         ],
-        observed_at=datetime.now(UTC) - timedelta(days=30),
+        observed_at=(
+            original.observed_at
+            if in_candidate_window
+            else original.observed_at - timedelta(days=30)
+        ),
     )
     store.store_inference_call(unrelated)
     monkeypatch.setattr(
@@ -1482,13 +1525,43 @@ def test_commit_query_refuses_oversized_alias_evidence_without_partial_response(
         ),
     )
     response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
-    assert response.status_code == 409
-    assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}
-    # The old unrelated output is outside the Attribution candidate window;
-    # Quarantine removes its alias witness without changing the selected evidence.
-    store.quarantine_fact(
-        ORG, FactTable.INFERENCE_CALLS, unrelated.inference_call_id, reason="excluded"
+    if in_candidate_window:
+        assert response.status_code == 409
+        assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}
+    else:
+        assert response.status_code == 200
+        assert response.json()["repos"][0]["decisions"] == 1
+
+
+def test_commit_query_refuses_excess_requested_aliases_without_partial_attachment(
+    client: TestClient, seeded_attribution: str, monkeypatch
+) -> None:
+    from sediment_api import workers
+
+    app.state.fact_store.store_decision(
+        DeveloperDecision(
+            org_id=ORG,
+            session_id="sess-query",
+            agent_harness=AgentHarness.CLAUDE_CODE,
+            file_path="missing-call.py",
+            accepted=True,
+            explicit=True,
+            interaction_mode=InteractionMode.AGENT,
+            call_id="absent-call",
+            occurred_at=datetime.now(UTC),
+        )
+    )
+    monkeypatch.setattr(
+        workers,
+        "_WORKER_COMMAND",
+        (
+            sys.executable,
+            "-c",
+            "from sediment_core import store; "
+            "store.COMPOSITE_FILTER_KEY_LIMIT = 1; "
+            "from sediment_api.worker import main; raise SystemExit(main())",
+        ),
     )
     response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
-    assert response.status_code == 200
-    assert response.json()["repos"][0]["decisions"] == 1
+    assert response.status_code == 409
+    assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}

@@ -261,7 +261,11 @@ def test_schema_dump_detects_constraint_and_index_drift(
     try:
         with primary_key_engine.begin() as connection:
             connection.execute(
-                text("ALTER TABLE inference_calls DROP CONSTRAINT inference_calls_pkey")
+                # Use an unreferenced key to isolate primary-key drift.
+                text(
+                    "ALTER TABLE developer_decisions "
+                    "DROP CONSTRAINT developer_decisions_pkey"
+                )
             )
     finally:
         primary_key_engine.dispose()

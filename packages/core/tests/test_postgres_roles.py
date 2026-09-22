@@ -214,6 +214,9 @@ def test_fact_mutation_and_administration_fail(role_database, role):
         "UPDATE sessions SET session_id=session_id",
         "UPDATE sessions SET org_id=org_id",
         "DELETE FROM sessions",
+        "UPDATE inference_call_aliases SET call_id=call_id",
+        "DELETE FROM inference_call_aliases",
+        "TRUNCATE inference_call_aliases",
         "TRUNCATE sessions",
         "UPDATE fact_quarantine SET reason=reason",
         "DELETE FROM fact_quarantine",
@@ -242,7 +245,7 @@ def test_fact_mutation_and_administration_fail(role_database, role):
     else:
         statements += [
             f'INSERT INTO "{table}" DEFAULT VALUES'
-            for table in [*FactTable, "sessions"]
+            for table in [*FactTable, "sessions", "inference_call_aliases"]
         ]
     for statement in statements:
         denied(engine, statement)

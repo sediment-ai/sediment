@@ -21,6 +21,7 @@ INVENTORY = {
         "Aware timestamp": ["first_observed_at", "last_observed_at"],
     },
     "inference_calls": {
+        "Physical integer": ["call_alias_count"],
         "Integer": [
             "schema_version",
             "input_tokens?",
@@ -39,6 +40,10 @@ INVENTORY = {
         "Closed vocabulary": ["gateway_provider"],
         "Opaque content": ["input_messages", "output_messages", "raw"],
         "Aware timestamp": ["observed_at"],
+    },
+    "inference_call_aliases": {
+        "Identity": ["inference_call_id", "org_id", "call_id"],
+        "Integer": ["ordinal"],
     },
     "developer_decisions": {
         "Identity": [
@@ -360,7 +365,7 @@ def test_representation_inventory_covers_every_column_and_fact_field():
         table = metadata.tables[table_name]
         assert declared == {column.name: column.nullable for column in table.columns}
         if table_name in FACT_MODELS:
-            assert set(declared) - {"quarantine_revision"} == set(
+            assert set(declared) - {"quarantine_revision", "call_alias_count"} == set(
                 FACT_MODELS[table_name].model_fields
             )
 

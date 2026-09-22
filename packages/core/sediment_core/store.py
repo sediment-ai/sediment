@@ -24,9 +24,10 @@ from sqlalchemy import (
     or_,
     select,
     tuple_,
+    true,
     values,
 )
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import ARRAY, array, insert
 from sqlalchemy.engine import Connection, Engine
 
 from . import evidence
@@ -82,6 +83,7 @@ from .postgres_schema import (
     developer_decisions,
     edit_observations,
     fact_quarantine,
+    inference_call_aliases,
     inference_calls,
     pull_request_merges,
     pull_request_revisions,
@@ -777,11 +779,21 @@ class FactStore:
         release an existing Fact. Conflicting identities expose no retained ID.
         """
         call, redaction_counts = redact_fact(call)
+        aliases = {
+            part.id
+            for message in call.output_messages
+            for part in message.parts
+            if isinstance(part, ToolCallPart)
+        }
+        if call.model_call_id is not None:
+            aliases.add(call.model_call_id)
+        aliases = sorted(aliases)
         values = call.model_dump(
             exclude={"input_messages", "output_messages", "raw"},
             mode="python",
         )
         values.update(
+            call_alias_count=len(aliases),
             input_messages=_serialize(
                 [message.model_dump(mode="python") for message in call.input_messages]
             ),
@@ -800,6 +812,21 @@ class FactStore:
             stored = connection.execute(statement).scalar_one_or_none() is not None
             if stored:
                 connection.execute(_session_upsert(call, call.observed_at))
+                for start in range(0, len(aliases), 1000):
+                    connection.execute(
+                        insert(inference_call_aliases),
+                        [
+                            {
+                                "inference_call_id": call.inference_call_id,
+                                "org_id": call.org_id,
+                                "ordinal": ordinal,
+                                "call_id": alias,
+                            }
+                            for ordinal, alias in enumerate(
+                                aliases[start : start + 1000], start
+                            )
+                        ],
+                    )
                 fact_id = call.inference_call_id
             else:
                 identity = inference_calls.c.inference_call_id == call.inference_call_id
@@ -1543,11 +1570,24 @@ class FactStore:
         org_id: str,
         *,
         observed_between: tuple[datetime, datetime] | None = None,
+        inference_call_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         with self.read_snapshot() as snapshot:
             return snapshot.read_inference_call_summaries(
-                org_id, observed_between=observed_between, limit=limit
+                org_id,
+                observed_between=observed_between,
+                inference_call_ids=inference_call_ids,
+                limit=limit,
+            )
+
+    def read_inference_call_identity_witnesses(
+        self, org_id: str, *, call_ids: set[str], observed_through: datetime
+    ) -> list[InferenceCallIdentity]:
+        """Find unique owners or two witnesses of ambiguity for requested aliases."""
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_inference_call_identity_witnesses(
+                org_id, call_ids=call_ids, observed_through=observed_through
             )
 
     def read_inference_call_identities(
@@ -2423,11 +2463,16 @@ class _FactSnapshot:
         org_id: str,
         *,
         observed_between: tuple[datetime, datetime] | None = None,
+        inference_call_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         if limit is not None and (type(limit) is not int or limit <= 0):
             raise ValueError("Inference call cohort limit must be positive")
         conditions = list(_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False))
+        selected_ids = None
+        if inference_call_ids is not None:
+            selected_ids = _validated_identity_filter(inference_call_ids)
+            conditions.append(inference_calls.c.inference_call_id.in_(selected_ids))
         if observed_between is not None:
             lower, upper = observed_between
             if lower.tzinfo is None or upper.tzinfo is None:
@@ -2442,7 +2487,13 @@ class _FactSnapshot:
                     inference_calls.c.observed_at < upper,
                 ]
             )
-        key = ("inference_call_summaries", org_id, observed_between, limit)
+        key = (
+            "inference_call_summaries",
+            org_id,
+            observed_between,
+            selected_ids,
+            limit,
+        )
         if key in self._cache:
             return list(self._cache[key])
         statement = (
@@ -2481,6 +2532,83 @@ class _FactSnapshot:
                 }
             )
             for row in rows
+        )
+        self._cache[key] = result
+        return list(result)
+
+    def read_inference_call_identity_witnesses(
+        self, org_id: str, *, call_ids: set[str], observed_through: datetime
+    ) -> list[InferenceCallIdentity]:
+        """Read at most two visible owners per requested alias in this snapshot.
+
+        Two owners prove ambiguity; these partial aliases must never replace the
+        complete identity population required by a self-contained bundle.
+        """
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
+        identifiers = _validated_identity_filter(call_ids)
+        if observed_through.utcoffset() is None:
+            raise ValueError("observed_through must be timezone-aware")
+        observed_through = observed_through.astimezone(UTC)
+        if not identifiers:
+            return []
+        key = (
+            "inference_call_identity_witnesses",
+            org_id,
+            observed_through,
+            identifiers,
+        )
+        if key in self._cache:
+            return list(self._cache[key])
+        requested = values(
+            sql_column("call_id", inference_call_aliases.c.call_id.type),
+            name="requested_aliases",
+        ).data([(identifier,) for identifier in identifiers])
+        owners = (
+            select(
+                inference_calls.c.inference_call_id,
+                inference_calls.c.org_id,
+                inference_calls.c.session_id,
+                inference_calls.c.observed_at,
+            )
+            .select_from(inference_call_aliases.join(inference_calls))
+            .where(
+                array(
+                    [inference_call_aliases.c.org_id, inference_call_aliases.c.call_id]
+                )
+                == array([org_id, requested.c.call_id]).cast(
+                    ARRAY(inference_call_aliases.c.call_id.type)
+                ),
+                *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
+                inference_calls.c.observed_at <= observed_through,
+            )
+            .distinct()
+            .order_by(inference_calls.c.inference_call_id)
+            .limit(2)
+            .correlate(requested)
+            .lateral("alias_owners")
+        )
+        statement = select(*owners.c, requested.c.call_id).select_from(
+            requested.join(owners, true())
+        )
+        identities = {}
+        aliases = {}
+        for row in self._connection.execute(statement).mappings():
+            fact_id = row["inference_call_id"]
+            identities[fact_id] = {name: row[name] for name in owners.c.keys()}
+            aliases.setdefault(fact_id, set()).add(row["call_id"])
+        result = tuple(
+            sorted(
+                (
+                    InferenceCallIdentity(
+                        **row, call_ids=tuple(sorted(aliases[fact_id]))
+                    )
+                    for fact_id, row in identities.items()
+                ),
+                key=lambda item: (
+                    item.observed_at.astimezone(UTC),
+                    item.inference_call_id,
+                ),
+            )
         )
         self._cache[key] = result
         return list(result)
@@ -2622,7 +2750,11 @@ class _FactSnapshot:
         statement = (
             select(
                 *_columns_except(
-                    inference_calls, "schema_version", "input_messages", "raw"
+                    inference_calls,
+                    "schema_version",
+                    "input_messages",
+                    "raw",
+                    "call_alias_count",
                 )
             )
             .where(*conditions)
@@ -2666,7 +2798,7 @@ class _FactSnapshot:
         """
         _validate_bounded_fact_read(observed_through, None, "Inference call Session")
         statement = (
-            select(*_columns_except(inference_calls, "raw"))
+            select(*_columns_except(inference_calls, "raw", "call_alias_count"))
             .where(
                 *_inference_content_conditions(
                     org_id, observed_through=observed_through
@@ -2690,7 +2822,7 @@ class _FactSnapshot:
     def read_rollout_inference_calls(self, org_id: str) -> list[RolloutInferenceCall]:
         """Explicitly materialize all Rollout content without a snapshot cache."""
         statement = (
-            select(*_columns_except(inference_calls, "raw"))
+            select(*_columns_except(inference_calls, "raw", "call_alias_count"))
             .where(*_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False))
             .order_by(
                 inference_calls.c.observed_at, inference_calls.c.inference_call_id
@@ -2979,9 +3111,18 @@ def _read_inference_calls(
 
 def _inference_call_from_row(row: Mapping) -> InferenceCall:
     values = dict(row)
+    values.pop("call_alias_count", None)
     for name in ("input_messages", "output_messages", "raw"):
         values[name] = json.loads(values[name])
     return InferenceCall.model_validate(values)
+
+
+def _validated_identity_filter(identifiers: set[str]) -> tuple[str, ...]:
+    if len(identifiers) > COMPOSITE_FILTER_KEY_LIMIT:
+        raise OperationalReportLimitExceeded(
+            f"Inference call identity filter exceeds {COMPOSITE_FILTER_KEY_LIMIT} keys"
+        )
+    return tuple(sorted({_EVIDENCE_ID.validate_python(value) for value in identifiers}))
 
 
 def _rollout_inference_call(row: Mapping) -> RolloutInferenceCall:

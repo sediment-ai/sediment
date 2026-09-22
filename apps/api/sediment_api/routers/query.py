@@ -1019,31 +1019,29 @@ def _run_query(
         by_inference_call_id = {}
         joined = {}
         if matching:
-            summaries = [
-                item
-                for item in snapshot.read_inference_call_summaries(settings.org_id)
-                if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
-            ]
             matched_ids = {
                 item.inference_call_id for items in matching.values() for item in items
             }
             by_inference_call_id = {
                 item.inference_call_id: item
-                for item in summaries
-                if item.inference_call_id in matched_ids
+                for item in snapshot.read_inference_call_summaries(
+                    settings.org_id, inference_call_ids=matched_ids
+                )
+                if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
             }
             decisions = snapshot.read_decisions(
                 settings.org_id,
                 captured_through=boundary,
                 session_ids={item.session_id for item in by_inference_call_id.values()},
             )
-            if any(item.call_id is not None for item in decisions):
-                # The same snapshot's complete summaries bound alias completeness
-                # without adding a fixed organization-size ceiling to this query.
-                identities = snapshot.read_inference_call_identities(
+            call_ids = {item.call_id for item in decisions if item.call_id is not None}
+            if call_ids:
+                # Witnesses establish uniqueness across eligible organization
+                # history, including collisions outside the selected Sessions.
+                identities = snapshot.read_inference_call_identity_witnesses(
                     settings.org_id,
+                    call_ids=call_ids,
                     observed_through=boundary,
-                    limit=max(1, len(summaries)),
                 )
                 joined = join_decisions_by_call_id(identities, decisions)
         repository_keys = (
