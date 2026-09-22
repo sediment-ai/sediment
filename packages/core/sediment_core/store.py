@@ -695,6 +695,22 @@ class SessionDossierProjection:
 
 
 @dataclass(frozen=True)
+class AttributionPush:
+    """Stored Push fields needed to discover and score a commit's owner."""
+
+    push_id: NonEmptyId
+    org_id: OrgId
+    repo: RepoSlug
+    before_sha: CommitSha
+    after_sha: CommitSha
+    forced: bool
+    captured_at: AwareDatetime
+    repository_provider: ForgeProvider | None
+    repository_host: ForgeHost | None
+    repository_id: ProviderRepositoryId | None
+
+
+@dataclass(frozen=True)
 class PushProjection:
     """Push navigation metadata without clone credentials."""
 
@@ -1327,6 +1343,19 @@ class FactStore:
                 limit=limit,
             )
 
+    def iter_attribution_pushes(
+        self,
+        org_id: str,
+        *,
+        captured_through: datetime,
+        repository_key: RepositoryReadKey,
+    ) -> Iterator[AttributionPush]:
+        """Stream one repository's visible stored Push metadata chronologically."""
+        with self.read_snapshot() as snapshot:
+            yield from snapshot.iter_attribution_pushes(
+                org_id, captured_through=captured_through, repository_key=repository_key
+            )
+
     def read_stored_push_id(self, push: Push) -> str | None:
         """Return the persisted identity for a Push natural key."""
         statement = select(pushes.c.push_id).where(
@@ -1635,10 +1664,16 @@ class FactStore:
         *,
         observed_between: tuple[datetime, datetime],
         limit: int | None = None,
+        note_session_ids: set[str] | None = None,
+        notes_observed_between: tuple[datetime, datetime] | None = None,
     ) -> list[AttributionInferenceCall]:
         with self.read_snapshot() as snapshot:
             return snapshot.read_attribution_candidates(
-                org_id, observed_between=observed_between, limit=limit
+                org_id,
+                observed_between=observed_between,
+                limit=limit,
+                note_session_ids=note_session_ids,
+                notes_observed_between=notes_observed_between,
             )
 
     def read_report_inference_calls(
@@ -2315,6 +2350,32 @@ class _FactSnapshot:
             limit=limit,
         )
 
+    def iter_attribution_pushes(
+        self,
+        org_id: str,
+        *,
+        captured_through: datetime,
+        repository_key: RepositoryReadKey,
+    ) -> Iterator[AttributionPush]:
+        """Stream source fields only; closing the iterator releases its cursor."""
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
+        if captured_through.utcoffset() is None:
+            raise ValueError("captured_through must be timezone-aware")
+        statement = (
+            select(*(pushes.c[name] for name in AttributionPush.__dataclass_fields__))
+            .where(
+                *_fact_conditions(org_id, FactTable.PUSHES, False),
+                pushes.c.captured_at <= captured_through,
+                _repository_selector_condition(pushes, repository_key),
+            )
+            .order_by(pushes.c.captured_at, pushes.c.push_id)
+        )
+        with self._connection.execute(
+            statement.execution_options(yield_per=256)
+        ) as rows:
+            for row in rows.mappings():
+                yield AttributionPush(**row)
+
     def read_session_commit_observations(
         self,
         org_id: str,
@@ -2732,12 +2793,43 @@ class _FactSnapshot:
         *,
         observed_between: tuple[datetime, datetime],
         limit: int | None = None,
+        note_session_ids: set[str] | None = None,
+        notes_observed_between: tuple[datetime, datetime] | None = None,
     ) -> list[AttributionInferenceCall]:
+        org_id = _EVIDENCE_ORG.validate_python(org_id)
         lower, upper = observed_between
-        if lower.tzinfo is None or upper.tzinfo is None:
+        if lower.utcoffset() is None or upper.utcoffset() is None:
             raise ValueError("observed_between bounds must be timezone-aware")
+        if lower > upper:
+            raise ValueError("observed_between lower bound must not exceed upper")
         if limit is not None and (type(limit) is not int or limit <= 0):
             raise ValueError("Attribution candidate limit must be positive")
+        population = and_(
+            inference_calls.c.observed_at >= lower,
+            inference_calls.c.observed_at <= upper,
+        )
+        if (note_session_ids is None) != (notes_observed_between is None):
+            raise ValueError(
+                "note Sessions and their observation window are required together"
+            )
+        if note_session_ids is not None:
+            identifiers = _validated_identity_filter(note_session_ids)
+            note_lower, note_upper = notes_observed_between
+            if note_lower.utcoffset() is None or note_upper.utcoffset() is None:
+                raise ValueError("notes_observed_between bounds must be timezone-aware")
+            if note_lower > note_upper:
+                raise ValueError(
+                    "notes_observed_between lower bound must not exceed upper"
+                )
+            if identifiers:
+                population = or_(
+                    population,
+                    and_(
+                        inference_calls.c.session_id.in_(identifiers),
+                        inference_calls.c.observed_at >= note_lower,
+                        inference_calls.c.observed_at <= note_upper,
+                    ),
+                )
         statement = (
             select(
                 inference_calls.c.inference_call_id,
@@ -2748,8 +2840,7 @@ class _FactSnapshot:
             )
             .where(
                 *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
-                inference_calls.c.observed_at >= lower,
-                inference_calls.c.observed_at <= upper,
+                population,
             )
             .order_by(
                 inference_calls.c.observed_at,
