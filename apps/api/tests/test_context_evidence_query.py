@@ -488,3 +488,97 @@ def test_scoped_exact_public_worker_deadline_releases_capacity(
     assert not granted.app.state.workers._query_tasks
     assert not granted.app.state.workers._evidence_tasks
     assert granted.get("/health").status_code == 200
+
+
+@pytest.fixture
+def validation_client(monkeypatch):
+    """Invalid requests need no lifespan, database, or admitted worker."""
+    from fastapi.testclient import TestClient
+    from sediment_api.main import app
+
+    monkeypatch.setattr(settings, "retrieval_token", SecretStr(TOKEN))
+    monkeypatch.setattr(settings, "retrieval_session_id", SESSION)
+    monkeypatch.setattr(settings, "retrieval_session_ids", None)
+
+    class NoWorkers:
+        async def run(self, *args, **kwargs):
+            pytest.fail("invalid request reached worker")
+
+    monkeypatch.setattr(app.state, "workers", NoWorkers(), raising=False)
+    client = TestClient(app)
+    yield client
+    client.close()
+
+
+@pytest.mark.parametrize("location", ["envelope", "reference"])
+@pytest.mark.parametrize("key", ["private-field-sentinel", "\x00", "\ud800"])
+def test_scoped_exact_validation_never_echoes_extra_keys(
+    validation_client, location, key
+):
+    body = {"schema_version": 1, "session_id": SESSION, "references": [_ref()]}
+    target = body if location == "envelope" else body["references"][0]
+    target[key] = "private-value-sentinel"
+    response = validation_client.post(
+        ROOT + "/read",
+        headers=RETRIEVAL | {"Content-Type": "application/json"},
+        content=json.dumps(body),
+    )
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {"type": "value_error", "loc": [], "msg": "Invalid evidence request"}
+        ]
+    }
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"session_id": float("nan")},
+        {"schema_version": float("inf")},
+        {"references": [_ref(part=float("nan"))]},
+        {"references": [_ref() | {"side": "private-side-sentinel"}]},
+        {"references": {"private-shape-sentinel": 1}},
+        {"references": ["private-reference-sentinel"]},
+    ],
+)
+def test_scoped_exact_validation_closes_nonfinite_and_wrong_shape_errors(
+    validation_client, bad
+):
+    body = {"schema_version": 1, "session_id": SESSION, "references": [_ref()], **bad}
+    response = validation_client.post(
+        ROOT + "/read",
+        headers=RETRIEVAL | {"Content-Type": "application/json"},
+        content=json.dumps(body),
+    )
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {"type": "value_error", "loc": [], "msg": "Invalid evidence request"}
+        ]
+    }
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize("kind", ["inventory", "manifest"])
+def test_scoped_exact_invalid_query_is_content_free(validation_client, kind):
+    response = exact(validation_client, kind, session="\x00")
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {"type": "value_error", "loc": [], "msg": "Invalid evidence request"}
+        ]
+    }
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_operator_evidence_validation_keeps_existing_wire_shape(validation_client):
+    response = validation_client.post("/query/evidence/read", headers=AUTH, json={})
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
+    assert {tuple(error["loc"]) for error in response.json()["detail"]} == {
+        ("body", "schema_version"),
+        ("body", "session_id"),
+        ("body", "references"),
+    }
