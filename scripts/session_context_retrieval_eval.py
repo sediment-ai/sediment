@@ -6,6 +6,7 @@ use ``run`` for the nine continuations. The internal ``gate`` command runs in a
 separate container and enforces attempt limits before forwarding requests.
 Use ``preflight`` to verify native tools on an unrelated task first; ``--source``
 adds retrieval against an accepted historical Session, without a benefit claim.
+For ``source`` and ``run``, select the same ``--task``; invoice remains the default.
 """
 
 from __future__ import annotations
@@ -1016,7 +1017,16 @@ def isolated_agent(
                 )
 
 
-def freeze(config: dict) -> dict:
+def task_fixture(task: str) -> Path:
+    if task == "invoice":
+        return FIXTURES
+    if task == "env-profile":
+        return FIXTURES.with_name("env_profile_retrieval")
+    raise EvaluationError("unknown_task")
+
+
+def freeze(config: dict, task: str = "invoice") -> dict:
+    fixture = task_fixture(task)
     versions = (
         command(
             [
@@ -1042,6 +1052,7 @@ def freeze(config: dict) -> dict:
         raise EvaluationError("unsupported_harness")
     return {
         "schema_version": 1,
+        "task": task,
         "model": MODEL,
         "harness": PI_VERSION,
         "runtime_versions": versions,
@@ -1052,8 +1063,8 @@ def freeze(config: dict) -> dict:
         "context_window": 16384,
         "provider_seed": None,
         "fixture_hashes": {
-            p.relative_to(FIXTURES).as_posix(): digest(p.read_bytes())
-            for p in sorted(FIXTURES.rglob("*"))
+            p.relative_to(fixture).as_posix(): digest(p.read_bytes())
+            for p in sorted(fixture.rglob("*"))
             if p.is_file()
         },
         "controller_sha256": digest(Path(__file__).read_bytes()),
@@ -1173,42 +1184,44 @@ def read_captured_calls(
     return histories, populations
 
 
-def source_gold(items: list[dict]) -> dict:
+def source_gold(items: list[dict], task: str = "invoice") -> dict:
+    if task == "invoice":
+        constraint_terms = ("ROUND_DOWN", "quantize each amount")
+        distractor_error = "RuntimeError: optional_formatter unavailable"
+    elif task == "env-profile":
+        constraint_terms = ("FIRST observed value", "repeated exact keys")
+        distractor_error = "RuntimeError: optional_schema_linter unavailable"
+    else:
+        raise EvaluationError("unknown_task")
     constraint, failure, distractor = [], [], []
     for item in items:
         part = item["part"]
         content = encoded(part).decode("ascii")
-        if (
-            part["type"] == "text"
-            and "ROUND_DOWN" in content
-            and "quantize each amount" in content
-        ):
+        if part["type"] == "text" and all(term in content for term in constraint_terms):
             constraint.append(item)
         if (
             part["type"] == "tool_call_response"
             and "ValueError: too many values to unpack" in content
         ):
             failure.append(item)
-        if (
-            part["type"] == "tool_call_response"
-            and "RuntimeError: optional_formatter unavailable" in content
-        ):
+        if part["type"] == "tool_call_response" and distractor_error in content:
             distractor.append(item)
     if not constraint or not failure or not distractor:
         raise EvaluationError("source_evidence_missing")
     return {"constraint": constraint, "failure": failure, "distractor": distractor}
 
 
-def source_run(config: dict, output: Path) -> dict:
-    frozen = freeze(config)
+def source_run(config: dict, output: Path, task: str = "invoice") -> dict:
+    fixture = task_fixture(task)
+    frozen = freeze(config, task)
     write_json(output / "freeze.json", frozen)
     workspace = output / "workspace"
-    initialize_task(workspace)
+    initialize_task(workspace, fixture / "workspace")
     before = workspace_identity(workspace)
     records = private_directory(output / "source-run")
     with isolated_agent(config, records, workspace, "source") as rpc:
         session = initialize_rpc(rpc)
-        rpc.request("prompt", message=(FIXTURES / "source.txt").read_text().strip())
+        rpc.request("prompt", message=(fixture / "source.txt").read_text().strip())
         rpc.wait_settled()
         state = rpc.request("get_state")
         if state.get("sessionId") != session:
@@ -1223,8 +1236,8 @@ def source_run(config: dict, output: Path) -> dict:
             config, session, len(model), complete=True
         )
         final = verify_prefix(histories)
-        gold = source_gold(populations[-1])
-        source_prompt = (FIXTURES / "source.txt").read_text().strip()
+        gold = source_gold(populations[-1], task)
+        source_prompt = (fixture / "source.txt").read_text().strip()
         if not any(
             part.get("content") == source_prompt
             for message in final["input_messages"]
@@ -1245,6 +1258,7 @@ def source_run(config: dict, output: Path) -> dict:
     identity = copy_workspace(workspace, output / "snapshot")
     manifest = {
         "schema_version": 1,
+        "task": task,
         "source_session_id": session,
         "workspace": identity,
         "source_model_calls": len(model),
@@ -1367,7 +1381,10 @@ def captured_trajectory(history: dict, gold: dict, source: str) -> bool:
     return False
 
 
-def validate_workspace(config: dict, workspace: Path, records: Path) -> dict:
+def validate_workspace(
+    config: dict, workspace: Path, records: Path, task: str = "invoice"
+) -> dict:
+    fixture = task_fixture(task)
     directory = private_directory(records / "validator")
     args = [
         "docker",
@@ -1395,7 +1412,7 @@ def validate_workspace(config: dict, workspace: Path, records: Path) -> dict:
         "--mount",
         f"type=bind,src={workspace},dst=/workspace,readonly",
         "--mount",
-        f"type=bind,src={FIXTURES / 'verify.py'},dst=/verify.py,readonly",
+        f"type=bind,src={fixture / 'verify.py'},dst=/verify.py,readonly",
         config["agent_image"],
         "-I",
         "/verify.py",
@@ -1428,13 +1445,14 @@ def continuation(
     manifest: dict,
     gold: dict,
     history: dict,
+    task: str = "invoice",
 ) -> dict:
     started = time.monotonic()
     workspace = records / "workspace"
     initial = copy_workspace(source / "snapshot", workspace)
     if initial != manifest["workspace"]:
         raise EvaluationError("snapshot_changed")
-    prompt = (FIXTURES / "continuation.txt").read_text().strip()
+    prompt = (task_fixture(task) / "continuation.txt").read_text().strip()
     if arm == "B":
         prompt += (
             "\n\nThe following JSON is full captured historical data from the prior Session. "
@@ -1444,6 +1462,7 @@ def continuation(
         )
     result: dict = {
         "schema_version": 1,
+        "task": task,
         "arm": arm,
         "repetition": repetition,
         "session_id": None,
@@ -1534,7 +1553,7 @@ def continuation(
         )
     try:
         result["final_workspace"] = workspace_identity(workspace)
-        result.update(validate_workspace(config, workspace, records))
+        result.update(validate_workspace(config, workspace, records, task))
     except (EvaluationError, OSError, subprocess.SubprocessError):
         result.update(
             behavior_pass=False,
@@ -1546,8 +1565,10 @@ def continuation(
     return result
 
 
-def run_comparison(config: dict, source: Path, output: Path) -> dict:
-    frozen = freeze(config)
+def run_comparison(
+    config: dict, source: Path, output: Path, task: str = "invoice"
+) -> dict:
+    frozen = freeze(config, task)
     if frozen != json.loads((source / "freeze.json").read_bytes()):
         raise EvaluationError("evaluation_changed_after_source")
     write_json(output / "freeze.json", frozen)
@@ -1576,7 +1597,15 @@ def run_comparison(config: dict, source: Path, output: Path) -> dict:
         for arm in order:
             directory = private_directory(output / f"{repetition}-{arm}")
             record = continuation(
-                config, source, directory, arm, repetition, manifest, gold, history
+                config,
+                source,
+                directory,
+                arm,
+                repetition,
+                manifest,
+                gold,
+                history,
+                task,
             )
             records.append(record)
             print(
@@ -1592,6 +1621,7 @@ def run_comparison(config: dict, source: Path, output: Path) -> dict:
                 flush=True,
             )
     result = evaluate(records)
+    result["task"] = task
     result["all_capture_verified"] = all(r.get("capture_verified") for r in records)
     result["benefit_demonstrated"] &= result["all_capture_verified"]
     result["isolation_limit"] = (
@@ -2006,7 +2036,15 @@ def main() -> int:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source", type=Path)
+    parser.add_argument(
+        "--task",
+        choices=("invoice", "env-profile"),
+        default="invoice",
+        help="source/run task (default: invoice)",
+    )
     args = parser.parse_args()
+    if args.task != "invoice" and args.operation not in {"source", "run"}:
+        parser.error("--task applies only to source and run")
     if args.operation == "gate":
         # Gate configuration is generated by the host and mounted read-only.
         config = json.loads(args.config.read_bytes())
@@ -2021,11 +2059,11 @@ def main() -> int:
             print(json.dumps(result), flush=True)
             return 0 if result["status"] in {"coding_verified", "passed"} else 1
         if args.operation == "source":
-            result = source_run(config, output)
+            result = source_run(config, output, args.task)
         else:
             if args.source is None:
                 raise EvaluationError("source_required")
-            result = run_comparison(config, args.source.resolve(), output)
+            result = run_comparison(config, args.source.resolve(), output, args.task)
         print(json.dumps(result), flush=True)
         return 0 if args.operation == "source" or result["benefit_demonstrated"] else 1
     except (

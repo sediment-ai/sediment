@@ -104,7 +104,9 @@ gateway capture, the API, and private records inside your perimeter.
    Before capturing the comparison source, [verify native tool use](#verify-native-tool-use)
    on the unrelated preflight fixture.
 4. Start and verify the source Session. Choose an output directory that doesn't
-   exist:
+   exist. The default task is `invoice`. If you choose the separate environment
+   profile parser task, add `--task env-profile` to both the `source` and `run`
+   commands:
 
    ```bash
    umask 077
@@ -118,6 +120,8 @@ gateway capture, the API, and private records inside your perimeter.
    final conversation prefix, and an unchanged source workspace. It preserves
    the Git index, file bytes, modes, and untracked-file identity. A failed source
    remains a private record; don't use it for the comparison.
+   The freeze record names the selected task and hashes its fixture files.
+   A comparison with another task or changed fixture refuses to run.
    If the controller reports `capture_prefix_incomplete`, inspect the provider,
    gateway, and harness representations before retrying. Reused parallel tool
    indices or differences between an empty text part and an absent part can

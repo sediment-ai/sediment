@@ -1,0 +1,5 @@
+The task is to fix env_profile.py: parse_profile(text) must return a dictionary, skip blank lines and '#' comment lines, strip whitespace from keys and values, and preserve '=' characters inside values. All data rows contain a nonempty key and '='; no broader grammar is required.
+
+A required compatibility constraint from this Session: for repeated exact keys, env_profile.py parse_profile must keep the FIRST observed value. Later occurrences must not replace it.
+
+For this inspection step, read env_profile.py and run python3 check_env_profile.py to capture its failure. Also run python3 -c "raise RuntimeError('optional_schema_linter unavailable')" as an unrelated optional schema linter diagnostic. Before each tool invocation, give a brief natural-language explanation of what you are about to inspect or run. Use the native tool API to call read and bash; printing tool-call text does not execute a tool. After both command results, pause and report that you are ready to continue. Do not edit, create, delete, or commit workspace files in this step. Do not write a handoff file or persist these instructions in the workspace.
