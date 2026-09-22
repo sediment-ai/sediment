@@ -16,6 +16,9 @@
   selection, including uncommitted requirements, failed attempts, and readable
   reasoning. Exact fetch preserves occurrence identity and checks Quarantine
   on each request while avoiding unselected calls and message sides.
+- Load report and forge handlers only for their worker operations. Add a
+  reproducible agent-evidence benchmark with separate successful latency,
+  capacity refusals, database plans, memory, and concurrent capture checks.
 
 - Add bounded candidate discovery across an operator-authorized set of up to
   32 Sessions, with exact previews and optional repository-qualified commit

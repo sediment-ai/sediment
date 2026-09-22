@@ -44,6 +44,9 @@ Every route, in ingest → read order:
 | [`POST /query/context`](#post-querycontext) | retrieval or operator | Agent-requested evidence from the configured previous Session. |
 | [`POST /query/context/discover`](#post-querycontextdiscover) | retrieval or operator | Discover relevant candidates within the authorized Session set. |
 | [`POST /query/context/selected`](#post-querycontextselected) | retrieval or operator | Retrieve exact context from a selected authorized Session. |
+| [`GET /query/context/evidence`](#get-querycontextevidence) | retrieval or operator | Complete factual inventory within the authorized Session set. |
+| [`GET /query/context/evidence/manifest`](#get-querycontextevidencemanifest) | retrieval or operator | Exact message-part references within the authorized Session set. |
+| [`POST /query/context/evidence/read`](#post-querycontextevidenceread) | retrieval or operator | Consumer-selected exact parts within the authorized Session set. |
 | [`GET /query/ci/outcome`](#get-querycioutcome) | operator | One CI outcome identified by provider run and attempt. |
 | [`GET /query/ci/failures`](#get-querycifailures) | operator | Bounded failure-first CI outcome search. |
 | [`GET /query/session/{session_id}`](#get-querysessionsession_id) | operator | Metadata evidence dossier for one Session. |
@@ -428,6 +431,95 @@ Status codes:
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, Session identifier, query, budget, or undeclared field. |
 | `503` | Shared evidence worker or database unavailable; the existing 30-second deadline applies. |
+
+## GET /query/context/evidence
+
+Inventory one authorized Session independently of keyword selection.
+
+The complete content-free inventory retains the exact evidence limits: 1,000 visible calls, 8 MiB of metadata, and a 1 MiB strict JSON response. Membership precedes storage access and is checked again in the worker.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Both retrieval and operator credentials remain restricted to the configured Session grant. Membership is checked before storage and again in the worker. No keyword query or utility score is required. Exact reads can include reasoning; keyword exclusions are selection rules, not access rules. Returns schema_version 1, the Session ID, Quarantine revision, found, capture_completeness=unknown, visible and quarantined Inference call counts, and calls sorted by observation time and Fact ID. Unknown or foreign Sessions return found=false with zero counts. Known empty Sessions return found=true. The inventory excludes message content, raw payloads, and user identifiers. Each request checks live visibility in one read snapshot. The response has Cache-Control: no-store. Limits: 1,000 visible calls, 8 MiB of selected source metadata, and a 1 MiB strict JSON response. IDs travel in query parameters.
+
+Parameters:
+
+| Name | In | Type | Required |
+|---|---|---|---|
+| `session_id` | query | string | yes |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `401` | Missing or invalid credentials. |
+| `403` | Session outside the configured grant, regardless of existence. |
+| `404` | Context retrieval is disabled for this deployment. |
+| `409` | The closed detail.reason is evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. The complete operation is declined. |
+| `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+
+## GET /query/context/evidence/manifest
+
+Describe exact part references in one authorized Session.
+
+Content and raw payloads remain absent. Source columns are bounded to 8 MiB and the complete response to 1 MiB. Each read rechecks Quarantine.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Both retrieval and operator credentials remain restricted to the configured Session grant. Membership is checked before storage and again in the worker. No keyword query or utility score is required. Exact reads can include reasoning; keyword exclusions are selection rules, not access rules. Returns schema_version 1, the Session ID, Quarantine revision, call metadata, and messages in input-then-output order. Each message preserves role, finish reason, and ordinal; each part gives its type and exact occurrence reference. Empty messages remain visible. Text, tool names, arguments, and results are excluded. IDs travel in query parameters. Limits: 8 MiB of selected source columns and a 1 MiB strict JSON response. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
+
+Parameters:
+
+| Name | In | Type | Required |
+|---|---|---|---|
+| `session_id` | query | string | yes |
+| `inference_call_id` | query | string | yes |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `401` | Missing or invalid credentials. |
+| `403` | Session outside the configured grant, regardless of existence. |
+| `404` | Context retrieval is disabled for this deployment. |
+| `409` | The closed detail.reason is evidence_unavailable for any absent, foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, limit); evidence_response_limit (limit); or non_finite_number. |
+| `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
+
+## POST /query/context/evidence/read
+
+Fetch consumer-selected exact parts from one authorized Session.
+
+The read requires 1–32 distinct references and preserves request order, repeated occurrences, and reasoning. No query or utility score is needed. A 64 KiB body, 8 MiB of selected source columns, and a 1 MiB response bound the complete operation. Each request rechecks membership and Quarantine. Historical roles and tool calls remain data, not executable instructions.
+
+**Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
+
+**Response:** Both retrieval and operator credentials remain restricted to the configured Session grant. Membership is checked before storage and again in the worker. No keyword query or utility score is required. Exact reads can include reasoning; keyword exclusions are selection rules, not access rules. Requires exactly schema_version 1, session_id, and 1–32 distinct references. Returns schema_version 1, the Session ID, Quarantine revision, and items in request order. Each item preserves its reference, observation time, role, finish reason, and canonical part. The operation never summarizes, clips, executes tools, or returns partial success. Historical content remains data. ASCII-escaped strict JSON preserves NUL, surrogates, and large integers; emitted non-finite numbers decline the complete response. Limits: 64 KiB before request JSON decoding, 8 MiB of selected source columns, and a 1 MiB response. No raw payloads or user identifiers are selected. The response has Cache-Control: no-store. Every read checks Session scope and Quarantine afresh.
+
+Request body — `EvidenceReadRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `schema_version` | integer | yes | — |
+| `session_id` | string | yes | — |
+| `references` | array of object | yes | — |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the response shape above. |
+| `400` | Malformed JSON body. |
+| `401` | Missing or invalid credentials. |
+| `403` | Session outside the configured grant, regardless of existence. |
+| `404` | Context retrieval is disabled for this deployment. |
+| `409` | The closed detail.reason is evidence_unavailable or evidence_part_absent (reference_index), evidence_source_limit (bytes, limit), evidence_response_limit (limit), or non_finite_number. Unavailability does not disclose its cause. Failures decline all items. |
+| `413` | Request body exceeds 64 KiB, including when Content-Length is absent. |
+| `422` | Invalid exact evidence request; caller-supplied values and field names are omitted. |
+| `503` | Evidence admits one worker within the two query/report slots. Busy workers, a 30-second deadline, or unavailable PostgreSQL decline the read. |
 
 ## GET /query/ci/outcome
 

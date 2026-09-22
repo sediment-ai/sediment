@@ -135,6 +135,14 @@ existing evidence worker and deadline. See the
 These tools call no decision model. Native acceptance can prove exact transport
 and authorization, but it cannot establish model quality or lower inference cost.
 
+To verify the factual native path, use the disposable PostgreSQL and Node 24
+setup from the discovery check, then run
+`uv run --python 3.12 python scripts/pi_context_discovery_acceptance.py --factual`.
+The scripted consumer enumerates the grant, reads an authorized Session omitted
+by keyword discovery, and preserves exact captured values in its next model
+turn. Subsequent phases check a known reference after Quarantine and release.
+The script removes its database and loopback API after the check.
+
 ## Run the maintained continuation comparison
 
 The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable

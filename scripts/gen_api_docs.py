@@ -459,6 +459,7 @@ for _suffix, _summary in {
         | {
             "403": "Session outside the configured grant, regardless of existence.",
             "404": "Context retrieval is disabled for this deployment.",
+            "422": "Invalid exact evidence request; caller-supplied values and field names are omitted.",
         },
     )
 

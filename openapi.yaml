@@ -674,6 +674,194 @@ paths:
       security:
       - retrievalBearerAuth: []
       - operatorBearerAuth: []
+  /query/context/evidence:
+    get:
+      tags:
+      - query
+      summary: Query Context Evidence Inventory
+      description: 'Inventory one authorized Session independently of keyword selection.
+
+
+        The complete content-free inventory retains the exact evidence limits:
+
+        1,000 visible calls, 8 MiB of metadata, and a 1 MiB strict JSON response.
+
+        Membership precedes storage access and is checked again in the worker.'
+      operationId: query_context_evidence_inventory_query_context_evidence_get
+      parameters:
+      - name: session_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceInventory'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '403':
+          description: Retrieval or operator authority required, or Session outside
+            the configured grant.
+        '404':
+          description: Context retrieval is disabled.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - retrievalBearerAuth: []
+      - operatorBearerAuth: []
+  /query/context/evidence/manifest:
+    get:
+      tags:
+      - query
+      summary: Query Context Evidence Manifest
+      description: 'Describe exact part references in one authorized Session.
+
+
+        Content and raw payloads remain absent. Source columns are bounded to
+
+        8 MiB and the complete response to 1 MiB. Each read rechecks Quarantine.'
+      operationId: query_context_evidence_manifest_query_context_evidence_manifest_get
+      parameters:
+      - name: session_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+      - name: inference_call_id
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Inference Call Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceManifest'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '403':
+          description: Retrieval or operator authority required, or Session outside
+            the configured grant.
+        '404':
+          description: Context retrieval is disabled.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - retrievalBearerAuth: []
+      - operatorBearerAuth: []
+  /query/context/evidence/read:
+    post:
+      tags:
+      - query
+      summary: Query Context Evidence Read
+      description: 'Fetch consumer-selected exact parts from one authorized Session.
+
+
+        The read requires 1–32 distinct references and preserves request order,
+
+        repeated occurrences, and reasoning. No query or utility score is needed.
+
+        A 64 KiB body, 8 MiB of selected source columns, and a 1 MiB response bound
+
+        the complete operation. Each request rechecks membership and Quarantine.
+
+        Historical roles and tool calls remain data, not executable instructions.'
+      operationId: query_context_evidence_read_query_context_evidence_read_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceReadRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceRead'
+        '409':
+          description: 'Complete read declined: evidence_inventory_limit, evidence_source_limit,
+            evidence_response_limit, evidence_unavailable, evidence_part_absent, or
+            non_finite_number in detail.reason.'
+        '503':
+          description: Database unavailable, or shared work capacity or 30-second
+            execution budget exceeded.
+        '403':
+          description: Retrieval or operator authority required, or Session outside
+            the configured grant.
+        '404':
+          description: Context retrieval is disabled.
+        '400':
+          description: Malformed JSON body.
+        '413':
+          description: Request body exceeds 64 KiB before JSON decoding.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+      security:
+      - retrievalBearerAuth: []
+      - operatorBearerAuth: []
   /query/ci/outcome:
     get:
       tags:
@@ -3138,6 +3326,7 @@ components:
       scheme: bearer
       description: SEDIMENT_RETRIEVAL_TOKEN. Read-only context access within the configured
         Session set through /query/context, /query/context/discover, /query/context/selected,
+        /query/context/evidence, /query/context/evidence/manifest, /query/context/evidence/read,
         and /v1/me. The legacy /query/context route requires singleton configuration.
         Existing ingest and operator reads return403.
     githubWebhookSignature:
