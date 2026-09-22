@@ -63,7 +63,10 @@ class BodySizeLimitMiddleware:
         root_path = scope.get("root_path", "")
         if root_path and path.startswith(root_path + "/"):
             path = path[len(root_path) :]
-        if scope["method"] == "POST" and path == "/query/evidence/read":
+        if scope["method"] == "POST" and path in {
+            "/query/evidence/read",
+            "/query/context/evidence/read",
+        }:
             # FastAPI parses model envelopes before running dependencies. Keep
             # this operation's smaller bound ahead of that allocation too.
             limit = min(limit, EVIDENCE_REQUEST_BYTES_LIMIT)
@@ -101,7 +104,14 @@ class BodySizeLimitMiddleware:
             scope,
             capped_receive,
             context_send
-            if path in {"/query/context/discover", "/query/context/selected"}
+            if path
+            in {
+                "/query/context/discover",
+                "/query/context/selected",
+                "/query/context/evidence",
+                "/query/context/evidence/manifest",
+                "/query/context/evidence/read",
+            }
             else send,
         )
 

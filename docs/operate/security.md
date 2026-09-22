@@ -30,6 +30,8 @@ If you enable context retrieval, bind its credential to one source Session or
 an explicit set of at most 32 Sessions with the [deployment settings](deploy.md).
 The entire selected Session is authorized, including future captured Facts;
 an observed commit link does not establish exclusive repository ownership.
+The grant also permits factual inventory, manifest, and exact part reads,
+including readable reasoning. Keyword omission is not a permission boundary.
 Rotate the token when changing the set. Give the agent only
 its retrieval endpoint/token and any separate ingest credential required by
 capture. Keep operator login, database credentials, deployment configuration,

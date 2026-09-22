@@ -99,6 +99,16 @@ continuation benefit by itself. The
 [controlled continuation procedure](../../docs/operate/resume-with-evidence.md)
 defines the validation boundary.
 
+The same endpoint/token pair also registers `sediment_list_context_sessions`,
+`sediment_evidence_inventory`, `sediment_evidence_manifest`, and
+`sediment_read_evidence`. These tools enumerate the configured grant and fetch
+explicit occurrences without a keyword query. An external selector judges which
+evidence is useful. Exact reads preserve repeated occurrences and can include
+readable reasoning. Every request rechecks authorization and Quarantine.
+Fetch accepts at most 32 distinct references in a 64 KiB request and a 1 MiB
+response. The tools forward validated original JSON text to preserve large
+integers. See [Select exact evidence independently](../../docs/operate/resume-with-evidence.md#select-exact-evidence-independently).
+
 ## Environment
 
 If the API authorizes several Sessions, set `SEDIMENT_RETRIEVAL_DISCOVERY=true`

@@ -394,6 +394,88 @@ async def query_context_selected(
     )
 
 
+_CONTEXT_EVIDENCE_RESPONSES = _EVIDENCE_RESPONSES | {
+    403: {
+        "description": "Retrieval or operator authority required, or Session outside the configured grant."
+    },
+    404: {"description": "Context retrieval is disabled."},
+}
+
+
+@router.get(
+    "/context/evidence",
+    response_model=EvidenceInventory,
+    responses=_CONTEXT_EVIDENCE_RESPONSES,
+)
+async def query_context_evidence_inventory(
+    session_id: NonEmptyId,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Inventory one authorized Session independently of keyword selection.
+
+    The complete content-free inventory retains the exact evidence limits:
+    1,000 visible calls, 8 MiB of metadata, and a 1 MiB strict JSON response.
+    Membership precedes storage access and is checked again in the worker.
+    """
+    require_context_session(session_id)
+    return await _evidence_worker_response(
+        request, "context-evidence-inventory", {"session_id": session_id}
+    )
+
+
+@router.get(
+    "/context/evidence/manifest",
+    response_model=EvidenceManifest,
+    responses=_CONTEXT_EVIDENCE_RESPONSES,
+)
+async def query_context_evidence_manifest(
+    session_id: NonEmptyId,
+    inference_call_id: NonEmptyId,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Describe exact part references in one authorized Session.
+
+    Content and raw payloads remain absent. Source columns are bounded to
+    8 MiB and the complete response to 1 MiB. Each read rechecks Quarantine.
+    """
+    require_context_session(session_id)
+    return await _evidence_worker_response(
+        request,
+        "context-evidence-manifest",
+        {"session_id": session_id, "inference_call_id": inference_call_id},
+    )
+
+
+@router.post(
+    "/context/evidence/read",
+    response_model=EvidenceRead,
+    responses=_CONTEXT_EVIDENCE_RESPONSES
+    | {
+        400: {"description": "Malformed JSON body."},
+        413: {"description": "Request body exceeds 64 KiB before JSON decoding."},
+    },
+)
+async def query_context_evidence_read(
+    body: EvidenceReadRequest,
+    request: Request,
+    _: None = Depends(verify_context_grant_token),
+) -> Response:
+    """Fetch consumer-selected exact parts from one authorized Session.
+
+    The read requires 1–32 distinct references and preserves request order,
+    repeated occurrences, and reasoning. No query or utility score is needed.
+    A 64 KiB body, 8 MiB of selected source columns, and a 1 MiB response bound
+    the complete operation. Each request rechecks membership and Quarantine.
+    Historical roles and tool calls remain data, not executable instructions.
+    """
+    require_context_session(body.session_id)
+    return await _evidence_worker_response(
+        request, "context-evidence-read", body.model_dump(mode="python")
+    )
+
+
 @dataclass(frozen=True)
 class CIOutcomeSummary:
     outcome_id: str

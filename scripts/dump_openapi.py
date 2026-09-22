@@ -44,6 +44,9 @@ BEARER = {
     "/query/context",
     "/query/context/discover",
     "/query/context/selected",
+    "/query/context/evidence",
+    "/query/context/evidence/manifest",
+    "/query/context/evidence/read",
     "/query/ci/outcome",
     "/query/ci/failures",
     "/query/session/{session_id}",
@@ -60,6 +63,9 @@ RETRIEVAL = {
     "/query/context",
     "/query/context/discover",
     "/query/context/selected",
+    "/query/context/evidence",
+    "/query/context/evidence/manifest",
+    "/query/context/evidence/read",
 }
 OPERATOR = BEARER - INGEST - RETRIEVAL - {"/v1/me"}
 HMAC = {
@@ -87,7 +93,7 @@ SECURITY_SCHEMES = {
     "retrievalBearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "SEDIMENT_RETRIEVAL_TOKEN. Read-only context access within the configured Session set through /query/context, /query/context/discover, /query/context/selected, and /v1/me. The legacy /query/context route requires singleton configuration. Existing ingest and operator reads return403.",
+        "description": "SEDIMENT_RETRIEVAL_TOKEN. Read-only context access within the configured Session set through /query/context, /query/context/discover, /query/context/selected, /query/context/evidence, /query/context/evidence/manifest, /query/context/evidence/read, and /v1/me. The legacy /query/context route requires singleton configuration. Existing ingest and operator reads return403.",
     },
     "githubWebhookSignature": {
         "type": "apiKey",

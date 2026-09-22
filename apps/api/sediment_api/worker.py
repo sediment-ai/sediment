@@ -47,12 +47,7 @@ from sqlalchemy.exc import (
 from .config import settings
 from .deps import require_context_session
 from .workers import MAX_REQUEST_BYTES
-from .routers import forge, query, reports
-from .services.operational_reports import (
-    LifecycleReportRequest,
-    generate_lifecycle_report,
-    model_report_payload,
-)
+from .routers import query
 
 
 class _Diagnostics(logging.Handler):
@@ -117,6 +112,9 @@ class WorkerRequest:
         "context-retrieve",
         "context-discover",
         "context-selected",
+        "context-evidence-inventory",
+        "context-evidence-manifest",
+        "context-evidence-read",
     ]
     payload: dict[str, Any]
 
@@ -173,13 +171,27 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                     )
             except EvidenceReadError as exc:
                 raise HTTPException(status_code=409, detail=exc.detail) from None
-        case "evidence-inventory" | "evidence-manifest" | "evidence-read":
+        case (
+            "evidence-inventory"
+            | "evidence-manifest"
+            | "evidence-read"
+            | "context-evidence-inventory"
+            | "context-evidence-manifest"
+            | "context-evidence-read"
+        ):
             session_id = TypeAdapter(NonEmptyId).validate_python(payload["session_id"])
+            if request.kind.startswith("context-"):
+                if not settings.context_session_ids:
+                    raise HTTPException(
+                        status_code=404, detail="Context retrieval is disabled"
+                    )
+                require_context_session(session_id)
+            operation = request.kind.removeprefix("context-")
             try:
-                if request.kind == "evidence-inventory":
+                if operation == "evidence-inventory":
                     value = store.read_evidence_inventory(settings.org_id, session_id)
                     contract = EvidenceInventory
-                elif request.kind == "evidence-manifest":
+                elif operation == "evidence-manifest":
                     inference_call_id = TypeAdapter(NonEmptyId).validate_python(
                         payload["inference_call_id"]
                     )
@@ -231,6 +243,13 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 exclude_none=True,
             )
         case "model-report" | "lifecycle-report":
+            from .routers import reports
+            from .services.operational_reports import (
+                LifecycleReportRequest,
+                generate_lifecycle_report,
+                model_report_payload,
+            )
+
             bounds = reports.ReportScopeResponse.model_validate(payload)
             scope = reports._build_scope(
                 bounds.cohort_start, bounds.cohort_end, bounds.as_of
@@ -257,6 +276,8 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 reports.ReportEnvelope(scope=bounds, report=result)
             )
         case "push":
+            from .routers import forge
+
             push = Push.model_validate(payload["push"])
             if push.org_id != settings.org_id:
                 raise ValueError("worker organization mismatch")

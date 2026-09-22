@@ -590,7 +590,10 @@ binds it to `127.0.0.1:8000`. The optional gateway binds
 Capture routes require an ingest token or webhook signature. Operator routes
 require the separate operator token. The `/query/evidence` operations return
 captured content to operators on the same API port. They add no outbound
-connection. Keep the consuming agent's model endpoint inside your perimeter
+connection. The `/query/context/evidence` operations expose the same factual
+projections to retrieval or operator credentials within the configured Session
+grant. Exact reads can include reasoning and evidence omitted by keyword selection.
+Keep the consuming agent's model endpoint inside your perimeter
 when captured content must stay there; see
 [Continue a task with captured evidence](resume-with-evidence.md).
 `GET /health` is unauthenticated and returns no captured data. Request bodies

@@ -450,6 +450,38 @@ def test_context_retrieval_preserves_nonempty_pipeline_outputs(
     assert result.status_code == 200
     assert result.json()["status"] == "matched"
     assert result.json()["items"]
+    inventory = client.get(
+        "/query/context/evidence", headers=headers, params={"session_id": SESSION}
+    )
+    assert inventory.status_code == 200
+    assert [call["inference_call_id"] for call in inventory.json()["calls"]] == (
+        captured_calls
+    )
+    manifest = client.get(
+        "/query/context/evidence/manifest",
+        headers=headers,
+        params={"session_id": SESSION, "inference_call_id": captured_calls[1]},
+    )
+    assert manifest.status_code == 200
+    references = [
+        _selection(manifest.json(), side="input", message=index) for index in (1, 0, 3)
+    ]
+    fetched = client.post(
+        "/query/context/evidence/read",
+        headers=headers,
+        json={"schema_version": 1, "session_id": SESSION, "references": references},
+    )
+    assert fetched.status_code == 200
+    assert [item["reference"] for item in fetched.json()["items"]] == references
+    assert [item["part"] for item in fetched.json()["items"]] == [
+        {"type": "text", "content": GOAL},
+        {"type": "text", "content": CONSTRAINT},
+        {
+            "type": "tool_call_response",
+            "id": "verification-tool",
+            "result": TOOL_RESULT,
+        },
+    ]
     assert (
         _pipeline_snapshot(client, training_corpus, tmp_path / "after-context")
         == before

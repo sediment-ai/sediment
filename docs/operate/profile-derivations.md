@@ -280,3 +280,41 @@ contemporary. This rehearsal doesn't reproduce months of changing repository
 history. The local fixture uses development mode and file-based mirrors. For
 deployment verification, repeat representative workloads under the deployment's
 security settings and total resource limits.
+
+## Measure agent evidence retrieval
+
+Use `scripts/agent_evidence_benchmark.py` to measure a loopback API and its
+disposable evidence workers against real PostgreSQL. Set
+`SEDIMENT_TEST_DATABASE_URL` to an owned disposable cluster. The script creates,
+migrates, and removes its own database. Sync the runtime checkout with
+`uv sync --locked --python 3.12` before running it.
+
+```bash
+uv run python scripts/agent_evidence_benchmark.py \
+  --runtime /path/to/sediment-checkout \
+  --output /data/evidence-keyword \
+  --sessions 8 --background 20000 \
+  --modes keyword --samples 30 --waves 10 --clients 1 5 10
+```
+
+Use a different unused output directory for each run. Repeat with `--sessions 1`
+and `--sessions 32` to vary the authorized source size. Hold this size fixed and
+change `--background` to measure unrelated organization history. Compare clean
+runtime revisions using the same script and arguments. Check fixture and
+successful keyword response hashes before comparing timings.
+
+Run each mode separately for comparable traffic conditions. `keyword` measures
+discovery followed by selected-Session keyword retrieval. `exact` discovers a
+preview and fetches its reference. `known` fetches a fixed known reference
+without discovery. The latter two modes require the scoped exact API. They use
+different selection semantics and do not establish equivalent context quality.
+
+Inspect `report.json` for successful latency and capacity refusals separately,
+response bytes, sampled API process-tree memory, and verified overlapping capture
+receipts. The capture probe counts HTTP 503 refusals separately from stored
+receipts and continues with a distinct event without retrying the refused event.
+Read `diagnostic.json` for startup, source, selection, encoding, and
+actual SQL plans. Diagnostic stage times are not public request latencies.
+The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
+and host limits separately. A scripted chooser exercises transport; it measures
+neither decision-model quality nor inference cost.

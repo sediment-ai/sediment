@@ -24,13 +24,13 @@ const selected = (args: unknown = { query: "shipment replay constraint", session
 test("discovery opt-in changes native schemas while false and absent keep singleton schema", () => {
   for (const mode of [undefined, "false"]) {
     const found = tools(mode, { SEDIMENT_RETRIEVAL_DISCOVERY: mode });
-    assert.deepEqual(found.map((tool) => tool.name), ["sediment_retrieve_context"]);
-    assert.deepEqual(Object.keys((found[0]!.parameters as any).properties), ["query", "max_bytes"]);
+    assert.deepEqual(found.map((tool) => tool.name), ["sediment_list_context_sessions", "sediment_evidence_inventory", "sediment_evidence_manifest", "sediment_read_evidence", "sediment_retrieve_context"]);
+    assert.deepEqual(Object.keys((found[4]!.parameters as any).properties), ["query", "max_bytes"]);
   }
   const found = tools();
-  assert.deepEqual(found.map((tool) => tool.name), ["sediment_discover_context", "sediment_retrieve_context"]);
-  assert.deepEqual((found[1]!.parameters as any).required, ["query", "session_id"]);
-  assert.equal((found[0]!.parameters as any).additionalProperties, false);
+  assert.deepEqual(found.map((tool) => tool.name), ["sediment_list_context_sessions", "sediment_evidence_inventory", "sediment_evidence_manifest", "sediment_read_evidence", "sediment_discover_context", "sediment_retrieve_context"]);
+  assert.deepEqual((found[5]!.parameters as any).required, ["query", "session_id"]);
+  assert.equal((found[4]!.parameters as any).additionalProperties, false);
   const diagnostics: string[] = [];
   const previous = console.error; console.error = (...args) => { diagnostics.push(args.join(" ")); };
   try {

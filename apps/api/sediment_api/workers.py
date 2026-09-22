@@ -41,6 +41,9 @@ _EVIDENCE_KINDS = frozenset(
         "context-retrieve",
         "context-discover",
         "context-selected",
+        "context-evidence-inventory",
+        "context-evidence-manifest",
+        "context-evidence-read",
     }
 )
 _QUERY_KINDS = (

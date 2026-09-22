@@ -185,11 +185,32 @@ async def validation_error_without_input(
     400/422, never 500. type/loc/msg are what a caller needs to fix the
     request; the offending input is theirs already.
     """
-    if getattr(request.scope.get("route"), "endpoint", None) in {
+    endpoint = getattr(request.scope.get("route"), "endpoint", None)
+    if endpoint in {
         query.query_context_discover,
         query.query_context_selected,
+        query.query_context_evidence_read,
     } and any(error.get("type") == "json_invalid" for error in exc.errors()):
         return JSONResponse(status_code=400, content={"detail": "Malformed JSON body"})
+    if endpoint in {
+        query.query_context_evidence_inventory,
+        query.query_context_evidence_manifest,
+        query.query_context_evidence_read,
+    }:
+        # Exact references reuse the operator envelope. Its error locations can
+        # contain arbitrary extra keys; keep the scoped boundary content-free.
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": [
+                    {
+                        "type": "value_error",
+                        "loc": [],
+                        "msg": "Invalid evidence request",
+                    }
+                ]
+            },
+        )
     detail = [
         {"type": e.get("type", ""), "loc": e.get("loc", ()), "msg": e.get("msg", "")}
         for e in exc.errors()

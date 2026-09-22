@@ -32,6 +32,9 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
                 "context-retrieve",
                 "context-discover",
                 "context-selected",
+                "context-evidence-inventory",
+                "context-evidence-manifest",
+                "context-evidence-read",
             ):
                 result = await supervisor.run(kind, {})
                 assert result.status_code == 503
@@ -50,7 +53,15 @@ def test_evidence_cannot_consume_the_second_query_report_slot(monkeypatch, tmp_p
 
 @pytest.mark.parametrize(
     "kind",
-    ["evidence-read", "context-retrieve", "context-discover", "context-selected"],
+    [
+        "evidence-read",
+        "context-retrieve",
+        "context-discover",
+        "context-selected",
+        "context-evidence-inventory",
+        "context-evidence-manifest",
+        "context-evidence-read",
+    ],
 )
 @pytest.mark.parametrize("finish", ["cancel", "deadline", "failure", "representation"])
 def test_evidence_releases_both_admission_slots(monkeypatch, tmp_path, finish, kind):
