@@ -1239,3 +1239,256 @@ def test_public_investigations_keep_observed_and_inferred_relationships_separate
         )
         assert failures.status_code == 200
         assert ci.outcome_id in json.dumps(failures.json())
+
+
+def test_commit_query_omits_inference_histories_and_unrelated_decisions(
+    client: TestClient, seeded_attribution: str
+) -> None:
+    from sqlalchemy import event
+    from sediment_api.routers.query import _run_query
+
+    store = app.state.fact_store
+    store.store_inference_call(
+        InferenceCall(
+            org_id=ORG,
+            session_id="unrelated-session",
+            gateway_provider=GatewayProvider.LITELLM,
+            input_messages=[
+                InferenceMessage(role="user", parts=[TextPart(content="x" * 100_000)])
+            ],
+            output_messages=[],
+            raw={"payload": "y" * 100_000},
+        )
+    )
+    store.store_decision(
+        DeveloperDecision(
+            org_id=ORG,
+            session_id="unrelated-session",
+            agent_harness=AgentHarness.CLAUDE_CODE,
+            file_path="unrelated.py",
+            accepted=True,
+            explicit=True,
+            interaction_mode=InteractionMode.AGENT,
+            call_id="unrelated-call",
+            occurred_at=datetime.now(UTC),
+        )
+    )
+    statements = []
+
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(store._engine, "before_cursor_execute", capture)
+    try:
+        result = _run_query(seeded_attribution, store)
+    finally:
+        event.remove(store._engine, "before_cursor_execute", capture)
+    assert result["repos"][0]["decisions"] == 1
+    assert all(
+        "inference_calls.input_messages" not in statement
+        and "inference_calls.raw" not in statement
+        for statement in statements
+    )
+    decision_reads = [
+        statement
+        for statement in statements
+        if "SELECT developer_decisions." in statement
+    ]
+    assert decision_reads
+    assert all("developer_decisions.session_id IN" in sql for sql in decision_reads)
+
+
+def test_commit_query_without_inferred_calls_avoids_call_and_decision_reads(
+    client: TestClient, seeded_attribution: str, monkeypatch
+) -> None:
+    from sqlalchemy import event
+    from sediment_api.config import settings
+    from sediment_api.routers.query import _run_query
+
+    monkeypatch.setattr(settings, "mirror_path", None)
+    store = app.state.fact_store
+    statements = []
+
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    event.listen(store._engine, "before_cursor_execute", capture)
+    try:
+        result = _run_query(seeded_attribution, store)
+    finally:
+        event.remove(store._engine, "before_cursor_execute", capture)
+    assert result["attributed"] is True
+    assert result["repos"][0]["inference_calls"] == []
+    assert all("FROM inference_calls" not in statement for statement in statements)
+    assert all("FROM developer_decisions" not in statement for statement in statements)
+
+
+@pytest.mark.parametrize(
+    "witness", ["old", "boundary", "future", "quarantined", "foreign"]
+)
+def test_commit_query_matches_all_history_joins_and_shuffled_arrival(
+    client: TestClient, seeded_attribution: str, postgres_database_factory, witness
+) -> None:
+    from contextlib import contextmanager
+
+    from sqlalchemy import create_engine
+    from sediment_core import FactStore, ToolCallPart
+    from sediment_api.routers.query import _run_query
+
+    store = app.state.fact_store
+    boundary = datetime.now(UTC)
+    original = store.read_inference_calls(ORG)[0]
+    collision = InferenceCall(
+        inference_call_id="alias-witness",
+        org_id="foreign" if witness == "foreign" else ORG,
+        session_id="unrelated-session",
+        gateway_provider=GatewayProvider.PORTKEY,
+        input_messages=[],
+        output_messages=[
+            InferenceMessage(
+                role="assistant",
+                parts=[
+                    ToolCallPart(id=original.model_call_id, name="Edit", arguments={})
+                ],
+            )
+        ],
+        observed_at=(
+            boundary - timedelta(days=30)
+            if witness == "old"
+            else boundary + timedelta(microseconds=1)
+            if witness == "future"
+            else boundary
+        ),
+    )
+    store.store_inference_call(collision)
+    store.store_ci_outcome(_ci_outcome(commit_sha=seeded_attribution))
+    store.store_ci_outcome(_ci_outcome(outcome_id="unrelated-ci", run_id="unrelated"))
+    if witness == "quarantined":
+        store.quarantine_fact(
+            ORG,
+            FactTable.INFERENCE_CALLS,
+            collision.inference_call_id,
+            reason="excluded",
+        )
+
+    class AllHistorySnapshot:
+        """Retain the pre-projection read populations as a response oracle."""
+
+        def __init__(self, snapshot):
+            self.snapshot = snapshot
+
+        def __getattr__(self, name):
+            return getattr(self.snapshot, name)
+
+        def read_inference_call_summaries(self, org_id):
+            return self.snapshot.read_inference_calls(org_id)
+
+        def read_inference_call_identities(self, org_id, *, observed_through, limit):
+            return [
+                call
+                for call in self.snapshot.read_inference_calls(org_id)
+                if call.observed_at <= observed_through
+            ]
+
+        def read_decisions(self, org_id, *, session_ids, **kwargs):
+            return self.snapshot.read_decisions(org_id, **kwargs)
+
+        def read_session_commit_observations(
+            self, org_id, *, commit_sha=None, **kwargs
+        ):
+            rows = self.snapshot.read_session_commit_observations(org_id, **kwargs)
+            return [
+                row
+                for row in rows
+                if commit_sha is None or row.commit_sha == commit_sha
+            ]
+
+        def read_ci_outcomes(self, org_id, *, commit_sha=None, **kwargs):
+            rows = self.snapshot.read_ci_outcomes(org_id, **kwargs)
+            return [
+                row
+                for row in rows
+                if commit_sha is None or row.commit_sha == commit_sha
+            ]
+
+    class AllHistoryStore:
+        @contextmanager
+        def read_snapshot(self):
+            with store.read_snapshot() as snapshot:
+                yield AllHistorySnapshot(snapshot)
+
+    expected = _run_query(seeded_attribution, AllHistoryStore(), as_of=boundary)
+    assert expected["repos"][0]["decisions"] == (
+        0 if witness in {"old", "boundary"} else 1
+    )
+    assert _run_query(seeded_attribution, store, as_of=boundary) == expected
+
+    engine = create_engine(postgres_database_factory())
+    try:
+        shuffled = FactStore(engine)
+        # Reverse each population's arrival order, retaining exact Fact identities.
+        for read_name, write_name in (
+            ("read_pushes", "store_push"),
+            ("read_inference_calls", "store_inference_call"),
+            ("read_decisions", "store_decision"),
+            ("read_ci_outcomes", "store_ci_outcome"),
+            ("read_session_commit_observations", "store_session_commit_observation"),
+        ):
+            for fact in reversed(
+                getattr(store, read_name)(ORG, include_quarantined=True)
+            ):
+                getattr(shuffled, write_name)(fact)
+        if witness == "foreign":
+            shuffled.store_inference_call(collision)
+        if witness == "quarantined":
+            shuffled.quarantine_fact(
+                ORG,
+                FactTable.INFERENCE_CALLS,
+                collision.inference_call_id,
+                reason="excluded",
+            )
+        assert _run_query(seeded_attribution, shuffled, as_of=boundary) == expected
+    finally:
+        engine.dispose()
+
+
+def test_commit_query_refuses_oversized_alias_evidence_without_partial_response(
+    client: TestClient, seeded_attribution: str, monkeypatch
+) -> None:
+    from sediment_api import workers
+
+    store = app.state.fact_store
+    unrelated = InferenceCall(
+        inference_call_id="oversized-alias-source",
+        org_id=ORG,
+        session_id="old-unrelated-session",
+        gateway_provider=GatewayProvider.LITELLM,
+        input_messages=[],
+        output_messages=[
+            InferenceMessage(role="assistant", parts=[TextPart(content="x" * 20_000)])
+        ],
+        observed_at=datetime.now(UTC) - timedelta(days=30),
+    )
+    store.store_inference_call(unrelated)
+    monkeypatch.setattr(
+        workers,
+        "_WORKER_COMMAND",
+        (
+            sys.executable,
+            "-c",
+            "from sediment_core import store; "
+            "store.INFERENCE_CALL_ROW_BYTES_LIMIT = 10000; "
+            "from sediment_api.worker import main; raise SystemExit(main())",
+        ),
+    )
+    response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
+    assert response.status_code == 409
+    assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}
+    # The old unrelated output is outside the Attribution candidate window;
+    # Quarantine removes its alias witness without changing the selected evidence.
+    store.quarantine_fact(
+        ORG, FactTable.INFERENCE_CALLS, unrelated.inference_call_id, reason="excluded"
+    )
+    response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
+    assert response.status_code == 200
+    assert response.json()["repos"][0]["decisions"] == 1

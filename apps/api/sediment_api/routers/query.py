@@ -51,6 +51,7 @@ from sediment_core import (
 from sediment_core.models import AwareDatetime
 from sediment_core.store import (
     CIOutcomeProjection,
+    InferenceCallSummary,
     PushProjection,
     SessionDossierProjection,
     SessionTimelineProjection,
@@ -58,9 +59,7 @@ from sediment_core.store import (
 from sediment_derive import (
     AttributionSource,
     MirrorManager,
-    InferenceCall,
     derive_attributions,
-    inference_fact_id,
     inference_gateway_provider,
     inference_model,
     inference_user_id,
@@ -966,13 +965,9 @@ def _run_query(
         )
         if selected and selected_key is None:
             return {"commit_sha": commit_sha, "attributed": False}
-        observations = [
-            item
-            for item in snapshot.read_session_commit_observations(
-                settings.org_id, as_of=boundary
-            )
-            if item.commit_sha == commit_sha
-        ]
+        observations = snapshot.read_session_commit_observations(
+            settings.org_id, as_of=boundary, commit_sha=commit_sha
+        )
         binding_result = bind_session_commit_keys_result(
             observations,
             settings.org_id,
@@ -1009,10 +1004,8 @@ def _run_query(
         commit_ci = {}
         unresolved_ci = []
         for item in snapshot.read_ci_outcomes(
-            settings.org_id, captured_through=boundary
+            settings.org_id, captured_through=boundary, commit_sha=commit_sha
         ):
-            if item.commit_sha != commit_sha:
-                continue
             resolution = context.resolve_fact(item)
             if resolution.key is None:
                 skipped[resolution.reason] += 1
@@ -1023,16 +1016,36 @@ def _run_query(
                 commit_ci.setdefault(resolution.key, []).append(item)
         if not bindings and not matching and not commit_ci and not skipped:
             return {"commit_sha": commit_sha, "attributed": False}
-        stored = [
-            item
-            for item in snapshot.read_inference_calls(settings.org_id)
-            if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
-        ]
-        by_inference_call_id = {inference_fact_id(item): item for item in stored}
-        joined = join_decisions_by_call_id(
-            stored,
-            snapshot.read_decisions(settings.org_id, captured_through=boundary),
-        )
+        by_inference_call_id = {}
+        joined = {}
+        if matching:
+            summaries = [
+                item
+                for item in snapshot.read_inference_call_summaries(settings.org_id)
+                if item.observed_at.astimezone(UTC) <= boundary.astimezone(UTC)
+            ]
+            matched_ids = {
+                item.inference_call_id for items in matching.values() for item in items
+            }
+            by_inference_call_id = {
+                item.inference_call_id: item
+                for item in summaries
+                if item.inference_call_id in matched_ids
+            }
+            decisions = snapshot.read_decisions(
+                settings.org_id,
+                captured_through=boundary,
+                session_ids={item.session_id for item in by_inference_call_id.values()},
+            )
+            if any(item.call_id is not None for item in decisions):
+                # The same snapshot's complete summaries bound alias completeness
+                # without adding a fixed organization-size ceiling to this query.
+                identities = snapshot.read_inference_call_identities(
+                    settings.org_id,
+                    observed_through=boundary,
+                    limit=max(1, len(summaries)),
+                )
+                joined = join_decisions_by_call_id(identities, decisions)
         repository_keys = (
             set(matching)
             | set(commit_ci)
@@ -1106,7 +1119,7 @@ def _run_query(
 
 
 def _build_inference_calls(
-    by_inference_call_id: dict[str, InferenceCall],
+    by_inference_call_id: dict[str, InferenceCallSummary],
     entries: Sequence[tuple[str, str, str]],
 ) -> list[dict[str, Any]]:
     """Resolve inference-call, session, and attribution-source triples into the

@@ -304,6 +304,7 @@ RepositoryCommitReadKey = tuple[RepositoryReadKey, CommitSha]
 RepositoryPRReadKey = tuple[
     RepositoryReadKey, Annotated[int, Field(ge=1, le=2**63 - 1, strict=True)]
 ]
+_COMMIT_SHA = TypeAdapter(CommitSha)
 _REPOSITORY_READ_KEY = TypeAdapter(RepositoryReadKey)
 _REPOSITORY_COMMIT_READ_KEY = TypeAdapter(RepositoryCommitReadKey)
 _REPOSITORY_PR_READ_KEY = TypeAdapter(RepositoryPRReadKey)
@@ -1189,6 +1190,7 @@ class FactStore:
         include_quarantined: bool = False,
         *,
         captured_through: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         limit: int | None = None,
@@ -1199,6 +1201,7 @@ class FactStore:
                 org_id,
                 include_quarantined,
                 captured_through=captured_through,
+                commit_sha=commit_sha,
                 repo_commits=repo_commits,
                 repository_commits=repository_commits,
                 limit=limit,
@@ -1332,6 +1335,7 @@ class FactStore:
         org_id: str,
         *,
         as_of: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         session_ids: set[str] | None = None,
@@ -1344,6 +1348,7 @@ class FactStore:
                 org_id,
                 include_quarantined,
                 as_of=as_of,
+                commit_sha=commit_sha,
                 repo_commits=repo_commits,
                 repository_commits=repository_commits,
                 session_ids=session_ids,
@@ -2187,6 +2192,7 @@ class _FactSnapshot:
         org_id: str,
         *,
         captured_through: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         limit: int | None = None,
@@ -2197,6 +2203,7 @@ class _FactSnapshot:
             org_id,
             include_quarantined,
             captured_through=captured_through,
+            commit_sha=commit_sha,
             repo_commits=repo_commits,
             repository_commits=repository_commits,
             limit=limit,
@@ -2227,6 +2234,7 @@ class _FactSnapshot:
         org_id: str,
         *,
         as_of: datetime | None = None,
+        commit_sha: CommitSha | None = None,
         repo_commits: set[tuple[str, str]] | None = None,
         repository_commits: set[RepositoryCommitReadKey] | None = None,
         session_ids: set[str] | None = None,
@@ -2238,6 +2246,7 @@ class _FactSnapshot:
             org_id,
             include_quarantined,
             as_of=as_of,
+            commit_sha=commit_sha,
             repo_commits=repo_commits,
             repository_commits=repository_commits,
             session_ids=session_ids,
@@ -3318,6 +3327,7 @@ def _read_ci_outcomes(
     *,
     outcome_ids: set[str] | None = None,
     captured_through: datetime | None = None,
+    commit_sha: CommitSha | None = None,
     repo_commits: set[tuple[str, str]] | None = None,
     repository_commits: set[RepositoryCommitReadKey] | None = None,
     limit: int | None = None,
@@ -3329,7 +3339,7 @@ def _read_ci_outcomes(
         literal_keys=repo_commits,
         qualified_keys=repository_commits,
         pr=False,
-        extra_bindings=len(outcome_ids or ()),
+        extra_bindings=len(outcome_ids or ()) + (commit_sha is not None),
     )
     conditions = list(
         _fact_conditions(org_id, FactTable.CI_OUTCOMES, include_quarantined)
@@ -3338,6 +3348,10 @@ def _read_ci_outcomes(
         conditions.append(ci_outcomes.c.outcome_id.in_(sorted(outcome_ids)))
     if captured_through is not None:
         conditions.append(ci_outcomes.c.captured_at <= captured_through)
+    if commit_sha is not None:
+        conditions.append(
+            ci_outcomes.c.commit_sha == _COMMIT_SHA.validate_python(commit_sha)
+        )
     if repository_condition is not None:
         conditions.append(repository_condition)
     statement = (
@@ -3457,6 +3471,7 @@ def _read_session_commit_observations(
     include_quarantined: bool,
     *,
     as_of: datetime | None = None,
+    commit_sha: CommitSha | None = None,
     repo_commits: set[tuple[str, str]] | None = None,
     repository_commits: set[RepositoryCommitReadKey] | None = None,
     session_ids: set[str] | None = None,
@@ -3472,7 +3487,7 @@ def _read_session_commit_observations(
         literal_keys=repo_commits,
         qualified_keys=repository_commits,
         pr=False,
-        extra_bindings=len(session_ids or ()),
+        extra_bindings=len(session_ids or ()) + (commit_sha is not None),
     )
     conditions = list(
         _fact_conditions(
@@ -3481,6 +3496,11 @@ def _read_session_commit_observations(
     )
     if as_of is not None:
         conditions.append(session_commit_observations.c.captured_at <= as_of)
+    if commit_sha is not None:
+        conditions.append(
+            session_commit_observations.c.commit_sha
+            == _COMMIT_SHA.validate_python(commit_sha)
+        )
     if repository_condition is not None:
         conditions.append(repository_condition)
     if session_ids is not None:
