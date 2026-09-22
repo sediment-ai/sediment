@@ -1598,6 +1598,10 @@ def test_commit_query_historical_notes_come_from_captured_observations(
     assert mirror is not None
     run_git(
         mirror.path,
+        "-c",
+        "user.name=Dev",
+        "-c",
+        "user.email=dev@example.com",
         "notes",
         "--ref=sediment",
         "add",
