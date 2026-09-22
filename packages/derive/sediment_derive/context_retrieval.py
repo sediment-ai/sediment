@@ -10,7 +10,14 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import ConfigDict, Field
-from sediment_core import EvidenceContextSource, EvidenceReadItem, NonEmptyId
+from sediment_core import (
+    ContextCommitAnchor,
+    ContextCommitMatch,
+    ContextDiscoverySource,
+    EvidenceContextSource,
+    EvidenceReadItem,
+    NonEmptyId,
+)
 from sediment_core.evidence import (
     EvidenceIndex,
     EvidenceReadError,
@@ -33,6 +40,14 @@ CONTEXT_SKIP_REASONS = (
     "no_match",
     "repeated_content",
     "item_limit",
+    "response_budget",
+)
+CONTEXT_DISCOVERY_SKIP_REASONS = (
+    "reasoning_part",
+    "non_finite_number",
+    "unmatched_part",
+    "unmatched_session",
+    "candidate_limit",
     "response_budget",
 )
 _QUERY_STOPWORDS = frozenset(
@@ -96,6 +111,70 @@ class ContextRetrievalResult:
     skipped: ContextRetrievalSkipped
     items: Annotated[
         tuple[ContextRetrievalItem, ...], Field(max_length=CONTEXT_ITEM_LIMIT)
+    ]
+
+
+@dataclass(frozen=True)
+class ContextDiscoveryPolicy:
+    """Version 1 ranks direct commit witnesses and distinct keyword overlap."""
+
+    policy_version: EvidenceSchemaVersion = 1
+
+    def __post_init__(self) -> None:
+        if type(self.policy_version) is not int or self.policy_version != 1:
+            raise ValueError("unsupported context discovery policy")
+
+
+@dataclass(frozen=True)
+class ContextDiscoveryCoverage:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    authorized_sessions: EvidenceIndex
+    found_sessions: EvidenceIndex
+    visible_inference_calls: EvidenceIndex
+    quarantined_inference_calls: EvidenceIndex
+    scanned_parts: EvidenceIndex
+    matched_parts: EvidenceIndex
+    complete_visible_scan: Literal[True]
+
+
+@dataclass(frozen=True)
+class ContextDiscoverySkipped:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    reasoning_part: EvidenceIndex
+    non_finite_number: EvidenceIndex
+    unmatched_part: EvidenceIndex
+    unmatched_session: EvidenceIndex
+    candidate_limit: EvidenceIndex
+    response_budget: EvidenceIndex
+
+
+@dataclass(frozen=True)
+class ContextDiscoveryItem:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    session_id: NonEmptyId
+    score: EvidenceIndex
+    matched_parts: EvidenceIndex
+    preview: EvidenceReadItem | None
+    commit_match: ContextCommitMatch | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContextDiscoveryResult:
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    schema_version: EvidenceSchemaVersion
+    policy_version: EvidenceSchemaVersion
+    quarantine_revision: EvidenceIndex
+    capture_completeness: Literal["unknown"]
+    commit: ContextCommitAnchor | None
+    status: Literal["matched", "no_match", "budget_exhausted"]
+    coverage: ContextDiscoveryCoverage
+    skipped: ContextDiscoverySkipped
+    items: Annotated[
+        tuple[ContextDiscoveryItem, ...], Field(max_length=CONTEXT_ITEM_LIMIT)
     ]
 
 
@@ -237,4 +316,109 @@ def retrieve_context(
         max_bytes=CONTEXT_ENVELOPE_BYTES,
     )
     encode_evidence_json(result, ContextRetrievalResult, max_bytes=max_bytes)
+    return result
+
+
+def discover_context(
+    source: ContextDiscoverySource,
+    query: str,
+    max_bytes: int = CONTEXT_DEFAULT_RESPONSE_BYTES,
+    policy: ContextDiscoveryPolicy = ContextDiscoveryPolicy(),
+) -> ContextDiscoveryResult:
+    """Rank authorized Sessions without inventing previews or repository scope."""
+    query_tokens = context_query_tokens(query)
+    if (
+        type(max_bytes) is not int
+        or not CONTEXT_MIN_RESPONSE_BYTES <= max_bytes <= CONTEXT_MAX_RESPONSE_BYTES
+    ):
+        raise ValueError("invalid context response budget")
+    skipped = Counter({reason: 0 for reason in CONTEXT_DISCOVERY_SKIP_REASONS})
+    candidates = []
+    scanned_parts = matched_parts = 0
+    for session in source.sessions:
+        matches = []
+        for item in session.items:
+            scanned_parts += 1
+            if item.part.type == "reasoning":
+                skipped["reasoning_part"] += 1
+                continue
+            try:
+                score = len(query_tokens & tokenize(_search_text(item)))
+            except EvidenceReadError:
+                skipped["non_finite_number"] += 1
+                continue
+            if score:
+                matches.append(ContextRetrievalItem(score, item))
+            else:
+                skipped["unmatched_part"] += 1
+        matched_parts += len(matches)
+        if not matches and session.commit_match is None:
+            skipped["unmatched_session"] += 1
+            continue
+        best = min(matches, key=_rank_key) if matches else None
+        candidates.append(
+            ContextDiscoveryItem(
+                session.session_id,
+                best.score if best else 0,
+                len(matches),
+                best.evidence if best else None,
+                session.commit_match,
+            )
+        )
+
+    selected = []
+    remaining = max_bytes - CONTEXT_ENVELOPE_BYTES
+    for candidate in sorted(
+        candidates,
+        key=lambda item: (
+            item.commit_match is None,
+            -item.score,
+            item.session_id,
+        ),
+    ):
+        if len(selected) == CONTEXT_ITEM_LIMIT:
+            skipped["candidate_limit"] += 1
+            continue
+        comma_bytes = int(bool(selected))
+        try:
+            encoded = encode_evidence_json(
+                candidate, ContextDiscoveryItem, max_bytes=remaining - comma_bytes
+            )
+        except EvidenceReadError as exc:
+            if exc.detail["reason"] != "evidence_response_limit":
+                raise
+            skipped["response_budget"] += 1
+            continue
+        remaining -= len(encoded) + comma_bytes
+        selected.append(candidate)
+
+    result = ContextDiscoveryResult(
+        schema_version=1,
+        policy_version=policy.policy_version,
+        quarantine_revision=source.quarantine_revision,
+        capture_completeness="unknown",
+        commit=source.commit,
+        status="matched"
+        if selected
+        else "budget_exhausted"
+        if candidates
+        else "no_match",
+        coverage=ContextDiscoveryCoverage(
+            source.authorized_sessions,
+            len(source.sessions),
+            source.visible_inference_calls,
+            source.quarantined_inference_calls,
+            scanned_parts,
+            matched_parts,
+            True,
+        ),
+        skipped=ContextDiscoverySkipped(**skipped),
+        items=tuple(selected),
+    )
+    encode_evidence_json(
+        replace(result, items=()),
+        ContextDiscoveryResult,
+        max_bytes=CONTEXT_ENVELOPE_BYTES,
+    )
+    encode_evidence_json(result, ContextDiscoveryResult, max_bytes=max_bytes)
     return result
