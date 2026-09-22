@@ -107,9 +107,17 @@ jobs:
           done
           docker logs sediment-ci-postgres
           exit 1
-      - name: Install the maintained system PostgreSQL client library
+      - name: Install the maintained PostgreSQL clients and libraries
         if: steps.scope.outputs.full == 'true'
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            postgresql-client-17 libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+          # Backup tests need the server's major, not the runner's default client.
+          printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
       - run: uv run sediment db upgrade
         if: steps.scope.outputs.full == 'true'
       - name: Check prose contracts
