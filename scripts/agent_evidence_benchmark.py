@@ -573,11 +573,13 @@ def run(args):
     from sediment_core.postgres_migrations import upgrade_database
     from sqlalchemy import text
 
+    args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=False)
     runtime = args.runtime.resolve()
     python = runtime / ".venv/bin/python"
     report = {
         "schema_version": 1,
+        "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "started_at_utc": datetime.now(UTC).isoformat(),
         "runtime": str(runtime),
         "revision": subprocess.check_output(
@@ -771,12 +773,15 @@ def main():
     args = parser.parse_args()
     if args.diagnostic:
         diagnostic(args.diagnostic)
+    elif len(args.modes) != 1:
+        parser.error(
+            "choose one mode per run to keep the traffic comparison consistent"
+        )
     elif (
         args.output is None
         or not 0 <= args.background <= 100000
         or not 1 <= args.samples <= 1000
         or not 1 <= args.waves <= 100
-        or len(args.modes) != 1
     ):
         parser.error(
             "output and bounded nonnegative background/positive samples/waves required"
