@@ -160,6 +160,19 @@ class RepositoryIdentityEvidence:
     source_push_id: NonEmptyId | None = None
 
 
+RepositorySourceReadKey = tuple[FactTable, NonEmptyId, Literal["repo", "head_repo"]]
+_REPOSITORY_SOURCE_KEY = TypeAdapter(RepositorySourceReadKey)
+_REPOSITORY_SOURCE_ROLES = (
+    (FactTable.PUSHES, "repo"),
+    (FactTable.CI_OUTCOMES, "repo"),
+    (FactTable.SESSION_COMMIT_OBSERVATIONS, "repo"),
+    (FactTable.PULL_REQUEST_MERGES, "repo"),
+    (FactTable.PULL_REQUEST_MERGES, "head_repo"),
+    (FactTable.PULL_REQUEST_REVISIONS, "repo"),
+    (FactTable.PULL_REQUEST_REVISIONS, "head_repo"),
+)
+
+
 _REPOSITORY_COMPONENTS = ("repository_provider", "repository_host", "repository_id")
 
 
@@ -1479,6 +1492,23 @@ class FactStore:
                 org_id, captured_through=captured_through, limit=limit
             )
 
+    def read_repository_context_witnesses(
+        self,
+        org_id: OrgId,
+        *,
+        captured_through: datetime,
+        source_keys: set[RepositorySourceReadKey],
+        limit: int = REPOSITORY_IDENTITY_LIMIT,
+    ) -> tuple[list[RepositoryIdentityEvidence], list[RepositoryRename]]:
+        """Read complete name/claim witnesses and exact requested source proofs."""
+        with self.read_snapshot() as snapshot:
+            return snapshot.read_repository_context_witnesses(
+                org_id,
+                captured_through=captured_through,
+                source_keys=source_keys,
+                limit=limit,
+            )
+
     def read_pull_request_revisions(
         self,
         org_id: str,
@@ -2090,6 +2120,22 @@ class _FactSnapshot:
     ):
         return _read_repository_identities(
             self._connection, org_id, captured_through=captured_through, limit=limit
+        )
+
+    def read_repository_context_witnesses(
+        self,
+        org_id: OrgId,
+        *,
+        captured_through: datetime,
+        source_keys: set[RepositorySourceReadKey],
+        limit: int = REPOSITORY_IDENTITY_LIMIT,
+    ) -> tuple[list[RepositoryIdentityEvidence], list[RepositoryRename]]:
+        return _read_repository_context_witnesses(
+            self._connection,
+            org_id,
+            captured_through=captured_through,
+            source_keys=source_keys,
+            limit=limit,
         )
 
     def __init__(self, connection: Connection) -> None:
@@ -3539,62 +3585,186 @@ def _read_repository_renames(
     return [RepositoryRename.model_validate(row) for row in rows]
 
 
+def _repository_projection_columns(fact_table, role):
+    table = _FACT_TABLES[fact_table]
+    prefix = "head_repository" if role == "head_repo" else "repository"
+    columns = [
+        table.c.org_id,
+        _FACT_PRIMARY_KEYS[fact_table].label("source_fact_id"),
+        table.c[role].label("repo"),
+        table.c.captured_at,
+        *(
+            table.c[f"{prefix}_{field}"].label(f"repository_{field}")
+            for field in ("provider", "host", "id")
+        ),
+    ]
+    if fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS:
+        columns.append(table.c.source_push_id)
+    return columns
+
+
+def _repository_evidence(row, fact_table, role):
+    values = dict(row)
+    values["repository_provider"] = _coerce_repository_provider(
+        values["repository_provider"]
+    )
+    return RepositoryIdentityEvidence(source_table=fact_table, role=role, **values)
+
+
+def _read_repository_context_witnesses(
+    connection, org_id, *, captured_through, source_keys, limit
+):
+    """Compact scalar states; the pure resolver still interprets every witness.
+
+    Stored primary/delivery uniqueness rules out contradictory source copies.
+    Distinct observation states include source availability and raw source
+    identity/name, so invalid sources cannot conceal successful name witnesses.
+    This population proves names and claims, not complete source counts.
+    """
+    org_id = _EVIDENCE_ORG.validate_python(org_id)
+    if captured_through is None:
+        raise ValueError("repository witnesses require a capture boundary")
+    _repository_read_bounds(captured_through, limit)
+    # Queries separate table/role branches, binding only one ID per key. The
+    # existing 50,000-source ceiling leaves room below 65,535 parameters.
+    if len(source_keys) > REPOSITORY_IDENTITY_LIMIT:
+        raise OperationalReportLimitExceeded(
+            f"Repository source filter exceeds {REPOSITORY_IDENTITY_LIMIT} keys"
+        )
+    requested = {}
+    for value in source_keys:
+        fact_table, fact_id, role = _REPOSITORY_SOURCE_KEY.validate_python(value)
+        if (fact_table, role) not in _REPOSITORY_SOURCE_ROLES:
+            raise ValueError("invalid repository source role")
+        requested.setdefault((fact_table, role), set()).add(fact_id)
+
+    sources = {}
+
+    def retain(row, fact_table, role):
+        item = _repository_evidence(row, fact_table, role)
+        sources[(fact_table, item.source_fact_id, role)] = item
+        if len(sources) > limit:
+            raise OperationalReportLimitExceeded(
+                f"Repository identity witness population exceeds {limit}"
+            )
+
+    anchor = (
+        select(*_repository_projection_columns(FactTable.PUSHES, "repo"))
+        .where(
+            *_fact_conditions(org_id, FactTable.PUSHES, False),
+            pushes.c.captured_at <= captured_through,
+        )
+        .subquery("eligible_source_push")
+    )
+    for fact_table, role in _REPOSITORY_SOURCE_ROLES:
+        table = _FACT_TABLES[fact_table]
+        columns = _repository_projection_columns(fact_table, role)
+        state = [
+            column
+            for column in columns
+            if column.name in (*_REPOSITORY_COMPONENTS, "repo")
+        ]
+        statement = select(*columns).where(
+            *_fact_conditions(org_id, fact_table, False),
+            table.c.captured_at <= captured_through,
+        )
+        is_observation = fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS
+        if is_observation:
+            statement = statement.outerjoin(
+                anchor, anchor.c.source_fact_id == table.c.source_push_id
+            ).add_columns(
+                *(column.label(f"anchor_{column.name}") for column in anchor.c)
+            )
+            state.extend(
+                (
+                    anchor.c.source_fact_id.is_not(None),
+                    anchor.c.repository_provider,
+                    anchor.c.repository_host,
+                    anchor.c.repository_id,
+                    anchor.c.repo,
+                )
+            )
+        queries = [
+            statement.distinct(*state).order_by(*state, _FACT_PRIMARY_KEYS[fact_table])
+        ]
+        if identifiers := requested.get((fact_table, role)):
+            queries.append(
+                statement.where(
+                    _FACT_PRIMARY_KEYS[fact_table].in_(sorted(identifiers))
+                ).order_by(_FACT_PRIMARY_KEYS[fact_table])
+            )
+        for query in queries:
+            for row in connection.execute(query.limit(limit + 1)).mappings():
+                retain(
+                    {column.name: row[column.name] for column in columns},
+                    fact_table,
+                    role,
+                )
+                if is_observation and row["anchor_source_fact_id"] is not None:
+                    retain(
+                        {
+                            column.name: row[f"anchor_{column.name}"]
+                            for column in anchor.c
+                        },
+                        FactTable.PUSHES,
+                        "repo",
+                    )
+
+    rename_state = [
+        repository_renames.c[field]
+        for field in (*_REPOSITORY_COMPONENTS, "old_repo", "new_repo")
+    ]
+    rename_rows = _bounded_fact_rows(
+        connection,
+        select(repository_renames)
+        .where(
+            *_fact_conditions(org_id, FactTable.REPOSITORY_RENAMES, False),
+            repository_renames.c.captured_at <= captured_through,
+        )
+        .distinct(*rename_state)
+        .order_by(*rename_state, repository_renames.c.rename_id),
+        limit,
+        "Repository rename witness",
+    )
+    return (
+        sorted(
+            sources.values(),
+            key=lambda item: (
+                item.captured_at.astimezone(UTC),
+                item.source_table,
+                item.source_fact_id,
+                item.role,
+            ),
+        ),
+        sorted(
+            (RepositoryRename.model_validate(row) for row in rename_rows),
+            key=lambda item: (item.captured_at.astimezone(UTC), item.rename_id),
+        ),
+    )
+
+
 def _read_repository_identities(connection, org_id, *, captured_through, limit):
     if captured_through is None:
         raise ValueError("repository identities require a capture boundary")
     _repository_read_bounds(captured_through, limit)
     result = []
-    for fact_table in (
-        FactTable.PUSHES,
-        FactTable.CI_OUTCOMES,
-        FactTable.SESSION_COMMIT_OBSERVATIONS,
-        FactTable.PULL_REQUEST_MERGES,
-        FactTable.PULL_REQUEST_REVISIONS,
-    ):
+    for fact_table, role in _REPOSITORY_SOURCE_ROLES:
         table = _FACT_TABLES[fact_table]
-        roles = (
-            ("repo", "head_repo")
-            if fact_table
-            in (FactTable.PULL_REQUEST_MERGES, FactTable.PULL_REQUEST_REVISIONS)
-            else ("repo",)
-        )
-        for role in roles:
-            prefix = "head_repository" if role == "head_repo" else "repository"
-            columns = [
-                table.c.org_id,
-                _FACT_PRIMARY_KEYS[fact_table].label("source_fact_id"),
-                table.c[role].label("repo"),
-                table.c.captured_at,
-            ]
-            columns.extend(
-                table.c[f"{prefix}_{field}"].label(f"repository_{field}")
-                for field in ("provider", "host", "id")
+        rows = connection.execute(
+            select(*_repository_projection_columns(fact_table, role))
+            .where(
+                *_fact_conditions(org_id, fact_table, False),
+                table.c.captured_at <= captured_through,
             )
-            if fact_table is FactTable.SESSION_COMMIT_OBSERVATIONS:
-                columns.append(table.c.source_push_id)
-            rows = connection.execute(
-                select(*columns)
-                .where(
-                    *_fact_conditions(org_id, fact_table, False),
-                    table.c.captured_at <= captured_through,
+            .order_by(table.c.captured_at, _FACT_PRIMARY_KEYS[fact_table])
+            .limit(limit + 1 - len(result))
+        ).mappings()
+        for row in rows:
+            result.append(_repository_evidence(row, fact_table, role))
+            if len(result) > limit:
+                raise OperationalReportLimitExceeded(
+                    f"Repository identity population exceeds {limit}"
                 )
-                .order_by(table.c.captured_at, _FACT_PRIMARY_KEYS[fact_table])
-                .limit(limit + 1 - len(result))
-            ).mappings()
-            for row in rows:
-                values = dict(row)
-                values["repository_provider"] = _coerce_repository_provider(
-                    values["repository_provider"]
-                )
-                result.append(
-                    RepositoryIdentityEvidence(
-                        source_table=fact_table, role=role, **values
-                    )
-                )
-                if len(result) > limit:
-                    raise OperationalReportLimitExceeded(
-                        f"Repository identity population exceeds {limit}"
-                    )
     return sorted(
         result,
         key=lambda item: (

@@ -11,6 +11,7 @@ from sediment_core import (
     OperationalReportLimitExceeded,
     REPOSITORY_IDENTITY_LIMIT,
     RepositoryIdentityEvidence,
+    RepositorySourceReadKey,
 )
 
 from .repository_identity import (
@@ -18,6 +19,29 @@ from .repository_identity import (
     build_repository_context,
     repository_identity_evidence_of,
 )
+
+
+def read_repository_witness_context(
+    snapshot,
+    org_id: OrgId,
+    *,
+    as_of: datetime,
+    source_keys: set[RepositorySourceReadKey],
+) -> RepositoryContext:
+    """Resolve complete names/claims with exact requested source support.
+
+    Compact metadata witnesses cannot replace complete bundle populations or
+    their diagnostic counts. Only requested source keys and retained witnesses
+    support exact Fact resolution; callers must not assume other source IDs
+    are present. The caller owns the snapshot and its historical boundary.
+    """
+    evidence, renames = snapshot.read_repository_context_witnesses(
+        org_id,
+        captured_through=as_of,
+        source_keys=source_keys,
+        limit=REPOSITORY_IDENTITY_LIMIT,
+    )
+    return build_repository_context(evidence, renames, org_id, as_of=as_of)
 
 
 def read_repository_context(
