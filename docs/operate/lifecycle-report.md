@@ -32,12 +32,13 @@ calls and the response cap at 64 MiB. Each API process admits two query/report
 jobs without a waiting queue. A capacity rejection or 30-second deadline returns
 503; the server stops the child process before releasing its slot.
 
-Before attaching Decisions, a scoped report reads all visible call identities in
-the organization through `as_of`, including calls before the cohort. This read
-rejects more than 50,000 rows; HTTP returns 409.
-Narrowing the cohort cannot remove older ambiguity witnesses. The cap limits
-rows, not output-message bytes or database scan work. Metrics count only cohort
-calls after the shared uniqueness check.
+Before attaching Decisions, a scoped report checks every requested identifier
+against visible organization history through `as_of`, including older calls.
+Two matching Facts establish ambiguity without reading their message content.
+More than 30,000 distinct non-null Decision identifiers refuses the complete
+report with HTTP 409. Narrowing the cohort doesn't hide
+older collisions. Metrics count only cohort calls after this check. Other cohort,
+supporting-evidence, and execution limits still apply.
 
 ## Read the panels
 
