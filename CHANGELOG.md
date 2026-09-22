@@ -12,6 +12,10 @@
 - Add a private, isolated pi continuation comparison with three repeated arms,
   enforced transport budgets, captured source verification, and independent
   final checks. Report live outcomes separately from automated contract tests.
+- Add a native tool preflight with three fresh read, edit, and shell cycles on an
+  unrelated fixture. An optional fourth cycle verifies retrieval against an
+  accepted source Session, exact references, and subsequent result consumption.
+  Passing this check doesn't establish continuation benefit.
 - Reserve the ingest client name `retrieval`. Rename an existing client with that
   name before upgrading. Retrieval configuration validates even in development
   mode; changing the source Session requires rotating its token.

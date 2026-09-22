@@ -61,9 +61,11 @@ gateway capture, the API, and private records inside your perimeter.
    local model and the existing `litellm/sediment_callback.py` capture callback.
    The bundled Anthropic gateway recipe doesn't provide this model route.
    Disable gateway retries and fallbacks. Configure the model context to 16,384
-   tokens and allow one request at a time. Record the Ollama version and installed
-   model digest with your private run records. Verify native tool calls through
-   the same streaming transport; printed tool syntax doesn't execute a tool.
+   tokens and allow one request at a time. Record the Ollama version, backend model
+   alias, installed model digest, and exact template SHA-256 hash alongside the
+   private freeze record. A gateway model name can resolve to a different backend
+   alias. Verify native tool calls through the same streaming transport; printed
+   tool syntax doesn't execute a tool.
 2. Build the agent and request-counter images from the checkout:
 
    ```bash
@@ -99,6 +101,8 @@ gateway capture, the API, and private records inside your perimeter.
    image references. Agent containers receive temporary per-run credentials.
    Upstream credentials, raw source Session files, and evaluation answers stay
    outside them. Only arm B receives full captured history in its initial prompt.
+   Before capturing the comparison source, [verify native tool use](#verify-native-tool-use)
+   on the unrelated preflight fixture.
 4. Start and verify the source Session. Choose an output directory that doesn't
    exist:
 
@@ -146,6 +150,56 @@ arbitrary direct networking through the agent's shell tool. Keep that limitation
 with the result. A passing comparison establishes one controlled task's benefit,
 not general improvement, crash recovery, or token savings. Changing the frozen
 fixture or selector after observing outcomes requires a separate evaluation.
+
+## Verify native tool use
+
+Use the [comparison configuration](#run-the-maintained-continuation-comparison)
+to check the model, harness, gateway, and capture path before a continuation
+comparison. Choose an output directory that doesn't exist:
+
+```bash
+umask 077
+uv run python scripts/session_context_retrieval_eval.py preflight \
+  --config /absolute/private/evaluation.json \
+  --output /absolute/private/coding-preflight
+```
+
+The controller runs three fresh Sessions in sequence. Each agent must use native
+`read`, `edit`, and `bash` calls, in that order, on an unrelated JSON fixture. The
+controller independently checks the final boolean value and preserved canary.
+It matches each native execution to a captured Inference call and requires the
+complete result in a later model request. Valid JSON results must retain their
+exact parsed value in capture and their original text in the forwarded request.
+All three cycles must pass for `preflight.json` to report `coding_verified`.
+This result exits zero but retains `passed: false`; retrieval remains unverified.
+
+If you have an accepted source directory from the `source` operation, bind the
+API's retrieval credential to that historical Session. Keep the source files
+private. Then run the preflight with another unused output directory:
+
+```bash
+uv run python scripts/session_context_retrieval_eval.py preflight \
+  --config /absolute/private/evaluation.json \
+  --source /absolute/private/source-run \
+  --output /absolute/private/retrieval-preflight
+```
+
+This command repeats the three coding cycles and adds one fresh retrieval cycle.
+It checks the accepted source file hashes and the API's source binding before
+inference. The retrieval tool must return nonempty evidence for that Session.
+The controller independently reads each exact occurrence reference and checks
+the complete result in a subsequent model request. It reports `passed` only
+when all four cycles pass. A failed check exits nonzero and preserves the records;
+the controller doesn't retry a cycle.
+
+Keep `freeze.json`, `preflight.json`, and the per-cycle records private. Record the
+backend identity and template hash with them. The preflight uses the same
+transport budgets and container boundaries as the comparison. It doesn't alter
+the comparison fixture. Success establishes execution on the configured fixture;
+it doesn't establish robustness across other files, continuation benefit, cost
+savings, or a passing result for an earlier failed comparison. If a failed
+preflight leads you to change fixture formatting, preserve that failure and
+record the adjustment with the separate run.
 
 ## Prepare access and capture
 

@@ -4,6 +4,8 @@
 Use ``source`` to capture the fixture, bind the API to that actual Session, then
 use ``run`` for the nine continuations. The internal ``gate`` command runs in a
 separate container and enforces attempt limits before forwarding requests.
+Use ``preflight`` to verify native tools on an unrelated task first; ``--source``
+adds retrieval against an accepted historical Session, without a benefit claim.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ import uuid
 import httpx
 
 FIXTURES = Path(__file__).parent / "tests/fixtures/session_context_retrieval"
+PREFLIGHT_FIXTURES = Path(__file__).parent / "tests/fixtures/native_tool_preflight"
 MODEL = "ministral-3:14b-instruct-2512-q4_K_M"
 PI_VERSION = "0.84.1"
 MODEL_CALL_LIMIT = 12
@@ -1058,8 +1061,8 @@ def freeze(config: dict) -> dict:
     }
 
 
-def initialize_task(destination: Path) -> None:
-    shutil.copytree(FIXTURES / "workspace", destination)
+def initialize_task(destination: Path, template: Path = FIXTURES / "workspace") -> None:
+    shutil.copytree(template, destination)
     for args in (
         ["init", "-q"],
         ["config", "user.name", "Sediment evaluation"],
@@ -1600,9 +1603,406 @@ def run_comparison(config: dict, source: Path, output: Path) -> dict:
     return result
 
 
+def preflight_tool_cycles(
+    events: list[dict], histories: list[dict], names: tuple[str, ...]
+) -> list[dict]:
+    """Match actual execution to captured calls and later complete tool results."""
+    starts = [
+        (i, e) for i, e in enumerate(events) if e.get("type") == "tool_execution_start"
+    ]
+    ends = [
+        (i, e) for i, e in enumerate(events) if e.get("type") == "tool_execution_end"
+    ]
+    if tuple(e.get("toolName") for _, e in starts) != names or len(ends) != len(starts):
+        raise EvaluationError("native_cycle_unverified")
+    identifiers = [e.get("toolCallId") for _, e in starts]
+    if not all(identifiers) or len(set(identifiers)) != len(identifiers):
+        raise EvaluationError("native_cycle_unverified")
+    result = []
+    previous_end = previous_call = previous_consumed = -1
+    for (started, start), name in zip(starts, names, strict=True):
+        identifier = start["toolCallId"]
+        matching = [(i, e) for i, e in ends if e.get("toolCallId") == identifier]
+        if len(matching) != 1:
+            raise EvaluationError("native_cycle_unverified")
+        ended, end = matching[0]
+        content = end.get("result", {}).get("content", [])
+        if (
+            not previous_end < started < ended
+            or end.get("isError") is not False
+            or len(content) != 1
+            or content[0].get("type") != "text"
+            or not isinstance(content[0].get("text"), str)
+        ):
+            raise EvaluationError("native_cycle_unverified")
+        text = content[0]["text"]
+        try:
+            value = json.loads(text)
+        except ValueError:
+            value = text
+        calls = [
+            (index, part)
+            for index, history in enumerate(histories)
+            for message in history["output_messages"]
+            for part in message["parts"]
+            if part["type"] == "tool_call" and part["id"] == identifier
+        ]
+        if len(calls) != 1:
+            raise EvaluationError("native_cycle_unverified")
+        called, part = calls[0]
+        if (
+            part["name"] != name
+            or encoded(part["arguments"]) != encoded(start.get("args"))
+            or called <= previous_call
+            or called < previous_consumed
+        ):
+            raise EvaluationError("native_cycle_unverified")
+        consumed = next(
+            (
+                index
+                for index, history in enumerate(histories)
+                if index > called
+                and any(
+                    p["type"] == "tool_call_response"
+                    and p["id"] == identifier
+                    and encoded(p["result"]) == encoded(value)
+                    for m in history["input_messages"]
+                    for p in m["parts"]
+                )
+            ),
+            None,
+        )
+        if consumed is None:
+            raise EvaluationError("native_cycle_unverified")
+        result.append(
+            {
+                "id": identifier,
+                "name": name,
+                "arguments": start["args"],
+                "text": text,
+                "called_at": called,
+                "consumed_at": consumed,
+            }
+        )
+        previous_end, previous_call, previous_consumed = ended, called, consumed
+    return result
+
+
+def preflight_workspace_valid(workspace: Path, canary: str) -> bool:
+    """Inspect bounded JSON without importing or executing agent-produced code."""
+    try:
+        descriptor = os.open(
+            workspace / "service.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+        )
+        with os.fdopen(descriptor, "rb") as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 16384:
+                return False
+            raw = stream.read(16385)
+        return len(raw) <= 16384 and encoded(json.loads(raw)) == encoded(
+            {"enabled": True, "canary": canary}
+        )
+    except (OSError, ValueError):
+        return False
+
+
+def preflight_retrieval_evidence(
+    config: dict, records: Path, cycles: list[dict], source_session_id: str
+) -> list[dict]:
+    from pydantic import TypeAdapter
+    from sediment_core.evidence import EvidenceRead
+    from sediment_derive.context_retrieval import (
+        CONTEXT_DEFAULT_RESPONSE_BYTES,
+        ContextRetrievalResult,
+    )
+
+    try:
+        traffic = [
+            r for r in gate_records(records / "gate") if r["route"] == "retrieval"
+        ]
+        if len(cycles) != 1 or len(traffic) != 1:
+            raise ValueError
+        call, record = cycles[0], traffic[0]
+        raw = (records / "gate" / f"{record['id']}.response").read_bytes()
+        request = json.loads(
+            (records / "gate" / f"{record['id']}.request.json").read_bytes()
+        )
+        selection = json.loads(raw)
+        TypeAdapter(ContextRetrievalResult).validate_python(selection)
+        if (
+            record.get("complete") is not True
+            or record.get("status") != 200
+            or raw != call["text"].encode("utf-8")
+            or encoded(request)
+            != encoded(
+                {
+                    "schema_version": 1,
+                    "max_bytes": CONTEXT_DEFAULT_RESPONSE_BYTES,
+                    **call["arguments"],
+                }
+            )
+            or selection["source_session_id"] != source_session_id
+            or selection["status"] != "matched"
+            or not selection["items"]
+        ):
+            raise ValueError
+        evidence = [item["evidence"] for item in selection["items"]]
+        references = [item["reference"] for item in evidence]
+        if len({encoded(ref) for ref in references}) != len(references):
+            raise ValueError
+        read = operator_read(
+            config,
+            "/query/evidence/read",
+            body={
+                "schema_version": 1,
+                "session_id": source_session_id,
+                "references": references,
+            },
+        )
+        TypeAdapter(EvidenceRead).validate_python(read)
+        if (
+            read["session_id"] != source_session_id
+            or read["quarantine_revision"] != selection["quarantine_revision"]
+            or {encoded(item) for item in read["items"]}
+            != {encoded(item) for item in evidence}
+        ):
+            raise ValueError
+        return references
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise EvaluationError("retrieval_evidence_unverified") from exc
+
+
+def preflight_verdict(coding: list[dict], retrieval: dict | None) -> dict:
+    identifiers = [run.get("session_id") for run in coding]
+    coding_verified = (
+        len(coding) == 3
+        and all(identifiers)
+        and len(set(identifiers)) == 3
+        and all(run["status"] == "passed" for run in coding)
+    )
+    retrieval_verified = (
+        None
+        if retrieval is None
+        else (
+            retrieval["status"] == "passed"
+            and bool(retrieval.get("session_id"))
+            and retrieval["session_id"] not in identifiers
+        )
+    )
+    passed = bool(coding_verified and retrieval_verified)
+    return {
+        "schema_version": 1,
+        "status": "passed"
+        if passed
+        else "coding_verified"
+        if coding_verified and retrieval is None
+        else "failed",
+        "coding_verified": bool(coding_verified),
+        "retrieval_verified": retrieval_verified,
+        "passed": passed,
+        "coding_runs": coding,
+        "retrieval_run": retrieval,
+        "limits": "Native tool protocol preflight only; no continuation benefit claim.",
+    }
+
+
+def preflight_request_results(
+    records: Path, models: list[dict], cycles: list[dict]
+) -> None:
+    for cycle in cycles:
+        request = json.loads(
+            (
+                records / "gate" / f"{models[cycle['consumed_at']]['id']}.request.json"
+            ).read_bytes()
+        )
+        if not any(
+            message.get("role") == "tool"
+            and message.get("tool_call_id") == cycle["id"]
+            and message.get("content") == cycle["text"]
+            for message in request.get("messages", [])
+        ):
+            raise EvaluationError("native_result_not_forwarded")
+
+
+def preflight_traffic(records: Path, session: str) -> list[dict]:
+    health = final_gate_health(records)
+    traffic = gate_records(records / "gate")
+    if health["stopped"]:
+        raise EvaluationError("preflight_transport_failed")
+    for route in ("model", "retrieval"):
+        rows = [r for r in traffic if r["route"] == route]
+        counts = health["budget"][route]
+        if (
+            counts["forwarded"] != len(rows)
+            or counts["declined"]
+            or not all(
+                r.get("complete") is True and r.get("status") == 200 for r in rows
+            )
+        ):
+            raise EvaluationError("preflight_transport_failed")
+    models = [r for r in traffic if r["route"] == "model"]
+    if not models or any(r.get("session_id") != session for r in models):
+        raise EvaluationError("preflight_transport_failed")
+    return models
+
+
+def preflight_source(config: dict, source: Path) -> str:
+    from pydantic import TypeAdapter
+    from sediment_core.models import NonEmptyId
+
+    try:
+        manifest = json.loads((source / "source.json").read_bytes())
+        session = TypeAdapter(NonEmptyId).validate_python(manifest["source_session_id"])
+        if manifest["status"] != "captured" or any(
+            digest(encoded(json.loads((source / filename).read_bytes())))
+            != manifest[key]
+            for filename, key in (
+                ("full-history.json", "history_sha256"),
+                ("gold.json", "gold_sha256"),
+            )
+        ):
+            raise ValueError
+        with httpx.Client(
+            trust_env=False, follow_redirects=False, timeout=10
+        ) as client:
+            response = client.get(
+                config["operator_api_url"] + "/v1/me",
+                headers={
+                    "Authorization": "Bearer " + config["retrieval_token"],
+                },
+            )
+        identity = response.json()
+        if (
+            response.status_code != 200
+            or identity.get("authority") != "retrieval"
+            or identity.get("source_session_id") != session
+        ):
+            raise ValueError
+        return session
+    except (OSError, ValueError, KeyError, TypeError, httpx.HTTPError) as exc:
+        raise EvaluationError("preflight_source_unverified") from exc
+
+
+def preflight_cycle(
+    config: dict, records: Path, source_session: str | None = None
+) -> dict:
+    started = time.monotonic()
+    result: dict = {
+        "status": "failed",
+        "session_id": None,
+        "source_session_id": source_session,
+    }
+    workspace = records / "workspace"
+    initialize_task(workspace, PREFLIGHT_FIXTURES / "workspace")
+    canary = json.loads((workspace / "service.json").read_bytes())["canary"]
+    before = workspace_identity(workspace)
+    prompt = (
+        (PREFLIGHT_FIXTURES / ("retrieval.txt" if source_session else "coding.txt"))
+        .read_text()
+        .strip()
+    )
+    write_bytes(records / "prompt.txt", prompt.encode())
+    try:
+        with isolated_agent(
+            config, records, workspace, "C" if source_session else "A"
+        ) as rpc:
+            session = initialize_rpc(rpc)
+            result["session_id"] = session
+            if session == source_session:
+                raise EvaluationError("session_reused")
+            rpc.request("prompt", message=prompt)
+            rpc.wait_settled()
+            state = rpc.request("get_state")
+            if (
+                state.get("sessionId") != session
+                or state.get("model", {}).get("id") != MODEL
+            ):
+                raise EvaluationError("session_changed")
+        if rpc.process.returncode != 0:
+            raise EvaluationError("preflight_shutdown_failed")
+        models = preflight_traffic(records, session)
+        events = read_events(records / "rpc.jsonl")
+        if any(
+            e.get("type") == "message_end"
+            and e.get("message", {}).get("stopReason") in {"error", "aborted"}
+            for e in events
+        ):
+            raise EvaluationError("model_error")
+        histories, _ = read_captured_calls(config, session, len(models), complete=True)
+        write_json(records / "captured-calls.json", histories)
+        names = (
+            ("sediment_retrieve_context",)
+            if source_session
+            else ("read", "edit", "bash")
+        )
+        cycles = preflight_tool_cycles(events, histories, names)
+        preflight_request_results(records, models, cycles)
+        write_json(records / "tool-cycles.json", cycles)
+        if source_session:
+            result["references"] = preflight_retrieval_evidence(
+                config, records, cycles, source_session
+            )
+            if workspace_identity(workspace) != before:
+                raise EvaluationError("preflight_workspace_changed")
+        elif not preflight_workspace_valid(workspace, canary):
+            raise EvaluationError("preflight_workspace_failed")
+        result["status"] = "passed"
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+        httpx.HTTPError,
+    ) as exc:
+        result["status"] = (
+            str(exc) if isinstance(exc, EvaluationError) else "preflight_failed"
+        )
+    traffic = gate_records(records / "gate")
+    result.update(
+        model_calls=sum(r["route"] == "model" for r in traffic),
+        retrieval_calls=sum(r["route"] == "retrieval" for r in traffic),
+        usage=observed_usage(traffic, records / "gate"),
+        elapsed_seconds=round(time.monotonic() - started, 6),
+    )
+    write_json(records / "run.json", result)
+    return result
+
+
+def run_preflight(config: dict, output: Path, source: Path | None = None) -> dict:
+    frozen = freeze(config)
+    fixture_hashes = {
+        p.relative_to(PREFLIGHT_FIXTURES).as_posix(): digest(p.read_bytes())
+        for p in sorted(PREFLIGHT_FIXTURES.rglob("*"))
+        if p.is_file()
+    }
+    write_json(
+        output / "freeze.json", {**frozen, "preflight_fixture_hashes": fixture_hashes}
+    )
+    source_session = preflight_source(config, source) if source else None
+    coding = [
+        preflight_cycle(config, private_directory(output / f"coding-{i}"))
+        for i in range(1, 4)
+    ]
+    retrieval = (
+        preflight_cycle(config, private_directory(output / "retrieval"), source_session)
+        if source_session
+        else None
+    )
+    if freeze(config) != frozen or fixture_hashes != {
+        p.relative_to(PREFLIGHT_FIXTURES).as_posix(): digest(p.read_bytes())
+        for p in sorted(PREFLIGHT_FIXTURES.rglob("*"))
+        if p.is_file()
+    }:
+        raise EvaluationError("preflight_changed_during_run")
+    result = preflight_verdict(coding, retrieval)
+    write_json(output / "preflight.json", result)
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("source", "run", "gate"))
+    parser.add_argument("operation", choices=("source", "run", "gate", "preflight"))
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source", type=Path)
@@ -1616,6 +2016,10 @@ def main() -> int:
     try:
         config = load_config(args.config)
         output = private_directory(args.output)
+        if args.operation == "preflight":
+            result = run_preflight(config, output, args.source)
+            print(json.dumps(result), flush=True)
+            return 0 if result["status"] in {"coding_verified", "passed"} else 1
         if args.operation == "source":
             result = source_run(config, output)
         else:
