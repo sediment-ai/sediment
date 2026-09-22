@@ -401,7 +401,24 @@ def request(client, method, route, **kwargs):
     return record, value
 
 
-def flow(endpoint, token, mode, barrier=None):
+def verify_selected(value, mode, reference, expected_part):
+    """Canonical bytes distinguish integer values from rounded JSON floats."""
+    items = (
+        [item["evidence"] for item in value["items"]]
+        if mode == "keyword"
+        else value["items"]
+    )
+    matches = [
+        item
+        for item in items
+        if item["reference"] == reference
+        and encoded(item["part"]) == encoded(expected_part)
+    ]
+    if len(matches) != 1 or (mode != "keyword" and len(items) != 1):
+        raise RuntimeError("exact_selected_evidence_changed")
+
+
+def flow(endpoint, token, mode, barrier=None, known_part=None):
     import httpx
 
     with httpx.Client(
@@ -416,6 +433,7 @@ def flow(endpoint, token, mode, barrier=None):
         started = time.perf_counter()
         rows = []
         session, reference = SESSIONS[0], KNOWN_REFERENCE
+        expected_part = known_part
         if mode != "known":
             record, result = request(
                 client,
@@ -434,6 +452,7 @@ def flow(endpoint, token, mode, barrier=None):
             candidate = result["items"][0]
             session = candidate["session_id"]
             reference = candidate["preview"]["reference"]
+            expected_part = candidate["preview"]["part"]
         if mode == "keyword":
             route = "/query/context/selected"
             body = {"schema_version": 1, "session_id": session, "query": QUERY}
@@ -446,8 +465,8 @@ def flow(endpoint, token, mode, barrier=None):
             }
         record, result = request(client, "POST", route, json=body)
         rows.append(record)
-        if record["status"] == 200 and not result["items"]:
-            raise RuntimeError("expected_exact_evidence_absent")
+        if record["status"] == 200:
+            verify_selected(result, mode, reference, expected_part)
         return rows, {
             "status": record["status"],
             "seconds": time.perf_counter() - started,
@@ -559,6 +578,7 @@ def run(args):
     python = runtime / ".venv/bin/python"
     report = {
         "schema_version": 1,
+        "started_at_utc": datetime.now(UTC).isoformat(),
         "runtime": str(runtime),
         "revision": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=runtime, text=True
@@ -574,6 +594,7 @@ def run(args):
         "percentile_method": "nearest rank",
         "cache": "warm; first public flow discarded",
         "qualification": "Synthetic infrastructure benchmark, not a decision-model evaluation or customer capacity qualification.",
+        "traffic": "One mode per run. Single-client samples precede the live sender; concurrent waves include verified gateway ingestion.",
         "scenarios": [],
     }
     with scratch_database(os.environ["SEDIMENT_TEST_DATABASE_URL"]) as database_url:
@@ -582,6 +603,12 @@ def run(args):
         try:
             store = FactStore(engine)
             source = seed(store, engine, args.sessions, args.background)
+            known_part = (
+                next(fixture_calls(args.sessions))
+                .output_messages[0]
+                .parts[0]
+                .model_dump(mode="python")
+            )
             report["source"] = source
             environment = clean_environment(database_url, SESSIONS[: args.sessions])
             subprocess.run(
@@ -634,7 +661,12 @@ def run(args):
                 sender = threading.Thread(target=send, daemon=True)
                 try:
                     for mode in args.modes:
-                        flow(endpoint, environment["SEDIMENT_RETRIEVAL_TOKEN"], mode)
+                        flow(
+                            endpoint,
+                            environment["SEDIMENT_RETRIEVAL_TOKEN"],
+                            mode,
+                            known_part=known_part,
+                        )
                         for concurrency in args.clients:
                             rows, flows = [], []
                             count = args.samples if concurrency == 1 else args.waves
@@ -651,6 +683,7 @@ def run(args):
                                             environment["SEDIMENT_RETRIEVAL_TOKEN"],
                                             mode,
                                             barrier,
+                                            known_part,
                                         )
                                         for _ in range(concurrency)
                                     ]
@@ -662,6 +695,7 @@ def run(args):
                             all_reads.extend(rows)
                             scenario = {
                                 "mode": mode,
+                                "concurrent_ingest": sender.is_alive(),
                                 "clients": concurrency,
                                 "elapsed_seconds": elapsed,
                                 "requests": rows,
@@ -742,6 +776,7 @@ def main():
         or not 0 <= args.background <= 100000
         or not 1 <= args.samples <= 1000
         or not 1 <= args.waves <= 100
+        or len(args.modes) != 1
     ):
         parser.error(
             "output and bounded nonnegative background/positive samples/waves required"

@@ -62,6 +62,7 @@ def test_exact_flow_uses_returned_candidate_and_reference(monkeypatch):
     client_type = httpx.Client
     sent = []
     reference = {**benchmark.KNOWN_REFERENCE, "inference_call_id": "returned-call"}
+    part = {"type": "text", "content": "Exact returned source"}
 
     def handle(request):
         import json
@@ -74,12 +75,14 @@ def test_exact_flow_uses_returned_candidate_and_reference(monkeypatch):
                     "items": [
                         {
                             "session_id": "returned-session",
-                            "preview": {"reference": reference},
+                            "preview": {"reference": reference, "part": part},
                         }
                     ]
                 },
             )
-        return httpx.Response(200, json={"items": [{"reference": reference}]})
+        return httpx.Response(
+            200, json={"items": [{"reference": reference, "part": part}]}
+        )
 
     monkeypatch.setattr(
         httpx,
@@ -117,3 +120,25 @@ def test_refused_discovery_never_issues_selected_read(monkeypatch):
     assert completed["status"] == 503
     assert len(rows) == 1
     assert sent == ["/query/context/discover"]
+
+
+@pytest.mark.parametrize(
+    "changed", [{"integer": float(2**100)}, {"integer": 2**100 + 1}]
+)
+def test_exact_validation_refuses_changed_or_float_rewritten_integer(changed):
+    item = {"reference": benchmark.KNOWN_REFERENCE, "part": changed}
+    with pytest.raises(RuntimeError, match="exact_selected_evidence_changed"):
+        benchmark.verify_selected(
+            {"items": [item]}, "known", benchmark.KNOWN_REFERENCE, {"integer": 2**100}
+        )
+
+
+def test_exact_validation_refuses_wrong_occurrence_even_when_content_matches():
+    item = {
+        "reference": {**benchmark.KNOWN_REFERENCE, "part_index": 1},
+        "part": {"type": "text", "content": "same"},
+    }
+    with pytest.raises(RuntimeError, match="exact_selected_evidence_changed"):
+        benchmark.verify_selected(
+            {"items": [item]}, "exact", benchmark.KNOWN_REFERENCE, item["part"]
+        )
