@@ -75,6 +75,10 @@ from sediment_derive import (
     join_decisions_by_call_id,
 )
 
+from sediment_derive.repository_context import (
+    read_repository_context,
+    read_repository_witness_context,
+)
 from sediment_derive.context_retrieval import (
     CONTEXT_DEFAULT_RESPONSE_BYTES,
     CONTEXT_MIN_RESPONSE_BYTES,
@@ -83,10 +87,6 @@ from sediment_derive.context_retrieval import (
     ContextRetrievalResult,
     ContextDiscoveryResult,
     context_query_tokens,
-)
-from sediment_derive.repository_context import (
-    read_repository_context,
-    read_repository_witness_context,
 )
 from sediment_derive.repository_identity import (
     RepositoryIdentity,

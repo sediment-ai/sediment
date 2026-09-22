@@ -1,7 +1,6 @@
 # Derivations playbook — `packages/derive`
 
-Values drift, so the cited file wins. Citations take the form `path` or `path::symbol`. `docs/explanation/attribution.md` holds the Attribution semantics: Attribution sources, purity constraints, tie-breaks, and the
-trigger. [Segment](../../CONTEXT.md#segment) holds the segment semantics.
+Values drift, so the cited file wins. Citations take the form `path` or `path::symbol`. `docs/explanation/attribution.md` holds the Attribution semantics: Attribution sources, purity constraints, tie-breaks, and the trigger. [Segment](../../CONTEXT.md#segment) holds the segment semantics.
 This file carries only what those two do not. Runtime callers use PostgreSQL; multi-artifact Derivations reuse one read-only `REPEATABLE READ` snapshot and stamp its quarantine revision into `Provenance`.
 
 ## Module map
@@ -35,6 +34,7 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 | `attribution_share.py` | `derive_attribution_share` → per-qualified-repository notes-share `RepoAttributionShare`; `check_attribution_share_alerts` → decline/zero-notes-share verdicts |
 
 `__init__.py` excludes the `notes.py` models on purpose; they are a wire contract.
+
 ## Repository evidence
 
 `repository_identity.py` owns identity resolution before cohort selection. The key is organization/provider/host/ID; labels, clone URLs, Sessions, and SHAs never prove identity. Exact source Push references can qualify legacy observations. Other unresolved inputs remain absent and counted under the shared closed vocabulary. `read_repository_context` reads both complete populations in the caller's snapshot. Explicit `as_of` stays authoritative; implicit consumers include the actual timestamps of their consumed Facts.
