@@ -15,6 +15,8 @@
   payloads. Supporting reads select exact-commit observations and CI outcomes,
   and decisions from the inferred calls' Sessions. Decision attachment preserves
   organization-wide call ambiguity, Quarantine, and historical boundaries.
+  Alias extraction returns a controlled refusal when one encoded output exceeds
+  64 MiB.
 - Inventory a Session, inspect captured Inference-call structure, and fetch up to
   32 exact parts through operator-authenticated API routes and `sediment evidence`.
   Reads enforce fixed source and response limits and recheck Quarantine. The CLI
