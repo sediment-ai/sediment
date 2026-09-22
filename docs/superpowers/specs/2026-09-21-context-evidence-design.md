@@ -363,7 +363,8 @@ Required acceptance cases:
   bytes, response bytes, and body size. Include oversized model and identity fields
   in metadata-only reads. Inspect actual SQL to prove preflight before transfer
   and omission of `raw`, user identifiers, and unselected source columns.
-- Evidence admission cannot consume both query/report slots. Saturation, deadline,
+- Under the original admission rule, evidence cannot consume both query/report
+  slots; the amendment linked earlier replaces this assertion. Saturation, deadline,
   cancellation, representation refusal, and corrupt stored content release worker
   and database resources without exposing content in logs.
 - CLI tests cover malformed selections and responses, unsupported versions,
