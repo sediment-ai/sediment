@@ -442,6 +442,26 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
     ),
 }
 
+# Scoped siblings retain the exact projection and capacity contracts.
+for _suffix, _summary in {
+    "": "Complete factual inventory within the authorized Session set.",
+    "/manifest": "Exact message-part references within the authorized Session set.",
+    "/read": "Consumer-selected exact parts within the authorized Session set.",
+}.items():
+    _original = CONTRACTS["/query/evidence" + _suffix]
+    CONTRACTS["/query/context/evidence" + _suffix] = (
+        _summary,
+        "Both retrieval and operator credentials remain restricted to the configured "
+        "Session grant. Membership is checked before storage and again in the worker. "
+        "No keyword query or utility score is required. Exact reads can include reasoning; "
+        "keyword exclusions are selection rules, not access rules. " + _original[1],
+        _original[2]
+        | {
+            "403": "Session outside the configured grant, regardless of existence.",
+            "404": "Context retrieval is disabled for this deployment.",
+        },
+    )
+
 # Codes every route shares: 401 from the auth dependency, 422 from the
 # envelope validator, 413 from the body-size middleware (bodies only).
 _SHARED_STATUS = {

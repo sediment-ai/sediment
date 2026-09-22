@@ -89,6 +89,9 @@ BEARER_ROUTES = [
         "/query/context",
         "/query/context/discover",
         "/query/context/selected",
+        "/query/context/evidence",
+        "/query/context/evidence/manifest",
+        "/query/context/evidence/read",
     }
 ]
 

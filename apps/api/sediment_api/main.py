@@ -188,6 +188,7 @@ async def validation_error_without_input(
     if getattr(request.scope.get("route"), "endpoint", None) in {
         query.query_context_discover,
         query.query_context_selected,
+        query.query_context_evidence_read,
     } and any(error.get("type") == "json_invalid" for error in exc.errors()):
         return JSONResponse(status_code=400, content={"detail": "Malformed JSON body"})
     detail = [
