@@ -6,6 +6,10 @@ Status: implementation in progress
 with discovery and selected retrieval within an explicit bounded Session set.
 The fixed-source route described here retains its version-1 shape.
 
+[ADR 0026](0026-grant-scoped-factual-evidence.md) extends factual inventory,
+manifest, and exact reads to the configured Session grant, independently of
+keyword selection.
+
 Date: 2026-09-21
 
 Amends [ADR 0018](0018-static-credential-authorities.md) and extends

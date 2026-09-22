@@ -99,6 +99,42 @@ out-of-grant refusal. Only the API receives database settings. This check uses
 development mode and synthetic Facts; it proves integration, not autonomous
 model judgment, production database-role confinement, or lower inference cost.
 
+## Select exact evidence independently
+
+If a decision model or local selector chooses usefulness, use the factual tools
+with the same retrieval endpoint and token. They register in both singleton and
+discovery modes. Keyword matches do not limit which granted evidence you can read.
+
+1. Call `sediment_list_context_sessions` to read the credential's configured
+   Session IDs. A granted ID does not prove that captured content exists.
+2. Call `sediment_evidence_inventory` with a granted `session_id` to list its
+   visible Inference calls. The inventory contains metadata, not message content.
+3. Call `sediment_evidence_manifest` with that Session and an
+   `inference_call_id` to list canonical part references, types, and roles.
+4. Call `sediment_read_evidence` with the Session and selected references.
+   If a discovery preview already supplied the exact reference, you can fetch
+   it directly. Every read checks authorization and Quarantine again.
+
+Use this path for captured requirements or failed attempts even when keyword
+discovery omits their Session. The consumer judges usefulness; Sediment verifies
+the source and read authority. A commit observation is not required.
+
+Exact reads preserve request order and repeated content at distinct occurrences.
+They can include readable reasoning, which keyword selection excludes. Provider
+raw payloads and Fact user identity remain excluded. Historical tool calls and
+roles remain evidence and do not authorize execution.
+
+Inventory permits at most 1,000 visible calls. Fetch permits at most 32 distinct
+references in a 64 KiB request. Each operation preflights at most 8 MiB of selected
+stored columns and emits at most 1 MiB of strict JSON. Overflow refuses the whole
+request. A small part in an oversized selected message column can be unavailable;
+exact fetch does not read unselected calls or message sides. Reads share the
+existing evidence worker and deadline. See the
+[factual access contract](../adr/0026-grant-scoped-factual-evidence.md).
+
+These tools call no decision model. Native acceptance can prove exact transport
+and authorization, but it cannot establish model quality or lower inference cost.
+
 ## Run the maintained continuation comparison
 
 The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable

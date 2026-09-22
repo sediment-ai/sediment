@@ -2,6 +2,10 @@
 
 Status: implemented; [ADR 0022](0022-agent-requested-session-context.md) extends this boundary with agent-requested selection.
 
+[ADR 0026](0026-grant-scoped-factual-evidence.md) extends factual inventory,
+manifest, and exact reads to the configured Session grant, independently of
+keyword selection.
+
 Date: 2026-09-21
 
 Implementation tracker: [Issue #64](https://github.com/sediment-ai/sediment/issues/64).
