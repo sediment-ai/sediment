@@ -1565,3 +1565,141 @@ def test_commit_query_refuses_excess_requested_aliases_without_partial_attachmen
     response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
     assert response.status_code == 409
     assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}
+
+
+def test_commit_query_historical_notes_come_from_captured_observations(
+    client: TestClient, seeded_attribution: str
+) -> None:
+    from sediment_api.config import settings
+    from sediment_derive import MirrorManager
+    from sediment_derive.repository_identity import LegacyRepositoryKey
+
+    store = app.state.fact_store
+    store.quarantine_fact(
+        ORG,
+        FactTable.SESSION_COMMIT_OBSERVATIONS,
+        "seeded-session-observation",
+        reason="exclude captured note evidence",
+    )
+    boundary = datetime.now(UTC)
+    response = client.get(
+        f"/query/commit/{seeded_attribution}",
+        params={"as_of": boundary.isoformat()},
+        headers=AUTH,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["attributed"] is False
+    assert body["repos"][0]["inference_calls"][0]["attribution_source"] == "jaccard"
+
+    mirror = MirrorManager(settings.mirror_path).open_repository(
+        LegacyRepositoryKey(ORG, REPO)
+    )
+    assert mirror is not None
+    run_git(
+        mirror.path,
+        "notes",
+        "--ref=sediment",
+        "add",
+        "-f",
+        "-m",
+        _note("a-later-mutable-note"),
+        seeded_attribution,
+    )
+    repeated = client.get(
+        f"/query/commit/{seeded_attribution}",
+        params={"as_of": boundary.isoformat()},
+        headers=AUTH,
+    )
+    assert repeated.status_code == 200
+    assert repeated.json() == body
+
+
+@pytest.mark.parametrize("observed_session", [False, True])
+def test_commit_query_long_note_window_only_loads_observed_sessions(
+    client: TestClient, seeded_attribution: str, monkeypatch, observed_session
+) -> None:
+    from sediment_api import workers
+
+    store = app.state.fact_store
+    [original] = store.read_inference_calls(ORG)
+    store.store_inference_call(
+        InferenceCall(
+            inference_call_id="long-note-window-call",
+            org_id=ORG,
+            session_id=original.session_id if observed_session else "other-session",
+            gateway_provider=GatewayProvider.LITELLM,
+            observed_at=original.observed_at - timedelta(days=2),
+            input_messages=[],
+            output_messages=[
+                InferenceMessage(
+                    role="assistant", parts=[TextPart(content="x" * 20_000)]
+                )
+            ],
+        )
+    )
+    monkeypatch.setattr(
+        workers,
+        "_WORKER_COMMAND",
+        (
+            sys.executable,
+            "-c",
+            "from sediment_core import store; "
+            "store.INFERENCE_CALL_ROW_BYTES_LIMIT = 10000; "
+            "from sediment_api.worker import main; raise SystemExit(main())",
+        ),
+    )
+    response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
+    if observed_session:
+        assert response.status_code == 409
+        assert response.json() == {"detail": {"reason": "repository_evidence_limit"}}
+    else:
+        assert response.status_code == 200
+        assert response.json()["repos"][0]["decisions"] == 1
+
+
+def test_commit_query_compacts_repeated_repository_evidence_before_cap(
+    client: TestClient, seeded_attribution: str, monkeypatch
+) -> None:
+    from sediment_api import workers
+
+    for index in range(20):
+        app.state.fact_store.store_ci_outcome(
+            _ci_outcome(outcome_id=f"history-{index}", run_id=f"history-{index}")
+        )
+    monkeypatch.setattr(
+        workers,
+        "_WORKER_COMMAND",
+        (
+            sys.executable,
+            "-c",
+            "from sediment_derive import repository_context; "
+            "repository_context.REPOSITORY_IDENTITY_LIMIT = 4; "
+            "from sediment_api.worker import main; raise SystemExit(main())",
+        ),
+    )
+    response = client.get(f"/query/commit/{seeded_attribution}", headers=AUTH)
+    assert response.status_code == 200
+    assert response.json()["repos"][0]["decisions"] == 1
+
+
+def test_commit_query_avoids_complete_history_readers(
+    client: TestClient, seeded_attribution: str, monkeypatch
+) -> None:
+    from sediment_api.routers.query import _run_query
+    from sediment_core.store import _FactSnapshot
+
+    def reject_complete_read(*args, **kwargs):
+        pytest.fail("commit investigation selected a complete-history reader")
+
+    for name in (
+        "read_repository_identities",
+        "read_repository_renames",
+        "read_pushes",
+        "read_inference_calls",
+        "read_inference_call_identities",
+    ):
+        monkeypatch.setattr(_FactSnapshot, name, reject_complete_read)
+    result = _run_query(seeded_attribution, app.state.fact_store)
+    assert result["attributed"] is True
+    assert result["repos"][0]["decisions"] == 1

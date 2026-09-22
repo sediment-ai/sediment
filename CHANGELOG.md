@@ -11,6 +11,12 @@
 
 ### Operational evidence
 
+- Scope commit Attribution to the requested commit before loading call content.
+  Stream Push metadata, retain the earliest eligible owner, and read only its
+  candidate windows. Compact repeated repository evidence into original source
+  witnesses while preserving names, ambiguity, historical bounds, and Quarantine.
+  Captured observations supply note Sessions even when the eligible map is empty;
+  mutable Git notes cannot alter a historical commit investigation.
 - Investigate a commit without loading unrelated Inference call inputs and raw
   payloads. Supporting reads select exact-commit observations and CI outcomes,
   and decisions from the inferred calls' Sessions. Decision attachment preserves

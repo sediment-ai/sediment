@@ -10,9 +10,9 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 
 | Module | Purpose |
 |---|---|
-| `attribution.py` | `derive_attributions(store, mirrors, org_id, policy, *, pushes, scorer, candidates)` → per-(qualified repository, sha, file) `Attribution`; snapshot-scoped git-notes first, bounded jaccard fallback |
+| `attribution.py` | `derive_attributions(store, mirrors, org_id, policy, *, pushes, scorer, candidates)` → per-(qualified repository, sha, file) `Attribution`; snapshot-scoped git-notes first, bounded jaccard fallback; stored-only `derive_commit_attributions` selects target owners before content |
 | `repository_identity.py` | Pure immutable repository/commit keys, complete-evidence resolver, source-role validation, unambiguous operator selectors, and deterministic labels (ADR 0019) |
-| `repository_context.py` | Bounded complete evidence reads inside the caller's snapshot; explicit boundary or latest captured repository Fact, with declared legacy-only supplements for direct APIs |
+| `repository_context.py` | Bounded complete evidence reads inside the caller's snapshot; explicit boundary or latest captured repository Fact, with declared legacy-only supplements for direct APIs; `read_repository_witness_context` compacts commit-investigation metadata with exact source support |
 | `provenance.py` | Structured `Provenance` shared by canonical derived artifacts |
 | `similarity.py` | `tokenize()` + `jaccard_tokens()` — the only similarity math |
 | `inference_call.py` | Canonical inference-call projections, including the pure Attribution scoring-text renderer and native prompt values and typed, totally ordered prompt keys without scalar coercion |
@@ -69,6 +69,7 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
 - A commit reachable from several pushes attributes once, against the
   **earliest** push's window. The `seen` set in `attribution.py` enforces
   that, and pushes order by `(captured_at, push_id)`.
+- `derive_commit_attributions` streams stored Push metadata, selects the target's earliest owner in each qualified repository, and scores only that commit. Its required captured-note map makes empty evidence authoritative. Candidate SQL admits the owner's Jaccard window plus the longer window for observed note Sessions, bounded by `as_of`. General and preloaded Derivations retain complete-source validation; see [ADR 0024](../adr/0024-targeted-commit-investigations.md).
 - Only source-code files with non-blank added lines score.
   `diff.py::CODE_EXTENSIONS` is an allowlist. `diff.py::SKIP_PATTERNS` matches
   by **substring**.
