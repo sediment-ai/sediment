@@ -15,6 +15,8 @@
 - Add `--task env-profile` for a separate environment-profile parsing comparison.
   Freeze task selection and require it to match the source. Preserve the default
   invoice fixture, generation settings, attempt budgets, and acceptance rules.
+- Preserve empty assistant content during pinned pi evaluation replay so the
+  strict captured-prefix check can verify the single-user, text-only baseline.
 - Add a native tool preflight with three fresh read, edit, and shell cycles on an
   unrelated fixture. An optional fourth cycle verifies retrieval against an
   accepted source Session, exact references, and subsequent result consumption.

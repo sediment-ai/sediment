@@ -774,6 +774,11 @@ def prepare_home(home: Path, config: dict, token: str, arm: str) -> None:
                             "supportsStore": False,
                             "supportsDeveloperRole": False,
                             "supportsReasoningEffort": False,
+                            # Pinned pi preserves empty assistant content with this
+                            # flag instead of replaying null. These single-user,
+                            # text-only runs never use its user-after-tool or image
+                            # bridge; preserving this value adds no extra message.
+                            "requiresAssistantAfterToolResult": True,
                         },
                     }
                 ],

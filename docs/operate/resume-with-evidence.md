@@ -78,6 +78,10 @@ gateway capture, the API, and private records inside your perimeter.
    Record both immutable image IDs. The agent image pins pi, Node.js, and Python.
    The controller uses the API image's Python and HTTP client for its separate
    request counter; it doesn't start an API in that container.
+   The pinned pi profile preserves empty assistant content during replay through
+   `requiresAssistantAfterToolResult`. These single-user, text-only runs don't
+   exercise that flag's additional message-insertion paths. The controller hash
+   in `freeze.json` records the profile; the prefix check remains exact.
 3. Create a mode-`0600` JSON configuration outside the repository and agent
    environments. Replace each placeholder with the corresponding local value:
 
