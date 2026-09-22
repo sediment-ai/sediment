@@ -311,7 +311,9 @@ different selection semantics and do not establish equivalent context quality.
 
 Inspect `report.json` for successful latency and capacity refusals separately,
 response bytes, sampled API process-tree memory, and verified overlapping capture
-receipts. Read `diagnostic.json` for startup, source, selection, encoding, and
+receipts. The capture probe counts HTTP 503 refusals separately from stored
+receipts and continues with a distinct event without retrying the refused event.
+Read `diagnostic.json` for startup, source, selection, encoding, and
 actual SQL plans. Diagnostic stage times are not public request latencies.
 The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
 and host limits separately. A scripted chooser exercises transport; it measures
