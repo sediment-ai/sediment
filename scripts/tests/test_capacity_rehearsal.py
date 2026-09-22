@@ -20,6 +20,52 @@ import httpx
 from scripts import capacity_rehearsal as rehearsal
 
 
+def test_plan_counts_complete_repeated_history_without_claiming_qualification():
+    from sim.capacity_workload import CapacityProfile
+
+    values = json.loads(
+        (rehearsal.ROOT / "sim/profiles/capacity-smoke.json").read_text()
+    )
+    values.update(history_weeks=24, sessions_per_week=100, calls_per_session=100)
+    profile = CapacityProfile(**values)
+    plan = rehearsal.population_plan(profile)
+    assert plan["historical_sessions"] == 2400
+    assert plan["historical_calls"] == 240000
+    assert plan["qualification"] == "unmeasured"
+    assert plan["parts_per_session"] == 10100
+    assert plan["repeated_text_bytes_per_session"] == (
+        5050 * (profile.history_bytes + profile.output_bytes)
+    )
+    assert plan["context_parts_fit"] is False
+    assert plan["bundle_identity_population_fits"] is False
+    assert plan["physical_database_bytes"] is None
+
+
+def test_plan_only_never_connects_or_runs_jobs(tmp_path):
+    output = tmp_path / "plan"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(Path(rehearsal.__file__)),
+            "--profile",
+            str(rehearsal.ROOT / "sim/profiles/capacity-pilot.json"),
+            "--out",
+            str(output),
+            "--plan-only",
+        ],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "SEDIMENT_DATABASE_URL": "must-not-connect"},
+        timeout=20,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "unmeasured" in result.stdout
+    plan = json.loads((output / "plan.json").read_text())
+    assert plan["historical_calls"] == 240000
+    assert plan["repeated_text_bytes"] == 124108800000
+    assert not (output / "report.json").exists()
+
+
 def test_capture_identity_and_org_scoped_fact_identity_are_distinct():
     envelope = {
         "capture": {"id": "7bbad4f9-886f-4564-8838-ed0741baf2f7"},
@@ -39,6 +85,48 @@ def test_capture_identity_and_org_scoped_fact_identity_are_distinct():
     assert receipt["fact_id"] == fact_id
     assert receipt["model_call_id"] == "capacity-call"
     assert receipt["session_id"] == "capacity-session"
+
+
+@pytest.mark.parametrize("changed", [False, True])
+def test_exact_read_probe_checks_the_complete_selected_part(changed):
+    reference = {
+        "inference_call_id": "call",
+        "side": "output",
+        "message_index": 0,
+        "part_index": 0,
+    }
+    part = {"type": "text", "content": "synthetic response"}
+    response_part = {**part, "content": "changed"} if changed else part
+    with httpx.Client(
+        base_url="http://capacity.test",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={"items": [{"reference": reference, "part": response_part}]},
+            )
+        ),
+    ) as client:
+        if changed:
+            with pytest.raises(rehearsal.ProbeFailure, match="exact_evidence_changed"):
+                rehearsal.read_exact(client, "session", reference, part)
+        else:
+            receipt = rehearsal.read_exact(client, "session", reference, part)
+            assert receipt["http_status"] == 200
+            assert receipt["finished"] >= receipt["started"]
+
+
+def test_exact_read_probe_counts_capacity_separately():
+    with httpx.Client(
+        base_url="http://capacity.test",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                503, json={"detail": "work capacity exceeded"}
+            )
+        ),
+    ) as client:
+        receipt = rehearsal.read_exact(client, "session", {}, {})
+    assert receipt["http_status"] == 503
+    assert receipt["reason"] == "work capacity exceeded"
 
 
 def test_overlap_requires_request_and_receipt_inside_job():
@@ -309,6 +397,7 @@ def test_real_capacity_smoke_conserves_receipts_and_cleans_database(
                 receipts = [
                     json.loads(line)
                     for path in (output / "receipts").glob("*.jsonl")
+                    if path.name != "exact.jsonl"
                     for line in path.read_text().splitlines()
                 ]
                 assert len(receipts) == 26
@@ -334,6 +423,9 @@ def test_real_capacity_smoke_conserves_receipts_and_cleans_database(
         assert report["push_probe"]["observation_id"]
         assert report["push_probe"]["redelivery_stored"] is False
         assert report["live_receipts"] > 0
+        assert report["exact_retrieval"]["success"]["count"] > 0
+        assert report["exact_retrieval"]["refusal"]["count"] == 0
+        assert any(job.get("concurrent_exact_reads", 0) > 0 for job in report["jobs"])
         assert report["receipt_files"]["historical.jsonl"]["rows"] == 25
         assert report["receipt_files"]["live.jsonl"]["rows"] == report["live_receipts"]
         assert report["resources"]["samples"] > 0

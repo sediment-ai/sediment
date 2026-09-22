@@ -37,6 +37,44 @@ def prepare_workspace(path: Path) -> None:
     path.chmod(0o700)
 
 
+def population_plan(profile) -> dict:
+    """Expose declared dimensions and known ceilings without running a workload."""
+    from sediment_core.evidence import (
+        CONTEXT_SOURCE_PART_LIMIT,
+        EVIDENCE_SOURCE_BYTES_LIMIT,
+    )
+    from sediment_export.derived_bundle import _IDENTITY_LIMIT
+
+    turns = profile.calls_per_session
+    text_bytes = (
+        turns * (turns + 1) // 2 * (profile.history_bytes + profile.output_bytes)
+    )
+    parts = turns * (turns + 1)
+    return {
+        "schema_version": 1,
+        "qualification": "unmeasured",
+        "profile": asdict(profile),
+        "historical_sessions": profile.total_sessions,
+        "historical_calls": profile.total_calls,
+        "parts_per_session": parts,
+        "repeated_text_bytes_per_session": text_bytes,
+        "repeated_text_bytes": text_bytes * profile.total_sessions,
+        "context_parts_limit": CONTEXT_SOURCE_PART_LIMIT,
+        "context_parts_fit": parts <= CONTEXT_SOURCE_PART_LIMIT,
+        "context_source_bytes_limit": EVIDENCE_SOURCE_BYTES_LIMIT,
+        "context_text_alone_fits": text_bytes <= EVIDENCE_SOURCE_BYTES_LIMIT,
+        "bundle_identity_limit": _IDENTITY_LIMIT,
+        "bundle_identity_population_fits": profile.total_calls <= _IDENTITY_LIMIT,
+        "physical_database_bytes": None,
+        "limitations": [
+            "Text totals exclude serialization, raw payloads, and metadata.",
+            "PostgreSQL compression, indexes, backup, and export costs are unmeasured.",
+            "Passing these necessary checks does not establish request capacity.",
+            "Keyword source limits do not describe exact-reference fetch capacity.",
+        ],
+    }
+
+
 def fingerprints(directory: Path) -> dict:
     """Hash incrementally, including empty files and JSONL row counts."""
     result = {}
@@ -304,6 +342,93 @@ class Sender:
             raise ProbeFailure(self.error)
 
 
+def read_exact(client, session_id, reference, expected_part) -> dict:
+    """Check one known Fact part; capacity refusals remain separate observations."""
+    started = time.monotonic()
+    response = client.post(
+        "/query/context/evidence/read",
+        json={
+            "schema_version": 1,
+            "session_id": session_id,
+            "references": [reference],
+        },
+    )
+    receipt = {
+        "started": started,
+        "finished": time.monotonic(),
+        "http_status": response.status_code,
+        "reason": None,
+    }
+    value = response.json()
+    if response.status_code == 503 and value.get("detail") == "work capacity exceeded":
+        receipt["reason"] = "work capacity exceeded"
+        return receipt
+    if response.status_code != 200:
+        raise ProbeFailure("exact_evidence_http_status")
+    items = value.get("items", [])
+    if (
+        len(items) != 1
+        or items[0].get("reference") != reference
+        or items[0].get("part") != expected_part
+    ):
+        raise ProbeFailure("exact_evidence_changed")
+    receipt["response_sha256"] = hashlib.sha256(response.content).hexdigest()
+    return receipt
+
+
+class Reader:
+    """One in-flight exact read competes with reports while capture continues."""
+
+    def __init__(self, url, token, receipt, expected_part, maximum, journal_path):
+        self.url, self.token = url, token
+        self.session_id = receipt["session_id"]
+        self.reference = {
+            "inference_call_id": receipt["fact_id"],
+            "side": "output",
+            "message_index": 0,
+            "part_index": 0,
+        }
+        self.expected_part, self.maximum = expected_part, maximum
+        self.journal_path = journal_path
+        self.receipts = []
+        self.error = None
+        self.stop = threading.Event()
+        self.thread = threading.Thread(target=self.run, daemon=True)
+
+    def run(self):
+        try:
+            with (
+                self.journal_path.open("x") as journal,
+                httpx.Client(
+                    base_url=self.url,
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    timeout=35,
+                    trust_env=False,
+                ) as client,
+            ):
+                for _ in range(self.maximum):
+                    if self.stop.is_set():
+                        break
+                    receipt = read_exact(
+                        client, self.session_id, self.reference, self.expected_part
+                    )
+                    write_receipt(journal, receipt)
+                    self.receipts.append(receipt)
+                    self.stop.wait(0.1)
+        except ProbeFailure as error:
+            self.error = str(error)
+        except Exception:
+            self.error = "exact_evidence_transport_failure"
+
+    def finish(self):
+        self.stop.set()
+        self.thread.join(timeout=40)
+        if self.thread.is_alive():
+            raise ProbeFailure("reader_cleanup_timeout")
+        if self.error:
+            raise ProbeFailure(self.error)
+
+
 def inventory(store) -> dict:
     from sediment_core import FactTable
 
@@ -358,6 +483,7 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
         "synthetic": True,
         "status": "running",
         "profile": asdict(profile),
+        "plan": population_plan(profile),
         "jobs": [],
         "qualification": "Declared synthetic profile; not partner deployment acceptance",
         "temporal_limit": "Historical gateway observations; contemporary semantic Push/CI seed",
@@ -385,7 +511,7 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
         json.dumps(asdict(profile), sort_keys=True).encode()
     ).hexdigest()
     monitor.thread.start()
-    sender = server = engine = None
+    sender = reader = server = engine = None
     try:
         with ExitStack() as cleanup:
             database_url = cleanup.enter_context(scratch_database(admin_url))
@@ -404,6 +530,8 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
                     "SEDIMENT_DEV_MODE": "true",
                     "SEDIMENT_API_BEARER_TOKEN": "sim-token-9c41-ingest-2b7f",
                     "SEDIMENT_OPERATOR_TOKEN": "sim-operator-2ab6-token-8c1d",
+                    "SEDIMENT_RETRIEVAL_TOKEN": "sim-retrieval-47bb-token-902d",
+                    "SEDIMENT_RETRIEVAL_SESSION_ID": "capacity/history/session-000000",
                     "SEDIMENT_GITHUB_WEBHOOK_SECRET": "sim-webhook-secret-d5f2-91a",
                     "SEDIMENT_GITHUB_HOST": "git.simcorp.example",
                     "SEDIMENT_MIRROR_PATH": str(workspace / "seed" / "mirrors"),
@@ -504,6 +632,32 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
                     record_failure(report, str(error))
 
             cleanup.callback(finish_sender)
+            selected = history_receipts[profile.calls_per_session - 1]
+            selected_envelope = gateway_envelope(
+                profile, profile.calls_per_session - 1, observed_at=anchor
+            )
+            reader = Reader(
+                url,
+                env["SEDIMENT_RETRIEVAL_TOKEN"],
+                selected,
+                {
+                    "type": "text",
+                    "content": selected_envelope["payload"]["response"]["choices"][0][
+                        "message"
+                    ]["content"],
+                },
+                profile.max_live_calls,
+                journals / "exact.jsonl",
+            )
+            reader.thread.start()
+
+            def finish_reader():
+                try:
+                    reader.finish()
+                except ProbeFailure as error:
+                    record_failure(report, str(error))
+
+            cleanup.callback(finish_reader)
             mixed_start = len(report["jobs"])
             with httpx.Client(
                 base_url=url,
@@ -591,8 +745,15 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
                 "--out",
                 str(workspace / "mixed-training"),
             )
+            reader.finish()
             sender.finish()
             for job in report["jobs"][mixed_start:]:
+                job["concurrent_exact_reads"] = sum(
+                    item["http_status"] == 200
+                    and job["started"] <= item["started"]
+                    and item["finished"] <= job["finished"]
+                    for item in reader.receipts
+                )
                 job["concurrent_stored_receipts"] = overlapping_receipts(
                     sender.receipts,
                     job["started"],
@@ -600,6 +761,10 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
                 )
                 if not job["concurrent_stored_receipts"]:
                     raise ProbeFailure("no_ingest_overlap")
+            if not any(
+                job["concurrent_exact_reads"] for job in report["jobs"][mixed_start:]
+            ):
+                raise ProbeFailure("no_exact_read_overlap")
             receipts = history_receipts + sender.receipts
             report["live_receipts"] = len(sender.receipts)
             latencies = sorted(row["finished"] - row["started"] for row in receipts)
@@ -665,6 +830,19 @@ def rehearse(profile, workspace: Path, admin_url: str) -> dict:
     except Exception as error:
         record_failure(report, f"exception_{type(error).__name__}")
     finally:
+        if reader is not None:
+            from scripts.agent_evidence_benchmark import summarize
+
+            report["exact_retrieval"] = summarize(
+                [
+                    {
+                        "status": item["http_status"],
+                        "seconds": item["finished"] - item["started"],
+                        "reason": item["reason"],
+                    }
+                    for item in reader.receipts
+                ]
+            )
         report["receipt_files"] = fingerprints(workspace / "receipts")
         report["resources"] = monitor.finish()
         if monitor.error or not monitor.samples:
@@ -689,6 +867,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--out", type=Path, required=True, help="unused private output directory"
     )
+    parser.add_argument(
+        "--plan-only",
+        action="store_true",
+        help="write unmeasured population estimates and known limits without connecting",
+    )
     return parser
 
 
@@ -703,6 +886,13 @@ def main(argv=None) -> int:
     previous_term = signal.signal(signal.SIGTERM, interrupted)
     try:
         profile = load_profile(args.profile)
+        if args.plan_only:
+            prepare_workspace(args.out.resolve())
+            (args.out / "plan.json").write_text(
+                json.dumps(population_plan(profile), indent=2) + "\n"
+            )
+            print(f"capacity plan unmeasured: {args.out / 'plan.json'}")
+            return 0
         admin_url = os.environ.get("SEDIMENT_DATABASE_URL")
         if not admin_url:
             raise ProbeFailure("missing_database_url")
