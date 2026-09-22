@@ -188,7 +188,8 @@ defines its fixed budgets, thresholds, and interpretation limits.
    ```
 
    Require `status: captured`. Source capture costs remain separate from
-   per-resumption costs. Bind the retrieval credential to exactly the three
+   per-resumption costs. Source capture rejects oversized catalogs before a
+   comparison starts. Bind the retrieval credential to exactly the three
    returned Session IDs with `SEDIMENT_RETRIEVAL_SESSION_IDS`, then restart
    the isolated API. Don't change the private consumer configuration.
 5. Run the frozen comparison into a directory that doesn't exist:

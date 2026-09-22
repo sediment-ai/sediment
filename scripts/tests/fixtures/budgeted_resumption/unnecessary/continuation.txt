@@ -1,5 +1,3 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-
 Continue the unfinished shipment_totals.py task. Make totals_by_destination(text) return a dictionary of summed integer units by destination. Input is CSV with destination,units,channel fields and no header. Use standard-library CSV quoting, including escaped quotes and embedded newlines. Preserve embedded newline characters inside fields. Skip empty or whitespace-only rows, and strip destination and channel whitespace. All other rows have valid fields; no broader grammar is required.
 
 The complete business constraint is supplied here: rows whose trimmed channel is exactly 'replay' are duplicate imported events and must NOT contribute to any destination's total. This comparison is case-sensitive; every other channel, including 'Replay', 'REPLAY', 'replay-import', and 'manual', still counts. A destination represented only by excluded rows must not appear in the result. No additional historical requirement is needed for this task.

@@ -167,6 +167,8 @@ def test_profile_prompts_keep_the_historical_rule_out_of_hidden_inputs():
     for profile in PROFILES:
         prompt = (FIXTURES / profile / "continuation.txt").read_text()
         source = (FIXTURES / profile / "source.txt").read_text()
+        assert "SPDX-License-Identifier" not in prompt
+        assert "SPDX-License-Identifier" not in source
         assert "'replay'" in source and "case-sensitive" in source
         assert "native tool API" in source
         assert "Do not edit" in source

@@ -347,3 +347,30 @@ def test_selector_failure_preserves_billed_usage_without_launching_coding(
     assert row["coding_model_calls"] == 0
     assert row["measurement_valid"] is False
     assert json.loads((records / "run.json").read_bytes()) == row
+
+
+def test_runtime_record_contains_no_foreign_experiment_metadata(monkeypatch):
+    run = module()
+    probe = {
+        "schema_version": 1,
+        "model": legacy.MODEL,
+        "harness": legacy.PI_VERSION,
+        "runtime_versions": [legacy.PI_VERSION, "v24.21.0", "Python 3.12.14"],
+        "agent_image": "sha256:a",
+        "gate_image": "sha256:b",
+        "temperature": 0,
+        "output_limit": 2048,
+        "context_window": 16384,
+        "provider_seed": None,
+        "task": "invoice",
+        "fixture_hashes": {"invoice.py": "foreign-hash"},
+        "controller_sha256": "legacy-controller",
+        "run_order": [["A", "B", "C"]],
+    }
+    monkeypatch.setattr(legacy, "freeze", lambda config: probe)
+    result = run.runtime_metadata({})
+    assert result["runtime_versions"] == probe["runtime_versions"]
+    assert result["agent_image"] == probe["agent_image"]
+    assert (
+        not {"task", "fixture_hashes", "controller_sha256", "run_order"} & result.keys()
+    )

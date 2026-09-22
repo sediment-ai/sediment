@@ -311,6 +311,24 @@ def _read(client, config, metrics, records, session, references):
     return response
 
 
+def build_catalog(session, fact_id, revision, items):
+    """Apply the same occurrence and byte limits at source capture and selection."""
+    if not items or len(items) > CATALOG_PART_LIMIT:
+        raise SelectionError("catalog_limit")
+    catalog = {
+        "session_id": session,
+        "inference_call_id": fact_id,
+        "quarantine_revision": revision,
+        "candidates": [
+            {"id": f"p{index:02d}", "evidence": item}
+            for index, item in enumerate(items)
+        ],
+    }
+    if len(encoded(catalog)) > CATALOG_BYTES_LIMIT:
+        raise SelectionError("catalog_limit")
+    return catalog
+
+
 def _catalog(
     client, config, metrics, records, session, fact_id, expected_hash, revision
 ):
@@ -410,20 +428,11 @@ def _catalog(
         raise SelectionError("source_mismatch") from None
     if digest(encoded(history)) != expected_hash:
         raise SelectionError("source_mismatch")
-    candidates = [
-        {"id": f"p{index:02d}", "evidence": item}
-        for index, item in enumerate(response["items"])
-    ]
-    catalog = {
-        "session_id": session,
-        "inference_call_id": fact_id,
-        "quarantine_revision": revision,
-        "candidates": candidates,
-    }
+    catalog = build_catalog(session, fact_id, revision, response["items"])
     catalog_body = encoded(catalog)
-    metrics.update(catalog_parts=len(candidates), catalog_bytes=len(catalog_body))
-    if len(catalog_body) > CATALOG_BYTES_LIMIT:
-        raise SelectionError("catalog_limit")
+    metrics.update(
+        catalog_parts=len(response["items"]), catalog_bytes=len(catalog_body)
+    )
     write_bytes(records / "catalog.json", catalog_body)
     return catalog, history
 

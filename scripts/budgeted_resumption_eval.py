@@ -113,6 +113,26 @@ def load_jev_key(path: Path | None) -> str:
     return value
 
 
+def runtime_metadata(config: dict) -> dict:
+    """Probe pinned harness versions without importing another experiment's freeze."""
+    probe = legacy.freeze(config)
+    return {
+        name: probe[name]
+        for name in (
+            "schema_version",
+            "model",
+            "harness",
+            "runtime_versions",
+            "agent_image",
+            "gate_image",
+            "temperature",
+            "output_limit",
+            "context_window",
+            "provider_seed",
+        )
+    }
+
+
 def continuation_prompt(visible: str, context: str) -> str:
     return visible + CONTEXT_INSTRUCTIONS + context
 
@@ -143,6 +163,8 @@ def load_sources(source: Path, protocol: dict) -> dict:
 
 
 def capture_source(config: dict, profile: str, output: Path) -> dict:
+    from budgeted_context_selection import SelectionError, build_catalog
+
     workspace = output / "workspace"
     legacy.initialize_task(workspace, FIXTURES / "workspace")
     before = legacy.workspace_identity(workspace)
@@ -181,12 +203,21 @@ def capture_source(config: dict, profile: str, output: Path) -> dict:
         or inventory["quarantined_inference_calls"]
     ):
         raise legacy.EvaluationError("source_visibility_changed")
+    final_call = calls.pop()
+    try:
+        catalog = build_catalog(
+            session, final_call, inventory["quarantine_revision"], populations[-1]
+        )
+    except SelectionError as exc:
+        raise legacy.EvaluationError("source_" + str(exc)) from None
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "profile": profile,
         "status": "captured",
         "source_session_id": session,
-        "final_call_id": calls.pop(),
+        "final_call_id": final_call,
+        "catalog_parts": len(catalog["candidates"]),
+        "catalog_bytes": len(legacy.encoded(catalog)),
         "quarantine_revision": inventory["quarantine_revision"],
         "workspace": legacy.copy_workspace(workspace, output / "snapshot"),
         "history_sha256": legacy.digest(legacy.encoded(history)),
@@ -602,7 +633,7 @@ def main() -> int:
             raise legacy.EvaluationError("source_and_preflight_required")
         output = legacy.private_directory(args.output)
         protocol = protocol_identity(config)
-        runtime = legacy.freeze(config)
+        runtime = runtime_metadata(config)
         legacy.write_json(output / "runtime.json", runtime)
         if args.operation == "preflight":
             from budgeted_context_selection import jev_preflight

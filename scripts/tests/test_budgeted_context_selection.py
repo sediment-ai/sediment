@@ -533,6 +533,22 @@ def test_preflight_uses_same_jev_contract_without_source_reads(monkeypatch, tmp_
     assert "p00" in body["questions"]["p00"]["instructions"]
 
 
+def test_shared_catalog_builder_refuses_source_overflow():
+    mod = load()
+    _, _, manifest, sources = corpus()
+    references = [
+        part.reference for message in manifest.messages for part in message.parts
+    ]
+    items = payload(project_evidence_read("source", 0, references, sources))["items"]
+    catalog = mod.build_catalog("source", "final", 0, items)
+    assert catalog["candidates"][0] == {"id": "p00", "evidence": items[0]}
+    with pytest.raises(mod.SelectionError, match="catalog_limit"):
+        mod.build_catalog("source", "final", 0, items * 11)
+    items[0]["part"]["content"] = "x" * 32768
+    with pytest.raises(mod.SelectionError, match="catalog_limit"):
+        mod.build_catalog("source", "final", 0, items)
+
+
 @pytest.mark.parametrize(
     "mode,confidence",
     [("read_history", 0.44), ("no_history", 0.8), ("insufficient", 0.8)],
