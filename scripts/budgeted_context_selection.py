@@ -705,7 +705,7 @@ def select_context(
 
 
 def jev_preflight(api_key: str, records: Path) -> dict:
-    """One separately accounted synthetic request checks the live adapter."""
+    """Check the live contract; a valid abstention remains a model outcome."""
     from sediment_core import EvidenceReference
 
     records = private_directory(Path(records))
@@ -740,7 +740,7 @@ def jev_preflight(api_key: str, records: Path) -> dict:
                 timeout=httpx.Timeout(35, connect=5),
             ) as client,
         ):
-            mode, candidates = _jev(
+            _jev(
                 client,
                 catalog,
                 "Fix the API timeout handler while preserving the historical timeout requirement, which is absent from this visible task.",
@@ -748,11 +748,7 @@ def jev_preflight(api_key: str, records: Path) -> dict:
                 metrics,
                 records,
             )
-        status = (
-            "passed"
-            if mode == "read_history" and len(candidates) == 1
-            else "decision_failed"
-        )
+        status = "passed"
         return {"status": status, "metrics": metrics}
     except SelectionError as exc:
         status = exc.reason

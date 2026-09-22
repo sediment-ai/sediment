@@ -176,6 +176,8 @@ defines its fixed budgets, thresholds, and interpretation limits.
 
    Require `passed: true`. An unavailable credential or malformed JEV response
    blocks the live proof. The controller doesn't substitute mock decisions.
+   A valid `insufficient` or `no_history` decision passes the contract check;
+   the recorded decision doesn't establish selection quality.
 4. Capture the three source Sessions without editing their preserved workspaces:
 
    ```bash

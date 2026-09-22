@@ -533,6 +533,34 @@ def test_preflight_uses_same_jev_contract_without_source_reads(monkeypatch, tmp_
     assert "p00" in body["questions"]["p00"]["instructions"]
 
 
+@pytest.mark.parametrize(
+    "mode,confidence",
+    [("read_history", 0.44), ("no_history", 0.8), ("insufficient", 0.8)],
+)
+def test_preflight_accepts_valid_abstention_without_hiding_decision(
+    monkeypatch, tmp_path, mode, confidence
+):
+    def transform(request, body, original):
+        choice = body["answers"]["history_mode"]
+        choice.update(
+            choice=mode,
+            confidence=confidence,
+            probabilities={
+                name: 0.9 if name == mode else 0.05 for name in choice["probabilities"]
+            },
+        )
+        return response(body)
+
+    mod, _, _, calls = setup(monkeypatch, transform)
+    result = mod.jev_preflight("private-key", tmp_path / "records")
+    assert result["status"] == "passed"
+    assert result["metrics"]["jev"]["effective_choice"] == (
+        mode if confidence >= 0.6 else "insufficient"
+    )
+    assert len(calls) == 1
+    assert result["metrics"]["usage"]["input_tokens"] == 120
+
+
 def test_nonfinite_exponent_in_source_is_a_closed_refusal(monkeypatch, tmp_path):
     def transform(request, body, original):
         if request.url.path.endswith("/read"):

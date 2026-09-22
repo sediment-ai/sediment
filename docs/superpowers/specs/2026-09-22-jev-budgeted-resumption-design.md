@@ -130,6 +130,9 @@ non-finite values, model drift, redirects, oversized responses, and transport
 errors. Retain bounded private traffic without authorization headers. Count
 failed attempts and record unavailable usage explicitly. Missing access blocks
 live D runs; it never becomes a mock result presented as a live proof.
+The separate JEV preflight checks access and the response contract. A valid
+abstention passes that check and remains visible in its metrics; preflight
+doesn't require a favorable selection decision.
 
 ## Measurement and frozen execution
 
