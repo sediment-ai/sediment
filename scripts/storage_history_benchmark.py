@@ -198,8 +198,10 @@ def storage_sizes(engine):
 def read_costs(store, last, expected):
     from sediment_core import EvidenceReference
     from sediment_core.evidence import EvidenceReadError
+    from sediment_core.redaction import redact_fact
     from sediment_core.store import OperationalReportLimitExceeded
 
+    last, _ = redact_fact(last)
     count = int(last.model_call_id.rsplit("-", 1)[1]) + 1
     # Capture IDs map through the adapter; retain only bounded scalar identities.
     ids = {
