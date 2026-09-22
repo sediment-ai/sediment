@@ -628,8 +628,9 @@ needed to initialize volume ownership and drop to its unprivileged server user.
 Every service enables `no-new-privileges`.
 
 One API process permits two active read workers, two active mirror workers,
-and sixteen waiting mirror jobs. At most one read worker serves evidence
-requests. Reads have a 30-second deadline; mirror work
+and sixteen waiting mirror jobs. Evidence, commit and Session queries, and reports
+share both read slots; reports have no reserved slot. A third read refuses
+immediately without entering a queue. Reads have a 30-second deadline; mirror work
 has 120 seconds. Child termination and reaping precede capacity reuse. A busy
 service returns 503 so a sender can retry retained bytes. Multiplying Uvicorn
 processes multiplies these limits; keep the supplied single-process command
