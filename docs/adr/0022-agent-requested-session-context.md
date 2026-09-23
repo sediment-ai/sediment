@@ -91,11 +91,13 @@ with closed counts. Scores aren't probabilities, Rewards, or training labels.
 The response carries at most eight exact parts, source references, the
 Quarantine revision, coverage, and unknown capture completeness. A shared bounded
 strict encoder preserves canonical scalars and the existing evidence bytes.
+It reuses at most 32 compiled class schemas while validating each value. This
+schema cache retains no captured content or response data.
 
 The query shares two query/report slots under the amended admission contract
 in ADR 0021 and retains the 30-second deadline. Every request rechecks Quarantine.
 `Cache-Control: no-store` prohibits response caching. Retrieval writes no Fact,
-summary, index, checkpoint, or cache. Training and Attribution paths retain their
+summary, index, checkpoint, or response cache. Training and Attribution paths retain their
 existing interpretation.
 
 ### Agent integration and validation

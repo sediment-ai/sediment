@@ -8,6 +8,7 @@ import math
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass, is_dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Annotated, Any, Literal
 
 from pydantic import BeforeValidator, ConfigDict, Field, TypeAdapter
@@ -436,11 +437,19 @@ def _json_chunks(value: Any) -> Iterator[str]:
             yield from _json_chunks(item)
         yield "}"
     elif isinstance(value, datetime):
-        yield from _json_chunks(TypeAdapter(datetime).dump_python(value, mode="json"))
+        yield from _json_chunks(
+            _class_adapter(datetime).dump_python(value, mode="json")
+        )
     elif value is None or isinstance(value, (bool, int, float)):
         yield json.dumps(value, allow_nan=False, separators=(",", ":"))
     else:
         raise TypeError(f"unsupported query response value: {type(value).__name__}")
+
+
+@lru_cache(maxsize=32)
+def _class_adapter(contract: type) -> TypeAdapter:
+    """Reuse bounded compiled schemas; never retain evidence values or results."""
+    return TypeAdapter(contract)
 
 
 def encode_evidence_json(
@@ -455,7 +464,11 @@ def encode_evidence_json(
     Python-mode serialization preserves descriptive surrogates for escaping.
     HTTP exception translation belongs to the API, not this shared encoder.
     """
-    adapter = TypeAdapter(contract)
+    adapter = (
+        _class_adapter(contract)
+        if isinstance(contract, type)
+        else TypeAdapter(contract)
+    )
     validated = adapter.validate_python(asdict(value) if is_dataclass(value) else value)
     payload = adapter.dump_python(validated, mode="python", exclude_none=exclude_none)
     validate_evidence_numbers(payload)

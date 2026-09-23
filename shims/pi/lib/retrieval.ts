@@ -13,7 +13,7 @@ type Mode = "singleton" | "discovery" | "selected";
 type Anchor = { repository_provider: "github"; repository_host: string; repository_id: string; commit_sha: string };
 const SERVER_REASONS = new Set([
   "evidence_unavailable", "evidence_part_absent", "evidence_inventory_limit", "evidence_source_limit",
-  "retrieval_part_limit", "evidence_response_limit", "non_finite_number",
+  "retrieval_part_limit", "retrieval_state_limit", "evidence_response_limit", "non_finite_number",
 ]);
 const STOPWORDS = new Set("a an and are as at be by did do does for from how i in is it of on or that the this to was were what when where which who why with".split(" "));
 

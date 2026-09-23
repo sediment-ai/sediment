@@ -176,6 +176,7 @@ test("safe refusals preserve only recognized server reasons", async () => {
   try {
     for (const [status, body, reason] of [
       [409, { detail: { reason: "evidence_source_limit", content: "secret" } }, "evidence_source_limit"],
+      [409, { detail: { reason: "retrieval_state_limit", limit_bytes: 33554432, content: "secret" } }, "retrieval_state_limit"],
       [409, { detail: { reason: "secret" } }, "request_failed"],
       [401, { detail: "secret" }, "unauthorized"], [403, { detail: "secret" }, "forbidden"],
       [503, { detail: "secret" }, "unavailable"], [422, { detail: "secret" }, "invalid_request"],
