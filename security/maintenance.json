@@ -183,18 +183,20 @@
       ]
     },
     "apk/libexpat1": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
+      "basis": "Reviewed 2.8.5-r0 on 2026-09-23 from fresh official Wolfi package downloads for both architectures, matching the retained repository-index review. Both embedded recipes select upstream R_2_8_5 at 4b3f0b06f39fb5529cead381694f8929901bc273. The release fixes CVE-2026-93990 and retains an upstream warning about unresolved security issues. This entry records rolling distribution maintenance, not vulnerability disposition, parser reachability, or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/libexpat1-2.8.5-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
       "source_package": "expat",
       "source_versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ]
     },
     "apk/libffi": {
@@ -4090,15 +4092,16 @@
       ]
     },
     "pypi/mako": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/HEAD/.github/SECURITY.md",
+      "basis": "Reviewed 1.4.3 on 2026-09-23 against the upstream release, unwithdrawn PyPI files, and release-tag security policy. The release retains the Windows TemplateLookup traversal correction in 1.4.2 and adjusts its tests. The security policy describes vulnerability reporting, not a dated support promise. This project maintenance assessment expires with the existing catalog.",
+      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/rel_1_4_3/.github/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/mako",
       "source_updated_at": "2026-08-18T17:07:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "1.4.1"
+        "1.4.1",
+        "1.4.3"
       ]
     },
     "pypi/mangum": {
