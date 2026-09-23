@@ -74,6 +74,10 @@
 
 ### Dependency maintenance
 
+- Remove Expat from the API image. Its only consumer was `git-http-push`,
+  which mirror fetches never use; Python's `pyexpat` bundles its own copy. The
+  image label `io.sediment.removed-packages` records both removals, so the
+  disclosed Bookworm Expat advisory no longer needs a disposition.
 - Update the supplied gateway to LiteLLM 1.102.1 and verify the guarded vendor
   patch against its release source.
 - Update the supplied gateway to fastapi-sso 0.23.0 to follow upstream's
