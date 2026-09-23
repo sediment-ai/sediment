@@ -74,6 +74,8 @@
 
 ### Dependency maintenance
 
+- Update the supplied gateway to LiteLLM 1.102.1 and verify the guarded vendor
+  patch against its release source.
 - Update the supplied gateway to fastapi-sso 0.23.0 to follow upstream's
   latest-release security support policy.
 
