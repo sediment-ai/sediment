@@ -2061,17 +2061,30 @@ class _FactSnapshot:
     @contextmanager
     def _stream_context_scan(self, org_id, session_ids, commit, *, singleton_id=None):
         revision = self.quarantine_revision(org_id)
-        found = tuple(
-            self._connection.execute(
-                select(sessions.c.session_id)
-                .where(
-                    sessions.c.org_id == org_id, sessions.c.session_id.in_(session_ids)
-                )
-                .order_by(sessions.c.session_id)
-            ).scalars()
+        session_conditions = (
+            sessions.c.org_id == org_id,
+            sessions.c.session_id.in_(session_ids),
         )
-        if singleton_id is not None and not found:
-            raise EvidenceReadError("evidence_unavailable")
+        if singleton_id is not None:
+            exists = self._connection.execute(
+                select(
+                    select(1).select_from(sessions).where(*session_conditions).exists()
+                )
+            ).scalar_one()
+            if not exists:
+                raise EvidenceReadError("evidence_unavailable")
+            found = (singleton_id,)
+            header_size = len(singleton_id.encode("utf-8"))
+            header_largest = 0
+        else:
+            header_bytes = func.octet_length(sessions.c.session_id)
+            header_size, header_largest = self._connection.execute(
+                select(
+                    func.coalesce(func.sum(header_bytes), 0),
+                    func.coalesce(func.max(header_bytes), 0),
+                ).where(*session_conditions)
+            ).one()
+            header_size, header_largest = int(header_size), int(header_largest)
         conditions = [
             *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
             inference_calls.c.session_id.in_(session_ids),
@@ -2102,6 +2115,10 @@ class _FactSnapshot:
         count, size, largest, metadata_size = map(
             int, (count, size, largest, metadata_size)
         )
+        metadata_size += header_size
+        if singleton_id is None:
+            size += header_size
+            largest = max(largest, header_largest)
         if count > evidence.EVIDENCE_INVENTORY_LIMIT:
             raise EvidenceReadError(
                 "evidence_inventory_limit",
@@ -2134,6 +2151,13 @@ class _FactSnapshot:
                 raise EvidenceReadError(
                     "evidence_source_limit", bytes=amount, limit=limit
                 )
+        if singleton_id is None:
+            with self._connection.execute(
+                select(sessions.c.session_id)
+                .where(*session_conditions)
+                .order_by(sessions.c.session_id)
+            ) as rows:
+                found = tuple(rows.scalars())
         total = int(
             self._connection.execute(
                 select(func.count())

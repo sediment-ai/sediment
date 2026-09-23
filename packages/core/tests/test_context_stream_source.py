@@ -109,12 +109,23 @@ def source_sizes(engine, discovery):
         for name in metadata
     )
     with engine.connect() as connection:
-        return tuple(
+        total, largest, metadata_total = (
             int(value)
             for value in connection.execute(
                 select(func.sum(size), func.max(size), func.sum(metadata_size))
             ).one()
         )
+        header_total, header_largest = connection.execute(
+            select(
+                func.sum(func.octet_length(sessions.c.session_id)),
+                func.max(func.octet_length(sessions.c.session_id)),
+            )
+        ).one()
+    return (
+        total + int(header_total) if discovery else total,
+        max(largest, int(header_largest)) if discovery else largest,
+        metadata_total + int(header_total),
+    )
 
 
 def anchor():
@@ -428,6 +439,115 @@ def test_stream_distinguishes_missing_empty_and_hidden_sessions(
     assert meta.authorized_sessions == 4
     assert meta.visible_inference_calls == 0
     assert meta.quarantined_inference_calls == 1
+
+
+@pytest.mark.parametrize("discovery", [False, True])
+@pytest.mark.parametrize("quarantined", [False, True])
+def test_stream_empty_headers_have_exact_metadata_boundary(
+    postgres_store, postgres_engine, monkeypatch, discovery, quarantined
+):
+    scope = ("a-😀", "b-é") if discovery else ("a-😀",)
+    for identifier in (*scope, "outside"):
+        if quarantined:
+            postgres_store.store_inference_call(call(identifier, session=identifier))
+            postgres_store.quarantine_fact(
+                "acme", FactTable.INFERENCE_CALLS, identifier, reason="hide"
+            )
+        else:
+            with postgres_engine.begin() as connection:
+                connection.execute(
+                    sessions.insert().values(
+                        org_id="acme",
+                        session_id=identifier,
+                        first_observed_at=T0,
+                        last_observed_at=T0,
+                        user_id_conflict=False,
+                    )
+                )
+    exact = sum(len(identifier.encode("utf-8")) for identifier in scope)
+    monkeypatch.setattr(evidence, "CONTEXT_SCAN_METADATA_BYTES_LIMIT", exact)
+    if not discovery:
+        # The supplied singleton identifier is not a selected source column.
+        monkeypatch.setattr(evidence, "CONTEXT_SCAN_SOURCE_BYTES_LIMIT", 0)
+        monkeypatch.setattr(evidence, "CONTEXT_SCAN_ROW_BYTES_LIMIT", 0)
+    with queries(postgres_engine) as recorded:
+        with postgres_store.read_snapshot() as snapshot:
+            with stream(snapshot, discovery, scope=scope) as (meta, items):
+                assert list(items) == []
+    assert tuple(header.session_id for header in meta.sessions) == scope
+    assert meta.visible_inference_calls == 0
+    assert meta.quarantined_inference_calls == (len(scope) if quarantined else 0)
+    if not discovery:
+        assert not any(
+            sql.startswith("SELECT sessions.session_id") for sql, _, _ in recorded
+        )
+    monkeypatch.setattr(evidence, "CONTEXT_SCAN_METADATA_BYTES_LIMIT", exact - 1)
+    with queries(postgres_engine) as recorded:
+        with pytest.raises(evidence.EvidenceReadError) as caught:
+            with postgres_store.read_snapshot() as snapshot:
+                with stream(snapshot, discovery, scope=scope):
+                    pytest.fail("oversized header metadata reached consumer")
+    assert caught.value.detail == {
+        "reason": "evidence_source_limit",
+        "bytes": exact,
+        "limit": exact - 1,
+    }
+    assert not content_queries(recorded)
+    assert not any(
+        sql.startswith("SELECT sessions.session_id") for sql, _, _ in recorded
+    )
+
+
+@pytest.mark.parametrize("quarantined", [False, True])
+@pytest.mark.parametrize(
+    "constant", ["CONTEXT_SCAN_SOURCE_BYTES_LIMIT", "CONTEXT_SCAN_ROW_BYTES_LIMIT"]
+)
+def test_stream_discovery_preflights_header_source_before_transfer(
+    postgres_store, postgres_engine, monkeypatch, quarantined, constant
+):
+    scope = ("a-😀", "b-é")
+    for identifier in scope:
+        if quarantined:
+            postgres_store.store_inference_call(call(identifier, session=identifier))
+            postgres_store.quarantine_fact(
+                "acme", FactTable.INFERENCE_CALLS, identifier, reason="hide"
+            )
+        else:
+            with postgres_engine.begin() as connection:
+                connection.execute(
+                    sessions.insert().values(
+                        org_id="acme",
+                        session_id=identifier,
+                        first_observed_at=T0,
+                        last_observed_at=T0,
+                        user_id_conflict=False,
+                    )
+                )
+    header_sizes = [len(identifier.encode("utf-8")) for identifier in scope]
+    exact = (
+        sum(header_sizes)
+        if constant == "CONTEXT_SCAN_SOURCE_BYTES_LIMIT"
+        else max(header_sizes)
+    )
+    monkeypatch.setattr(evidence, constant, exact)
+    with postgres_store.read_snapshot() as snapshot:
+        with stream(snapshot, True, scope=scope) as (_, items):
+            assert list(items) == []
+    monkeypatch.setattr(evidence, constant, exact - 1)
+    with queries(postgres_engine) as recorded:
+        with pytest.raises(evidence.EvidenceReadError) as caught:
+            with postgres_store.read_snapshot() as snapshot:
+                with stream(snapshot, True, scope=scope):
+                    pytest.fail("oversized header source reached consumer")
+    assert caught.value.detail == {
+        "reason": "evidence_source_limit",
+        "bytes": exact,
+        "limit": exact - 1,
+    }
+    assert not content_queries(recorded)
+    assert not any(
+        sql.startswith("SELECT sessions.session_id") for sql, _, _ in recorded
+    )
 
 
 @pytest.mark.parametrize("scope", [[], ["a", "a"], ["a"] * 33, [""], "session"])
