@@ -32,6 +32,10 @@ EVIDENCE_SOURCE_BYTES_LIMIT = 8 * 1024 * 1024
 EVIDENCE_RESPONSE_BYTES_LIMIT = 1024 * 1024
 CONTEXT_SOURCE_PART_LIMIT = 2_048
 CONTEXT_DISCOVERY_SESSION_LIMIT = 32
+CONTEXT_SCAN_SOURCE_BYTES_LIMIT = 64 * 1024 * 1024
+CONTEXT_SCAN_ROW_BYTES_LIMIT = 8 * 1024 * 1024
+CONTEXT_SCAN_METADATA_BYTES_LIMIT = 8 * 1024 * 1024
+CONTEXT_SCAN_PART_LIMIT = 16_384
 
 EvidenceSide = Literal["input", "output"]
 EvidenceIndex = Annotated[int, Field(strict=True, ge=0)]
@@ -220,6 +224,26 @@ class ContextDiscoverySource:
     commit: ContextCommitAnchor | None
 
 
+@dataclass(frozen=True)
+class ContextScanSession:
+    """Found Session metadata for a snapshot-owned keyword scan."""
+
+    session_id: NonEmptyId
+    commit_match: ContextCommitMatch | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContextScanMetadata:
+    """Content-free scope for one complete keyword stream; never persisted."""
+
+    authorized_sessions: EvidenceIndex
+    quarantine_revision: EvidenceIndex
+    visible_inference_calls: EvidenceIndex
+    quarantined_inference_calls: EvidenceIndex
+    sessions: tuple[ContextScanSession, ...]
+    commit: ContextCommitAnchor | None
+
+
 def validate_context_session_ids(session_ids) -> tuple[NonEmptyId, ...]:
     """Validate the complete deployment grant before entering a database read."""
     if not isinstance(session_ids, (list, tuple, set, frozenset)) or not (
@@ -244,6 +268,7 @@ class EvidenceReadError(ValueError):
             "evidence_unavailable",
             "evidence_part_absent",
             "retrieval_part_limit",
+            "retrieval_state_limit",
             "non_finite_number",
         ],
         **details: int,
