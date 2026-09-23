@@ -244,8 +244,9 @@ deployment's physical disk.
 
 If the plan exceeds a runtime limit, a full rehearsal can record that refusal;
 the target remains unqualified. In particular, complete bundle identity evidence
-has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, above keyword
-retrieval's 2,048-part source ceiling. Exact-reference reads have separate limits.
+has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, within keyword
+streaming's 16,384-part ceiling; total bytes and candidate state have independent
+limits. Exact-reference reads have separate limits.
 Do not truncate Facts or treat a smaller probe as proof of the full target.
 
 If resources permit the declared workload, repeat without `--plan-only` and use

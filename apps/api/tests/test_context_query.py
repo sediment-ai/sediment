@@ -194,7 +194,7 @@ def test_context_part_overflow_is_complete_refusal(retrieval):
             input_messages=[],
             output_messages=[
                 InferenceMessage(
-                    role="assistant", parts=[TextPart(content="goal")] * 2049
+                    role="assistant", parts=[TextPart(content="goal")] * 16_385
                 )
             ],
         )
@@ -202,8 +202,28 @@ def test_context_part_overflow_is_complete_refusal(retrieval):
     result = post(retrieval)
     assert result.status_code == 409
     assert result.json() == {
-        "detail": {"reason": "retrieval_part_limit", "count": 2049, "limit": 2048}
+        "detail": {"reason": "retrieval_part_limit", "count": 16_385, "limit": 16_384}
     }
+    assert result.headers["cache-control"] == "no-store"
+
+
+def test_context_stream_accepts_more_than_materialized_part_limit(retrieval):
+    retrieval.app.state.fact_store.store_inference_call(
+        _call(
+            input_messages=[],
+            output_messages=[
+                InferenceMessage(
+                    role="assistant", parts=[TextPart(content="goal")] * 2049
+                )
+            ],
+        )
+    )
+    result = post(retrieval)
+    assert result.status_code == 200
+    value = result.json()
+    assert value["status"] == "matched"
+    assert len(value["items"]) == 1
+    assert value["skipped"]["repeated_content"] == 2048
     assert result.headers["cache-control"] == "no-store"
 
 
@@ -222,6 +242,27 @@ def test_context_deadline_releases_worker_slots(retrieval, monkeypatch):
     assert result.headers["cache-control"] == "no-store"
     assert not retrieval.app.state.workers._query_tasks
     assert retrieval.get("/health").status_code == 200
+
+
+def test_context_state_overflow_returns_no_partial_counts(retrieval):
+    retrieval.app.state.fact_store.store_inference_call(
+        _call(
+            input_messages=[],
+            output_messages=[
+                InferenceMessage(
+                    role="x" * (7 * 1024 * 1024),
+                    parts=[TextPart(content=f"goal {number}") for number in range(3)],
+                )
+            ],
+        )
+    )
+    result = post(retrieval)
+    assert result.status_code == 409
+    assert result.json() == {
+        "detail": {"reason": "retrieval_state_limit", "limit_bytes": 32 * 1024 * 1024}
+    }
+    assert result.headers["cache-control"] == "no-store"
+    assert not retrieval.app.state.workers._query_tasks
 
 
 def test_context_worker_failures_do_not_echo_diagnostics(

@@ -310,14 +310,16 @@ def test_discovery_aggregate_part_overflow_refuses_complete_grant(discovery):
                 input_messages=[],
                 output_messages=[
                     InferenceMessage(
-                        role="user", parts=[TextPart(content="goal")] * 1025
+                        role="user", parts=[TextPart(content="goal")] * 8193
                     )
                 ],
             )
         )
     response = post(discovery)
     assert response.status_code == 409
-    assert response.json()["detail"]["reason"] == "retrieval_part_limit"
+    assert response.json() == {
+        "detail": {"reason": "retrieval_part_limit", "count": 16_386, "limit": 16_384}
+    }
     assert post(discovery, ROUTES[1]).status_code == 200
 
 
@@ -340,7 +342,7 @@ def test_discovery_aggregate_call_overflow_refuses_complete_grant(discovery):
     assert post(discovery, ROUTES[1]).status_code == 200
 
 
-def test_discovery_aggregate_byte_overflow_refuses_complete_grant(discovery):
+def test_discovery_stream_accepts_more_than_materialized_byte_limit(discovery):
     store = discovery.app.state.fact_store
     for session in (SESSION, "uncommitted"):
         store.store_inference_call(
@@ -357,8 +359,10 @@ def test_discovery_aggregate_byte_overflow_refuses_complete_grant(discovery):
             )
         )
     response = post(discovery)
-    assert response.status_code == 409
-    assert response.json()["detail"]["reason"] == "evidence_source_limit"
+    assert response.status_code == 200
+    assert response.json()["status"] == "budget_exhausted"
+    assert response.json()["items"] == []
+    assert response.json()["skipped"]["response_budget"] == 2
     assert post(discovery, ROUTES[1]).status_code == 200
 
 

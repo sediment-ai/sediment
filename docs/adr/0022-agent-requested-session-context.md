@@ -62,12 +62,31 @@ policy engine is introduced.
 The existing disposable evidence worker reads one complete bounded visible
 Session in one read-only repeatable-read snapshot. The source excludes provider
 raw payloads and the Fact's user identifier. Its independent limits are 1,000
-visible calls, 8 MiB of selected stored columns, and 2,048 canonical parts.
+visible calls, 64 MiB of selected stored columns, 8 MiB per transferred row,
+8 MiB of scan metadata, and 16,384 canonical parts.
 Overflow refuses the operation; no successful partial scan is returned.
+
+The 2026-09-23 execution amendment ([Issue #101](https://github.com/sediment-ai/sediment/issues/101))
+replaces the original 8 MiB, 2,048-part materialized keyword read. A server-side
+cursor transfers one call at a time. The selector retains the best occurrence
+per exact repeated-content key and consumes the complete stream before packing
+the response. The cursor and snapshot remain open through response encoding.
+The materialized readers remain small-source oracles. Factual inventory,
+manifest, and exact-fetch limits from ADR 0021 remain independent.
+
+Selection reserves at most 32 MiB for complete canonical duplicate keys, each
+group's largest encoded item, and 512 bytes per group. Reservations never shrink
+when a better occurrence replaces an earlier one. This keeps capacity decisions
+independent of traversal order. Overflow returns `retrieval_state_limit` with
+`limit_bytes`, without partial scan counters. Long metadata repeated in candidate
+keys can exceed this budget even when the original source fits 8 MiB. This is
+an intentional capacity refusal. The budget bounds accounted selection state,
+not process memory; row decoding, tokenization, and encoding also allocate memory.
 
 A pure versioned selector ranks distinct query-token overlap, then applies
 explicit occurrence ordering, response-local repeated-content suppression,
-and whole-part byte packing. It excludes reasoning and non-finite tool values
+and whole-part byte packing. Completed answers retain policy version 1 and the
+original winning part's object-key order. It excludes reasoning and non-finite tool values
 with closed counts. Scores aren't probabilities, Rewards, or training labels.
 The response carries at most eight exact parts, source references, the
 Quarantine revision, coverage, and unknown capture completeness. A shared bounded

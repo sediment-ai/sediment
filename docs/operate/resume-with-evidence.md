@@ -27,12 +27,20 @@ preserved workspace.
 
 The keyword selector excludes reasoning, counts non-finite tool values, and
 suppresses repeated content within each response. Coverage describes the entire
-visible scan within fixed source limits: 1,000 calls, 8 MiB of selected stored
-columns, and 2,048 parts. Overflow refuses the request. Repeated histories count
+visible scan within fixed source limits: 1,000 calls, 64 MiB of selected stored
+columns, 8 MiB per call row, 8 MiB of scan metadata, and 16,384 parts.
+The worker streams calls and reserves at most 32 MiB for retained candidate state.
+Overflow refuses the request. Repeated histories count
 toward source capacity. Selection can omit relevant evidence; `no_match` doesn't
 prove absence. `budget_exhausted` means that no positive match fits. Capture
 completeness remains unknown. Read the [HTTP contract](../reference/api.md#post-querycontext)
 for closed errors and response fields.
+
+The candidate-state budget includes exact duplicate keys and the largest encoded
+matching item per group. Long metadata repeated across keys can exceed this
+budget even when source text is small. `retrieval_state_limit` returns no partial
+selection or scan counts. The budget isn't a process-memory guarantee; decoding
+and tokenization also allocate memory.
 
 Evidence and reports share two read workers per API process. When both are busy,
 the server refuses another read with HTTP 503. Each read has a 30-second deadline.
@@ -78,8 +86,8 @@ rank first; keyword matches also find uncommitted work. A commit-only candidate
 has no invented preview and may have no available conversation content.
 The recorded observation and source Push must both remain visible.
 
-The complete authorized set shares the 1,000-call, 8 MiB, and 2,048-part source
-limits. These limits do not apply separately to each Session. Source overflow
+The complete authorized set shares the source limits and 32 MiB candidate-state
+budget. These limits do not apply separately to each Session. Source overflow
 refuses the complete operation; narrow the configured set and rotate its token.
 The requested response budget remains 4–64 KiB, default 16 KiB. Closed counts
 report unmatched or omitted candidates. The selector does not summarize or clip

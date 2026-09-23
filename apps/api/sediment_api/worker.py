@@ -29,8 +29,8 @@ from sediment_derive import MirrorManager
 from sediment_derive.context_retrieval import (
     ContextDiscoveryResult,
     ContextRetrievalResult,
-    discover_context,
-    retrieve_context,
+    discover_context_stream,
+    retrieve_context_stream,
 )
 from sediment_derive.repository_identity import (
     REPOSITORY_IDENTITY_SKIP_REASONS,
@@ -131,15 +131,18 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 )
             try:
                 with store.read_snapshot() as snapshot:
-                    source = snapshot.read_context_discovery_source(
+                    with snapshot.stream_context_discovery_source(
                         settings.org_id, session_ids, commit=selection.commit
-                    )
-                    value = discover_context(
-                        source, selection.query, max_bytes=selection.max_bytes
-                    )
-                    return query._query_response(
-                        value, ContextDiscoveryResult, max_bytes=selection.max_bytes
-                    )
+                    ) as (metadata, items):
+                        value = discover_context_stream(
+                            metadata,
+                            items,
+                            selection.query,
+                            max_bytes=selection.max_bytes,
+                        )
+                        return query._query_response(
+                            value, ContextDiscoveryResult, max_bytes=selection.max_bytes
+                        )
             except EvidenceReadError as exc:
                 raise HTTPException(status_code=409, detail=exc.detail) from None
         case "context-retrieve" | "context-selected":
@@ -162,13 +165,18 @@ def _dispatch(request: WorkerRequest, store: FactStore) -> Response:
                 )
             try:
                 with store.read_snapshot() as snapshot:
-                    source = snapshot.read_context_source(settings.org_id, session_id)
-                    value = retrieve_context(
-                        source, selection.query, selection.max_bytes
-                    )
-                    return query._query_response(
-                        value, ContextRetrievalResult, max_bytes=selection.max_bytes
-                    )
+                    with snapshot.stream_context_source(
+                        settings.org_id, session_id
+                    ) as (metadata, items):
+                        value = retrieve_context_stream(
+                            metadata,
+                            items,
+                            selection.query,
+                            max_bytes=selection.max_bytes,
+                        )
+                        return query._query_response(
+                            value, ContextRetrievalResult, max_bytes=selection.max_bytes
+                        )
             except EvidenceReadError as exc:
                 raise HTTPException(status_code=409, detail=exc.detail) from None
         case (

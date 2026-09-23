@@ -13,6 +13,11 @@
 
 ### Operational evidence
 
+- Stream keyword retrieval one call at a time for fixed and granted Sessions.
+  Raise keyword source capacity to 64 MiB and 16,384 parts with an 8 MiB row
+  bound and a separate 32 MiB candidate-state budget. Completed answers retain
+  exact version-1 ranking, references, counts, and Quarantine behavior. State
+  overflow refuses the complete request; factual exact-read limits stay independent.
 - Declare the pilot target as 100 Sessions per week, 100 calls per Session, and
   24 weeks of history. Add resource-free workload planning with explicit limits
   and concurrent exact retrieval to the capture/report/export rehearsal.
