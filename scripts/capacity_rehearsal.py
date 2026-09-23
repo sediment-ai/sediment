@@ -40,8 +40,8 @@ def prepare_workspace(path: Path) -> None:
 def population_plan(profile) -> dict:
     """Expose declared dimensions and known ceilings without running a workload."""
     from sediment_core.evidence import (
-        CONTEXT_SOURCE_PART_LIMIT,
-        EVIDENCE_SOURCE_BYTES_LIMIT,
+        CONTEXT_SCAN_PART_LIMIT,
+        CONTEXT_SCAN_SOURCE_BYTES_LIMIT,
     )
     from sediment_export.derived_bundle import _IDENTITY_LIMIT
 
@@ -59,10 +59,10 @@ def population_plan(profile) -> dict:
         "parts_per_session": parts,
         "repeated_text_bytes_per_session": text_bytes,
         "repeated_text_bytes": text_bytes * profile.total_sessions,
-        "context_parts_limit": CONTEXT_SOURCE_PART_LIMIT,
-        "context_parts_fit": parts <= CONTEXT_SOURCE_PART_LIMIT,
-        "context_source_bytes_limit": EVIDENCE_SOURCE_BYTES_LIMIT,
-        "context_text_alone_fits": text_bytes <= EVIDENCE_SOURCE_BYTES_LIMIT,
+        "context_parts_limit": CONTEXT_SCAN_PART_LIMIT,
+        "context_parts_fit": parts <= CONTEXT_SCAN_PART_LIMIT,
+        "context_source_bytes_limit": CONTEXT_SCAN_SOURCE_BYTES_LIMIT,
+        "context_text_alone_fits": text_bytes <= CONTEXT_SCAN_SOURCE_BYTES_LIMIT,
         "bundle_identity_limit": _IDENTITY_LIMIT,
         "bundle_identity_population_fits": profile.total_calls <= _IDENTITY_LIMIT,
         "physical_database_bytes": None,
@@ -71,6 +71,7 @@ def population_plan(profile) -> dict:
             "PostgreSQL compression, indexes, backup, and export costs are unmeasured.",
             "Passing these necessary checks does not establish request capacity.",
             "Keyword source limits do not describe exact-reference fetch capacity.",
+            "Keyword row, metadata, and candidate-state bounds need measured qualification.",
         ],
     }
 

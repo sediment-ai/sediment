@@ -80,6 +80,8 @@ one request, and combines pi cancellation with a 35-second deadline. Its complet
 JSON result defaults to 16,384 bytes, with a permitted range of 4,096–65,536 bytes.
 The limit counts bytes, not model tokens. The tool returns whole parts without
 summarizing or clipping them.
+Keyword tools accept complete scan coverage through 16,384 parts; source limits
+and refusal behavior follow the [keyword retrieval contract](../../docs/operate/resume-with-evidence.md).
 
 Both settings are independent of capture enrollment. Neither falls back to an
 ingest token, operator login, or workspace configuration. If both are absent,

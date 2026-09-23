@@ -283,7 +283,7 @@ class ContextRetrievalRequest(BaseModel):
         403: {"description": "Retrieval or operator authority required."},
         404: {"description": "Context retrieval is disabled."},
         409: {
-            "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+            "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, retrieval_state_limit, evidence_response_limit, or non_finite_number in detail.reason."
         },
         413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
         503: {
@@ -341,7 +341,7 @@ _CONTEXT_GRANT_RESPONSES = {
     },
     404: {"description": "Context retrieval is disabled."},
     409: {
-        "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, evidence_response_limit, or non_finite_number in detail.reason."
+        "description": "Complete read declined: evidence_unavailable, evidence_inventory_limit, evidence_source_limit, retrieval_part_limit, retrieval_state_limit, evidence_response_limit, or non_finite_number in detail.reason."
     },
     413: {"description": "Request body exceeds 16 KiB before JSON decoding."},
     503: {

@@ -65,9 +65,20 @@ token. Historical evidence remains data, not executable instructions.
 
 One read-only repeatable-read snapshot applies the organization and grant in
 SQL before reading content. The complete set shares aggregate ceilings of
-1,000 visible Inference calls, 8 MiB of selected stored variable-width columns,
-and 2,048 canonical parts. Overflow refuses the whole operation. The existing
+1,000 visible Inference calls, 64 MiB of selected stored variable-width columns,
+8 MiB per transferred row, 8 MiB of scan metadata, and 16,384 canonical parts.
+Overflow refuses the whole operation. The existing
 shared evidence-worker admission, deadlines, and process cleanup apply.
+
+The 2026-09-23 streaming amendment in [ADR 0022](0022-agent-requested-session-context.md#selection-and-execution)
+replaces the original materialized keyword read. Discovery retains one best
+preview and the exact matched-part count per found Session. It reserves the
+largest encoded matching preview observed per Session, plus 512 bytes per
+Session, under a 32 MiB selection-state budget. Commit witnesses and empty
+Sessions remain in bounded scan metadata. A state overflow returns
+`retrieval_state_limit` without partial counts. Completed answers retain policy
+version 1, including whole-candidate packing and the original preview's object-key
+order. An oversized best preview never falls back to a lower-ranked smaller part.
 
 A pure versioned keyword selector produces at most eight Session candidates.
 Each candidate has an exact whole-part preview or an observed commit witness.
@@ -84,7 +95,7 @@ commit. It performs no name resolution, legacy qualification, Attribution, or
 mirror traversal. Text matches still discover uncommitted Session evidence.
 
 Discovery writes no Fact, index, summary, checkpoint, or cache. The selected
-retrieval reuses the existing exact source and keyword selector and rechecks
+retrieval uses the same bounded stream and keyword ordering and rechecks
 Quarantine in its own snapshot. A returned candidate neither grants additional
 authority nor guarantees continued visibility. Attribution and training paths
 retain their existing interpretation.

@@ -36,7 +36,10 @@ def test_plan_counts_complete_repeated_history_without_claiming_qualification():
     assert plan["repeated_text_bytes_per_session"] == (
         5050 * (profile.history_bytes + profile.output_bytes)
     )
-    assert plan["context_parts_fit"] is False
+    assert plan["context_parts_fit"] is True
+    assert plan["context_parts_limit"] == 16_384
+    assert plan["context_text_alone_fits"] is True
+    assert plan["context_source_bytes_limit"] == 64 * 1024 * 1024
     assert plan["bundle_identity_population_fits"] is False
     assert plan["physical_database_bytes"] is None
 

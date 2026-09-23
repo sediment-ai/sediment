@@ -244,8 +244,9 @@ deployment's physical disk.
 
 If the plan exceeds a runtime limit, a full rehearsal can record that refusal;
 the target remains unqualified. In particular, complete bundle identity evidence
-has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, above keyword
-retrieval's 2,048-part source ceiling. Exact-reference reads have separate limits.
+has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, within keyword
+streaming's 16,384-part ceiling; total bytes and candidate state have independent
+limits. Exact-reference reads have separate limits.
 Do not truncate Facts or treat a smaller probe as proof of the full target.
 
 If resources permit the declared workload, repeat without `--plan-only` and use
@@ -345,6 +346,41 @@ actual SQL plans. Diagnostic stage times are not public request latencies.
 The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
 and host limits separately. A scripted chooser exercises transport; it measures
 neither decision-model quality nor inference cost.
+
+### Qualify a growing Session
+
+Use `scripts/keyword_streaming_benchmark.py` for the pilot's 100-call Session.
+It creates and removes a scratch database in the owned cluster named by
+`SEDIMENT_TEST_DATABASE_URL`. The deterministic fixture repeats earlier turns,
+with 8 KiB of user text and 2 KiB of assistant text per turn: 10,100 parts and
+49.32 MiB of canonical text. An independent complete eager selection supplies
+the expected strict response bytes outside the measured API processes.
+
+```bash
+uv run python scripts/keyword_streaming_benchmark.py \
+  --calls 100 --sessions 1 --entropy varied --samples 3 --waves 2 --quarantine \
+  --rss-limit-mib 768 --database-cpu-limit 2 --database-memory-mib 2048 \
+  --output /data/keyword-100
+```
+
+The command checks fixed, selected, and discovery routes, plus an exact-reference
+control. It runs paired reads alongside acknowledged capture, then repeats after
+Quarantine and release. Inspect `report.json` for full-response hashes, coverage,
+latency, refusals, receipt conservation, sampled API process-tree memory, and
+cleanup. `diagnostic.json` records server-cursor use and SQL plans separately.
+The declared database resource limits must match limits that you set externally.
+The sampler excludes PostgreSQL and the oracle and can miss brief memory peaks.
+The 768 MiB planning check applies only to the successful single-Session,
+100-call profile; it isn't a general process-memory guarantee.
+
+If the older runtime refuses this fixture, select its installed checkout with
+`--runtime` and `--baseline-refusal evidence_source_limit`. Expected refusals
+are controls, not successful qualification. Use a fresh output directory per run.
+Use `--calls 10 --sessions 4` to check a smaller aggregate grant. Use
+`--scenario source-limit`, `row-limit`, `part-limit`, or `state-limit` for complete
+refusals. The `tiny-parts` and `nested-tools` scenarios measure decoded-row memory.
+Omit `--quarantine` for these controls. Passing one 100-call Session doesn't
+qualify 32 equally large Sessions, full pilot exports, or an agent's judgment.
 
 ## Measure repeated-history storage
 

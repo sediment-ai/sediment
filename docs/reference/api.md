@@ -342,7 +342,7 @@ Version 1 accepts English/code keywords, excludes reasoning, and returns at most
 
 **Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
 
-**Response:** Accepts schema_version=1, a nonblank English/code query of at most 2048 UTF-8 bytes with a meaningful token, and optional integer max_bytes (4096–65536; default 16384). Rejects all other fields. Returns policy/schema version 1, source_session_id, quarantine_revision, matched/no_match/budget_exhausted status, unknown capture completeness, complete visible scan coverage, closed exclusion counts, and at most eight scored exact EvidenceReadItem values. Each item retains its occurrence reference, timestamp, role, finish_reason, and complete canonical part. Scores count distinct token overlap. Whole-response ASCII JSON respects max_bytes and carries Cache-Control: no-store. Reads use one snapshot, cap visible calls at 1000, selected stored columns at 8 MiB, and canonical parts at 2048. Reasoning and non-finite parts are counted exclusions.
+**Response:** Accepts schema_version=1, a nonblank English/code query of at most 2048 UTF-8 bytes with a meaningful token, and optional integer max_bytes (4096–65536; default 16384). Rejects all other fields. Returns policy/schema version 1, source_session_id, quarantine_revision, matched/no_match/budget_exhausted status, unknown capture completeness, complete visible scan coverage, closed exclusion counts, and at most eight scored exact EvidenceReadItem values. Each item retains its occurrence reference, timestamp, role, finish_reason, and complete canonical part. Scores count distinct token overlap. Whole-response ASCII JSON respects max_bytes and carries Cache-Control: no-store. Reads stream one call at a time in one snapshot: at most 1000 visible calls, 64 MiB selected stored columns, 8 MiB per row, 8 MiB scan metadata, and 16384 parts. Selection reserves at most 32 MiB of candidate state; this is not a process-memory bound. Reasoning and non-finite parts are counted exclusions.
 
 Request body — `ContextRetrievalRequest` (`application/json`):
 
@@ -361,7 +361,7 @@ Status codes:
 | `401` | Missing or invalid credentials. |
 | `403` | The credential lacks the authority required by this route. |
 | `404` | Retrieval is disabled or plural configuration requires explicit Session selection. |
-| `409` | Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), evidence_response_limit (limit), or non_finite_number. No partial scan succeeds. |
+| `409` | Closed detail.reason: evidence_unavailable, evidence_inventory_limit (count, limit), evidence_source_limit (bytes, limit), retrieval_part_limit (count, limit), retrieval_state_limit (limit_bytes; no partial counts), evidence_response_limit (limit), or non_finite_number. No partial scan succeeds. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, query, byte budget, or undeclared field; content is omitted. |
 | `503` | The shared read pool is full, the 30-second deadline expires, or PostgreSQL is unavailable. |
@@ -374,7 +374,7 @@ Version 1 searches English/code keywords under aggregate source bounds. An optio
 
 **Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_RETRIEVAL_TOKEN` or `$SEDIMENT_OPERATOR_TOKEN`. Both stay within the configured Session set. Missing or invalid credentials return 401; ingest authority returns 403.
 
-**Response:** Accepts schema_version=1, query and optional max_bytes with the fixed retrieval bounds, and an optional complete commit anchor (repository_provider, repository_host, repository_id, commit_sha). Returns policy/schema version 1, quarantine_revision, the anchor or null, unknown capture completeness, matched/no_match/budget_exhausted status, complete coverage, closed part/Session exclusion counts, and at most eight candidate Sessions. Each has session_id, score, matched_parts, an exact EvidenceReadItem preview or null, and commit_match (observation_id, source_push_id, captured_at) or null. Commit matches require a visible exact source Push with equal provider identity. Complete visible source limits of 1000 calls, 8 MiB selected stored columns, and 2048 parts apply across the entire grant. Scores count distinct query-token overlap; exact commit matches rank first. Whole candidates fit the requested strict ASCII JSON response budget; Cache-Control is no-store. A commit hint never grants access or proves repository ownership of Session content.
+**Response:** Accepts schema_version=1, query and optional max_bytes with the fixed retrieval bounds, and an optional complete commit anchor (repository_provider, repository_host, repository_id, commit_sha). Returns policy/schema version 1, quarantine_revision, the anchor or null, unknown capture completeness, matched/no_match/budget_exhausted status, complete coverage, closed part/Session exclusion counts, and at most eight candidate Sessions. Each has session_id, score, matched_parts, an exact EvidenceReadItem preview or null, and commit_match (observation_id, source_push_id, captured_at) or null. Commit matches require a visible exact source Push with equal provider identity. Complete visible source limits of 1000 calls, 64 MiB selected stored columns, 8 MiB per row, 8 MiB scan metadata, and 16384 parts apply across the entire grant. Streaming selection reserves at most 32 MiB of candidate state across the grant. Scores count distinct query-token overlap; exact commit matches rank first. Whole candidates fit the requested strict ASCII JSON response budget; Cache-Control is no-store. A commit hint never grants access or proves repository ownership of Session content.
 
 Request body — `ContextDiscoveryRequest` (`application/json`):
 
@@ -394,7 +394,7 @@ Status codes:
 | `401` | Missing or invalid credentials. |
 | `403` | The credential lacks the authority required by this route. |
 | `404` | Retrieval is disabled for this deployment. |
-| `409` | Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason. |
+| `409` | Complete source, selection state, or response exceeds its bound; closed evidence capacity reason in detail.reason. retrieval_state_limit reports limit_bytes without partial counts. |
 | `413` | The streamed body exceeds 16 KiB before JSON decoding. |
 | `422` | Invalid version, query, budget, complete commit identity, or undeclared field. |
 | `503` | Shared read capacity or database unavailable; the existing 30-second deadline applies. |

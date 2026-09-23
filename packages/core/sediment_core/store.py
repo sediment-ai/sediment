@@ -36,6 +36,8 @@ from .evidence import (
     ContextCommitMatch,
     ContextDiscoverySession,
     ContextDiscoverySource,
+    ContextScanMetadata,
+    ContextScanSession,
     EvidenceCallMetadata,
     EvidenceContextSource,
     EvidenceInventory,
@@ -2029,6 +2031,209 @@ class FactStore:
 class _FactSnapshot:
     """One borrowed connection's immutable PostgreSQL fact view."""
 
+    @contextmanager
+    def stream_context_source(
+        self, org_id: OrgId, session_id: NonEmptyId
+    ) -> Iterator[
+        tuple[ContextScanMetadata, Iterator[tuple[NonEmptyId, EvidenceReadItem]]]
+    ]:
+        """Consume a complete keyword source before leaving this snapshot."""
+        org_id, session_id = _evidence_scope(org_id, session_id)
+        with self._stream_context_scan(
+            org_id, (session_id,), None, singleton_id=session_id
+        ) as source:
+            yield source
+
+    @contextmanager
+    def stream_context_discovery_source(
+        self,
+        org_id: OrgId,
+        session_ids: Sequence[NonEmptyId] | set[NonEmptyId],
+        commit: ContextCommitAnchor | None = None,
+    ) -> Iterator[
+        tuple[ContextScanMetadata, Iterator[tuple[NonEmptyId, EvidenceReadItem]]]
+    ]:
+        """Stream one complete authorized grant with aggregate keyword limits."""
+        org_id, session_ids = _context_discovery_scope(org_id, session_ids, commit)
+        with self._stream_context_scan(org_id, session_ids, commit) as source:
+            yield source
+
+    @contextmanager
+    def _stream_context_scan(self, org_id, session_ids, commit, *, singleton_id=None):
+        revision = self.quarantine_revision(org_id)
+        session_conditions = (
+            sessions.c.org_id == org_id,
+            sessions.c.session_id.in_(session_ids),
+        )
+        if singleton_id is not None:
+            exists = self._connection.execute(
+                select(
+                    select(1).select_from(sessions).where(*session_conditions).exists()
+                )
+            ).scalar_one()
+            if not exists:
+                raise EvidenceReadError("evidence_unavailable")
+            found = (singleton_id,)
+            header_size = len(singleton_id.encode("utf-8"))
+            header_largest = 0
+        else:
+            header_bytes = func.octet_length(sessions.c.session_id)
+            header_size, header_largest = self._connection.execute(
+                select(
+                    func.coalesce(func.sum(header_bytes), 0),
+                    func.coalesce(func.max(header_bytes), 0),
+                ).where(*session_conditions)
+            ).one()
+            header_size, header_largest = int(header_size), int(header_largest)
+        conditions = [
+            *_fact_conditions(org_id, FactTable.INFERENCE_CALLS, False),
+            inference_calls.c.session_id.in_(session_ids),
+        ]
+        metadata_names = _EVIDENCE_METADATA_TEXT_COLUMNS
+        columns = _evidence_metadata_columns()
+        if singleton_id is None:
+            metadata_names = ("session_id", *metadata_names)
+            columns.insert(0, inference_calls.c.session_id)
+        metadata_bytes = sum(
+            func.coalesce(func.octet_length(inference_calls.c[name]), 0)
+            for name in metadata_names
+        )
+        row_bytes = metadata_bytes + sum(
+            func.octet_length(inference_calls.c[name])
+            for name in ("input_messages", "output_messages")
+        )
+        count, size, largest, metadata_size = self._connection.execute(
+            select(
+                func.count(),
+                func.coalesce(func.sum(row_bytes), 0),
+                func.coalesce(func.max(row_bytes), 0),
+                func.coalesce(func.sum(metadata_bytes), 0),
+            )
+            .select_from(inference_calls)
+            .where(*conditions)
+        ).one()
+        count, size, largest, metadata_size = map(
+            int, (count, size, largest, metadata_size)
+        )
+        metadata_size += header_size
+        if singleton_id is None:
+            size += header_size
+            largest = max(largest, header_largest)
+        if count > evidence.EVIDENCE_INVENTORY_LIMIT:
+            raise EvidenceReadError(
+                "evidence_inventory_limit",
+                count=count,
+                limit=evidence.EVIDENCE_INVENTORY_LIMIT,
+            )
+        matches_statement = None
+        if commit is not None:
+            matches_statement = _context_commit_matches(org_id, session_ids, commit)
+            match_source = matches_statement.subquery()
+            match_bytes = sum(
+                func.octet_length(match_source.c[name])
+                for name in ("session_id", "observation_id", "source_push_id")
+            )
+            match_size, match_largest = self._connection.execute(
+                select(
+                    func.coalesce(func.sum(match_bytes), 0),
+                    func.coalesce(func.max(match_bytes), 0),
+                )
+            ).one()
+            size += int(match_size)
+            metadata_size += int(match_size)
+            largest = max(largest, int(match_largest))
+        for amount, limit in (
+            (size, evidence.CONTEXT_SCAN_SOURCE_BYTES_LIMIT),
+            (largest, evidence.CONTEXT_SCAN_ROW_BYTES_LIMIT),
+            (metadata_size, evidence.CONTEXT_SCAN_METADATA_BYTES_LIMIT),
+        ):
+            if amount > limit:
+                raise EvidenceReadError(
+                    "evidence_source_limit", bytes=amount, limit=limit
+                )
+        if singleton_id is None:
+            with self._connection.execute(
+                select(sessions.c.session_id)
+                .where(*session_conditions)
+                .order_by(sessions.c.session_id)
+            ) as rows:
+                found = tuple(rows.scalars())
+        total = int(
+            self._connection.execute(
+                select(func.count())
+                .select_from(inference_calls)
+                .where(
+                    inference_calls.c.org_id == org_id,
+                    inference_calls.c.session_id.in_(session_ids),
+                )
+            ).scalar_one()
+        )
+        matches = {}
+        if matches_statement is not None:
+            with self._connection.execute(matches_statement) as rows:
+                matches = {
+                    row["session_id"]: ContextCommitMatch(
+                        row["observation_id"], row["source_push_id"], row["captured_at"]
+                    )
+                    for row in rows.mappings()
+                }
+        metadata = ContextScanMetadata(
+            authorized_sessions=len(session_ids),
+            quarantine_revision=revision,
+            visible_inference_calls=count,
+            quarantined_inference_calls=total - count,
+            sessions=tuple(
+                ContextScanSession(identifier, matches.get(identifier))
+                for identifier in found
+            ),
+            commit=commit,
+        )
+        statement = (
+            select(
+                *columns,
+                inference_calls.c.input_messages,
+                inference_calls.c.output_messages,
+            )
+            .where(*conditions)
+            .order_by(
+                inference_calls.c.session_id,
+                inference_calls.c.observed_at,
+                inference_calls.c.inference_call_id,
+            )
+        )
+        exhausted = False
+        with self._connection.execute(statement.execution_options(yield_per=1)) as rows:
+
+            def iterate():
+                nonlocal exhausted
+                part_count = 0
+                for row in rows.mappings():
+                    if singleton_id is not None:
+                        # Preserve the singleton inventory's metadata validation.
+                        _evidence_metadata(row)
+                    session_id = singleton_id or row["session_id"]
+                    for side in ("input", "output"):
+                        part_count = yield from _context_scan_side(
+                            row, session_id, side, part_count
+                        )
+                    # No decoded side or preceding row survives the next fetch.
+                    del row
+                if part_count > evidence.CONTEXT_SCAN_PART_LIMIT:
+                    raise EvidenceReadError(
+                        "retrieval_part_limit",
+                        count=part_count,
+                        limit=evidence.CONTEXT_SCAN_PART_LIMIT,
+                    )
+                exhausted = True
+
+            items = iterate()
+            try:
+                yield metadata, items
+                if not exhausted:
+                    raise RuntimeError("Keyword source must be completely consumed")
+            finally:
+                items.close()
+
     def read_evidence_inventory(
         self, org_id: OrgId, session_id: NonEmptyId
     ) -> EvidenceInventory:
@@ -3591,6 +3796,30 @@ def _check_inference_payload_budget(
 
 def _messages(value: str) -> list[InferenceMessage]:
     return [InferenceMessage.model_validate(message) for message in json.loads(value)]
+
+
+def _context_scan_side(row, session_id, side, part_count):
+    """Release one decoded side before its caller decodes another."""
+    for message_index, message in enumerate(_messages(row[f"{side}_messages"])):
+        part_count += len(message.parts)
+        # Count the complete byte-bounded population after overflow, without
+        # retaining further parts or reporting an invented complete count.
+        if part_count > evidence.CONTEXT_SCAN_PART_LIMIT:
+            continue
+        for part_index, part in enumerate(message.parts):
+            yield (
+                session_id,
+                EvidenceReadItem(
+                    EvidenceReference(
+                        row["inference_call_id"], side, message_index, part_index
+                    ),
+                    row["observed_at"],
+                    message.role,
+                    message.finish_reason,
+                    part,
+                ),
+            )
+    return part_count
 
 
 def _columns_except(table, *excluded: str) -> list[object]:

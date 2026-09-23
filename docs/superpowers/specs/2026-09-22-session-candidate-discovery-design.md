@@ -6,6 +6,10 @@ Status: implementation plan
 
 Tracker: [Issue #82](https://github.com/sediment-ai/sediment/issues/82).
 
+Execution amendment: [ADR 0025](../../adr/0025-authorized-session-candidate-discovery.md#discovery-and-source-identity)
+replaces this specification's materialized keyword source limits with bounded
+streaming. Selection policy and successful version-1 responses remain unchanged.
+
 ## Outcome
 
 A fresh agent supplies task keywords and, optionally, a repository-qualified

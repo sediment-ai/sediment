@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Annotated, Literal
@@ -19,6 +20,8 @@ from sediment_core import (
     NonEmptyId,
 )
 from sediment_core.evidence import (
+    CONTEXT_SCAN_PART_LIMIT,
+    ContextScanMetadata,
     EvidenceIndex,
     EvidenceReadError,
     EvidenceSchemaVersion,
@@ -34,6 +37,8 @@ CONTEXT_MAX_RESPONSE_BYTES = 65_536
 CONTEXT_DEFAULT_RESPONSE_BYTES = 16_384
 CONTEXT_ENVELOPE_BYTES = 2_048
 CONTEXT_ITEM_LIMIT = 8
+CONTEXT_STATE_BYTES_LIMIT = 32 * 1024 * 1024
+CONTEXT_STATE_ENTRY_BYTES = 512
 CONTEXT_SKIP_REASONS = (
     "reasoning_part",
     "non_finite_number",
@@ -229,6 +234,261 @@ def _rank_key(item: ContextRetrievalItem) -> tuple:
     )
 
 
+def _content_key(item: EvidenceReadItem) -> str:
+    return _strict_json(
+        {
+            "role": item.role,
+            "finish_reason": item.finish_reason,
+            "part": item.part.model_dump(mode="python"),
+        }
+    )
+
+
+def _discovery_rank_key(item: ContextDiscoveryItem) -> tuple:
+    return item.commit_match is None, -item.score, item.session_id
+
+
+def _candidate(
+    item: EvidenceReadItem,
+    query_tokens: set[str],
+    skipped: Counter[str],
+    unmatched_reason: Literal["no_match", "unmatched_part"],
+) -> ContextRetrievalItem | None:
+    if item.part.type == "reasoning":
+        skipped["reasoning_part"] += 1
+        return None
+    try:
+        score = len(query_tokens & tokenize(_search_text(item)))
+    except EvidenceReadError:
+        skipped["non_finite_number"] += 1
+        return None
+    if not score:
+        skipped[unmatched_reason] += 1
+        return None
+    return ContextRetrievalItem(score, item)
+
+
+def _pack_candidates[Item](
+    candidates: Iterable[Item], contract: type[Item], max_bytes: int
+) -> tuple[tuple[Item, ...], int, int]:
+    selected = []
+    limited = oversized = 0
+    remaining = max_bytes - CONTEXT_ENVELOPE_BYTES
+    for candidate in candidates:
+        if len(selected) == CONTEXT_ITEM_LIMIT:
+            limited += 1
+            continue
+        comma_bytes = int(bool(selected))
+        try:
+            encoded = encode_evidence_json(
+                candidate, contract, max_bytes=remaining - comma_bytes
+            )
+        except EvidenceReadError as exc:
+            if exc.detail["reason"] != "evidence_response_limit":
+                raise
+            oversized += 1
+            continue
+        remaining -= len(encoded) + comma_bytes
+        selected.append(candidate)
+    return tuple(selected), limited, oversized
+
+
+def _check_state_bytes(size: int) -> None:
+    if size > CONTEXT_STATE_BYTES_LIMIT:
+        raise EvidenceReadError(
+            "retrieval_state_limit", limit_bytes=CONTEXT_STATE_BYTES_LIMIT
+        )
+
+
+def _state_encoding_size(value: object, contract: type) -> int:
+    try:
+        return len(
+            encode_evidence_json(value, contract, max_bytes=CONTEXT_STATE_BYTES_LIMIT)
+        )
+    except EvidenceReadError as exc:
+        if exc.detail["reason"] != "evidence_response_limit":
+            raise
+        raise EvidenceReadError(
+            "retrieval_state_limit", limit_bytes=CONTEXT_STATE_BYTES_LIMIT
+        ) from None
+
+
+def _validate_response_budget(max_bytes: int) -> None:
+    if (
+        type(max_bytes) is not int
+        or not CONTEXT_MIN_RESPONSE_BYTES <= max_bytes <= CONTEXT_MAX_RESPONSE_BYTES
+    ):
+        raise ValueError("invalid context response budget")
+
+
+def retrieve_context_stream(
+    metadata: ContextScanMetadata,
+    items: Iterable[tuple[NonEmptyId, EvidenceReadItem]],
+    query: str,
+    max_bytes: int = CONTEXT_DEFAULT_RESPONSE_BYTES,
+    policy: ContextRetrievalPolicy = ContextRetrievalPolicy(),
+) -> ContextRetrievalResult:
+    """Reduce a complete Session stream with exact keys and bounded state.
+
+    Each group reserves its ASCII key, largest observed encoded candidate, and
+    fixed overhead. Reservations only grow; only the best original occurrence
+    remains retained. Encoded reservations don't measure Python resident memory.
+    """
+    query_tokens = context_query_tokens(query)
+    _validate_response_budget(max_bytes)
+    if len(metadata.sessions) != 1:
+        raise ValueError("retrieval scan requires one found Session")
+    session_id = metadata.sessions[0].session_id
+    skipped = Counter({reason: 0 for reason in CONTEXT_SKIP_REASONS})
+    groups: dict[str, tuple[ContextRetrievalItem, int]] = {}
+    scanned_parts = state_bytes = 0
+    for identifier, item in items:
+        if identifier != session_id:
+            raise ValueError("retrieval scan Session mismatch")
+        scanned_parts += 1
+        candidate = _candidate(item, query_tokens, skipped, "no_match")
+        if candidate is None:
+            continue
+        key = _content_key(item)
+        size = _state_encoding_size(candidate, ContextRetrievalItem)
+        previous = groups.get(key)
+        if previous is None:
+            state_bytes += len(key) + size + CONTEXT_STATE_ENTRY_BYTES
+            if len(groups) == CONTEXT_SCAN_PART_LIMIT:
+                raise EvidenceReadError(
+                    "retrieval_state_limit", limit_bytes=CONTEXT_STATE_BYTES_LIMIT
+                )
+            _check_state_bytes(state_bytes)
+            groups[key] = candidate, size
+        else:
+            skipped["repeated_content"] += 1
+            best, reserved = previous
+            state_bytes += max(0, size - reserved)
+            _check_state_bytes(state_bytes)
+            if _rank_key(candidate) < _rank_key(best):
+                best = candidate
+            groups[key] = best, max(size, reserved)
+
+    selected, skipped["item_limit"], skipped["response_budget"] = _pack_candidates(
+        sorted((best for best, _ in groups.values()), key=_rank_key),
+        ContextRetrievalItem,
+        max_bytes,
+    )
+    result = ContextRetrievalResult(
+        schema_version=1,
+        policy_version=policy.policy_version,
+        source_session_id=session_id,
+        quarantine_revision=metadata.quarantine_revision,
+        status="matched" if selected else "budget_exhausted" if groups else "no_match",
+        capture_completeness="unknown",
+        coverage=ContextRetrievalCoverage(
+            visible_inference_calls=metadata.visible_inference_calls,
+            quarantined_inference_calls=metadata.quarantined_inference_calls,
+            scanned_parts=scanned_parts,
+            complete_visible_scan=True,
+        ),
+        skipped=ContextRetrievalSkipped(**skipped),
+        items=selected,
+    )
+    encode_evidence_json(
+        replace(result, items=()),
+        ContextRetrievalResult,
+        max_bytes=CONTEXT_ENVELOPE_BYTES,
+    )
+    encode_evidence_json(result, ContextRetrievalResult, max_bytes=max_bytes)
+    return result
+
+
+def discover_context_stream(
+    metadata: ContextScanMetadata,
+    items: Iterable[tuple[NonEmptyId, EvidenceReadItem]],
+    query: str,
+    max_bytes: int = CONTEXT_DEFAULT_RESPONSE_BYTES,
+    policy: ContextDiscoveryPolicy = ContextDiscoveryPolicy(),
+) -> ContextDiscoveryResult:
+    """Keep exact match counts and one best preview per found Session.
+
+    Each found Session reserves fixed overhead plus its largest observed matched
+    EvidenceReadItem encoding, even when a smaller occurrence becomes its best.
+    The store independently bounds the content-free scan header and witnesses.
+    """
+    query_tokens = context_query_tokens(query)
+    _validate_response_budget(max_bytes)
+    skipped = Counter({reason: 0 for reason in CONTEXT_DISCOVERY_SKIP_REASONS})
+    sessions: dict[NonEmptyId, tuple[int, ContextRetrievalItem | None, int]] = {
+        session.session_id: (0, None, 0) for session in metadata.sessions
+    }
+    state_bytes = len(sessions) * CONTEXT_STATE_ENTRY_BYTES
+    _check_state_bytes(state_bytes)
+    scanned_parts = matched_parts = 0
+    for identifier, item in items:
+        if identifier not in sessions:
+            raise ValueError("discovery scan Session mismatch")
+        scanned_parts += 1
+        candidate = _candidate(item, query_tokens, skipped, "unmatched_part")
+        if candidate is None:
+            continue
+        count, best, reserved = sessions[identifier]
+        matched_parts += 1
+        size = _state_encoding_size(item, EvidenceReadItem)
+        state_bytes += max(0, size - reserved)
+        _check_state_bytes(state_bytes)
+        if best is None or _rank_key(candidate) < _rank_key(best):
+            best = candidate
+        sessions[identifier] = count + 1, best, max(size, reserved)
+
+    candidates = []
+    for session in metadata.sessions:
+        count, best, _ = sessions[session.session_id]
+        if best is None and session.commit_match is None:
+            skipped["unmatched_session"] += 1
+            continue
+        candidates.append(
+            ContextDiscoveryItem(
+                session.session_id,
+                best.score if best else 0,
+                count,
+                best.evidence if best else None,
+                session.commit_match,
+            )
+        )
+    selected, skipped["candidate_limit"], skipped["response_budget"] = _pack_candidates(
+        sorted(candidates, key=_discovery_rank_key),
+        ContextDiscoveryItem,
+        max_bytes,
+    )
+    result = ContextDiscoveryResult(
+        schema_version=1,
+        policy_version=policy.policy_version,
+        quarantine_revision=metadata.quarantine_revision,
+        capture_completeness="unknown",
+        commit=metadata.commit,
+        status="matched"
+        if selected
+        else "budget_exhausted"
+        if candidates
+        else "no_match",
+        coverage=ContextDiscoveryCoverage(
+            metadata.authorized_sessions,
+            len(metadata.sessions),
+            metadata.visible_inference_calls,
+            metadata.quarantined_inference_calls,
+            scanned_parts,
+            matched_parts,
+            True,
+        ),
+        skipped=ContextDiscoverySkipped(**skipped),
+        items=selected,
+    )
+    encode_evidence_json(
+        replace(result, items=()),
+        ContextDiscoveryResult,
+        max_bytes=CONTEXT_ENVELOPE_BYTES,
+    )
+    encode_evidence_json(result, ContextDiscoveryResult, max_bytes=max_bytes)
+    return result
+
+
 def retrieve_context(
     source: EvidenceContextSource,
     query: str,
@@ -237,58 +497,27 @@ def retrieve_context(
 ) -> ContextRetrievalResult:
     """Select complete original parts; never persist or synthesize evidence."""
     query_tokens = context_query_tokens(query)
-    if (
-        type(max_bytes) is not int
-        or not CONTEXT_MIN_RESPONSE_BYTES <= max_bytes <= CONTEXT_MAX_RESPONSE_BYTES
-    ):
-        raise ValueError("invalid context response budget")
+    _validate_response_budget(max_bytes)
     skipped = Counter({reason: 0 for reason in CONTEXT_SKIP_REASONS})
     candidates = []
     for item in source.items:
-        if item.part.type == "reasoning":
-            skipped["reasoning_part"] += 1
-            continue
-        try:
-            score = len(query_tokens & tokenize(_search_text(item)))
-        except EvidenceReadError:
-            skipped["non_finite_number"] += 1
-            continue
-        if not score:
-            skipped["no_match"] += 1
-            continue
-        candidates.append(ContextRetrievalItem(score, item))
+        candidate = _candidate(item, query_tokens, skipped, "no_match")
+        if candidate is not None:
+            candidates.append(candidate)
 
-    selected = []
-    seen = set()
-    remaining = max_bytes - CONTEXT_ENVELOPE_BYTES
-    for candidate in sorted(candidates, key=_rank_key):
-        item = candidate.evidence
-        key = _strict_json(
-            {
-                "role": item.role,
-                "finish_reason": item.finish_reason,
-                "part": item.part.model_dump(mode="python"),
-            }
-        )
-        if key in seen:
-            skipped["repeated_content"] += 1
-            continue
-        seen.add(key)
-        if len(selected) == CONTEXT_ITEM_LIMIT:
-            skipped["item_limit"] += 1
-            continue
-        comma_bytes = int(bool(selected))
-        try:
-            encoded = encode_evidence_json(
-                candidate, ContextRetrievalItem, max_bytes=remaining - comma_bytes
-            )
-        except EvidenceReadError as exc:
-            if exc.detail["reason"] != "evidence_response_limit":
-                raise
-            skipped["response_budget"] += 1
-            continue
-        remaining -= len(encoded) + comma_bytes
-        selected.append(candidate)
+    def distinct_candidates():
+        seen = set()
+        for candidate in sorted(candidates, key=_rank_key):
+            key = _content_key(candidate.evidence)
+            if key in seen:
+                skipped["repeated_content"] += 1
+                continue
+            seen.add(key)
+            yield candidate
+
+    selected, skipped["item_limit"], skipped["response_budget"] = _pack_candidates(
+        distinct_candidates(), ContextRetrievalItem, max_bytes
+    )
 
     result = ContextRetrievalResult(
         schema_version=1,
@@ -308,7 +537,7 @@ def retrieve_context(
             complete_visible_scan=True,
         ),
         skipped=ContextRetrievalSkipped(**skipped),
-        items=tuple(selected),
+        items=selected,
     )
     encode_evidence_json(
         replace(result, items=()),
@@ -327,11 +556,7 @@ def discover_context(
 ) -> ContextDiscoveryResult:
     """Rank authorized Sessions without inventing previews or repository scope."""
     query_tokens = context_query_tokens(query)
-    if (
-        type(max_bytes) is not int
-        or not CONTEXT_MIN_RESPONSE_BYTES <= max_bytes <= CONTEXT_MAX_RESPONSE_BYTES
-    ):
-        raise ValueError("invalid context response budget")
+    _validate_response_budget(max_bytes)
     skipped = Counter({reason: 0 for reason in CONTEXT_DISCOVERY_SKIP_REASONS})
     candidates = []
     scanned_parts = matched_parts = 0
@@ -339,18 +564,9 @@ def discover_context(
         matches = []
         for item in session.items:
             scanned_parts += 1
-            if item.part.type == "reasoning":
-                skipped["reasoning_part"] += 1
-                continue
-            try:
-                score = len(query_tokens & tokenize(_search_text(item)))
-            except EvidenceReadError:
-                skipped["non_finite_number"] += 1
-                continue
-            if score:
-                matches.append(ContextRetrievalItem(score, item))
-            else:
-                skipped["unmatched_part"] += 1
+            candidate = _candidate(item, query_tokens, skipped, "unmatched_part")
+            if candidate is not None:
+                matches.append(candidate)
         matched_parts += len(matches)
         if not matches and session.commit_match is None:
             skipped["unmatched_session"] += 1
@@ -366,31 +582,9 @@ def discover_context(
             )
         )
 
-    selected = []
-    remaining = max_bytes - CONTEXT_ENVELOPE_BYTES
-    for candidate in sorted(
-        candidates,
-        key=lambda item: (
-            item.commit_match is None,
-            -item.score,
-            item.session_id,
-        ),
-    ):
-        if len(selected) == CONTEXT_ITEM_LIMIT:
-            skipped["candidate_limit"] += 1
-            continue
-        comma_bytes = int(bool(selected))
-        try:
-            encoded = encode_evidence_json(
-                candidate, ContextDiscoveryItem, max_bytes=remaining - comma_bytes
-            )
-        except EvidenceReadError as exc:
-            if exc.detail["reason"] != "evidence_response_limit":
-                raise
-            skipped["response_budget"] += 1
-            continue
-        remaining -= len(encoded) + comma_bytes
-        selected.append(candidate)
+    selected, skipped["candidate_limit"], skipped["response_budget"] = _pack_candidates(
+        sorted(candidates, key=_discovery_rank_key), ContextDiscoveryItem, max_bytes
+    )
 
     result = ContextDiscoveryResult(
         schema_version=1,
@@ -413,7 +607,7 @@ def discover_context(
             True,
         ),
         skipped=ContextDiscoverySkipped(**skipped),
-        items=tuple(selected),
+        items=selected,
     )
     encode_evidence_json(
         replace(result, items=()),

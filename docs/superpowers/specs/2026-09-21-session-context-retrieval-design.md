@@ -6,6 +6,10 @@ Status: implementation in progress under [issue #69](https://github.com/sediment
 and [PR #70](https://github.com/sediment-ai/sediment/pull/70). The implementation
 must record validation before it claims continuation benefit.
 
+Execution amendment: [ADR 0022](../../adr/0022-agent-requested-session-context.md#selection-and-execution)
+replaces this specification's materialized keyword source limits with bounded
+streaming. Selection policy and successful version-1 responses remain unchanged.
+
 ## Outcome
 
 A coding agent in a fresh Session asks a question about one previous Session.
