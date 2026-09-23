@@ -1,106 +1,68 @@
 # Run a Cursor, pi, and Codex pilot
 
-Enroll a macOS or Linux team from a pinned source checkout, then verify Cursor
-desktop, pi, and Codex CLI capture. The operator prepares the deployment and
-hands each developer the enrollment settings.
+Enroll macOS or Linux developers in a shared deployment. Complete the operator
+handoff, install each participating harness, and verify one Session per harness.
 
-Complete the enabled checks in [Validate a deployment](validate-deployment.md)
-before expanding the pilot. For one-machine evaluation, use the
-[Quickstart](../quickstart.md).
+| Owner | Tasks |
+| --- | --- |
+| Operator | [Prepare the deployment](#prepare-the-deployment), issue capture credentials, and run authenticated evidence checks. |
+| Developer | [Install the checkout](#install-a-pinned-checkout), enroll repositories, and create the test Sessions. |
+
+Complete the enabled [deployment validation checks](validate-deployment.md)
+before expanding the pilot.
 
 ## Agree the capture scope
 
-Record the participating repositories, developer identifiers, harness versions,
-model/provider settings, pilot window, and questions from
-[Why Sediment?](../explanation/operational-value.md).
+Record repositories, developers, harness versions, models, the pilot window,
+and the questions you want to answer.
 
 Decision: enroll Developer decisions and commit Attribution after agreeing each
 harness's payload. Add Edit observations or gateway capture only for the
 evidence that the participants approve.
 
-| Harness | Developer decisions and commit Attribution | Optional Edit observations | Optional Inference calls |
-| --- | --- | --- | --- |
-| Cursor desktop | Successful Agent `Write` calls produce implicit accepts. Tab edits mark Attribution only. | Unsupported. | Unsupported. |
-| pi | Successful `edit` and `write` calls produce implicit accepts. | `--transcripts` enables Session-end Edit observations through `SEDIMENT_PI_TRANSCRIPTS=1`. | A configured provider can route through a compatible gateway. |
-| Codex CLI | Supported patch decisions retain native approval explicitness. Native telemetry can include patch/tool arguments. | `--transcripts` installs the Session-end extractor for successful single-file patches. | A configured Responses API provider can route through a compatible gateway. |
-
 Codex native telemetry can contain patch code even with `log_user_prompt=false`
-and transcript capture disabled. pi decisions are metadata-only. Transcript
-capture adds applied and observed text; gateway capture adds model inputs and
-outputs. Agree these [privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
-before enrollment.
+and transcripts disabled. pi decisions are metadata-only. Transcripts add applied
+and observed text; gateways add model inputs and outputs. Cursor supplies neither
+Edit observations nor Inference calls. Check the
+[integration comparison](../capture/agent-integrations.md#compare-integrations)
+and agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings).
 
 ## Prepare the deployment
 
-The operator completes [Deploy Sediment](deploy.md) from the agreed checkout.
-Use the durable Docker Compose deployment for a shared pilot. Keep the API and
-gateway behind authenticated HTTPS ingress, and configure private-repository
-credentials for the mirror.
+1. Complete [Deploy Sediment](deploy.md) at the approved revision, including
+   HTTPS ingress, private Git access, webhooks, and a tested backup.
+2. [Verify the approved build](#verify-the-approved-build) against a separate
+   disposable PostgreSQL 17 instance. Keep its acceptance record.
+3. Give each developer these settings through the team's credential channel:
 
-Before handoff, provide a separate disposable PostgreSQL 17 administrative
-database. Don't point this check at the pilot deployment. From a clean checkout
-of the approved revision, write the revision check and installed
-[release rehearsal](rehearse-release.md#run-the-no-publish-rehearsal) output to
-one acceptance record:
+   | Setting | Value |
+   | --- | --- |
+   | Source | Sediment repository URL and full approved commit hash |
+   | Capture | HTTPS API root and that developer's named ingest-only token |
+   | Identity | Developer identifier and local pilot repository path |
+   | Consent | Approved harnesses, transcript capture, and sender buffering |
+   | Gateway, if enabled | URL, client key, supported API, and the developer's existing model ID |
 
-```bash
-SEDIMENT_REVISION='<approved full commit hash>'
-export SEDIMENT_TEST_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/postgres'
-ACCEPTANCE_DIR="$HOME/sediment-acceptance"
-ACCEPTANCE_LOG="$ACCEPTANCE_DIR/pipeline-acceptance-$SEDIMENT_REVISION.log"
-ACCEPTANCE_TMP="$ACCEPTANCE_LOG.tmp"
-
-mkdir -p "$ACCEPTANCE_DIR"
-rm -f "$ACCEPTANCE_TMP"
-if {
-  test "${#SEDIMENT_REVISION}" -eq 40 &&
-  test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
-  test -z "$(git status --porcelain=v1 --untracked-files=all)" &&
-  printf 'sediment_revision=%s\nworktree=clean\n' "$SEDIMENT_REVISION" &&
-  uv run python scripts/release_rehearsal.py
-} >"$ACCEPTANCE_TMP" 2>&1
-then
-  mv "$ACCEPTANCE_TMP" "$ACCEPTANCE_LOG"
-else
-  cat "$ACCEPTANCE_TMP"
-  rm -f "$ACCEPTANCE_TMP"
-  exit 1
-fi
-cat "$ACCEPTANCE_LOG"
-```
-
-Retain the pass message and `pipeline acceptance:` record with the revision and
-`worktree=clean` lines. The rehearsal verifies synthetic installed capture,
-replay, storage, reports, bundles, and exports. Verify live harness, gateway,
-and forge behavior in the checks that follow.
-
-Then [Configure push and CI capture](../capture/managed-capture.md#configure-push-and-ci-capture).
-Verify real Push, pull-request, and continuous integration (CI) deliveries from
-the pilot repository. A successful local health request doesn't verify the
-deployment's network, private Git credentials, or webhook delivery.
-
-Give each developer:
-
-- the full approved Sediment commit hash and the repository URL;
-- the API URL and a named ingest-only token through the team's credential channel;
-- a developer identifier and the local path of a pilot repository; and
-- when gateway capture is approved, its URL, client key, supported API, and
-  the exact model ID already used by that developer.
-
-Keep upstream provider credentials on the gateway. Verify provider availability
-and a funded account before requiring gateway capture. The bundled gateway
-maps `claude-*` to Anthropic; it doesn't serve native OpenAI models. A different
-model route needs a compatible gateway configuration.
+Keep deployment configuration and operator credentials out of harnesses. Keep
+upstream provider keys on the gateway. If gateway capture is required, verify
+model availability and a funded provider account before handoff. The bundled
+gateway serves Anthropic `claude-*` models; other models need a separate gateway.
 
 ## Install a pinned checkout
 
-Install Git, Python 3.12 through `uv`, and Node 24. Install and authenticate
-Cursor and Codex using their normal setup, including Cursor's command-line
-launcher. Start and close each participating harness once so its user
-configuration directory exists.
+Install Git and uv. Use a POSIX shell for these commands; uv selects Python
+3.12. Install only the harnesses that the pilot includes:
 
-Replace the example values with the operator's handoff. These commands use a
-POSIX shell:
+| Harness | Prerequisite |
+| --- | --- |
+| Cursor | Install and authenticate Cursor, including its command-line launcher. |
+| Codex CLI | Install and authenticate Codex 0.153.4 for this profile and transcript procedure. |
+| pi | Install Node 24. The locked checkout supplies pi 0.84.1 in the pi-only step. |
+
+Start and close Cursor or Codex once before enrollment so its configuration
+directory exists. The installer skips undetected harnesses.
+
+Replace the example values with the operator's handoff:
 
 ```bash
 SEDIMENT_CHECKOUT="$HOME/.local/share/sediment-pilot"
@@ -115,34 +77,36 @@ git -C "$SEDIMENT_CHECKOUT" checkout --detach "$SEDIMENT_REVISION" || exit 1
 cd "$SEDIMENT_CHECKOUT" || exit 1
 test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
 uv sync --locked --python 3.12 || exit 1
-npm ci --prefix shims/pi --no-audit --no-fund || exit 1
-export PATH="$SEDIMENT_CHECKOUT/.venv/bin:$SEDIMENT_CHECKOUT/shims/pi/node_modules/.bin:$PATH"
+export PATH="$SEDIMENT_CHECKOUT/.venv/bin:$PATH"
 
 git rev-parse HEAD
 sediment --version
-node --version
-pi --version
-codex --version
 ```
 
-The first output must match the approved commit. Install and authenticate pi
-0.84.1 separately; the locked shim dependencies don't install its runtime.
-This guide's Codex profile and transcript paths support Codex 0.153.4. Use
-Node 24 with that pi runtime. Start `pi` once before enrollment
-if `~/.pi/agent` doesn't exist. Authenticate the participant's existing model
-through pi's `/login` or its existing credential mechanism, then close pi.
-Don't change models to obtain credentials. If the pilot uses gateway credentials
-only, complete [Add approved gateway capture](#add-approved-gateway-capture)
-before the pi verification procedure.
+Require the first output to match the approved commit. Keep the checkout and
+`.venv` at this path; hooks reference them. In later shells, export the same PATH.
+Capture-only machines don't need PostgreSQL client libraries.
 
-Keep the checkout and `.venv` at this path; hooks and the pi extension reference
-them. In later shells, export the same PATH. Capture-only machines don't need
-PostgreSQL client libraries. Local server prerequisites are in the
-[Quickstart](../quickstart.md).
+If you use pi, install its locked runtime and shim dependencies from this checkout:
+
+```bash
+npm ci --prefix shims/pi --include=dev --no-audit --no-fund || exit 1
+export PATH="$SEDIMENT_CHECKOUT/shims/pi/node_modules/.bin:$PATH"
+node --version
+pi --version
+```
+
+Require Node 24 and pi 0.84.1. Start pi once to create `~/.pi/agent`, authenticate
+your existing model with `/login` or your credential mechanism, then close pi.
+Keep this pi directory on PATH in later shells. If you use only gateway
+credentials, complete [Add approved gateway capture](#add-approved-gateway-capture)
+before verifying pi.
 
 ## Enroll the developer machine
 
-Connect the CLI and install capture in the pilot repository:
+Connect the CLI and install capture in the pilot repository. If you don't
+enroll Codex, omit `--codex-profile sediment-pilot` from each install command
+in this guide:
 
 ```bash
 sediment login "$PILOT_API_URL" --capture
@@ -154,6 +118,24 @@ sediment install --user-id "$PILOT_USER_ID" \
 `login --capture` prompts for the ingest-only token. Review the installation
 summary: the installer adds hooks for detected harnesses, including Claude Code,
 and preserves unrelated entries.
+
+The generated environment enables Cursor and pi delivery. Codex uses a private
+`sediment-pilot.config.toml` under `CODEX_HOME`, or `~/.codex`, with a resolved
+token. Keep that file private; TOML token placeholders don't resolve.
+
+If participants approve Edit observations, add the opt-in and reload the
+environment:
+
+```bash
+sediment install --user-id "$PILOT_USER_ID" --transcripts \
+  --codex-profile sediment-pilot "$PILOT_REPO"
+. "$HOME/.sediment/env.sh"
+```
+
+Reinstallation preserves a generated pi transcript opt-in. If you use `--no-env`,
+set the endpoint, token, and exact `SEDIMENT_PI_TRANSCRIPTS=1` value yourself.
+Leave `SEDIMENT_EXTRACT_ON_SETTLE` unset for interactive pi. See
+[transcript setup](../capture/local-capture.md#opt-in-to-transcript-capture).
 
 ### Enroll bounded workstation delivery
 
@@ -200,36 +182,24 @@ The outage and sender-restart recovery gates remain open. The buffer doesn't
 cover Cursor hooks, native Codex telemetry, or forge webhooks. Those channels
 retain separate acceptance gates.
 
-The generated environment enables Cursor and pi delivery. Codex uses a private
-`sediment-pilot.config.toml` under `CODEX_HOME`, or `~/.codex`, with a resolved
-token. Keep that file private; TOML token placeholders don't resolve.
+## Verify an enrolled harness
 
-If participants approve Edit observations, add the opt-in and reload the
-environment:
-
-```bash
-sediment install --user-id "$PILOT_USER_ID" --transcripts \
-  --codex-profile sediment-pilot "$PILOT_REPO"
-. "$HOME/.sediment/env.sh"
-```
-
-Reinstallation preserves a generated pi transcript opt-in. If you use `--no-env`,
-set the endpoint, token, and exact `SEDIMENT_PI_TRANSCRIPTS=1` value yourself.
-Leave `SEDIMENT_EXTRACT_ON_SETTLE` unset for interactive pi. See
-[transcript setup](../capture/local-capture.md#opt-in-to-transcript-capture).
-
-Keep the verification files on a dedicated branch in the pilot repository:
+Create test files on a dedicated branch:
 
 ```bash
 git -C "$PILOT_REPO" switch -c sediment-pilot-check
 ```
 
-## Verify Cursor desktop
+Run only the checks for enrolled harnesses. An authorized operator must first
+run `sediment login "$PILOT_API_URL"` on the machine that runs Session checks.
+This read credential stays separate from capture enrollment; the installer
+never distributes it to harnesses.
 
-The following harness checks read remote Session evidence. An authorized
-operator must first run `sediment login "$PILOT_API_URL"` on the machine that
-runs the checks. This operator login remains separate from capture enrollment;
-the installer never distributes its credential to the harnesses.
+Wait for telemetry to flush, then require `ok` for the Session note and Developer
+decision. A failed check names missing or unsupported evidence. Resolve it before
+enrolling more repositories; organization-wide Fact counts don't verify a Session.
+
+## Verify Cursor desktop
 
 1. Fully quit Cursor, then launch it from the shell that loaded Sediment's
    environment. An already running desktop process can retain its earlier
@@ -257,8 +227,7 @@ the installer never distributes its credential to the harnesses.
    sediment doctor "$PILOT_REPO" --agent cursor --session-id "$CURSOR_SESSION_ID"
    ```
 
-Require `ok` for the commit Session note and Developer decision. Unsupported
-Cursor content and Inference-call requirements fail, so don't add those flags.
+Don't add transcript or Inference-call flags; Cursor doesn't supply those signals.
 If the note is missing, use the
 [Cursor troubleshooting guide](../capture/agents/cursor.md#limits-and-troubleshooting).
 
@@ -325,11 +294,6 @@ require an Edit observation. Native completed Add and Update events retain
 their actual tool-call identifiers. Multi-file patches have no Edit observations.
 The profile procedure covers Codex CLI; Codex Desktop selecting that profile
 isn't verified.
-
-For every harness, wait for telemetry to flush before interpreting missing
-evidence. A failed check identifies an absent, unsupported, incomplete, or
-unreadable requirement. Diagnose it before enrolling more repositories.
-Organization-wide `sediment facts` counts don't replace this Session check.
 
 ## Verify workstation recovery
 
@@ -453,26 +417,56 @@ Git data.
 
 ## Use the pilot evidence
 
-Use [Measure agent work](measure-agent-work.md) for reports and interpretation.
-Retain denominators, coverage, and skip counts. Pilot limits include:
-
-- Cursor supplies neither Inference calls nor Edit observations.
-- pi/Cursor implicit accepts and automatic Codex approvals don't qualify as
-  human-explicit accepted work.
-- Session-end retention needs Edit observations; merge retention also needs Git
-  and pull-request evidence.
-- Model comparisons need matched scope and coverage. Sediment has no cost-report
-  command and doesn't infer absent prices.
+Follow [Measure agent work](measure-agent-work.md). Retain denominators, coverage,
+and skip counts. Implicit accepts don't qualify as human-explicit accepted work.
+Use Edit observations for Session-end retention and Git/pull-request evidence
+for merge retention. Compare models only within matched scope and coverage.
 
 [Preserve the result](measure-agent-work.md#preserve-an-operational-result)
 before changing software or capture configuration.
 
+## Verify the approved build
+
+On the operator's test machine, provide a disposable PostgreSQL 17 instance with
+an administrative role that can create and drop databases. Don't use the pilot
+instance. From a clean checkout of the approved revision, save the
+[release rehearsal](rehearse-release.md#run-the-no-publish-rehearsal) result:
+
+```bash
+SEDIMENT_REVISION='<approved full commit hash>'
+export SEDIMENT_TEST_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/postgres'
+ACCEPTANCE_DIR="$HOME/sediment-acceptance"
+ACCEPTANCE_LOG="$ACCEPTANCE_DIR/pipeline-acceptance-$SEDIMENT_REVISION.log"
+ACCEPTANCE_TMP="$ACCEPTANCE_LOG.tmp"
+
+mkdir -p "$ACCEPTANCE_DIR"
+rm -f "$ACCEPTANCE_TMP"
+if {
+  test "${#SEDIMENT_REVISION}" -eq 40 &&
+  test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
+  test -z "$(git status --porcelain=v1 --untracked-files=all)" &&
+  printf 'sediment_revision=%s\nworktree=clean\n' "$SEDIMENT_REVISION" &&
+  uv run python scripts/release_rehearsal.py
+} >"$ACCEPTANCE_TMP" 2>&1
+then
+  mv "$ACCEPTANCE_TMP" "$ACCEPTANCE_LOG"
+else
+  cat "$ACCEPTANCE_TMP"
+  rm -f "$ACCEPTANCE_TMP"
+  exit 1
+fi
+cat "$ACCEPTANCE_LOG"
+```
+
+Retain the pass message, `pipeline acceptance:` record, revision, and
+`worktree=clean` line. This synthetic rehearsal doesn't replace live harness,
+gateway, or forge verification.
+
 ## Update or end enrollment
 
-Before updating, end active agent Sessions, record the installed commit, and
-back up the deployment. Stop the workstation replay worker through its process
-supervisor before you change the checkout, endpoint, or token. Inspect
-`sediment delivery status`; don't discard pending or blocked payloads.
+Before updating the checkout, endpoint, or token, end agent Sessions, record the
+commit, and back up the deployment. Stop the replay worker through its process
+supervisor. Inspect `sediment delivery status`; retain pending or blocked payloads.
 
 If marker clients change, pause hooks across the clone's linked worktrees,
 reconcile pending markers, and update every helper before restarting harnesses.
@@ -493,17 +487,13 @@ to a different destination. If the original endpoint is unavailable, retain
 the queue with its original configuration or obtain participant approval to
 delete it under the deployment's retention procedure.
 
-Fetch the operator-approved successor, check it out at the same path, and repeat
-the locked Python and pi installs. Rerun `sediment install` for each
-participating repository with the same developer identifier, profile, and
-approved flags. If you used `--gateway-url` or `--gateway-key`, repeat those
-values when you rewrite the generated environment.
+Check out the approved successor at the same path and repeat the locked Python
+install and, if used, pi install. Rerun `sediment install` for each repository
+with the same developer identifier, profile, approved flags, and gateway arguments.
 
-After rotating the capture token, rerun `sediment login --capture` and profile
-enrollment.
-The Codex header contains a resolved token; changing the environment alone
-doesn't refresh it. Reinstallation preserves unrelated settings and an existing
-pi transcript opt-in. It isn't a way to revoke consent.
+After token rotation, rerun `sediment login --capture` and profile enrollment.
+An environment change doesn't refresh Codex's resolved header token.
+Reinstallation preserves unrelated settings and pi transcript consent.
 
 With the worker stopped, load the updated environment and retry entries that a
 rejected credential blocked:
@@ -514,12 +504,10 @@ sediment delivery replay --retry-blocked
 sediment delivery status
 ```
 
-If blocked entries remain, correct the reported failure and repeat the bounded
-replay. Start the supervisor only after `blocked: 0`. Require
-`worker_running: true`, reload the environment, restart the harnesses, review
-changed Codex hooks, and repeat the Session checks.
-After a marker-client update, repeat the concurrent edit/stamp check across the
-clone's linked worktrees before resuming unattended capture.
+Resolve blocked entries before starting the supervisor. Require
+`worker_running: true`, reload the environment, restart harnesses, and repeat
+Session checks. Review changed Codex hooks. After marker-client updates, repeat
+concurrent edit/stamp checks across linked worktrees before unattended capture.
 
 Before removing the last enrolled repository, stop and disable the replay worker.
 Drain pending and blocked entries to the approved receiver, or obtain participant
@@ -539,11 +527,10 @@ sediment uninstall "$PILOT_REPO" --agents
 ```
 
 Follow [Uninstall capture](../capture/local-capture.md#uninstall-capture) for
-skipped Codex profiles, manual environment settings, and pi registration.
-User-level removal affects all repositories using those hooks. Remove unused
-gateway providers, restart harnesses, and then remove the checkout and retired
-supervisor configuration. Remove the delivery directory only after its entries
-reach the approved terminal state.
+profile and environment cleanup. User-level removal affects all repositories
+using those hooks. Remove unused gateway providers and restart harnesses before
+removing the checkout and supervisor configuration. Remove the delivery directory
+only after its entries reach the approved terminal state.
 
 Uninstalling doesn't erase stored Facts or historical commit notes. If removal
 of captured data is required, use the operator's

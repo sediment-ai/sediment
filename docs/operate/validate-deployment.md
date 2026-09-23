@@ -41,8 +41,9 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 2. Verify deployment tenancy, separate ingest and operator credentials,
    authenticated network paths, private Git access, and credential permissions.
    Follow [Check release and deployment security](security.md).
-3. Record each harness's executable path and version. pi shim dependencies don't
-   install the pi runtime. A Codex CLI profile check doesn't verify Desktop.
+3. Record each harness's executable path and version. The pilot checkout's
+   `npm ci --include=dev` installs the pinned pi runtime; require that executable
+   on PATH. A Codex CLI profile check doesn't verify Desktop.
 4. For marker-client upgrades, pause hooks across linked worktrees, reconcile
    markers, replace every helper, and restart harnesses. Don't mix old and
    generation-aware writers.
