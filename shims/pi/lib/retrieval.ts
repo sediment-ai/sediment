@@ -5,6 +5,8 @@ import { resolveEndpoint, type Env } from "./contract.ts";
 
 const DEFAULT_BYTES = 16_384;
 const MAX_BYTES = 65_536;
+// Matches the core keyword scan limit; factual evidence limits are independent.
+const CONTEXT_PART_LIMIT = 16_384;
 const DEADLINE_MS = 35_000;
 const SKIPS = ["reasoning_part", "non_finite_number", "no_match", "repeated_content", "item_limit", "response_budget"] as const;
 const DISCOVERY_SKIPS = ["reasoning_part", "non_finite_number", "unmatched_part", "unmatched_session", "candidate_limit", "response_budget"] as const;
@@ -83,7 +85,7 @@ function validResponse(value: unknown): boolean {
   if (!keys(coverage, ["visible_inference_calls", "quarantined_inference_calls", "scanned_parts", "complete_visible_scan"]) ||
     !count(coverage.visible_inference_calls) || coverage.visible_inference_calls > 1_000 ||
     !count(coverage.quarantined_inference_calls) || !count(coverage.scanned_parts) ||
-    coverage.scanned_parts > 2_048 || coverage.complete_visible_scan !== true ||
+    coverage.scanned_parts > CONTEXT_PART_LIMIT || coverage.complete_visible_scan !== true ||
     !keys(value.skipped, SKIPS) || !Object.values(value.skipped).every(count) ||
     !Array.isArray(value.items) || value.items.length > 8) return false;
   const skipped = value.skipped as Record<string, number>;
@@ -113,7 +115,7 @@ function validDiscovery(value: unknown, requested: Anchor | null): boolean {
   const counts = coverage as Record<string, number>;
   const skipped = value.skipped as Record<string, number>;
   if (counts.authorized_sessions! < 1 || counts.authorized_sessions! > 32 || counts.found_sessions! > counts.authorized_sessions! ||
-    counts.visible_inference_calls! > 1_000 || counts.scanned_parts! > 2_048 ||
+    counts.visible_inference_calls! > 1_000 || counts.scanned_parts! > CONTEXT_PART_LIMIT ||
     counts.scanned_parts !== counts.matched_parts! + skipped.reasoning_part! + skipped.non_finite_number! + skipped.unmatched_part! ||
     counts.found_sessions !== value.items.length + skipped.unmatched_session! + skipped.candidate_limit! + skipped.response_budget! ||
     (skipped.candidate_limit! > 0 && value.items.length !== 8) ||
