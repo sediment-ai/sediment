@@ -85,7 +85,16 @@ evidence rather than repeated historical Facts. PostgreSQL still groups scalar
 history to establish complete names and claims.
 
 Finding an arbitrary non-head commit's earliest owner can still inspect earlier
-Pushes and Git ranges. A miss can inspect the whole eligible Push population.
+Pushes and Git ranges. The reader groups at most 256 ordered Push projections.
+One native Git ancestry check can reject a batch when every possible head
+strictly precedes the target. The check excludes the target's parents and their
+ancestry, with at most one remaining commit as a counterexample. Nonempty output
+or a Git failure retains the exact per-Push range checks. An earlier non-head
+owner still takes precedence over a direct-head owner in the same batch.
+
+A miss can inspect the whole eligible Push population. Mixed or divergent
+batches retain per-Push Git work, so worst-case discovery remains linear in
+Push history. The batch changes neither captured membership nor policy caps.
 Push metadata doesn't record complete commit membership, so an exact head index
 cannot prove that an earlier Push omitted a capped non-head commit. Request
 deadlines and resource refusals remain necessary.

@@ -83,7 +83,6 @@ from .models import (
     ToolCallPart,
 )
 from .postgres_engine import DatabaseOperationError
-from .postgres_migrations import RevisionState, inspect_engine_revision
 from .postgres_schema import (
     ci_outcomes,
     developer_decisions,
@@ -437,6 +436,8 @@ def _require_head_revision(engine: Engine, operation: str) -> None:
     share no such check. Read-only verbs keep working against a behind
     database so a staged rollout can still compare counts (ADR 0015).
     """
+    from .postgres_migrations import RevisionState, inspect_engine_revision
+
     if inspect_engine_revision(engine).state is not RevisionState.AT_HEAD:
         raise DatabaseOperationError(
             f"{operation} requires the database schema at head; "

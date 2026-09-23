@@ -107,9 +107,30 @@ jobs:
           done
           docker logs sediment-ci-postgres
           exit 1
-      - name: Install the maintained system PostgreSQL client library
+      - name: Install the maintained PostgreSQL clients and libraries
         if: steps.scope.outputs.full == 'true'
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+        run: |
+          set -euo pipefail
+          # Hosted runner images remove the PostgreSQL package source after build.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          sudo tee /etc/apt/sources.list.d/pgdg.sources > /dev/null <<EOF
+          Types: deb
+          URIs: https://apt.postgresql.org/pub/repos/apt
+          Suites: ${VERSION_CODENAME}-pgdg
+          Components: main
+          Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          EOF
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            postgresql-client-17 libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+          # Backup tests need the server's major, not the runner's default client.
+          printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
       - run: uv run sediment db upgrade
         if: steps.scope.outputs.full == 'true'
       - name: Check prose contracts

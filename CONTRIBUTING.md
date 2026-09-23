@@ -65,6 +65,8 @@ that boundary is the one to respect.
 - PostgreSQL tests require a PostgreSQL 17 server. Set
   `SEDIMENT_TEST_DATABASE_URL` to an administrative database URL. The test
   suite creates and removes isolated databases under that server.
+  Native backup and restore tests require compatible `pg_dump` and `pg_restore`
+  clients on `PATH`. CI selects PostgreSQL 17 clients.
 
 ## Mechanics
 

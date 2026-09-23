@@ -69,12 +69,14 @@
       "source": "https://github.com/wolfi-dev/os/blob/main/ca-certificates.yaml",
       "source_package": "ca-certificates",
       "source_versions": [
-        "20260611-r1"
+        "20260611-r1",
+        "20260909-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "20260611-r1"
+        "20260611-r1",
+        "20260909-r0"
       ]
     },
     "apk/gdbm": {
