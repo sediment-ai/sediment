@@ -87,7 +87,6 @@ def test_child_refusal_survives_ipc_without_lookup(client, worker_grant):
             )
             assert response.status_code == 404
             assert not supervisor._query_tasks
-            assert not supervisor._evidence_tasks
         finally:
             await supervisor.close()
 

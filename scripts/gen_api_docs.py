@@ -201,7 +201,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "evidence_response_limit (limit), or non_finite_number. No partial scan succeeds.",
             "413": "The streamed body exceeds 16 KiB before JSON decoding.",
             "422": "Invalid version, query, byte budget, or undeclared field; content is omitted.",
-            "503": "The shared evidence worker is busy, exceeds its 30-second deadline, or cannot access PostgreSQL.",
+            "503": "The shared read pool is full, the 30-second deadline expires, or PostgreSQL is unavailable.",
         },
     ),
     "/query/context/discover": (
@@ -224,7 +224,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "409": "Complete source or response exceeds its bound; closed evidence capacity reason in detail.reason.",
             "413": "The streamed body exceeds 16 KiB before JSON decoding.",
             "422": "Invalid version, query, budget, complete commit identity, or undeclared field.",
-            "503": "Shared evidence worker or database unavailable; the existing 30-second deadline applies.",
+            "503": "Shared read capacity or database unavailable; the existing 30-second deadline applies.",
         },
     ),
     "/query/context/selected": (
@@ -241,7 +241,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "409": "evidence_unavailable or an existing evidence capacity/representation reason in detail.reason.",
             "413": "The streamed body exceeds 16 KiB before JSON decoding.",
             "422": "Invalid version, Session identifier, query, budget, or undeclared field.",
-            "503": "Shared evidence worker or database unavailable; the existing 30-second deadline applies.",
+            "503": "Shared read capacity or database unavailable; the existing 30-second deadline applies.",
         },
     ),
     "/query/evidence": (
@@ -258,7 +258,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "409": "The closed detail.reason is evidence_inventory_limit (count, limit), "
             "evidence_source_limit (bytes, limit), evidence_response_limit (limit), or "
             "non_finite_number. The complete operation is declined.",
-            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "503": "Evidence shares both query/report slots; reports have no reserved slot. Busy "
             "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
         },
     ),
@@ -275,7 +275,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "409": "The closed detail.reason is evidence_unavailable for any absent, "
             "foreign, cross-Session, or quarantined Fact; evidence_source_limit (bytes, "
             "limit); evidence_response_limit (limit); or non_finite_number.",
-            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "503": "Evidence shares both query/report slots; reports have no reserved slot. Busy "
             "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
         },
     ),
@@ -300,7 +300,7 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "413": "Request body exceeds 64 KiB, including when Content-Length is absent.",
             "422": "Malformed envelope, unsupported version, invalid indices, unknown "
             "fields, duplicate references, or selection outside 1–32 references.",
-            "503": "Evidence admits one worker within the two query/report slots. Busy "
+            "503": "Evidence shares both query/report slots; reports have no reserved slot. Busy "
             "workers, a 30-second deadline, or unavailable PostgreSQL decline the read.",
         },
     ),

@@ -315,7 +315,6 @@ class WorkerSupervisor:
             if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
                 raise RuntimeError("cannot initialize worker process cleanup")
         self._query_tasks: set[asyncio.Task] = set()
-        self._evidence_tasks: set[asyncio.Task] = set()
         self._mirror_tasks: set[asyncio.Task] = set()
         self._push_tasks: dict[tuple[str, str], asyncio.Task] = {}
         self._mirror_slots = asyncio.Semaphore(MIRROR_SLOTS)
@@ -344,23 +343,16 @@ class WorkerSupervisor:
     async def run(self, kind: str, payload: dict) -> Response:
         if kind not in _QUERY_KINDS:
             raise ValueError("unknown query job")
-        if (
-            self._closed
-            or len(self._query_tasks) >= QUERY_SLOTS
-            or (kind in _EVIDENCE_KINDS and self._evidence_tasks)
-        ):
+        if self._closed or len(self._query_tasks) >= QUERY_SLOTS:
             return _unavailable("work capacity exceeded")
         task = asyncio.create_task(
             self._run(kind, _request_data(kind, payload), mirror=False)
         )
         self._query_tasks.add(task)
-        if kind in _EVIDENCE_KINDS:
-            self._evidence_tasks.add(task)
         try:
             return await task
         finally:
             self._query_tasks.discard(task)
-            self._evidence_tasks.discard(task)
 
     def _submit_mirror(self, kind: str, payload: dict) -> asyncio.Task:
         if kind not in _MIRROR_KINDS:
@@ -433,6 +425,5 @@ class WorkerSupervisor:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._query_tasks.clear()
-        self._evidence_tasks.clear()
         self._mirror_tasks.clear()
         self._push_tasks.clear()

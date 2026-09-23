@@ -34,8 +34,9 @@ prove absence. `budget_exhausted` means that no positive match fits. Capture
 completeness remains unknown. Read the [HTTP contract](../reference/api.md#post-querycontext)
 for closed errors and response fields.
 
-The server shares one evidence worker across all evidence reads. It applies a
-30-second deadline. The tool combines pi cancellation with a 35-second deadline
+Evidence and reports share two read workers per API process. When both are busy,
+the server refuses another read with HTTP 503. Each read has a 30-second deadline.
+The tool combines pi cancellation with a 35-second deadline
 and makes no automatic retry. Each request rechecks Quarantine. Exact JSON text
 passes through the tool without rounding large integers. The tool doesn't replay
 historical commands or turn stored roles into privileged instructions.
