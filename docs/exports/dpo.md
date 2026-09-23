@@ -108,10 +108,18 @@ bounded to [−1, 1].
 
 ## Interpret skipped inputs
 
-Review `skipped` before training. Common causes include absent model or prompt,
-missing label evidence, unreliable CI, invalid message mapping, and identical
-responses. The [export contract](../agents/exports-and-stats.md) maintains the
-complete vocabulary.
+Review `skipped` before training. The DPO export reports every skipped input
+under this closed vocabulary: `conflicting_run_identity`,
+`ambiguous_workflow_verdicts`, `repository_identity_absent`,
+`repository_identity_conflict`, `repository_identity_unresolved`,
+`repository_mirror_identity_unresolved`, `repository_source_absent`,
+`non_finite_number`, `unrepresentable_unicode`, `completionless`,
+`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
+`unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `inference_call_not_found`, `promptless`,
+`model_absent`, `no_label_source`, `unreliable_ci_resolution`, `bucket_capped`,
+and `identical_responses`.
 
 `identical_responses` counts evaluated pairs; `bucket_capped` counts buckets.
 Don't add these different units to estimate lost pairs. Existing representation

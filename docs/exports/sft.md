@@ -100,9 +100,19 @@ stay in `prompt`, outside the completion loss boundary.
 
 ### Interpret skipped SFT inputs
 
-Inspect `skipped` for eligibility vetoes, absent source evidence, low Confidence,
-conflicting duplicates, and unsupported message shapes. The
-[export contract](../agents/exports-and-stats.md) maintains the complete vocabulary.
+Inspect `skipped` before training. The SFT export reports every skipped input
+under this closed vocabulary: `conflicting_run_identity`,
+`ambiguous_workflow_verdicts`, `repository_identity_absent`,
+`repository_identity_conflict`, `repository_identity_unresolved`,
+`repository_mirror_identity_unresolved`, `repository_source_absent`,
+`non_finite_number`, `unrepresentable_unicode`, `completionless`,
+`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
+`unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
+`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
+`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
+`duplicate_completion`, and `conflicting_evidence`.
 
 ## Export diff-SFT rows
 
@@ -140,11 +150,22 @@ still produce rows.
 
 ### Interpret skipped diff-SFT inputs
 
-Inspect SFT eligibility and mapping skips, plus `mirror_absent`,
-`commit_diff_unavailable`, `file_diff_unavailable`, and `empty_patch`.
-`unsupported_diff_section` or `malformed_diff_section` identifies unusable Git
-evidence. The [export contract](../agents/exports-and-stats.md) maintains the
-complete vocabulary.
+The diff-SFT export reports every skipped input under this closed vocabulary:
+`conflicting_run_identity`, `ambiguous_workflow_verdicts`,
+`repository_identity_absent`, `repository_identity_conflict`,
+`repository_identity_unresolved`, `repository_mirror_identity_unresolved`,
+`repository_source_absent`, `non_finite_number`, `unrepresentable_unicode`,
+`completionless`, `duplicate_tool_call_id`, `empty_message`,
+`non_string_tool_result`, `unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
+`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
+`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
+`duplicate_completion`, `conflicting_evidence`, `unsupported_diff_section`,
+`malformed_diff_section`, `repo_mismatch`, `split_mismatch`,
+`eligibility_source_mismatch`, `mirror_absent`, `commit_diff_unavailable`,
+`empty_patch`, and `file_diff_unavailable`. `unsupported_diff_section` and
+`malformed_diff_section` identify unusable Git evidence.
 
 Keep Attribution source metadata and observation IDs with each row. Version 1
 recipe eligibility permits inferred Attribution; an empty observation list means
