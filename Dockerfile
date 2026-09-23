@@ -26,6 +26,11 @@ FROM python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends git libpq5 \
+    # Expat serves only git-http-push (WebDAV push), which mirrors never use.
+    # Python's pyexpat bundles its own copy. Remove the Debian library and its
+    # sole consumer instead of carrying a vulnerability disposition for them.
+    && rm -f /usr/lib/git-core/git-http-push \
+    && dpkg --purge --force-depends libexpat1 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
         /usr/local/lib/python3.12/site-packages/* \
         /usr/local/lib/python3.12/ensurepip /usr/local/bin/pip* \
@@ -43,7 +48,8 @@ FROM scratch
 ARG SEDIMENT_SOURCE_REVISION=unverified
 ARG SEDIMENT_SOURCE_DIGEST=unverified
 LABEL org.opencontainers.image.revision=$SEDIMENT_SOURCE_REVISION \
-    io.sediment.source-digest=$SEDIMENT_SOURCE_DIGEST
+    io.sediment.source-digest=$SEDIMENT_SOURCE_DIGEST \
+    io.sediment.removed-packages="libexpat1,git-http-push"
 COPY --from=runtime-files / /
 WORKDIR /app
 USER sediment

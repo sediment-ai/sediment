@@ -132,6 +132,7 @@ _LINE_CITE = re.compile(r"\.(?:py|md|toml|ya?ml|json)(?::L?|#L)\d")
 _BACKTICK = re.compile(r"`([^`\s]+)`")
 _MD_LINK = re.compile(r"\]\(<?([^)\s]+?)>?(?:\s+\"[^\"]*\")?\)")
 _ROUTE = re.compile(r"docs/[A-Za-z0-9_./-]+\.md")
+_REMOTE_URL = re.compile(r"https?://[^\s\"'<>`]+", re.IGNORECASE)
 _HEADING = re.compile(r"^#{1,6}\s+(.*)$")
 _LINE_ANCHOR = re.compile(r"^L\d+(?:-L?\d+)?$")
 
@@ -223,7 +224,7 @@ def check_router(problems: list[str], root: Path) -> int:
         problems.append("CLAUDE.md missing — Claude Code has no route to AGENTS.md")
     elif "AGENTS.md" not in _read(claude):
         problems.append("CLAUDE.md does not point at AGENTS.md")
-    routes = set(_ROUTE.findall(_read(agents)))
+    routes = set(_ROUTE.findall(_REMOTE_URL.sub("", _read(agents))))
     for doc in _doc_files(root):
         rel = doc.relative_to(root).as_posix()
         if rel not in routes:
@@ -330,7 +331,7 @@ def check_navigation(problems: list[str], root: Path) -> int:
                     )
     for path in _runtime_reference_files(root):
         rel = path.relative_to(root).as_posix()
-        for doc in sorted(set(_ROUTE.findall(_read(path)))):
+        for doc in sorted(set(_ROUTE.findall(_REMOTE_URL.sub("", _read(path))))):
             checked += 1
             if not (root / doc).exists():
                 problems.append(f"{rel}: referenced doc does not exist: {doc}")

@@ -11,7 +11,7 @@ from pathlib import Path
 # Any upstream source change needs a fresh review of the removed code paths.
 SOURCES = {
     "proxy_server.py": (
-        "0a33c833d0f269e16bb15d388dac7ea1967c202922765d5f0a81851c33c013de",
+        "8e3a49e253c6ae0a8fc3bb5ceb0c6d69395a9fe8b87575e3ad051d8bf05dbbe7",
         0,
     ),
     "utils.py": (

@@ -183,18 +183,20 @@
       ]
     },
     "apk/libexpat1": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
+      "basis": "Reviewed 2.8.5-r0 on 2026-09-23 from fresh official Wolfi package downloads for both architectures, matching the retained repository-index review. Both embedded recipes select upstream R_2_8_5 at 4b3f0b06f39fb5529cead381694f8929901bc273. The release fixes CVE-2026-93990 and retains an upstream warning about unresolved security issues. This entry records rolling distribution maintenance, not vulnerability disposition, parser reachability, or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/libexpat1-2.8.5-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
       "source_package": "expat",
       "source_versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.8.4-r0"
+        "2.8.4-r0",
+        "2.8.5-r0"
       ]
     },
     "apk/libffi": {
@@ -4029,8 +4031,8 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed on 2026-09-20 as part of stable LiteLLM 1.102.0. The release metadata explicitly pairs the proxy with enterprise 0.1.67 and proxy-extras 0.4.97; all three releases are unwithdrawn and support the measured Python 3.13 runtime. The signed official image index binds both architectures to the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/pyproject.toml",
+      "basis": "Reviewed LiteLLM 1.102.1 on 2026-09-23 against the official release, unwithdrawn PyPI metadata, immutable release source, and both resolved gateway inventories. The release retains enterprise 0.1.67 and proxy-extras 0.4.97. The official image index binds both architectures to release commit d09bbae1c6df463e425558f60d460437193635da. The guarded vendor patch matches the reviewed source; native ARM64 runtime and capture checks pass. The retained image predicates and 17 SAML caller hashes remain unchanged. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/d09bbae1c6df463e425558f60d460437193635da/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-20T12:23:58Z",
@@ -4038,7 +4040,8 @@
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "1.102.0"
+        "1.102.0",
+        "1.102.1"
       ]
     },
     "pypi/litellm-enterprise": {
@@ -4090,15 +4093,16 @@
       ]
     },
     "pypi/mako": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/HEAD/.github/SECURITY.md",
+      "basis": "Reviewed 1.4.3 on 2026-09-23 against the upstream release, unwithdrawn PyPI files, and release-tag security policy. The release retains the Windows TemplateLookup traversal correction in 1.4.2 and adjusts its tests. The security policy describes vulnerability reporting, not a dated support promise. This project maintenance assessment expires with the existing catalog.",
+      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/rel_1_4_3/.github/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/mako",
       "source_updated_at": "2026-08-18T17:07:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "1.4.1"
+        "1.4.1",
+        "1.4.3"
       ]
     },
     "pypi/mangum": {
@@ -5110,8 +5114,8 @@
       ]
     },
     "pypi/starlette": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/starlette/",
+      "basis": "Reviewed the official Starlette 1.7.0 release at commit 2269e9a08c1edd3dfdea865710f40f84c857b623, published on 2026-09-23 and unyanked on PyPI. Its Python >=3.10, AnyIO >=4.0.0,<5, and conditional typing-extensions >=4.10.0 requirements admit the measured Python 3.12.14, AnyIO 4.15.1, and typing-extensions 4.16.0 client environment; FastAPI 0.141.1 permits Starlette >=0.46.0. The reviewed upstream security policy provides disclosure instructions without a release-specific maintenance window or end-of-support date. This project maintenance assessment requires renewal by the existing catalog expiry. Previously reviewed versions remain recorded.",
+      "evidence": "https://github.com/Kludex/starlette/blob/2269e9a08c1edd3dfdea865710f40f84c857b623/docs/release-notes.md",
       "provider": "Upstream project",
       "source": "https://github.com/Kludex/starlette",
       "source_updated_at": "2026-09-12T09:05:01Z",
@@ -5119,7 +5123,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "1.3.1",
-        "1.6.0"
+        "1.6.0",
+        "1.7.0"
       ]
     },
     "pypi/tabulate": {

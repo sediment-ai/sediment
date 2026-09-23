@@ -4,6 +4,8 @@
 
 ### Contributor checks
 
+- Exclude HTTP(S) URLs from local documentation-path checks. Upstream evidence
+  links no longer fail as missing Sediment files; local paths remain checked.
 - Route changes to the root `README.md` through the existing prose checks in
   continuous integration (CI). Mixed changes, executable files, symlinks,
   deletions, renames, manual runs, and unavailable Git history retain full
@@ -74,6 +76,12 @@
 
 ### Dependency maintenance
 
+- Remove Expat from the API image. Its only consumer was `git-http-push`,
+  which mirror fetches never use; Python's `pyexpat` bundles its own copy. The
+  image label `io.sediment.removed-packages` records both removals, so the
+  disclosed Bookworm Expat advisory no longer needs a disposition.
+- Update the supplied gateway to LiteLLM 1.102.1 and verify the guarded vendor
+  patch against its release source.
 - Update the supplied gateway to fastapi-sso 0.23.0 to follow upstream's
   latest-release security support policy.
 

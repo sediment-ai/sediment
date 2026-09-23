@@ -54,10 +54,11 @@ your last commit.
 ## What CI does not check
 
 `check_docs.py` verifies structure (routes, caps, citations, paths,
-links, each link's `#anchor`, and published-page manifest coverage), plus two safety nets: every
-public package module named in some routed doc (`# docs-exempt: <why>`
-opts out), and — in PR CI diff mode — a CHANGELOG touch when the diff
-adds a module or a script flag. Still on you at authoring time: concrete
+links, each link's `#anchor`, and published-page manifest coverage).
+HTTP(S) URLs stay outside local documentation-path checks. The checker also
+requires every public package module to be named in a routed doc
+(`# docs-exempt: <why>` opts out). In PR diff mode, it requires a CHANGELOG
+touch when the diff adds a module or a script flag. Still on you at authoring time: concrete
 values quoted in prose (the `0.7`s), glossary claims about bare class
 names, and whether the CHANGELOG entry the gate demanded actually says
 anything true.

@@ -18,7 +18,7 @@ LiteLLM features, Google provider routes, and the legacy Langfuse integration
 aren't supported by this image. The standalone Sediment callback remains
 available for a separately maintained gateway.
 
-LiteLLM 1.102.0 also bundles optional PostgreSQL clients and Bedrock real-time
+LiteLLM 1.102.1 also bundles optional PostgreSQL clients and Bedrock real-time
 packages. The image removes these unused dependencies, including the native
 `awscrt` library. It removes the bundled PgBouncer executable and its unused
 libevent dependency, and rejects `LITELLM_PGBOUNCER_*` settings before startup.
