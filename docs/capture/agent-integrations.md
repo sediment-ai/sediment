@@ -1,11 +1,7 @@
 # Agent integrations
 
-Choose an integration by the evidence that you need to capture. The dedicated
-Claude Code, Codex, and Cursor guides take you from installation through
-verification.
-
-[Run a Cursor, pi, and Codex pilot](../operate/run-pilot.md) covers a pinned
-source checkout, model routing, and verification across those three harnesses.
+Choose the evidence you need, then follow the matching agent guide. For team
+enrollment from a pinned checkout, use the [pilot guide](../operate/run-pilot.md).
 
 ## Compare integrations
 
@@ -37,36 +33,19 @@ defines the event mapping and missing-signal limits.
 
 ## Claude Code
 
-Claude Code supports native accept and reject telemetry, commit Attribution,
-and gateway inference calls from the command-line interface (CLI). Optional
-transcript capture adds Edit observations, Rejected edits, Retry linkages, and
-external line counts.
-
-[Capture Claude Code work](agents/claude-code.md) covers installation,
-Developer decisions, inference calls, Edit observations, verification, and
-limits.
+Use [Capture Claude Code work](agents/claude-code.md) for telemetry, gateway
+routing, transcript capture, and verification.
 
 ## Codex
 
-Codex supports native patch decisions, commit Attribution, Responses API
-gateway capture, and opt-in Edit observations for successful single-file
-patches.
-
-Native Codex decisions can retain patch/tool arguments in `raw` even when
-`log_user_prompt=false`. Transcript opt-in adds separate Edit observations;
-it doesn't make native decision telemetry free of code text.
-
-[Capture Codex work](agents/codex.md) covers hook trust, the required `[otel]`
-table, gateway configuration, transcript extraction, verification, and limits.
+Use [Capture Codex work](agents/codex.md) for hooks, telemetry profiles, gateway
+routing, and single-file Edit observations. Native decisions can retain patch
+arguments even when transcript capture is disabled.
 
 ## Cursor
 
-Cursor supports commit Attribution for local desktop Agent and Tab work.
-Successful Agent `Write` calls can also emit implicit-accept Developer
-decisions. Cursor doesn't support inference-call capture or Edit observations.
-
-[Capture Cursor work](agents/cursor.md) covers native user hooks, the complete
-event-to-evidence flow, verification, privacy, and platform limits.
+Use [Capture Cursor work](agents/cursor.md) for local desktop hooks and
+verification. Cursor has no supported Inference-call or Edit observation capture.
 
 ## pi
 
@@ -105,26 +84,15 @@ no explicit human approval gesture, so Sediment doesn't label these events as
 human approvals. The extractor omits failed edits and doesn't emit Rejected
 edits or Retry linkages.
 
-Pi resolves relative edit paths from the absolute working directory in the
-transcript header. Absolute paths retain their meaning. If that directory is
-absent or invalid, relative edits decline with an `execution_directory_invalid`
-count. Home expansion (`~`), `@` prefixes, file URLs, and Unicode space
-normalization require source context this contract doesn't supply; those paths
-decline with an `unsupported_path` count.
+Keep transcripts at their original paths. pi resolves relative edits from the
+transcript's absolute working directory; invalid directories count as
+`execution_directory_invalid`. Unsupported path forms count as `unsupported_path`.
 
-Keep a fork's transcript and its immediate parent in the original Session
-directory. Sediment reads only a different regular `.jsonl` file in the same
-physical directory, without symlinks or traversal, and caps that read at 64 MiB.
-The parent must be a complete version 3 source. Sediment compares immutable
-entry identities and content, ignoring pi's rewritten `parentId`, and excludes
-matching inherited messages with an `inherited_entry` count. Child observations
-retain their original tool-call identifiers and source timestamps. Sediment
-doesn't read further ancestors or infer ownership from timestamps.
-
-If the parent is missing, unreadable, oversized, or inconsistent, Sediment
-declines the fork with `parent_source_unverified` and retains pending snapshots.
-Ownership diagnostics count message entries and contain no source paths or
-content. Path diagnostics count affected edits.
+For a fork, keep its complete version 3 parent transcript in the same physical
+directory. The extractor reads one regular, non-symlinked parent of at most
+64 MiB and excludes inherited messages. Missing, unreadable, oversized, or
+inconsistent parents count as `parent_source_unverified`; snapshots remain for
+recovery. Sediment doesn't read further ancestors or infer ownership from time.
 
 If content capture is enabled and a one-task host keeps pi alive, set
 `SEDIMENT_EXTRACT_ON_SETTLE=1` so extraction runs at `agent_settled`. Leave the

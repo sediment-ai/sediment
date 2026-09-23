@@ -1,26 +1,12 @@
 # Configure local capture
 
-Use this guide to connect one developer machine and its repositories to an
-existing Sediment endpoint. If you need an endpoint, complete the
-[Quickstart](../quickstart.md) or [Deploy Sediment](../operate/deploy.md).
+Connect one macOS or Linux developer machine to a deployed Sediment API.
+If you need an endpoint, start with [Deploy Sediment](../operate/deploy.md) or
+the single-machine [Quickstart](../quickstart.md).
 
-Before you connect the machine, migrate the deployment's PostgreSQL schema to
-the supported revision. The API verifies the revision at startup but never
-runs migrations.
-
-This setup captures Developer decisions and commit Attribution. You can also
-route inference calls through a gateway and opt in to transcript-derived edit
-survival.
-
-Codex native decision telemetry can include patch/tool-argument content even
-without transcript capture. Review its
-[Developer decision payload](agents/codex.md#configure-developer-decisions)
-before enabling a Codex telemetry profile.
-
-Use [Agent integrations](agent-integrations.md) to compare evidence. After you
-choose an agent, follow [Capture Claude Code work](agents/claude-code.md),
-[Capture Codex work](agents/codex.md), or
-[Capture Cursor work](agents/cursor.md) for its setup and limits.
+Review [Agent integrations](agent-integrations.md) before enrollment. Codex
+native decision telemetry can include patch arguments even without transcript
+capture. Gateway and transcript capture require separate configuration.
 
 ## Prerequisites
 
@@ -33,26 +19,24 @@ You need:
 - a git repository
 - Claude Code, Codex, Cursor, or pi for agent hooks
 
-Native Windows capture is unsupported. The capture clients require POSIX file
-locks and shell hooks. On Windows, `sediment install` refuses installation
-before changing configuration. Run capture on macOS or Linux.
+Native Windows capture is unsupported. The installer requires POSIX file locks
+and shell hooks and refuses Windows installation before changing configuration.
 
 The installer skips an agent whose configuration directory doesn't exist. If
 you install an agent later, run the installer again.
 
 ## Connect the CLI
 
-Enroll the capture credential before you install capture. Obtain a named
-ingest-only token from your deployment operator, then run:
+Obtain a named ingest-only token from the deployment operator, then log in:
 
 ```bash
 sediment login https://sediment-api.example.com --capture
 ```
 
-`login --capture` verifies ingest-only authority and stores the credential and
-enrollment proof in `~/.sediment/config.json` with mode `0600`. It preserves
-operator login separately. For unattended setup, send the capture token on
-standard input:
+`login --capture` verifies ingest authority and stores the credential in
+`~/.sediment/config.json` with mode `0600`. Operator login stays separate.
+
+For unattended setup, send the capture token on standard input:
 
 ```bash
 printf '%s\n' "$SEDIMENT_INGEST_TOKEN" | \
@@ -60,35 +44,30 @@ printf '%s\n' "$SEDIMENT_INGEST_TOKEN" | \
     https://sediment-api.example.com --capture --with-token
 ```
 
-An older profile containing one unclassified token needs capture enrollment
-before installation. An explicit `SEDIMENT_INGEST_TOKEN` override must also
-pass the API authority check. The installer never copies an operator credential
-into capture configuration.
+The installer requires verified capture enrollment; it never copies an operator
+token into capture configuration. An explicit `SEDIMENT_INGEST_TOKEN` override
+also requires verification.
 
-Use HTTPS for a remote deployment. HTTP is accepted only for `localhost`, an
-address in `127.0.0.0/8`, or `[::1]`. The URL must be a deployment root with no
-embedded credentials, query string, or fragment. The CLI rejects an unsafe URL
-before it reads or sends the bearer token.
+Use an HTTPS deployment root without embedded credentials, a query string, or a
+fragment. HTTP is accepted only for `localhost`, `127.0.0.0/8`, or `[::1]`.
 
 ## Install capture
 
 Run the installer once for each repository that you want to capture:
 
 ```bash
-sediment install --user-id <developer> /path/to/repo
+sediment install --user-id '<developer>' /path/to/repo
 ```
 
 Restart active agent Sessions after installation. Agents read their hooks and
 environment at startup.
 
-The installer embeds the invoked `sediment` executable's absolute path in
-hooks. If you installed from source, keep that checkout and its Python
-environment in place until you uninstall capture. A different `sediment`
-earlier on `PATH` doesn't replace the executable that you explicitly invoke.
+Keep the installed CLI at its original path; hooks reference its absolute path.
+For source installs, keep the checkout and Python environment in place.
+Reinstall after moving them.
 
-Re-running the command is safe. The installer updates its own marked entries
-without duplicating them, preserves unrelated configuration, and refuses to
-overwrite an agent configuration file that doesn't parse as JSON.
+Reinstallation updates Sediment's marked entries and preserves unrelated
+configuration. The installer refuses malformed agent JSON files.
 
 ### Agent hooks
 
@@ -101,15 +80,9 @@ The installer configures the agents that it finds on the machine:
 | [Cursor](agents/cursor.md) | Native `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
 | pi | The extension under `shims/pi/`, when you run the installer from a checkout |
 
-The Claude Code and Codex hooks call `sediment mark`. Cursor hooks call the
-packaged `sediment cursor-hook` adapter, which invokes the same marker. The pi
-extension invokes the marker through pi's extension API. Each supported edit
-adds or refreshes a Session marker generation in the repository's Git directory.
-
-An installed CLI doesn't contain `shims/pi/`. For pi, run
-`uv run sediment install /path/to/repo` from a Sediment checkout so it can
-register the extension path. [Agent integrations](agent-integrations.md#pi)
-covers the rest of pi setup.
+Supported edits mark the Session in the repository's Git directory. For pi,
+run the installer from a source checkout: the installed CLI package doesn't
+contain `shims/pi/`. See [pi setup](agent-integrations.md#pi).
 
 ### Git hooks
 
@@ -133,22 +106,19 @@ the note through `commit --amend` and rebase.
 
 ### Agent environment
 
-The installer derives the telemetry environment from verified capture enrollment.
-It writes `~/.sediment/env.sh`, a fish `conf.d` file, and marked source lines in
-the shell profiles that it finds.
+Load the generated environment before starting an agent:
 
-The environment enables OTLP/JSON logs, points them at the Sediment endpoint,
-adds the ingest-only token as both the standard header and
-`SEDIMENT_INGEST_TOKEN`, and stamps `user.id` when you pass `--user-id`.
+```bash
+. "$HOME/.sediment/env.sh"
+```
 
-The installer also writes the explicit `SEDIMENT_OTLP_ENDPOINT` from your
-verified capture enrollment. Load `~/.sediment/env.sh` before starting Cursor
-or pi.
-Those clients don't infer an endpoint from `OTEL_EXPORTER_OTLP_ENDPOINT`.
-The dedicated endpoint and token enable decisions; pi content additionally
-requires `SEDIMENT_PI_TRANSCRIPTS=1`. Follow
-[Capture Cursor work](agents/cursor.md#configure-developer-decisions)
-or [Agent integrations](agent-integrations.md#pi) for the agent-specific step.
+The installer writes private shell and fish environment files and updates the
+shell profiles that it finds. The environment supplies the capture endpoint,
+ingest token, and `user.id` when you pass `--user-id`.
+
+Cursor and pi require `SEDIMENT_OTLP_ENDPOINT`; they don't infer it from
+`OTEL_EXPORTER_OTLP_ENDPOINT`. Codex requires its
+[telemetry profile](agents/codex.md#configure-developer-decisions).
 
 If another system owns the agent environment, pass `--no-env`. The
 [CLI reference](../reference/cli.md#sediment-install) lists every install
@@ -161,13 +131,14 @@ preserve omitted identity or gateway arguments.
 
 ## Route inference calls through a gateway
 
-If your deployment exposes an LLM gateway, add its URL and client key:
+If your deployment exposes a large language model (LLM) gateway, add its URL
+and client key:
 
 ```bash
 sediment install \
   --gateway-url https://sediment-llm.example.com \
   --gateway-key "$SEDIMENT_GATEWAY_KEY" \
-  --user-id <developer> \
+  --user-id '<developer>' \
   /path/to/repo
 ```
 
@@ -183,23 +154,21 @@ the server-side callback and gateway setup, follow
 
 ## Opt in to transcript capture
 
-Transcript capture sends applied edit pairs, refused edits, Retry linkages, and
-the Session-end file state. It is a different privacy class from Attribution
-markers, so the installer leaves it off unless you opt in.
+Transcript capture sends applied edit text and Session-end file content.
+Claude Code also supports refused edits and Retry linkages. Review the
+[per-source payloads](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+before opting in.
 
 Persist these variables in the shell profile or service environment that
 starts the agent:
 
 ```bash
 export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
-export SEDIMENT_INGEST_TOKEN=<ingest-only token>
+export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
 ```
 
-Use HTTPS for a remote endpoint. Plain HTTP works only with literal
-`localhost`, an address in `127.0.0.0/8`, or `[::1]`. The capture clients reject
-redirects rather than forwarding a bearer token. If the API is loopback-bound,
-[Expose a public HTTPS endpoint](../operate/deploy.md#3-expose-a-public-https-endpoint)
-shows the `cloudflared` tunnel and TLS configuration.
+Use the endpoint rules from [Connect the CLI](#connect-the-cli). Capture clients
+reject redirects instead of forwarding credentials.
 
 Add the transcript hooks:
 
@@ -217,37 +186,27 @@ value enables extraction. If you let the installer write the environment,
 `install --transcripts` supplies the opt-in. An endpoint and token alone don't
 enable pi transcript capture.
 
-The command adds the available Claude Code and Codex `SessionEnd` extractors.
-It also adds Claude Code's `PreToolUse` snapshot hook. Run
-`sediment doctor /path/to/repo` to verify the hook entries. The
-[Claude Code guide](agents/claude-code.md#configure-edit-observations) and
-[Codex guide](agents/codex.md#configure-edit-observations) define their
-supported observations and missing signals.
+The installer adds Claude Code and Codex Session-end extractors and Claude
+Code's pre-edit snapshot hook. pi extracts at `session_shutdown`.
 
-With its content opt-in enabled, the pi extension invokes the extractor at
-`session_shutdown`. If a one-task pi host keeps the process alive, set
-`SEDIMENT_EXTRACT_ON_SETTLE=1` so extraction
-runs at `agent_settled`.
+For a one-task pi host that stays alive, set `SEDIMENT_EXTRACT_ON_SETTLE=1`.
+Leave it unset for interactive pi: repeated extraction can retain an early file
+state through first-write-wins deduplication.
 
-Leave that variable unset for interactive pi. An interactive Session settles
-more than once, and first-write-wins deduplication would preserve an early file
-state instead of the final one.
-
-The pi transcript hooks also require the variables in
-[Agent environment](#agent-environment). They don't fall back to
-`OTEL_EXPORTER_OTLP_ENDPOINT`, which prevents export to an unrelated collector.
-[Agent integrations](agent-integrations.md#pi) covers the complete pi
-procedure.
-
-[How capture works](../explanation/how-capture-works.md#edit-retention-and-external-deltas)
-explains the payload, external-delta measurement, and privacy boundary.
+Run `sediment doctor /path/to/repo` to check hooks. For supported observations,
+see the [Claude Code](agents/claude-code.md#configure-edit-observations),
+[Codex](agents/codex.md#configure-edit-observations), and
+[pi](agent-integrations.md#pi) guides.
 
 ## Verify capture
 
-Remote Fact and Session checks require an operator credential. On the machine
-that runs those checks, an authorized operator logs in separately with
-`sediment login https://sediment-api.example.com`. Capture enrollment remains
-separate and cannot authorize these reads.
+On the machine that runs remote checks, log in with a separate operator token:
+
+```bash
+sediment login https://sediment-api.example.com
+```
+
+Capture enrollment doesn't authorize these reads.
 
 Check the machine and repository configuration:
 
@@ -255,16 +214,13 @@ Check the machine and repository configuration:
 sediment doctor --fetch /path/to/repo
 ```
 
-`doctor` reports `ok`, `FAIL`, or `info` for each agent hook, git hook, notes
-configuration, remote notes state, and local Attribution error. It exits `1`
-when any check fails.
+`doctor` reports `ok`, `FAIL`, or `info` and exits `1` on a failed check.
+Uninstalled agents and unset endpoints report `info`. Installed but unhooked
+agents and rejected endpoints report `FAIL`. These checks verify configuration;
+use a Session check to verify delivery.
 
-An agent that isn't installed reports `info`. An installed but unhooked agent
-reports `FAIL`. The pi registration is checkable only from a Sediment checkout.
-An unset capture endpoint reports `info`; a rejected endpoint reports `FAIL`.
-These default checks don't prove that an agent delivered evidence.
-
-After an agent edit, commit and push from the repository:
+After an agent edit, commit the change. From the repository, inspect its note
+and push:
 
 ```bash
 git notes --ref=refs/notes/sediment show HEAD
@@ -345,8 +301,7 @@ doesn't complete.
 Hooks installed from a checkout contain that checkout's absolute path. If you
 move or delete it, run `sediment install` again from the current location.
 
-Hooks written by an installed CLI invoke the executable's stable path and don't
-have this failure mode.
+For a package installation, reinstall capture if the CLI executable moves.
 
 ### Install hooks in an existing clone
 
@@ -376,10 +331,9 @@ fallback has no durable recovery guarantee; repair storage even if delivery
 succeeds. Capacity, size, and identity declines don't trigger direct delivery.
 Whitespace-only `SEDIMENT_DELIVERY_DIR` disables buffering.
 
-The `sediment delivery enqueue` command stays strictly durable by default.
-Pi passes `--fallback-direct` to select the shared fallback behavior. A returned
-`acknowledged` disposition with `fallback_reason` means direct delivery, never
-durable enqueue. An OTLP acknowledgment still doesn't establish Fact counts.
+`sediment delivery enqueue` requires durable storage unless the caller selects
+`--fallback-direct`. A direct acknowledgment doesn't prove durable enqueue or
+stored Fact counts.
 
 Run the worker under your existing process supervisor, using the same user,
 directory, endpoint, and active bearer-token environment as the sender:
@@ -400,11 +354,10 @@ sediment delivery status
 sediment delivery replay
 ```
 
-One worker owns each directory and sends at most 32 requests per batch. Each
-request has a five-second timeout and refuses redirects. Transport errors,
-HTTP 408, HTTP 429, and server errors retry with jittered backoff capped at
-60 seconds. Other client errors block automatic retry. `worker_busy: true` means
-that another worker owns the directory and this command makes no attempt.
+One worker owns each directory. Each batch attempts at most 32 requests with a
+five-second timeout. Transport errors, HTTP 408, HTTP 429, and server errors
+retry with backoff capped at 60 seconds. Other client errors block retries.
+`worker_busy: true` means another worker owns the directory.
 
 After correcting the token or server compatibility, stop the supervised worker.
 Use the same user, directory, endpoint, and corrected credential environment to
@@ -420,12 +373,17 @@ reported failure and repeat. Restart the supervised worker to resume automatic
 delivery. For the embedded gateway, use the container procedure in
 [Enable bundled LiteLLM](../operate/deploy.md#enable-bundled-litellm).
 
-The buffer accepts at most 2,048 active entries, 256 MiB of payloads, and
-8 MiB per entry. Full or unwritable storage declines the incoming payload
-visibly; it never evicts another pending entry to make room. The replay window
-is 24 hours from enqueue. A worker or maintenance pass removes expired content;
-a stopped host can't enforce a wall-clock deletion deadline. Content-free
-terminal receipts remain for seven days, capped at 2,048 entries.
+| Limit | Value |
+| --- | --- |
+| Active entries | 2,048 |
+| Active payload bytes | 256 MiB |
+| One entry | 8 MiB |
+| Replay window | 24 hours from enqueue |
+| Content-free terminal receipts | Seven days, at most 2,048 entries |
+
+The buffer declines excess payloads without evicting pending entries. Maintenance
+removes expired content only when a worker or replay command runs; a stopped host
+can retain content beyond 24 hours.
 
 Replay sends the original bytes with active credentials only to the original
 configured destination. An endpoint change blocks old entries. Gateway replay
@@ -437,32 +395,22 @@ buffer for another deployment or organization at the same URL. A gateway
 acknowledgment names the retained Fact or a declared skip. An OTLP acknowledgment
 proves delivery only; use receiver receipts or a Session query to prove capture.
 
-Transcript capture packs its independent records into requests that each fit
-the 8 MiB entry limit. Each request has its own durable enqueue or delivery
-acknowledgment. A Session can therefore publish only part of its records.
-An individually oversized record counts as `record_too_large`; other records
-remain eligible for delivery.
+Transcript capture splits records into requests within the 8 MiB limit. One
+oversized record counts as `record_too_large`; other records can still publish.
+If `emission_summary` reports `outcome: partial`, inspect unsuccessful,
+unsubmitted, and oversized-record counts. Acknowledged records aren't stored
+Fact counts.
 
-If the `emission_summary` diagnostic reports `outcome: partial`, inspect its
-`unsuccessful_requests`, `unsuccessful_records`, `record_too_large`, and
-`unsubmitted_requests`/`unsubmitted_records` counts. Unsuccessful requests count
-by returned `pending`, `blocked`, or `declined` status, or a closed exception
-reason. An exception counts the attempted request separately from the
-unsubmitted suffix. `candidate_records` counts each Fact kind; queued and
-acknowledged counts distinguish requests from records. Acknowledged records
-aren't a stored-Fact count.
+Queued requests retain their original bytes. Replay doesn't reread edited files.
+Capture clears line-hash snapshots after all eligible records are queued or
+acknowledged, or when a readable transcript has no eligible records. Failed
+reads, oversized records, and publication failures retain snapshots. Snapshots
+cannot reconstruct unsubmitted observations: a crash before enqueue can lose
+them, and later extraction can observe different file content.
 
-After every eligible record belongs to a queued or acknowledged request,
-transcript capture clears its line-hash snapshots. Any oversized record or
-publication failure retains the snapshots. A readable transcript with no
-eligible observations also clears them. Failed reads retain them.
-Already queued requests remain available to the worker after partial publication.
-Replay sends their original bytes without reading the edited files again.
-Snapshots cannot reconstruct unsubmitted observations. A crash before durable
-enqueue can lose those observations; later extraction can observe different
-file contents. Without buffer enrollment, delivery remains best-effort.
-Cursor hooks, native Codex telemetry, and forge webhooks retain their separate
-delivery and acceptance requirements.
+The buffer covers enrolled pi decisions and transcript paths, with separate
+gateway enrollment. Cursor hooks, native Codex telemetry, and forge webhooks
+have separate recovery requirements.
 
 ### Recover transcript pairs
 

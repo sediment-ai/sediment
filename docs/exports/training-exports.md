@@ -1,11 +1,8 @@
 # Choose a training export
 
-For a specific downstream release, select a versioned consumer profile.
-[Export for a consumer](consumer-compatibility.md) documents installation,
-configuration, exact commands, and the limits of each support claim.
-
-Use this guide to choose an export by training objective, prepare its source
-evidence, and audit its output before training.
+Choose an objective, prepare its evidence, and audit the output before training.
+For a supported trainer release, use a versioned
+[consumer profile](consumer-compatibility.md).
 
 Sediment exports direct preference optimization (DPO), supervised fine-tuning
 (SFT), diff-shaped SFT (diff-SFT), Recovery, and reinforcement learning from
@@ -21,16 +18,10 @@ verifiable rewards (RLVR) rows.
 | Learn from a red-to-green CI transition | `sediment export recovery` | `recovery.jsonl` | `recovery_ci` version 1 | [Export Recovery rows](recovery.md) |
 | Train or audit a trajectory against a Verifier | `sediment export rlvr` | `tasks.jsonl`, `rollouts.jsonl`, optional `environment.yaml` | `rlvr_ci` version 1 | [Export RLVR tasks and trajectories](rlvr-export.md) |
 
-DPO uses a pairwise comparison. SFT imitates one eligible completion. Diff-SFT
-uses the same SFT eligibility contract but trains on a unified patch. Recovery
-uses CI lineage rather than a per-completion canonical artifact. RLVR projects
-Rollouts and recorded Verifier evidence.
-
-Every repository-bearing row carries its qualified repository identity. DPO
-retains chosen and rejected identities independently. A valid rename keeps
-the same identity; matching labels or commits cannot join different lifetimes.
-Bundle-based exports verify complete declared evidence before projection.
-If repository identity evidence is absent or conflicting, inspect repository skip counts.
+Rows retain qualified repository identity; DPO keeps each member's identity
+separately. Renames preserve identity. Matching names or commits don't join
+different repository lifetimes. Inspect repository skip counts for absent or
+conflicting evidence.
 
 ## Check representation exclusions
 
@@ -44,14 +35,15 @@ See [Training representation](../adr/0015-lossless-values-and-bundle-v2.md#train
 
 ## Prepare the export
 
-You need a deployment or local store with captured Facts and
-`SEDIMENT_ORG_ID` set. Source requirements differ by export path:
+Set `SEDIMENT_ORG_ID`. Direct exports need database and mirror access. Bundle
+projections have these requirements:
 
-- Direct exports and mirror-backed projections require
-  `SEDIMENT_MIRROR_PATH`.
-- DPO and SFT projections from an existing bundle don't require a mirror.
-- Diff-SFT from a bundle still requires a mirror for commit diffs.
-- RLVR from a bundle still requires mirrors for Reference patches.
+| Projection from `--from` | Mirror required |
+| --- | --- |
+| DPO and SFT | No |
+| Diff-SFT | Yes, for commit diffs |
+| RLVR `sediment` and `swe-bench` | Yes, for Reference patches |
+| RLVR `nemo-gym` | No |
 
 The canonical Derivation policy defaults `eval_fraction` to `0.1`.
 
@@ -83,12 +75,10 @@ sediment export rlvr \
   --out /data/export/sediment-reviewed
 ```
 
-The RLVR export still reads local mirrors for Reference patches.
+The `sediment` target still reads mirrors for Reference patches.
 
-Recovery has no `--from` form. It is the one sanctioned Fact-derived exception
-rather than a projection of a canonical artifact. Its commit-pair shape can't
-project from an Attributed completion. [Run
-derivations](../operate/run-derivations.md) covers policy, cohort selection,
+Recovery reads CI Facts and mirrors directly and doesn't accept `--from`.
+See [Run derivations](../operate/run-derivations.md) for policy, cohort selection,
 inspection, and recomputation.
 
 ## Inspect the output
@@ -116,25 +106,13 @@ that its target contract defines. Structured `provenance` contains
 The eval split is deterministic per Session
 ([Eval split](../../CONTEXT.md#eval-split-split)).
 
-Each row also identifies its canonical JSON Schema Draft 2020-12 contract. DPO,
-SFT, and diff-SFT store `schema_id` and `schema_version` in `metadata`.
-Recovery stores them on its Sediment-native row envelope. RLVR stores them at
-the top level or under Sediment-owned `metadata`, depending on the target. The
-[Schema reference](../reference/schema.md) documents every field. The committed
-`schemas/catalog.json` maps each Python source type to its stable schema ID,
-positive integer schema version, artifact family, and file path.
+Validate each row's canonical `schema_id` and `schema_version` before adapting
+it. The [Schema reference](../reference/schema.md) defines fields; the
+[consumer profile](consumer-compatibility.md) versions the downstream mapping.
+Schema, recipe, policy, and database versions identify separate contracts.
 
-Before adapting a row for a trainer, validate and record its canonical schema.
-A downstream adapter can then remove Sediment metadata. The adapter's
-compatibility-profile version identifies that mapping. An Alembic revision
-identifies only the physical PostgreSQL schema.
-
-Canonical schema identity and Evidence recipe identity are independent. The
-categorical label, `metadata.ci_reliability`, and a trainer's downstream sample
-weight are also distinct. `label_confidence` combines evidence for filtering
-and diagnostics. It doesn't configure a trainer weight. Consumers must honor
-recipe, source, Confidence, and CI reliability when they define and version
-that mapping. Exporters never derive downstream sample weight.
+Confidence and CI reliability don't set trainer weights. If you use them for
+weighting, define and version that mapping with the Evidence recipe and source.
 
 ## Audit the split before training
 
@@ -189,7 +167,7 @@ evaluation set matches a stronger holdout claim.
 ## Retain source metadata
 
 Keep each row's Attribution source and Session observation ID fields when you
-prepare trainer inputs. Version 1 recipes permit inferred Attribution; an empty
+prepare trainer inputs. Recipes permit inferred Attribution; an empty
 observation list leaves observed identity unavailable. Full matching Facts live
 on the canonical artifacts. [ADR 0014](../adr/0014-factual-outcomes-and-training-evidence.md#evidence-recipes-and-exact-metadata)
 defines the source scope for both DPO members, SFT and diff-SFT targets, Recovery

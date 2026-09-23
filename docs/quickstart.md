@@ -2,8 +2,8 @@
 
 Capture your first agent Session on one machine.
 
-This page runs everything locally: a server, one repo, one agent. For a
-hosted deployment, start at
+Run a local server and verify synthetic capture in a scratch repository.
+For a shared deployment, start at
 [Deploy the API](operate/deploy.md#2-deploy-the-api).
 
 ## 0. Check the prerequisites
@@ -98,15 +98,9 @@ cd ~/sediment-quickstart
 sediment install .
 ```
 
-`install` wires three things:
-
-- git hooks in your repo to record which agent Sessions contributed to
-  each commit
-- hooks for each agent it finds on this machine (Claude Code, Codex, Cursor,
-  pi) —
-  these are user-level, so they apply to every repo
-- the agent telemetry env, generated from your login and sourced from your
-  shell profiles
+`install` adds repository git hooks, user-level hooks for detected agents, and
+an environment file. pi requires a source checkout; a package-only installation
+doesn't include its extension.
 
 Verify:
 
@@ -129,17 +123,12 @@ ok    markers[/Users/you/sediment-quickstart]: no unconsumed markers
 doctor exit 0
 ```
 
-Your exact rows depend on which agents this machine has. `info` rows are
-normal — an agent you don't use isn't a failure. Only `FAIL` rows are. Any
-`FAIL` makes `doctor` exit non-zero, so `doctor exit 0` is the check that
-matters.
+Rows depend on the installed agents. `info` is informational; `FAIL` makes
+`doctor` exit nonzero. Require `doctor exit 0` before continuing.
 
 ## 5. Prove the capture chain
 
-An agent hook records a Session marker on each tool call. The post-commit
-hook turns the markers into a git note. Running the marker verb
-by hand does exactly what the hook does — and unlike the hook, it works
-without restarting your agent:
+Create a synthetic Session marker and commit it to verify the Git hooks:
 
 ```bash
 printf '{"session_id":"quickstart","cwd":"%s"}\n' "$PWD" | sediment mark --tool claude-code
@@ -152,9 +141,9 @@ git notes --ref=refs/notes/sediment show HEAD
 {"v": 1, "sessions": [{"tool": "claude-code", "session_id": "quickstart", "stamped_at": "2026-08-14T00:33:32+00:00"}]}
 ```
 
-The note is the commit Attribution Fact: this commit came from that agent
-Session. It stays in git until a push webhook ingests it, so it doesn't
-show up in the server's counts yet.
+The note records the synthetic Session-to-commit relationship in Git. A mirror
+refresh after a Push can store a Session-to-commit observation; Attribution is
+then derived. The local note alone doesn't add a server Fact.
 
 ## 6. Prove the server side
 
@@ -183,14 +172,8 @@ quarantine_revision: 0
 These are synthetic facts, not your agent's. They prove the ingest path works end to end.
 ```
 
-Read that last line literally. The demo proves the chain from a client
-POST to a stored Fact, on this machine, with your token. It proves nothing
-about your own agent, which isn't sending anything yet — that is step 7.
-
-The Facts are synthetic but real once stored. `demo` refuses a non-loopback
-server for that reason; `--force` overrides it if you meant to seed a
-shared deployment. Re-running is safe: both doors dedup, so the counts stay
-at one.
+The demo verifies synthetic ingestion and storage. Repeating it retains the
+same Facts through database deduplication. Verify your agent separately.
 
 ## 7. Use it on real work
 
@@ -198,8 +181,8 @@ at one.
 sediment install /path/to/your-repo
 ```
 
-Restart any running agent Sessions — each agent reads hooks and environment at
-startup. Then work as usual: edit files with your agent and commit.
+Load `. "$HOME/.sediment/env.sh"`, then restart the agent. Edit a file and
+commit the change.
 `sediment facts` grows `developer_decisions` when the agent emits a supported
 decision event. Each commit carries its own Session note.
 
@@ -209,18 +192,11 @@ steps.
 
 Each verb prints its own help (`sediment install --help`).
 
-## What you have — and what needs a deployment
+## Configure additional capture
 
-The local setup captures decisions and commit Attribution. The rest need
-their own wiring:
-
-| Signal | Captured by | Wired by |
-|---|---|---|
-| Developer decisions | Agent telemetry or adapter | This quickstart plus the selected [agent guide](capture/agent-integrations.md) |
-| Commit Attribution | Git hooks | This quickstart |
-| Edit survival and external line counts | Transcript hooks | `sediment install --transcripts` (opt-in — [Configure local capture](capture/local-capture.md#opt-in-to-transcript-capture)) |
-| Inference calls (structured input + output) | LLM gateway callback | [Roll out managed capture](capture/managed-capture.md#configure-inference-call-capture) |
-| Push / Pull request revisions and merge / CI outcomes | Forge webhooks | [Roll out managed capture](capture/managed-capture.md#configure-push-and-ci-capture) |
+Use [Agent integrations](capture/agent-integrations.md) to configure native
+decisions and optional Edit observations. Connect [managed capture](capture/managed-capture.md)
+for gateway Inference calls, Pushes, pull requests, and CI outcomes.
 
 ## Clean up the demo
 

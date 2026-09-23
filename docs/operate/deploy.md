@@ -1,19 +1,9 @@
 # Deploy Sediment
 
-Use this guide to run the Sediment API, PostgreSQL Fact store, and git mirror
-on a host. Every step states what it exposes and how
-to verify it.
+Run the API, PostgreSQL Fact store, and git mirror on a shared host with Docker
+Compose. For a single-machine evaluation, use the [Quickstart](../quickstart.md).
 
-The deployment has PostgreSQL, a one-shot provisioning service, the API, an
-operator profile, and named volumes. It doesn't include an LLM gateway unless you enable the
-optional LiteLLM compose profile.
-
-Sediment consumes completion callbacks after an LLM response. It doesn't sit in
-the request path or share the gateway's availability boundary.
-
-For the capture paths that feed the deployment, use
-[Roll out managed capture](../capture/managed-capture.md). For developer
-machines, use [Configure local capture](../capture/local-capture.md).
+Complete deployment before [enrolling pilot developers](run-pilot.md).
 
 ## 1. Prerequisites
 
@@ -33,47 +23,32 @@ and optional gateway to loopback. Your ingress is the only off-host path.
 
 ## 2. Deploy the API
 
-For local evaluation, `sediment server` downloads and starts PostgreSQL under
-`~/.sediment/server`. The [Quickstart](../quickstart.md) shows that setup. Use
-`--root PATH` to keep its database, credentials, binaries, logs, and mirror in
-another directory.
-
-If you supply `SEDIMENT_BOOTSTRAP_DATABASE_URL`, `sediment server` provisions
-that external database instead. Use a dedicated PostgreSQL database with an
-explicit host and database in the URL. The command creates separate database
-roles, applies migrations, and derives the API's restricted runtime connection.
-It stores generated role passwords and API credentials in `server.env` under
-its root. It doesn't start or stop the external database.
-
-This runbook uses Docker Compose for a durable host; the images include their
-database client library.
+Run these commands from the Sediment checkout. Before building, review
+[release security evidence](security.md).
 
 Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
 ```bash
-cd sediment
 uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py
 ```
 
-The generator refuses an existing file or a directory writable by another user.
-It generates separate bootstrap, migrator, API-runtime, and operator database
-passwords, an operator HTTP token, a named gateway ingest token, a webhook
-secret, and a gateway master key. It doesn't print the secrets. Keep `.env`
-private; don't source it into a shell or copy it to developer machines.
+The generator creates separate database, operator, ingest, webhook, and gateway
+credentials. It refuses an existing file or a directory writable by another user.
+Keep `.env` private. Don't source it or distribute it to developers.
 
-If you hand-edit `.env` instead of running the generator, production still
-refuses an operator token, ingest token, or webhook secret shorter than 24
-characters. The API
-applies no rate limiting to authentication attempts. Front it with a reverse
-proxy or tunnel that throttles repeated failures.
+Edit these deployment settings in `.env`:
 
-Compose passes each service only its required credentials. The provisioning
-service receives bootstrap authority and the three role passwords. The API
-receives only its restricted database URL, operator HTTP token, ingest token
-map, webhook secret, and optional retrieval settings. The operator profile receives its own database URL.
-The gateway receives an ingest token and provider credentials. It has no
-database credentials or database-network membership.
+| Setting | Action |
+| --- | --- |
+| `SEDIMENT_ORG_ID` | Set the deployment's organization identifier. |
+| `SEDIMENT_ALLOWED_CLONE_HOSTS` | Set the permitted Git hosts; the default is `["github.com"]`. |
+| `SEDIMENT_DEV_MODE` | Keep `false`. |
+
+Distribute a named ingest token to each capture client. Reserve the operator
+token for queries and reports. Production tokens and webhook secrets must have
+at least 24 characters. The API doesn't rate-limit authentication attempts;
+configure that limit at ingress.
 
 If you enable agent-requested retrieval, add `SEDIMENT_RETRIEVAL_TOKEN` and exactly
 one source setting to the private `.env`: `SEDIMENT_RETRIEVAL_SESSION_ID` for a
@@ -91,14 +66,7 @@ for agent configuration and the aggregate source limits.
 If an ingest client is named `retrieval`, rename that entry before upgrading.
 The identifier is reserved; its old secret isn't reclassified.
 
-The authoritative API settings loader is `apps/api/sediment_api/config.py`.
-If a required setting is absent, Compose stops and names it.
-
-Set `SEDIMENT_ORG_ID` for the deployment tenancy. If the mirror may clone only
-specific hosts, set `SEDIMENT_ALLOWED_CLONE_HOSTS` to those hostnames.
-
-Review the release evidence in [Check release and deployment security](security.md).
-Record the source identity, then build and start the API:
+Build and start the deployment with its source identity:
 
 ```bash
 set -e
@@ -111,41 +79,30 @@ docker compose up -d --build
 Verify it from the host:
 
 ```bash
-curl -s http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:8000/health
 ```
 
 ```text
 {"status":"ok","version":"0.1.0"}
 ```
 
-Compose waits for PostgreSQL health, runs `sediment db provision`, and starts
-the API after provisioning succeeds. Provisioning creates and confines the three
-roles, adopts known legacy Sediment objects, and migrates under an advisory lock.
-It preserves Fact rows. The API checks the exact schema revision and its
-effective runtime privileges before starting workers. It refuses bootstrap or
-excess database authority and invalid production credentials. If startup fails, read
-`docker compose logs postgres migrate api`.
+Compose waits for PostgreSQL, provisions separate database roles, and applies
+migrations before starting the API. The API checks the schema and runtime
+privileges. If the health request fails, check startup status:
 
-Runtime Facts and the physical schema live in `sediment-postgres`. Bare
-repository mirrors live in
-`sediment-mirror`. These volumes survive image rebuilds and
-`docker compose down`.
+```bash
+docker compose ps -a
+docker compose logs postgres migrate api
+```
+
+Database and mirror volumes survive image rebuilds and `docker compose down`.
 
 ### Enable bundled LiteLLM
 
-If the deployment needs the optional gateway on-ramp, set these values in
-`.env`:
-
-```bash
-ANTHROPIC_API_KEY=<upstream provider key>
-LITELLM_MASTER_KEY=<key presented by agent clients>
-```
-
-The environment generator supplies the master key with an `sk-` prefix and a
-named ingest credential for the callback. Add only the Anthropic provider key.
-The supplied gateway supports Anthropic routing; other providers and gateway
-database features need a separately maintained deployment. See the
-[gateway boundary](../../docker/gateway/README.md).
+If you need the bundled Anthropic gateway, add `ANTHROPIC_API_KEY` to `.env`.
+Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
+supports `claude-*` routing; other providers require a separate gateway
+configuration. See the [gateway boundary](../../docker/gateway/README.md).
 
 Start the complete profile:
 
@@ -154,20 +111,17 @@ docker compose --profile gateway up -d --build
 docker compose --profile gateway ps gateway
 ```
 
-The gateway entrypoint refuses to start if either key is absent. Compose passes
-the Anthropic key and LiteLLM master key only to the gateway container. The
-profile mounts `litellm/config.yaml`, `litellm/sediment_callback.py`, and the shared
-`cli/sediment_cli/delivery.py` helper read-only. It binds LiteLLM to
-`127.0.0.1:4000`. The callback uses the exact local HTTP exception `http://api:8000` over the
-Compose edge network. It rejects other remote plaintext destinations and
-authenticated redirects.
+The gateway binds to `127.0.0.1:4000`. It receives provider and ingest credentials,
+but no database credentials. Its callback sends completed Inference calls to
+`http://api:8000` over the Compose network. A capture failure doesn't retract a
+successful model response.
 
 If you authorize persistent storage of unredacted capture payloads, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
 `sediment-delivery` named volume and owns a replay worker for its process
 lifetime. Leave the setting empty for direct best-effort delivery.
 If the volume is unsafe, unavailable, or busy, the callback attempts direct
-delivery and logs the storage reason; repair the volume to restore buffering.
+delivery and logs the reason.
 See [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
 for privacy, retention, capacity, and recovery limits. Upgrade the API before
 the callback: a server without the capture envelope returns 422, which blocks
@@ -190,11 +144,7 @@ replay. When recovery is complete, restart the gateway and its automatic worker:
 docker compose --profile gateway up -d --no-deps gateway
 ```
 
-If the service doesn't remain running, inspect its startup and provider logs:
-
-```bash
-docker compose logs gateway
-```
+If the gateway exits, inspect `docker compose logs gateway`.
 
 Use [Configure inference-call
 capture](../capture/managed-capture.md#configure-inference-call-capture) to
@@ -202,9 +152,10 @@ route clients and verify both the model request path and the capture path.
 
 ## 3. Expose a public HTTPS endpoint
 
-Any reverse proxy or tunnel can front the loopback-bound API. This example uses
-one named Cloudflare tunnel. Add a second hostname only when you enable the
-bundled gateway.
+Use an HTTPS reverse proxy or tunnel for remote clients. This example uses
+Cloudflare, which carries requests through its edge. If that boundary is outside
+your approved perimeter, use internal ingress. For API-only deployment, omit the
+`sediment-llm` DNS command and ingress entry.
 
 Create the tunnel and DNS routes:
 
@@ -243,35 +194,24 @@ On Linux, install and start the connector with the config path that belongs to
 the login user:
 
 ```bash
-sudo cloudflared --config /home/<user>/.cloudflared/config.yml service install
+sudo cloudflared --config '/home/<user>/.cloudflared/config.yml' service install
 sudo systemctl start cloudflared
 curl -s https://sediment-api.example.com/health
 ```
 
-Remote CLI clients must use this HTTPS deployment root. `sediment login`
-accepts HTTP only for `localhost`, an address in `127.0.0.0/8`, or `[::1]`.
-It rejects embedded credentials, query strings, fragments, and non-root base
-paths before it reads or sends a bearer token.
-
-The Zero Trust dashboard can create the same tunnel and connector token. The
-API doesn't depend on Cloudflare; an internal ingress works for an on-premises
-forge and gateway.
+Remote clients must use the HTTPS deployment root, such as
+`https://sediment-api.example.com`. `sediment login` accepts HTTP only on literal
+loopback hosts. It rejects embedded credentials, query strings, fragments, and
+non-root paths.
 
 ## 4. Configure capture
 
-The deployment stores no Facts until you connect capture sources. Configure
-them in this order:
+1. [Configure managed capture](../capture/managed-capture.md) for forge webhooks,
+   private mirrors, and an optional gateway.
+2. [Enroll pilot developers](run-pilot.md) or
+   [configure one developer machine](../capture/local-capture.md).
 
-1. Use [Roll out managed capture](../capture/managed-capture.md) to connect a
-   gateway, forge webhooks, private mirrors, and any fleet distribution.
-2. Use [Configure local capture](../capture/local-capture.md) on each developer
-   machine that isn't covered by the fleet bundle.
-
-The server must understand a capture contract before clients send it. Roll out
-server changes before gateway callbacks, shims, or fleet configuration.
-
-[How capture works](../explanation/how-capture-works.md) explains which signal
-each source records and how absent paths degrade.
+Upgrade the API before clients when a release changes a capture contract.
 
 ## 5. Verify the deployment
 
@@ -281,10 +221,12 @@ Check the public health endpoint:
 curl -sf https://sediment-api.example.com/health
 ```
 
-Check the container and persistent volumes:
+After connecting a capture source, run the operator profile. This also creates
+its export and staging volumes:
 
 ```bash
-docker compose ps
+docker compose --profile operator run --rm operator sediment facts
+docker compose ps -a
 docker volume inspect \
   sediment_sediment-postgres \
   sediment_sediment-mirror \
@@ -292,15 +234,8 @@ docker volume inspect \
   sediment_sediment-staging
 ```
 
-After you configure at least one capture path, inspect the Fact tables:
-
-```bash
-docker compose --profile operator run --rm operator sediment facts
-```
-
-The Fact-count command prints total and Derivation-visible rows. A configured
-source that stays at zero needs capture-path diagnosis, not API redeployment.
-Use the verification section in the matching capture guide.
+`sediment facts` prints total and Derivation-visible rows. If an expected source
+stays at zero, follow that source's capture verification steps.
 
 Inspect the PostgreSQL revision without changing it:
 
@@ -312,18 +247,13 @@ The status command reports `at_head` after Compose starts successfully.
 
 ## 6. Upgrade the deployment
 
-Compose builds the API, PostgreSQL, and optional gateway from reviewed,
-digest-pinned inputs. The API uses plain Psycopg and Debian-maintained libpq.
-It doesn't bundle the binary driver's separate OpenSSL libraries. The runtime
-excludes uv and installer wheels. PostgreSQL retains its Bookworm data layout
-and locale and uses maintained `setpriv` for its privilege drop. The bundled
-gateway's [documented boundary](../../docker/gateway/README.md) lists supported
-providers, removed components, and guarded vendor patches.
+Before upgrading, read `CHANGELOG.md`, review [release security evidence](security.md),
+back up the database, and test restoration. Measure migration time on a restored
+copy. Constraint validation and index builds can block table reads and writes;
+schedule a maintenance window for large datasets.
 
-Before an upgrade, inspect [release security evidence](security.md), back up the
-database, and test restoration. Stop the API and gateway before changing roles
-or credentials. Keep the existing bootstrap password for an existing PostgreSQL
-volume: changing `POSTGRES_PASSWORD` alone doesn't rotate an initialized server.
+Stop the API and gateway before changing database roles or credentials. Preserve
+`POSTGRES_PASSWORD`: changing it in `.env` doesn't rotate an initialized server.
 
 If your existing `.env` predates separate database roles and operator tokens,
 prepare its replacement before running Compose against the updated checkout:
@@ -366,7 +296,7 @@ set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
-docker compose up -d --build --force-recreate migrate api
+docker compose up -d --build --force-recreate postgres migrate api
 curl -sf http://127.0.0.1:8000/health
 ```
 
@@ -382,23 +312,8 @@ API. The gateway's token must match its named map entry. Rotate the operator
 HTTP token independently. Remove `SEDIMENT_API_BEARER_TOKEN` after migrating
 legacy capture clients; that token grants ingest authority only.
 
-Read `CHANGELOG.md` before you upgrade a gateway callback or client fleet. When
-a release changes identity parsing or a wire contract, upgrade the server
-first.
-
-Most migrations in `packages/core/sediment_core/alembic/versions/` finish in
-milliseconds. A migration that adds `CHECK` constraints or unique indexes to a
-Fact table holds that table under an `ACCESS EXCLUSIVE` lock for the
-constraint validation or index build. The lock blocks that table's reads and
-writes for the duration, proportional to the table's row count rather than
-to the number of statements. `0010_repository_identity` adds five such
-constraints and two such indexes across `ci_outcomes`, `pushes`,
-`session_commit_observations`, `pull_request_merges`, and
-`pull_request_revisions`. On a deployment with substantial history in those
-tables, schedule the upgrade for a maintenance window. Expect the migration
-step to take longer than a schema-only release. Provisioning applies the
-migration; API startup checks the schema and refuses an incomplete upgrade.
-Measure upgrade duration against a restored copy of the deployment database.
+Upgrade the API before gateway callbacks and capture clients. Verify
+`sediment db status` reports `at_head` before resuming capture.
 
 For `0011_inference_call_aliases`, stop every API replica and direct Fact writer
 before provisioning. The migration copies provider and output tool-call
@@ -412,19 +327,17 @@ instead of creating unindexed Facts. See [Indexed call identifiers](../adr/0023-
 
 ## 7. Operating cadence
 
-Each week, check Fact growth and outcomes, inspect storage usage, and review
-failed scans and upstream fixes:
+Each week, inspect storage usage, review failed scans and upstream fixes, and
+check Fact growth and outcomes:
 
 ```bash
 docker compose --profile operator run --rm operator sediment facts
 docker compose --profile operator run --rm operator sediment report model
 ```
 
-Apply released security fixes according to your deployment's update policy and
-before an applicable assessment deadline. Each release records its support
-window in `security-support.json`. Component and vulnerability reviews expire
-within 30 days; an
-upstream support end or withdrawal can shorten either period.
+Apply security fixes within your deployment's update deadlines. Track the
+support end date in `security-support.json` and the review expiries in the
+[release evidence](security.md).
 
 ### Back up and restore
 
@@ -482,39 +395,29 @@ Each line names an inference call that arrived without a resolvable Session id.
 
 ### 8.1 What Sediment stores
 
-Two stores carry source content. `inference_calls` contains structured input
-and output messages plus the gateway payload. The git mirror contains pushed history from
-each allowlisted repository.
+The Fact store can contain model inputs and outputs, gateway payloads, patch
+arguments, applied edit text, and Session-end file content. Mirrors contain
+pushed Git history. Attribution notes contain Session identifiers and timestamps.
 
-Other Fact tables carry event metadata and identity. Transcript capture can
-also contain model-written edit text and Session-end content for files that the
-agent edited.
-
-Basic redaction runs without configuration before a Fact store persists any
-content-bearing Fact. It replaces high-confidence API keys and bearer
-credentials with `[REDACTED_CREDENTIAL]` in normalized content and `raw`
-payloads. It doesn't claim comprehensive secret detection. If an existing Fact
-contains a credential, quarantine that Fact; Facts remain immutable and the
-guard doesn't rewrite history.
-
-[Privacy boundaries and ceilings](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
-lists each capture payload. Attribution notes contain Session ids and
-timestamps, not source content.
+Basic redaction replaces recognized credentials before Fact storage. It isn't
+comprehensive secret detection and doesn't rewrite existing Facts. Quarantine
+Facts that contain credentials. Review the
+[per-source privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+before enabling capture.
 
 ### 8.2 Where data lives
 
-The deployment uses these named volumes:
+| Volume | Contents |
+| --- | --- |
+| `sediment-postgres` | Facts and schema |
+| `sediment-mirror` | Bare Git mirrors |
+| `sediment-export` | Operator-created exports |
+| `sediment-staging` | Private, disposable Derivation and export payloads; may contain unredacted content |
+| `sediment-delivery` | Optional unredacted gateway retries |
 
-- `sediment-postgres` for PostgreSQL runtime Facts and schema
-- `sediment-mirror` for bare git mirrors
-- `sediment-export` for operator-created exports
-- `sediment-staging` for private, disposable Derivation and export staging;
-  it holds unredacted payloads only while an operator command runs
-- `sediment-delivery` for optional unredacted gateway retries
-
-The API doesn't send captured data anywhere. Operator-authenticated query routes and privileged host access are the read
-paths. Capture credentials cannot read datasets. A host administrator can still
-read container environments and mounted data.
+Operator query routes return captured content. Optional retrieval access returns
+content from its authorized Sessions. Capture credentials don't authorize reads.
+Host administrators can read container environments and mounted data.
 
 Facts and mirrors have no automatic retention or expiry. Raw mirrors, optional
 capture files, and encrypted backups remain sensitive even when Basic redaction
@@ -522,9 +425,8 @@ protects normalized Fact content. Authorize any raw capture retention explicitly
 
 Put Docker data and export storage on a dedicated filesystem or enforce a
 volume-driver quota before deployment. Record its size and alert before
-80% use. The mirror worker reserves 1 GiB free space; that check is not a quota
-and cannot bound repository size. Plan retention, backup space, and incident
-capacity without relying on the host root filesystem.
+80% use. The mirror worker requires 1 GiB of free space, but doesn't enforce a
+quota. Budget for backups and incident recovery.
 
 ### 8.3 Quarantine and wholesale deletion
 
@@ -543,8 +445,8 @@ docker compose --profile operator run --rm operator sediment quarantine-inferenc
 Quarantine other Fact tables by Fact id:
 
 ```bash
-docker compose --profile operator run --rm operator sediment quarantine pushes <fact_id> --reason '...'
-docker compose --profile operator run --rm operator sediment release pushes <fact_id> --reason '...'
+docker compose --profile operator run --rm operator sediment quarantine pushes '<fact_id>' --reason '...'
+docker compose --profile operator run --rm operator sediment release pushes '<fact_id>' --reason '...'
 ```
 
 `sediment facts` shows the visible count. `sediment quarantine-log` shows the
@@ -561,15 +463,13 @@ until its original reason is resolved; don't release Facts to improve a metric.
 The [External edit windows limitation](../explanation/how-capture-works.md#external-edit-windows)
 describes the affected diagnostic fields and their separation from training.
 
-To delete every Fact, mirror, and operator-created export, stop the compose
-project and remove its volumes:
+To delete the deployment data, remove its Compose volumes. **This deletes Facts,
+mirrors, exports, staging, and buffered deliveries. You cannot undo it.** Save
+any required database backup and exports first:
 
 ```bash
 docker compose --profile gateway down -v
 ```
-
-This operation can't be undone. Extract the PostgreSQL database and any files
-under `sediment-export` before you run it if you need them.
 
 To remove only the mirror, stop the stack, remove its volume, and restart:
 
@@ -583,60 +483,46 @@ The API recreates mirrors after later push webhooks.
 
 ### 8.4 Network exposure
 
-**Inbound.** Uvicorn listens on port 8000 inside the API container. Compose
-binds it to `127.0.0.1:8000`. The optional gateway binds
-`127.0.0.1:4000`.
+| Direction | Connection |
+| --- | --- |
+| Inbound | API on `127.0.0.1:8000`; optional gateway on `127.0.0.1:4000`. Ingress provides remote access. |
+| Outbound from API | Git fetches to permitted clone hosts when mirroring is enabled. |
+| Outbound from gateway | Model requests to Anthropic and capture callbacks to the API over the Compose network. |
 
-Capture routes require an ingest token or webhook signature. Operator routes
-require the separate operator token. The `/query/evidence` operations return
-captured content to operators on the same API port. They add no outbound
-connection. The `/query/context/evidence` operations expose the same factual
-projections to retrieval or operator credentials within the configured Session
-grant. Exact reads can include reasoning and evidence omitted by keyword selection.
-Keep the consuming agent's model endpoint inside your perimeter
-when captured content must stay there; see
+Capture requires an ingest token or webhook signature. Reports and operator
+queries require an operator token. Optional context routes accept retrieval or
+operator credentials within the configured Session grant. Exact context evidence
+reads can include reasoning and parts omitted by keyword selection. See
 [Continue a task with captured evidence](resume-with-evidence.md).
-`GET /health` is unauthenticated and returns no captured data. Request bodies
-are capped before route processing.
+`GET /health` is unauthenticated and returns no captured content. Request bodies
+have size limits.
 
-**Outbound.** Repository mirroring is the API's only optional outbound
-connection. A push webhook can trigger `git fetch` from its clone URL when
-`SEDIMENT_MIRROR_PATH` is set.
+Treat each allowed clone host as a fetch trust decision. An explicit entry can
+authorize a private address; an empty list admits public hosts only. Preserve
+the reviewed Git configuration and proxy/header environment settings.
 
-If you enable bundled LiteLLM, the gateway container also sends model requests
-to Anthropic and sends completed-call payloads to the API over the Compose
-network. Provider credentials don't enter the API container.
+To disable mirror fetches in this deployment, remove `SEDIMENT_MIRROR_PATH` from
+the API's `environment` in `docker-compose.yml` and recreate the API. Compose
+sets it directly; unsetting it in `.env` has no effect.
 
-Before git starts, the API enforces a transport allowlist, the configured clone
-host allowlist, a server-side request forgery guard, and `GIT_ALLOW_PROTOCOL`.
-Treat each allowed host as an explicit fetch trust decision. An explicit entry
-can authorize a private forge address; an empty list admits public hosts only.
-Keep Git configuration and proxy/header environment overrides at the reviewed
-defaults unless you reassess the applicable curl dispositions.
+PostgreSQL has no published port. Only provisioning, API, and operator services
+join its internal network. Local and TCP connections require password
+authentication through SCRAM (Salted Challenge Response Authentication Mechanism).
+The gateway has no database-network access.
 
-Unset `SEDIMENT_MIRROR_PATH` to disable outbound repository fetches.
+Compose applies read-only roots, temporary-storage and resource limits, rotated
+logs, and `no-new-privileges`. The API and gateway have no Linux capabilities.
+PostgreSQL keeps only the capabilities required to initialize volume ownership
+and drop privileges.
 
-**Database and process confinement.** PostgreSQL has no published port. Only
-provisioning, API, and operator services join its internal network. The checked
-host-based authentication file requires SCRAM for local and TCP connections,
-including existing volumes. The gateway cannot join that network.
-
-Every service has a read-only root, bounded temporary storage, memory,
-processor, process-count, and rotated-log limits. The API and gateway run
-without Linux capabilities. PostgreSQL receives only the five capabilities
-needed to initialize volume ownership and drop to its unprivileged server user.
-Every service enables `no-new-privileges`.
-
-One API process permits two active read workers, two active mirror workers,
-and sixteen waiting mirror jobs. Evidence, commit and Session queries, and reports
-share both read slots; reports have no reserved slot. A third read refuses
-immediately without entering a queue. Reads have a 30-second deadline; mirror work
-has 120 seconds. Child termination and reaping precede capacity reuse. A busy
-service returns 503 so a sender can retry retained bytes. Multiplying Uvicorn
-processes multiplies these limits; keep the supplied single-process command
-unless you recalculate host and database capacity. The default memory caps are
-2 GiB for the API, 1 GiB for PostgreSQL, and 2 GiB for the gateway. Operator and
-migration jobs need additional headroom.
+Keep the supplied single API process unless you recalculate host and database
+capacity. Per-process limits are two active read workers, two active mirror
+workers, and sixteen waiting mirror jobs. Evidence, commit and Session queries,
+and reports share both read slots; reports have no reserved slot, and a third
+read refuses immediately without queueing. Reads have a 30-second deadline;
+mirror work has 120 seconds. Saturation returns 503. Memory limits are 2 GiB for
+the API, 1 GiB for PostgreSQL, and 2 GiB for the gateway. Reserve additional
+capacity for operator and migration jobs.
 
 Review [the disposition register](../../security/dispositions.json) before a
 deployment. Database isolation and resource limits reduce exposure
@@ -645,24 +531,18 @@ or protect stored Facts after database-process compromise. A custom network,
 SQL client, image, Git configuration, or credential distribution needs another
 review. These controls don't establish Cyber Essentials certification.
 
-**No phone-home path.** Sediment has no telemetry, analytics, crash reporting,
-update checks, license validation, or cloud SDK. Exports are local JSONL files.
+Sediment has no telemetry, analytics, crash reporting, update checks, or license
+validation. Exports are local JSONL files.
 
-Cloudflare ingress makes captured requests transit Cloudflare's edge. Replace
-it with internal ingress when that boundary doesn't fit the deployment.
-
-For operation without public network access, prepare the required software,
-container images, and dependencies inside the perimeter. Use internal ingress,
-capture sources, Git remotes, and model endpoints. An internal gateway alone
-doesn't keep model requests inside the perimeter; its configured model endpoint
-determines their destination. Installation can still require public downloads
-unless you provision its dependencies in advance.
+For operation without public network access, provision software, container
+images, and dependencies inside the perimeter. Use internal ingress, Git remotes,
+and model endpoints. The model endpoint determines where inference content goes;
+an internal gateway alone doesn't keep that content inside the perimeter.
 
 ## 9. Troubleshooting
 
-- **`failed to solve: DeadlineExceeded`, or image pulls hang:** test
-  `docker pull busybox`. If Docker Desktop's credential helper hangs, remove
-  its `credsStore` entry and restart the helper.
+- **Image builds or pulls hang:** check Docker registry access and the configured
+  credential helper.
 - **`/health` responds but other requests reach the wrong process:** inspect
   `docker ps`. Another container may own port 8000.
 - **Ingest returns `503 database_unavailable`:** restore PostgreSQL access, then
