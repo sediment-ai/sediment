@@ -25,9 +25,7 @@ Codex CLI installed. The profile procedure covers Codex 0.153.4; Codex Desktop
 selecting that profile isn't verified. In this guide, `<Codex home>` means the
 directory named by `CODEX_HOME`, or `~/.codex` when `CODEX_HOME` is unset.
 
-If you need an endpoint, complete the [Quickstart](../../quickstart.md). For
-endpoint rules, credential storage, installer behavior, and repository git
-hooks, read [Configure local capture](../local-capture.md).
+For deployment and shared setup, see [Configure local capture](../local-capture.md).
 
 ## Install capture
 
@@ -51,7 +49,7 @@ hooks, read [Configure local capture](../local-capture.md).
 3. Start Codex with the telemetry profile:
 
    ```bash
-   codex --profile sediment
+   codex --profile sediment -C /path/to/repo
    ```
 
 4. Run `/hooks`.
@@ -128,7 +126,7 @@ bundled Claude-only example doesn't serve native OpenAI model requests.
 3. Add native telemetry to the gateway profile:
 
    ```bash
-   sediment install --codex-profile gateway /path/to/repo
+   sediment install --codex-profile gateway --no-env /path/to/repo
    ```
 
 4. Start Codex with the gateway key:
@@ -165,17 +163,11 @@ it off unless you opt in.
    sediment install --transcripts --no-env /path/to/repo
    ```
 
-   The extractor reads successful native `patch_apply_end` events, Codex
-   0.153.4 `item_completed` / `FileChange` events, and supported `apply_patch`
-   shell calls without sending the shell command or its output.
-   A completed `FileChange` must name its Session and tool call. Its `status`
-   must be `completed`; output text doesn't prove success.
-   It skips a patch that changes more than one file because each Edit
-   observation needs its own tool-call identifier. A multi-file patch can
-   still produce several Developer decision Facts. Native Add uses full content;
-   Update uses authored hunk additions. Shell capture requires a valid execution
-   directory and successful result metadata before stdout. An unreadable file
-   leaves no observation; a confirmed missing file has an empty observed value.
+   The extractor requires a completed single-file patch with Session and tool-call
+   identity. It supports native patch events and supported `apply_patch` shell
+   calls. Multi-file patches can produce Developer decisions but no Edit
+   observation. An unreadable file yields no observation; a confirmed missing
+   file yields an empty observed value.
 
 3. Restart Codex after you install the hook.
 
@@ -184,9 +176,7 @@ defines the shared endpoint safety rules and payload limits.
 
 ## Verify capture
 
-Remote Fact and Session checks require a separate
-[operator login](../local-capture.md#verify-capture). Capture enrollment alone
-cannot authorize these reads.
+Remote checks require a separate [operator login](../local-capture.md#verify-capture).
 
 1. Check the agent and repository configuration:
 
@@ -208,7 +198,7 @@ cannot authorize these reads.
    the note:
 
    ```bash
-   sediment doctor /path/to/repo --agent codex --session-id <Session identifier>
+   sediment doctor /path/to/repo --agent codex --session-id '<Session identifier>'
    ```
 
 The command requires a Codex Developer decision in that Session and its Codex

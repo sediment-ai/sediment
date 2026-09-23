@@ -1,8 +1,7 @@
 # Export RLVR tasks and trajectories
 
-For a specific downstream release, select a versioned consumer profile.
-[Export for a consumer](consumer-compatibility.md) documents installation,
-configuration, exact commands, and the limits of each support claim.
+For a supported downstream release, select a versioned
+[consumer profile](consumer-compatibility.md).
 
 Run `sediment export rlvr --target <target> --out <directory>` to project
 Sediment Rollouts into reinforcement learning from verifiable rewards (RLVR)
@@ -22,10 +21,8 @@ training export](training-exports.md).
 | `swe-bench` | `tasks.jsonl` | recorded terminal pass and resolvable Reference patch | SWE-bench task shape |
 | `nemo-gym` | `rollouts.jsonl` | captured Rollout segment; Reward remains absent without pass/fail evidence | NeMo Gym rollout boundary mapping |
 
-Each target is a stateless projection over canonical Rollouts, as [ADR
-0004](../adr/0004-canonical-training-artifacts.md) requires. The projection
-reads Rollouts and local mirrors. It doesn't persist derived state, infer
-missing evidence, or run a Verifier.
+The exporter projects captured Rollouts and mirror evidence. It doesn't run a
+Verifier or fill missing evidence.
 
 Every emitted row names version 1 of the `rlvr_ci` Evidence recipe. A resolved
 CI pass records `reward_source: resolved_ci_pass`. A resolved CI failure
@@ -112,49 +109,21 @@ fail-closed. Use a fresh directory for the next export.
 
 ## Understand target contracts
 
-All targets preserve deterministic row order by organization and Session.
-Repeated exports of the same Rollouts and mirror state produce identical JSONL
-bytes. Shuffling input Rollouts doesn't change the output.
+Compare repeated exports within one mode by JSONL bytes and row order. Across
+direct and bundle exports, compare parsed values and order: bundles sort nested
+keys while direct exports retain source order.
 
-A direct export and a bundle-backed export of the same Derivation produce the
-same parsed rows in the same order. Their bytes can differ: the canonical
-bundle stores nested objects, such as a Verifier result's `raw` payload, with
-sorted keys, while a direct export keeps the key order of the source Fact.
-Each mode keeps its own historical bytes. Compare exports across modes by
-parsed JSON value and row order; compare bytes only within one mode.
+Inspect representation skips such as `non_finite_number` and
+`unrepresentable_unicode`. Each declined task or Segment counts once.
+File replacement is atomic per file, not across all partitions. If publication
+fails or stops, retain its diagnostics and export to a fresh directory. Empty
+partitions don't clear existing files.
 
-Inspect `non_finite_number` and `unrepresentable_unicode` skip counts for values
-that a target cannot represent, including nested Verifier results and metadata.
-Each declined task or Segment row counts once. A task's omitted completion
-content doesn't affect eligibility. JSONL uses ASCII escapes and strict numbers.
-If serialization fails, every existing split partition remains intact because
-the writer prepares all nonempty partitions before replacing any destination.
-Each replacement is atomic; the sequence of replacements isn't a transaction.
-A failure between replacements can leave complete files from different exports.
-After correcting the failure, replay the same ordered rows to restore exact
-output bytes and row counts. Empty partitions preserve their prior files.
-Process interruption tests verify this recovery, not power-loss durability.
-
-Each row identifies its canonical JSON Schema Draft 2020-12 contract. Sediment
-task and Rollout rows carry `schema_id` and `schema_version` at the top level.
-SWE-bench and NeMo Gym rows keep them in Sediment-owned `metadata`, outside
-trainer inputs. The generated [Schema reference](../reference/schema.md) comes
-from the same dataclasses.
-
-Sediment defines a closed, recursive row contract for each target. The test
-suite decodes every emitted row and checks every required key, nested object,
-value type, enum value, and optional-key omission against that contract.
-
-This validation guarantees Sediment's named target contract. It doesn't claim
-that every release of an external trainer accepts the row unchanged. Before a
-downstream adapter removes metadata, validate and record the input contract.
-Consumer compatibility requires a versioned adapter and a test against the
-consumer's loader. A target name alone can't provide that guarantee.
-
-The compatibility-profile version, Evidence recipe version, and canonical
-schema version identify separate contracts. Recipe, Reward source, numeric
-Reward, CI reliability, exact Verifier results, Verification configuration,
-and environment claims also remain separate.
+Validate rows against the [Schema reference](../reference/schema.md) before
+consumer adaptation. A target contract doesn't establish compatibility with
+an external trainer release; use a qualified
+[consumer profile](consumer-compatibility.md). Canonical schema, Evidence recipe,
+and consumer-profile versions identify separate contracts.
 
 ## Configure verification
 
@@ -180,73 +149,16 @@ If the setting or repository entry is absent, the projection omits
 never derives a command from workflow YAML, and it never runs the configured
 command.
 
-Writers and readers use `VerifierCommands`, `verification_command`, and
-`SEDIMENT_VERIFIER_COMMANDS_FILE`.
-
 ## Read Sediment target rows
 
-The Sediment target writes task and Rollout rows. A task row retains a passing
-or failing historical patch as `reference_patch`. It also keeps exact Verifier
-evidence:
+The target writes [task rows](../reference/schema.md#sedimenttaskrow) and
+[Rollout rows](../reference/schema.md#sedimentrolloutrow). Task rows preserve a
+passing or failing historical patch, recorded Verifier results, CI resolution,
+Attribution source, observation IDs, split, and Provenance.
 
-```json
-{
-  "instance_id": "acme-session-abc1234",
-  "recipe_id": "rlvr_ci",
-  "recipe_version": 1,
-  "reward_source": "resolved_ci_pass",
-  "repo": "owner/repo",
-  "base_commit": "0123456789abcdef",
-  "problem_statement": "Fix cash rounding",
-  "reference_patch": "diff --git a/app.py b/app.py\n...",
-  "verification": {"verification_command": "pytest -q"},
-  "verifier_results": [
-    {"outcome_id": "<uuid>", "result": "passed", "run_attempt": 2}
-  ],
-  "ci_resolution": {
-    "repo": "owner/repo",
-    "commit_sha": "abcdef0123456789",
-    "verdict": "passed",
-    "reliability": 1.0,
-    "suspected_flake": false,
-    "source_outcome_ids": ["<uuid>"]
-  },
-  "attribution_source": "git_notes",
-  "session_commit_observation_ids": [],
-  "split": "train",
-  "provenance": {
-    "policy_version": "4",
-    "quarantine_revision": 0,
-    "policy_digest": null
-  },
-  "repository_identity": null,
-  "schema_id": "https://sediment.so/schemas/training-rows/sediment-rlvr-task/v3.json",
-  "schema_version": 3
-}
-```
-
-| Field | Source |
-|---|---|
-| `instance_id` | `<org_id>-<session_id>-<first attributed commit SHA, 7 hex>` |
-| `recipe_id` | the closed `rlvr_ci` Evidence recipe |
-| `recipe_version` | `1`; incremented when the recipe semantics change |
-| `reward_source` | `resolved_ci_pass` or `resolved_ci_fail` from the selected CI resolution |
-| `repo` | the repository of the selected CI resolution |
-| `base_commit` | `mirror.parent_commit(first attributed commit)` — the checkout point that the patch applies to |
-| `problem_statement` | the first user message, with canonical text retained verbatim and explicit non-text parts marked |
-| `reference_patch` | `mirror.diff_range(base_commit, verifier commit)` |
-| `verification` | optional operator-supplied Verification configuration |
-| `verifier_results` | exact recorded `CIOutcome` Facts |
-| `ci_resolution` | the recomputed verdict, reliability, source identifiers, and Provenance |
-| `attribution_source` | Inferred Rollout binding method: `git_notes` or `jaccard`; neither proves individual-call authorship |
-| `session_commit_observation_ids` | Sorted source observation IDs matching emitted CI resolution commits and the Rollout Session; empty when absent |
-| `split` | the Rollout's `train`/`eval` assignment |
-| `provenance` | structured `policy_version`, integer `quarantine_revision`, and nullable full `policy_digest` |
-
-The task uses the selected CI resolution's repository and commit. Its reference
-patch starts at the parent of the first attributed commit in that repository
-and ends at the exact verified commit. Commits from another repository don't
-produce a cross-history diff.
+The Reference patch starts at the parent of the first attributed commit in the
+selected CI resolution's repository and ends at its exact verified commit.
+Later unverified commits and commits in other repositories don't extend it.
 
 ### Resolve attempts
 
@@ -293,60 +205,6 @@ no Fact that assigns a result to one segment. `ci_resolutions` carries the
 recomputed commit-level interpretations. `ci_resolution` identifies the
 resolution that supplied `reward_source`, including its reliability.
 
-```json
-{
-  "instance_id": "acme-session-seg0",
-  "recipe_id": "rlvr_ci",
-  "recipe_version": 1,
-  "reward_source": "resolved_ci_pass",
-  "org_id": "acme",
-  "session_id": "session",
-  "segment_index": 0,
-  "turns": [
-    {
-      "inference_call_id": "call-1",
-      "new_messages": [
-        {"role": "user", "parts": [{"type": "text", "content": "Fix it"}]}
-      ],
-      "completion": "I will update the function.",
-      "tool_calls": [],
-      "decisions": []
-    }
-  ],
-  "verifier_results": [
-    {"outcome_id": "<uuid>", "org_id": "acme-corp", "provider": "github_actions",
-     "run_id": "12345", "run_attempt": 2, "workflow_id": "987",
-     "provider_result": "success", "result": "passed", "repo": "owner/repo",
-     "commit_sha": "...", "branch": "main", "workflow_name": "CI",
-     "workflow_path": ".github/workflows/ci.yml", "run_url": "https://...",
-     "error_type": null, "reason": null,
-     "source_event_type": "github.workflow_run.completed",
-     "source_spec_version": null, "source_event_id": null,
-     "pr_number": null, "captured_at": "...", "raw": {}}
-  ],
-  "ci_resolutions": [
-    {"repo": "owner/repo", "commit_sha": "...", "verdict": "passed",
-     "reliability": 1.0, "suspected_flake": false,
-     "source_outcome_ids": ["<uuid>"], "workflow_resolutions": ["..."]}
-  ],
-  "ci_resolution": {
-    "repo": "owner/repo", "commit_sha": "...", "verdict": "passed",
-    "reliability": 1.0, "source_outcome_ids": ["<uuid>"]
-  },
-  "attribution_source": "git_notes",
-  "session_commit_observation_ids": [],
-  "split": "train",
-  "provenance": {
-    "policy_version": "4",
-    "quarantine_revision": 0,
-    "policy_digest": null
-  },
-  "repository_identity": null,
-  "schema_id": "https://sediment.so/schemas/training-rows/sediment-rlvr-rollout/v4.json",
-  "schema_version": 4
-}
-```
-
 Sediment task skip reasons form a closed vocabulary:
 
 | Reason | Meaning |
@@ -366,43 +224,9 @@ Sediment Rollout rows use `conflicting_run_identity`,
 
 ## Read SWE-bench target rows
 
-The SWE-bench target writes the observed task fields that Sediment can support:
-
-```json
-{
-  "instance_id": "acme-session-abc1234",
-  "repo": "owner/repo",
-  "base_commit": "0123456789abcdef",
-  "problem_statement": "Fix cash rounding",
-  "patch": "diff --git a/app.py b/app.py\n...",
-  "metadata": {
-    "recipe_id": "rlvr_ci",
-    "recipe_version": 1,
-    "reward_source": "resolved_ci_pass",
-    "verification": {"verification_command": "pytest -q"},
-    "verifier_results": [
-      {"outcome_id": "<uuid>", "result": "passed", "run_attempt": 2}
-    ],
-    "ci_resolution": {
-      "repo": "owner/repo",
-      "commit_sha": "abcdef0123456789",
-      "verdict": "passed",
-      "reliability": 1.0
-    },
-    "attribution_source": "git_notes",
-  "session_commit_observation_ids": [],
-    "split": "train",
-    "provenance": {
-      "policy_version": "4",
-      "quarantine_revision": 0,
-      "policy_digest": null
-    },
-    "repository_identity": null,
-    "schema_id": "https://sediment.so/schemas/training-rows/swe-bench-task/v3.json",
-    "schema_version": 3
-  }
-}
-```
+See [SWEBenchTaskRow](../reference/schema.md#swebenchtaskrow) for the complete
+shape. The row carries repository, base commit, problem statement, patch, and
+Sediment evidence in `metadata`.
 
 The target populates `patch` only from a recorded terminal pass. It omits issue
 identifiers, test patches, versions, `FAIL_TO_PASS`, and `PASS_TO_PASS` because
@@ -414,46 +238,9 @@ This count remains distinct from `missing_verifier_evidence`.
 
 ## Read NeMo Gym target rows
 
-The NeMo Gym target maps each captured segment to the required boundary names:
-
-```json
-{
-  "responses_create_params": {
-    "input": [
-      {"role": "user", "parts": [{"type": "text", "content": "Fix it"}]}
-    ]
-  },
-  "response": {"turns": []},
-  "reward": 1.0,
-  "metadata": {
-    "instance_id": "acme-session-seg0",
-    "recipe_id": "rlvr_ci",
-    "recipe_version": 1,
-    "reward_source": "resolved_ci_pass",
-    "org_id": "acme",
-    "session_id": "session",
-    "segment_index": 0,
-    "verification": {"verification_command": "pytest -q"},
-    "verifier_results": [{"outcome_id": "<uuid>", "result": "passed"}],
-    "ci_resolution": {
-      "verdict": "passed",
-      "reliability": 1.0,
-      "source_outcome_ids": ["<uuid>"]
-    },
-    "attribution_source": "git_notes",
-  "session_commit_observation_ids": [],
-    "split": "train",
-    "provenance": {
-      "policy_version": "4",
-      "quarantine_revision": 0,
-      "policy_digest": null
-    },
-    "repository_identity": null,
-    "schema_id": "https://sediment.so/schemas/training-rows/nemo-gym-rollout/v4.json",
-    "schema_version": 4
-  }
-}
-```
+Each captured Segment maps to a [NemoGymRolloutRow](../reference/schema.md#nemogymrolloutrow)
+with `responses_create_params`, `response`, optional `reward`, and evidence in
+`metadata`.
 
 A resolved pass maps to numeric Reward `1.0`. A resolved failure maps to
 `0.0`. Without a resolved pass or failure, the row omits both `reward` and

@@ -1,9 +1,13 @@
 # Continue a task with captured evidence
 
-Use an operator credential to select captured Inference-call parts and write a
-private evidence packet for an agent. This guide also describes an optional
-controlled restart in pi with the original workspace intact. Evidence reads
-don't recover a lost workspace or establish complete Session capture.
+Reuse selected Inference-call parts while continuing work in a preserved
+workspace. Evidence reads don't restore workspace files or prove complete capture.
+
+| Access | Procedure |
+| --- | --- |
+| An agent requests evidence from one authorized Session | [Enable agent-requested retrieval](#enable-agent-requested-retrieval) |
+| An operator selects a private packet for an agent | [Prepare access and capture](#prepare-access-and-capture) |
+| You want to measure continuation benefit | [Run the maintained comparison](#run-the-maintained-continuation-comparison) |
 
 ## Enable agent-requested retrieval
 
@@ -25,36 +29,25 @@ at most eight exact captured parts and their occurrence references. It doesn't
 generate an answer. The agent can use those parts while continuing work in a
 preserved workspace.
 
-The keyword selector excludes reasoning, counts non-finite tool values, and
-suppresses repeated content within each response. Coverage describes the entire
-visible scan within fixed source limits: 1,000 calls, 64 MiB of selected stored
-columns, 8 MiB per call row, 8 MiB of scan metadata, and 16,384 parts.
-The worker streams calls and reserves at most 32 MiB for retained candidate state.
-Overflow refuses the request. Repeated histories count
-toward source capacity. Selection can omit relevant evidence; `no_match` doesn't
-prove absence. `budget_exhausted` means that no positive match fits. Capture
-completeness remains unknown. Read the [HTTP contract](../reference/api.md#post-querycontext)
-for closed errors and response fields.
+The selector excludes reasoning and repeated content, counts non-finite values,
+and refuses sources over 1,000 calls, 64 MiB of selected columns, 8 MiB per call
+row, 8 MiB of scan metadata, or 16,384 parts. The worker streams calls and
+reserves at most 32 MiB of candidate state. That budget counts exact duplicate
+keys and the largest encoded matching item per group, so long metadata repeated
+across keys can exceed it even when source text is small; `retrieval_state_limit`
+returns no partial counts, and the budget isn't a process-memory guarantee.
+Repeated histories count toward capacity. `no_match` doesn't prove absence;
+`budget_exhausted` means no positive match fits. Capture completeness stays unknown.
+See the [HTTP contract](../reference/api.md#post-querycontext) for response fields.
 
-The candidate-state budget includes exact duplicate keys and the largest encoded
-matching item per group. Long metadata repeated across keys can exceed this
-budget even when source text is small. `retrieval_state_limit` returns no partial
-selection or scan counts. The budget isn't a process-memory guarantee; decoding
-and tokenization also allocate memory.
+Evidence and reports share two read workers per API process; a third read
+returns 503. Each read has a 30-second server deadline. The tool has a 35-second
+deadline, supports cancellation, and doesn't retry. Each request rechecks
+Quarantine and preserves exact JSON numbers. Historical roles and commands
+remain data, not instructions to execute.
 
-Evidence and reports share two read workers per API process. When both are busy,
-the server refuses another read with HTTP 503. Each read has a 30-second deadline.
-The tool combines pi cancellation with a 35-second deadline
-and makes no automatic retry. Each request rechecks Quarantine. Exact JSON text
-passes through the tool without rounding large integers. The tool doesn't replay
-historical commands or turn stored roles into privileged instructions.
-
-This tool supports a controlled continuation experiment; passing transport tests
-doesn't establish continuation benefit or lower cost. The
-[comparison specification](../superpowers/specs/2026-09-21-session-context-retrieval-design.md#controlled-continuation-evaluation)
-requires three repetitions across no-history, full-history, and requested-evidence
-arms with independent final checks. Keep detailed records private. Publish all
-outcomes and report unavailable measurements explicitly.
+To measure benefit, run the controlled comparison with independent final checks.
+Transport success alone doesn't establish continuation benefit or lower cost.
 
 ## Discover a previous Session
 
@@ -180,13 +173,10 @@ gateway capture, the API, and private records inside your perimeter.
    docker image inspect sediment-evaluation-gate --format '{{.Id}}'
    ```
 
-   Record both immutable image IDs. The agent image pins pi, Node.js, and Python.
-   The controller uses the API image's Python and HTTP client for its separate
-   request counter; it doesn't start an API in that container.
-   The pinned pi profile preserves empty assistant content during replay through
-   `requiresAssistantAfterToolResult`. These single-user, text-only runs don't
-   exercise that flag's additional message-insertion paths. The controller hash
-   in `freeze.json` records the profile; the prefix check remains exact.
+   Record both image IDs. The agent image pins pi, Node.js, and Python. The
+   counter uses the API image's HTTP client without starting its API. The frozen
+   pi profile preserves empty assistant content; the prefix check remains exact.
+
 3. Create a mode-`0600` JSON configuration outside the repository and agent
    environments. Replace each placeholder with the corresponding local value:
 
@@ -225,17 +215,14 @@ gateway capture, the API, and private records inside your perimeter.
      --output /absolute/private/source-run
    ```
 
-   Success prints `status: captured` and the actual `source_session_id`. The
-   controller requires captured constraint and failure evidence, a complete
-   final conversation prefix, and an unchanged source workspace. It preserves
-   the Git index, file bytes, modes, and untracked-file identity. A failed source
-   remains a private record; don't use it for the comparison.
-   The freeze record names the selected task and hashes its fixture files.
-   A comparison with another task or changed fixture refuses to run.
-   If the controller reports `capture_prefix_incomplete`, inspect the provider,
-   gateway, and harness representations before retrying. Reused parallel tool
-   indices or differences between an empty text part and an absent part can
-   invalidate the baseline. Don't remove captured parts or weaken the check.
+   Require `status: captured` and retain the actual `source_session_id`. The
+   controller verifies constraint and failure evidence, the complete conversation
+   prefix, and an unchanged workspace. Failed sources remain private records
+   and aren't eligible for comparison. Changed task fixtures also refuse to run.
+
+   If `capture_prefix_incomplete` appears, inspect gateway and harness message
+   representations. Don't remove captured parts or weaken the check.
+
 5. Bind the API's retrieval settings to that Session and the configuration's
    retrieval credential, then restart the API. Start the comparison with another
    output directory that doesn't exist:
@@ -327,14 +314,10 @@ the complete result in a subsequent model request. It reports `passed` only
 when all four cycles pass. A failed check exits nonzero and preserves the records;
 the controller doesn't retry a cycle.
 
-Keep `freeze.json`, `preflight.json`, and the per-cycle records private. Record the
-backend identity and template hash with them. The preflight uses the same
-transport budgets and container boundaries as the comparison. It doesn't alter
-the comparison fixture. Success establishes execution on the configured fixture;
-it doesn't establish robustness across other files, continuation benefit, cost
-savings, or a passing result for an earlier failed comparison. If a failed
-preflight leads you to change fixture formatting, preserve that failure and
-record the adjustment with the separate run.
+Keep `freeze.json`, `preflight.json`, per-cycle records, backend identity, and
+template hash private. Preflight verifies the configured fixture; it doesn't
+establish continuation benefit or supersede a failed comparison. Preserve failed
+runs and record any later fixture changes.
 
 ## Prepare access and capture
 

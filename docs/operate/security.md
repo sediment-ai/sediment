@@ -1,8 +1,7 @@
 # Check release and deployment security
 
-Use this procedure to review a Sediment release before installation and
-to retain evidence for your deployment. You need access to the release assets
-and the source revision identified by that release.
+Review release evidence before installation. Retain the assets, source revision,
+and deployed artifact identities in your deployment record.
 
 ## Review the supplied evidence
 
@@ -63,14 +62,11 @@ The client command installs those six wheels into a fresh environment and audits
 the resolved dependencies. Its software bill of materials (SBOM) represents that installation. An installation
 that resolves different versions needs another inventory.
 
-The client collector also downloads the managed PostgreSQL build selected by the
-installed CLI. `client-native-postgres.json` records its archive URL, pinned hash,
-reported server version, installed file hashes, and host-library links. The
-PostgreSQL runtime passes the same support and latest-patch checks as the image.
-The [local-server workflow](../../.github/workflows/local-server.yml) exercises
-startup, data reuse, and shutdown on all four supported native targets. Host
-libraries remain operator-managed prerequisites; this evidence doesn't attest
-to the host operating system. Keep them updated with the host package manager.
+The client collector also inventories the CLI's managed PostgreSQL build.
+Its evidence records the archive identity, server version, installed hashes,
+and host-library links. Host libraries remain operator-managed; update them
+through the host package manager. The [local-server workflow](../../.github/workflows/local-server.yml)
+checks startup, data reuse, and shutdown on the supported targets.
 
 With Node 24.21.0 on `PATH`, run the pi check inside the shim directory:
 
@@ -132,33 +128,26 @@ sandbox native parsing. A compromised database process can still affect the
 Fact volume and database availability. Review each advisory's affected function
 against the exact distribution source before assigning a disposition.
 
-For the gateway zlib disposition, pair the native symbol check with a review of
-the exact image's Python callers. The `gzip_write_api_unreachable` predicate
-rejects dynamic imports and unreviewed static embeds. It doesn't inspect Python
-filename arguments to the permitted SAML extensions. The gateway assurance
-artifact retains `gateway_caller_files`: SHA-256 hashes of the installed
-LiteLLM SAML handler and every Python source file under `onelogin/saml2`,
-collected from the exact scanned image. The collector rejects missing sources
-and symlinked paths. Compare the complete file set and hashes with the reviewed
-callers; any change needs source review. The mapping is
-evidence, not an approval or an automatic non-applicability verdict. Retain
-the caller review with the image evidence.
+For the gateway zlib disposition, review the exact image's Python callers as
+well as native symbols. The `gzip_write_api_unreachable` check doesn't inspect
+filename arguments to permitted SAML (Security Assertion Markup Language)
+extensions. Compare `gateway_caller_files` with the reviewed LiteLLM and
+`onelogin/saml2` sources. Changed files require another source review; matching
+hashes establish integrity, not approval. Retain that review with the image evidence.
 
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
 source, or scanner error blocks the gate. Keep failed evidence for investigation.
 
-Automatic security runs check lint, formatting, and retained review dates and
-source fingerprints before building artifacts. If a review is stale, use a
-manual security run to collect complete evidence, then review or remove the
-obsolete disposition. Manual and reusable release runs keep the final scanner's
-policy checks and don't stop at the early review check. The preflight never
-renews a review or approves an image's deployment conditions.
+Automatic security runs check lint, formatting, review dates, and source
+fingerprints before building. If a review expires, run the workflow manually to
+collect evidence, then review or remove the disposition. Manual and release
+runs still enforce the final scanner gate.
 
-Draft pull requests wait until you mark them ready for review. The
-[contributor workflow](../onboarding.md#your-first-pull-request) describes the
-prose path, which doesn't produce artifact scan evidence. The final `security`
-job fails if a selected upstream job fails, is canceled, or doesn't complete.
+Draft pull requests wait until review readiness. The
+[prose validation path](../onboarding.md#your-first-pull-request) doesn't produce
+artifact scan evidence. Selected jobs must complete successfully for the final
+security gate to pass.
 
 ## Verify the installed environment
 

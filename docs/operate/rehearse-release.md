@@ -29,55 +29,19 @@ From the repository root, run:
 uv run python scripts/release_rehearsal.py
 ```
 
-The command performs these checks:
+The rehearsal verifies:
 
-1. All seven source version declarations agree. Every first-party dependency
-   uses the same exact version. The version is `X.Y.Z` or `X.Y.ZrcN`.
-2. Every third-party GitHub Action uses a full commit SHA and a readable
-   version comment.
-3. The build produces exactly six wheels and six source distributions. Their
-   filenames, metadata, first-party requirements, and required package content
-   agree. Each archive includes the repository's AGPL license text. None
-   contains an `enterprise/` directory.
-4. Each source distribution builds a wheel from an isolated temporary
-   directory. The rebuilt wheels pass the same metadata and content checks.
-5. A temporary environment installs only the original wheels. From a directory
-   outside the checkout, the installed `sediment` command runs help, version,
-   migration, database status, the read-only `facts` command, and transcript-hook
-   installation.
-6. The installed transcript hooks point to the installed command and retain
-   the `Edit|Write` snapshot matcher.
-7. An isolated Python process verifies that all six Sediment packages come from
-   the installed environment. It runs `sediment server` on loopback and
-   `sediment transcript --agent claude-code` against the declared
-   `sediment-release-synthetic-v1` corpus in
-   `scripts/fixtures/release_synthetic_v1.json`. The fixture supplies wire
-   inputs; the runner fills the scratch file path and relative event times.
-   The LiteLLM callback prepares gateway requests while that server is stopped.
-   Separate installed helper processes replay them after restart. An intermediary
-   drops the first acknowledgment after database commit; replay must return the
-   retained Fact ID. OTLP and transcript payloads cross another outage. The runner
-   changes the source file before replay and verifies the original observation.
-   Requests include matching Decisions, a malformed sibling, and Codex file fanout.
-8. A scratch Git repository supplies a real patch and Session notes. Push
-   capture populates its mirror and Session-to-commit observations. A signed
-   Repository rename and CI under the renamed label retain the same provider ID. The
-   installed `derive`, `quarantine`, `release`, `export sft`, and `export rlvr`
-   commands validate bundle v4, source identities, Evidence recipes, exclusions,
-   retained Segments, strict Unicode declines, and emitted rows. A rehashed
-   contradictory bundle must fail both import and training export. Changing
-   source repository identity and rehashing the bundle must also refuse training.
-9. Authenticated model and lifecycle HTTP reports reconcile the same source
-   evidence. Authenticated commit inspection returns the same repository identity
-   and original CI outcome after the rename. With a fixed cohort and time boundary, replay preserves Fact IDs,
-   report bytes, canonical bundles, and training rows. Missing pull-request
-   membership remains counted absence.
-10. A separate generated Claude Code JSONL population carries 32 Edit observations
-    of a 256 KiB file. The installed producer must enqueue two requests within
-    the 8 MiB transport limit. After an API outage, a changed file, and a removed
-    transcript, restarted sender processes deliver the original bytes. PostgreSQL
-    must retain all 32 source identities, texts, and times. Duplicate replay
-    must preserve their Fact IDs and the earlier corpus.
+| Area | Checks |
+| --- | --- |
+| Source and packages | Synchronized versions, exact first-party dependencies, pinned Actions, six wheels, six source distributions, metadata, licenses, and required content |
+| Installation | Wheels rebuilt from source archives; original wheels installed outside the checkout; CLI, migration, Fact reads, and transcript hooks |
+| Capture and replay | Synthetic gateway, transcript, and OTLP inputs; receiver outages; lost acknowledgments; retained bytes and Fact IDs after restart |
+| Repository evidence | Real Git patches and notes, Push capture, Session-to-commit observations, Repository rename, and CI identity |
+| Reports and exports | Authenticated reads, bundle v4 roundtrip, invalid-bundle refusal, quarantine/release, SFT and RLVR rows, and counted exclusions |
+| Transcript batching | 32 observations of a 256 KiB file in two bounded requests; original bytes survive an outage, source changes, and transcript removal |
+
+The [rehearsal implementation](../../scripts/release_rehearsal.py) defines the
+complete acceptance checks.
 
 The command prints a pass message only after every check succeeds. It has no
 publication step and doesn't use PyPI credentials.
@@ -87,28 +51,18 @@ exit, the parent stops that worker's process group before cleaning its database
 and workspace. Cleanup sends `SIGTERM`, then `SIGKILL` to remaining descendants,
 with bounded waits. A timeout or interruption reports a failed rehearsal.
 
-Inspect the `pipeline acceptance:` JSON line for exact package and runtime
-versions, wheel, callback, helper, and source payload hashes, delivery limits and
-dispositions, policy and mirror revisions, Fact and row identities, and stage
-counts. OTLP records, Facts, artifacts, and training rows
-have separate units. One Codex record emits two Decisions; one selected Rollout
-retains three Segments and emits two representable RLVR rows. The third Segment
-is counted under `unrepresentable_unicode`.
-The `transcript_batch` stage reports its later 32-observation population
-separately from the fixed corpus's capture, delivery, report, and training counts.
+Retain the `pipeline acceptance:` JSON line. It records versions, hashes,
+delivery results, policy and mirror revisions, Fact and row identities, and
+stage counts. Records, Facts, Segments, and training rows use different units.
+The later `transcript_batch` population has separate counts.
 
-Repeated builds from unchanged Facts, policy, mirror refs, and quarantine revision
-must produce identical bundle and training bytes. Quarantine removes a call from
-visible source evidence; release restores its content and training eligibility.
-Their Provenance revisions change from 0 to 1 to 2, so bytes across those revisions
-aren't interchangeable.
+Repeated runs with unchanged Facts, policy, mirror refs, and quarantine revision
+must produce identical bundle and training bytes. Quarantine and release change
+Provenance, so bytes across those revisions differ.
 
-This run exercises Sediment's installed local producer and receiver with synthetic
-LiteLLM callback, Claude Code JSONL, and OTLP inputs. It doesn't call a vendor-hosted model or certify
-a vendor release. Collect separate source fixtures when a vendor changes its wire.
-The run doesn't establish training quality or prove events that a sender omitted.
-Pi's process-to-installed-helper contract also runs in the `shims` workflow.
-Live pi, Cursor, Codex, gateway, and forge capture remain a separate release gate.
+The rehearsal uses synthetic inputs. Live harness, gateway, forge, and model
+behavior require separate verification. pi's installed-helper check runs in the
+`shims` workflow. A passing rehearsal doesn't establish training quality.
 
 ## Rehearse a tag build
 

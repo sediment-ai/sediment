@@ -1,12 +1,12 @@
 # Measure agent work
 
-Use Sediment's read-only reports to compare model outcomes, find accepted work
-with missing commit evidence, check Attribution coverage, and measure attributed
-changes through pull-request merge. These reports read immutable Facts and
-derive each result under a stated policy.
+Compare model outcomes, investigate missing commit evidence, and measure
+retention with read-only reports. Run CLI reports on the deployment host with
+operator database access. For Compose, prefix each command with
+`docker compose --profile operator run --rm operator`.
 
-[Why Sediment?](../explanation/operational-value.md) summarizes the questions
-these reports answer and their limits.
+Remote API examples require `SEDIMENT_OPERATOR_TOKEN`. Capture tokens don't
+authorize reports or queries.
 
 ## Inspect accepted work and coverage gaps
 
@@ -16,24 +16,13 @@ Generate the accepted-work lifecycle artifact:
 sediment report lifecycle --org acme --json > lifecycle.json
 ```
 
-The artifact keeps four measurements separate:
+Read the [lifecycle panels](lifecycle-report.md#read-the-panels) separately.
+They measure accepted Inference calls, Edit observations, attributed file
+contributions, and accepted Sessions. Use each panel's denominator, coverage,
+skips, policy, and Provenance. Missing commit evidence doesn't prove abandonment.
 
-- accepted Inference calls progressing through Attribution, pull-request
-  membership, and CI;
-- Edit observations with Session-end retention and final Fate;
-- attributed commit-file contributions at final-head and merged-commit
-  boundaries; and
-- accepted Sessions with an observed commit relationship or missing evidence
-  reported as Attribution unavailable. Missing observations don't establish
-  abandonment or an in-flight state.
-
-Use each panel's denominator, coverage, skips, policy, and Provenance. Rework
-components remain separate because a reject, Retry linkage, modified edit,
-abandoned Session, and CI failure don't represent the same event.
-
-Merge durability is qualified as `partial_pull_request_history` until
-pull-request revision capture preserves membership across rebases. Don't use
-that partial stage to rank repositories, models, or agent harnesses.
+Don't rank repositories, models, or harnesses from merge durability qualified
+as `partial_pull_request_history`.
 
 ## Compare model outcomes
 
@@ -43,19 +32,10 @@ Run the model outcome report for one organization:
 sediment report model --org acme
 ```
 
-The report shows captured and attributed Inference calls, CI linkage and pass
-rates, explicit accepts and rejects, workflow failures, final Fate, and a
-signal funnel by model. The funnel begins with captured Inference calls. Its
-later stages show Attribution, CI linkage, explicit decisions, and training-row
-eligibility.
-
-Explicit accepts, rejects, and their final Fate remain measurable when a Session
-has no observed commit. These counts use uniquely attached Developer decisions.
-The signal funnel counts decision coverage among attributed Inference calls.
-CI outcomes still require matching Session-to-commit observations. Repository
-identity keeps renamed repositories together and reused names separate. Reports
-qualify complete CI runs before narrowing the cohort or model; a failed attempt
-followed by a pass retains its flake evidence.
+The report groups captured and attributed Inference calls, CI linkage, explicit
+decisions, final Fate, and training eligibility by model. Uniquely attached
+explicit decisions remain measurable without an observed commit; CI linkage
+requires a matching Session-to-commit observation.
 
 If you need a machine-readable result, add `--json`:
 
@@ -63,27 +43,25 @@ If you need a machine-readable result, add `--json`:
 sediment report model --org acme --json > model-outcomes.json
 ```
 
-For an authenticated remote read, call
-`GET /v1/reports/model-outcomes` with timezone-aware `cohort_start`,
-`cohort_end`, and `as_of` query parameters. The half-open cohort can span at
-most 31 days. The response wraps the same base report in a version 1 envelope
-with its explicit scope. The server fixes the cohort cap at 50,000 Inference
-calls and the response cap at 64 MiB. Each API process admits two query/report
-jobs without a waiting queue. A capacity rejection or 30-second deadline returns
-503; the server stops the child process before releasing its slot.
+For remote access, use [`GET /v1/reports/model-outcomes`](../reference/api.md#get-v1reportsmodel-outcomes)
+with timezone-aware `cohort_start`, `cohort_end`, and `as_of` values.
 
-Model rows, the signal funnel, repository stratification, and temporal trends
-use the declared cohort. A later `as_of` admits supporting evidence without
-moving that cohort. Trend buckets start at `cohort_start`; model and funnel
-rows display the cohort duration rounded up to a whole day.
+| Bound | Limit |
+| --- | --- |
+| Cohort interval | Half-open, at most 31 days |
+| Cohort Inference calls | 50,000 |
+| Distinct Decision identifiers checked against history through `as_of` | 30,000 |
+| Response size | 64 MiB |
+| Read deadline | 30 seconds |
 
-Before attaching Decisions, a scoped report checks every requested identifier
-against visible organization history through `as_of`, including older calls.
-Two matching Facts establish ambiguity without reading their message content.
-More than 30,000 distinct non-null Decision identifiers refuses the complete
-report: HTTP returns 409, and the CLI exits 1. Narrowing the cohort doesn't hide
-older collisions. Metrics count only cohort calls after this check. Other cohort,
-supporting-evidence, and execution limits still apply.
+Capacity saturation or timeout returns 503. More than 30,000 distinct Decision
+identifiers returns 409 from HTTP and exit 1 from the CLI. The attachment check
+searches visible organization history through `as_of` without reading message
+content, so narrowing the cohort doesn't hide older collisions.
+
+Metrics use the declared cohort. A later `as_of` admits supporting evidence
+without moving it. Trend buckets start at `cohort_start`; model and funnel rows
+round the cohort duration up to whole days.
 
 Compare two models under the same report window:
 
@@ -100,28 +78,23 @@ lower bound, not an absolute retention measurement. Before you act on an
 aggregate difference, inspect the report's sample sizes and repository
 stratification.
 
-`--since-days` fixes `as_of` when the command starts. It reads evidence related
-to the selected Inference-call cohort plus organization-wide ambiguity
-witnesses for its Decision identifiers through `as_of`. If you omit `--since-days`, the command reads all
-retained history for offline analysis.
+`--since-days` sets `as_of` when the command starts. Without it, the CLI reads all
+retained history. Supporting evidence through `as_of` can include Facts captured
+after the cohort ends and organization-wide ambiguity witnesses for the cohort's
+Decision identifiers. Attribution-share windows use the rounded cohort duration.
 
-For a bounded report, the Attribution-share window ends at `as_of` and spans
-the cohort duration rounded up to a whole day. Facts captured after
-`cohort_end` and no later than `as_of` can therefore supply outcome evidence
-for Inference calls in the cohort.
-
-Repository strata and Attribution-share rows include provider, host, and repository
-ID beside the representative name. JSON `shrunk_rates` is an ordered list of
-repository strata. Inspect `repository_skipped` for source evidence declines and
-`ci_skipped` for source-outcome, run, and commit declines. These populations have
-separate units and must not be added. Source loss does not erase direct captured
-usage or Developer decision counts.
+Inspect repository strata, `repository_skipped`, and `ci_skipped`. They use
+separate populations and aren't additive. Repository identity keeps renames
+together and reused names separate. Complete CI runs retain retry and flake
+evidence before cohort filtering.
 
 ## Record a model price policy
 
-Cost analysis takes an explicit version 1 price manifest. Record provider and
+Sediment has no cost-report command. For downstream cost analysis, record a
+version 1 price manifest. Record provider and
 model identifiers exactly as the corresponding Inference calls report them.
-Declare exact input and output prices per million tokens as decimal strings:
+Declare input and output prices per million tokens as decimal strings.
+The following prices are illustrative; replace them with your contract values:
 
 ```json
 {
@@ -145,7 +118,7 @@ Ranges are half-open: the start applies and the end does not. You may leave
 either bound null. Entries for one provider, model, and currency must not
 overlap. Preserve the immutable file and its canonical digest with the
 analysis. Sediment does not download prices or infer discounts. The
-quality-adjusted cost report and its CLI input are not implemented.
+quality-adjusted cost report and its CLI input are unsupported.
 
 ## Find accepted Sessions without a commit
 
@@ -216,7 +189,7 @@ If you know the provider run identity, retrieve the exact attempt:
 
 ```bash
 curl --get \
-  --header "Authorization: Bearer $SEDIMENT_API_BEARER_TOKEN" \
+  --header "Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN" \
   --data-urlencode "provider=github_actions" \
   --data-urlencode "run_id=<provider-run-id>" \
   --data-urlencode "run_attempt=1" \
@@ -227,7 +200,7 @@ If you know the repository and failure window, list a bounded page of failures:
 
 ```bash
 curl --get \
-  --header "Authorization: Bearer $SEDIMENT_API_BEARER_TOKEN" \
+  --header "Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN" \
   --data-urlencode "repo=acme/backend" \
   --data-urlencode "captured_after=2026-09-05T11:00:00Z" \
   --data-urlencode "captured_before=2026-09-05T13:00:00Z" \
@@ -243,11 +216,9 @@ pull-request filter changes.
 Each outcome contains `commit_query`. Follow that path to retrieve candidate
 Attributions:
 
-Query a commit through the authenticated API:
-
 ```bash
 curl \
-  --header "Authorization: Bearer $SEDIMENT_API_BEARER_TOKEN" \
+  --header "Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN" \
   "https://sediment.example.com/query/commit/<commit-sha>"
 ```
 
@@ -259,34 +230,27 @@ For each candidate `session_id`, retrieve its metadata dossier:
 
 ```bash
 curl \
-  --header "Authorization: Bearer $SEDIMENT_API_BEARER_TOKEN" \
+  --header "Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN" \
   "https://sediment.example.com/query/session/<session-id>"
 ```
 
-The dossier orders content-free Fact metadata, summarizes observed Session commits,
-and attaches exact-head Push receipts and matching CI outcomes. Coverage shows
-visible and quarantined counts. Gaps name evidence that the deployment didn't
-observe; they don't classify the Session as unsuccessful. Compatibility
-`attribution_sources` stays empty. Similarity extrema and `attributed_files`
-are unavailable for these observed edges, so the response omits them.
+The dossier returns content-free Fact metadata, Session-to-commit observations,
+Push receipts, and CI outcomes. Coverage distinguishes visible and quarantined
+counts. Missing observations don't establish failure. Dossiers omit captured
+content, user identity, and file paths.
 
-The failure search returns metadata, structured error evidence, and provider
-locations. It doesn't return CI logs or captured Inference-call content.
-Attribution records evidence of contribution; it doesn't prove that an
-Inference call caused a CI failure. The dossier omits prompts, responses,
-reasoning, tool arguments, edit content, user identity, and file paths.
+Failure searches return metadata, structured errors, and provider locations, not
+CI logs. Attribution links contributions; it doesn't establish the cause of a
+CI failure.
 
 ## Preserve an operational result
 
-When you use a report to support a decision, preserve:
+Preserve the JSON result, command, timezone-aware window and `as_of`, repository
+and workflow scope, policy, Provenance, quarantine revision, and skip counts.
+Keep the software revision, capture configuration, Fact backup, required mirror
+objects and refs, and any external price or experiment manifest.
 
-- the JSON output;
-- the command and time window;
-- policy and Provenance fields;
-- quarantine revision;
-- repository and workflow scope;
-- capture and skip counts; and
-- any external price or experiment manifest used by downstream analysis.
+Use a fixed evidence boundary when reproducing a result.
 
 These inputs let another operator reproduce the Derivation and understand its
 coverage. They don't reconstruct treatment assignment or missing agent-harness

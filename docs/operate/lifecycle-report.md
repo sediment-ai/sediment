@@ -16,29 +16,18 @@ sediment report lifecycle --org acme --json
 The command requires `--json`. It writes one canonical JSON object to standard
 output and sends failures to standard error.
 
-The command reads all retained history. Programmatic callers can pass an
-`OperationalReportScope` to bound the Inference-call cohort and related evidence
-through `as_of`; the scoped assembly rejects over-cap populations instead of
-returning a partial report. The API application service carries that scope with
-the canonical report. Its pure serializer returns the same report payload that
-the all-history CLI prints.
+The CLI reads all retained history. For a bounded remote report, call
+[`GET /v1/reports/accepted-work-lifecycle`](../reference/api.md#get-v1reportsaccepted-work-lifecycle)
+with an operator token and timezone-aware `cohort_start`, `cohort_end`, and
+`as_of` parameters. The cohort is half-open and can span at most 31 days.
 
-For an authenticated remote read, call
-`GET /v1/reports/accepted-work-lifecycle` with timezone-aware `cohort_start`,
-`cohort_end`, and `as_of` query parameters. The half-open cohort can span at
-most 31 days. The response wraps the canonical report in a version 1 envelope
-with its explicit scope. The server fixes the cohort cap at 50,000 Inference
-calls and the response cap at 64 MiB. Each API process admits two query/report
-jobs without a waiting queue. A capacity rejection or 30-second deadline returns
-503; the server stops the child process before releasing its slot.
-
-Before attaching Decisions, a scoped report checks every requested identifier
-against visible organization history through `as_of`, including older calls.
-Two matching Facts establish ambiguity without reading their message content.
-More than 30,000 distinct non-null Decision identifiers refuses the complete
-report with HTTP 409. Narrowing the cohort doesn't hide
-older collisions. Metrics count only cohort calls after this check. Other cohort,
-supporting-evidence, and execution limits still apply.
+The response includes its scope. It uses the same
+[report limits](measure-agent-work.md#compare-model-outcomes) as model outcomes:
+50,000 cohort calls, 30,000 distinct Decision identifiers, a 64 MiB response,
+and a 30-second deadline. Decision attachment checks each identifier against
+visible organization history through `as_of` without reading message content;
+narrowing the cohort doesn't hide older collisions. Saturation and timeout
+return 503; more than 30,000 distinct identifiers returns 409.
 
 ## Read the panels
 

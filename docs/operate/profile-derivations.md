@@ -35,28 +35,22 @@ Use one workload at a time for the first measurements. Leave host memory for
 PostgreSQL and unrelated services. A successful serial request does not qualify
 several simultaneous workers in the same container.
 
-FactStore checks transferred content before decoding: 64 MiB per content row,
-256 MiB per complete Session input/output population, and 256 MiB per materialized
-report or Attribution output population. Supporting identity row limits remain
-independent of these byte limits. Offline semantic validation also checks the
-256 MiB Session input/output envelope before rebuilding its complete histories;
-raw audit payloads do not count toward that envelope.
+| Encoded population | Default byte limit |
+| --- | --- |
+| One FactStore content row | 64 MiB |
+| Complete Session input/output | 256 MiB; excludes raw audit payloads |
+| Materialized report or Attribution output | 256 MiB |
+| One bundle record | 512 MiB |
+| One private record store | 8 GiB |
+| Explicit bundle materialization | 64 MiB |
+| Complete SFT, DPO, or diff-SFT projection group | 128 MiB |
 
-`BundleLimits` defaults to 512 MiB per encoded record, 8 GiB per private record
-store, and 64 MiB for explicit bundle materialization. Separate live stores have
-separate quotas. Count construction, validated input copies, training stages,
-publication staging, and completed output together when provisioning storage.
-SFT, DPO, and diff-SFT default to 128 MiB of encoded source Facts and artifact
-records per complete projection group. Git diff reads retain their existing
-mirror-owner behavior. These byte allowances do not guarantee a particular
-Python memory peak.
+These limits don't guarantee a Python memory peak. Independent identity-row caps
+also apply. Count overlapping stores, validation copies, publication staging,
+and completed output when provisioning storage.
 
-Consumer profiles use the same 64 MiB materialization allowance for their
-complete native source population, projected rows, and adapted data plus evidence.
-Settings, loader inputs, and prepared data plus evidence have separate checks
-at that allowance. The NeMo source population includes complete Inference calls;
-SWE-bench consumes Rollouts. Each profile refuses excess before publication.
-These checks also apply to file-backed bundles. See
+Consumer profiles impose separate 64 MiB checks on source populations, projected
+rows, adapted data and evidence, settings, and loader inputs. See
 [Check consumer capacity](../exports/consumer-compatibility.md#check-consumer-capacity).
 
 Qualify the exact `--profile` and its pinned optional environment separately.
@@ -272,25 +266,20 @@ sampler includes the runner, sender, API, workers, and batch processes. It exclu
 PostgreSQL memory, container memory, and database storage. Its checks don't enforce
 memory or filesystem ceilings. Record those deployment budgets separately.
 
-The runner seeds the existing semantic scenarios, then starts a loopback HTTP
-server. Live gateway capture and one in-flight exact evidence read continue
-during weekly reports, an unscoped Derivation, and SFT and RLVR exports. The
-reader uses a retrieval credential restricted to one synthetic Session and checks
-the complete selected part. `exact_retrieval` separates successful latency from
-capacity refusals; `receipts/exact.jsonl` records content-free timings and hashes.
-Each operation must contain a completed capture request. At least one operation
-must contain a completed successful exact read; each job reports its own overlap
-count. The runner checks duplicate receipts, reconciles receipts with
-stored Inference calls, and requires positive training rows. It stops capture
-before comparing repeated canonical builds from fixed inputs.
+The runner captures live gateway calls and runs one in-flight exact evidence
+read during reports, Derivation, and SFT/RLVR exports. The reader uses a
+retrieval credential restricted to one synthetic Session and checks the
+complete selected part. `exact_retrieval` separates successful latency from
+capacity refusals; `receipts/exact.jsonl` records content-free timings and
+hashes. Each job must contain a completed capture request, and at least one
+must contain a successful exact read. The runner checks duplicate receipts
+against stored Facts and requires positive training rows. It stops capture
+before comparing repeated builds.
 
-During the Derivation, the runner also delivers a signed Push for a fresh commit.
-It requires a matching Session-to-commit observation after the HTTP receipt and
-checks redelivery. If the observation deadline expires, inspect the synthetic
-API log for the cause. An acknowledged Push doesn't prove background completion.
-The redelivery check verifies the retained receipt and visible observation; it
-doesn't certify completion of a second background refresh. The probe doesn't
-guarantee contention on a mirror lock or exercise the full mirror queue.
+During Derivation, it delivers a signed Push and requires a Session-to-commit
+observation. Redelivery must retain the receipt and visible observation. This
+doesn't verify a second background refresh, mirror-lock contention, or the full
+mirror queue. Inspect the synthetic API log if observation times out.
 
 If a job has no completed capture request within its execution interval, the
 probe fails with `no_ingest_overlap`. If no operation contains a completed exact

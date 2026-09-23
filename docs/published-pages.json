@@ -3,7 +3,7 @@
     {
       "source": "docs/quickstart.md",
       "destination": "quickstart",
-      "description": "Capture your first agent session on one machine in about five minutes."
+      "description": "Run a local server and verify synthetic capture in a scratch repository."
     },
     {
       "source": "docs/explanation/how-sediment-works.md",

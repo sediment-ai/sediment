@@ -7,11 +7,12 @@ selection flag.
 
 ## Prerequisites
 
-Configure the same local deployment values the API uses:
+Configure the deployment organization, operator database connection, and mirror
+root. Don't reuse the API's restricted runtime credential:
 
 ```bash
 export SEDIMENT_ORG_ID=acme-corp
-export SEDIMENT_DATABASE_URL='postgresql+psycopg://sediment@database.example/sediment'
+export SEDIMENT_DATABASE_URL='postgresql+psycopg://sediment_operator@database.example/sediment'
 export SEDIMENT_MIRROR_PATH=/data/mirrors
 ```
 
@@ -94,15 +95,10 @@ versions, and out-of-bounds values. Omitted values use code defaults. The
 manifest expands every value and records the SHA-256 digest of the resolved
 policy.
 
-`bundle_schema_version` identifies the manifest wire contract. The catalog at
-`schemas/catalog.json` maps that version to its stable canonical schema ID.
-The Derivation policy's `schema_version` identifies the policy-file shape;
-policy Provenance identifies Derivation semantics. Neither value is an
-Evidence recipe version, a downstream compatibility-profile version, or an
-Alembic revision.
-
-If you omit `--policy`, Sediment uses the complete version-1 policy shown in
-this section.
+The manifest records the bundle schema, policy versions, and resolved policy
+digest. These identifiers are separate from Evidence recipe versions and the
+database revision. Without `--policy`, Sediment uses the defaults shown in the
+TOML example.
 
 ## Check the holdout boundary
 
@@ -121,9 +117,8 @@ If your evaluation claim requires an unseen repository, prompt, or task, make
 that assignment in a versioned benchmark manifest before training. Audit the
 export against that manifest.
 
-The version-1 Derivation policy rejects a `split.mode` field; no mode value
-exists to set. It doesn't provide repository, prompt, or strict boundaries as
-policy options. Task-keyed isolation remains benchmark-specific.
+The policy doesn't support a `split.mode` field. Task-keyed isolation requires
+a separate benchmark manifest.
 
 ## Inspect sample rows
 
@@ -194,17 +189,13 @@ sediment export diff-sft --recipe sft_verified \
 ```
 
 DPO and SFT read only the bundle. Diff-SFT and reinforcement learning from
-verifiable rewards (RLVR) also read the local git mirrors for commit diffs.
-Before projection, each command validates the manifest, file paths, counts,
-hashes, row shapes, organization, Session, split, inference-call references, and
-embedded observation identity and capture time. A validation
-failure stops the export. Sediment doesn't substitute live Facts.
+verifiable rewards (RLVR) targets `sediment` and `swe-bench` also require mirrors.
+The `nemo-gym` target can project a bundle without a mirror. Every command validates the
+bundle before projection and stops on invalid content; it doesn't substitute
+live Facts.
 
-Recovery doesn't accept `--from` because a red-to-green commit pair doesn't
-project from a canonical artifact. The Recovery export derives each pair
-directly from CI Facts and mirrors. It resolves attempts first, then excludes
-suspected-flake lineages, ambiguous verdicts, and non-verdicts. Every Recovery
-row names `recovery_ci` version 1.
+[Recovery](../exports/recovery.md) reads CI Facts and mirrors directly and
+doesn't accept `--from`.
 
 ## Recompute a bundle
 
@@ -231,9 +222,7 @@ A narrower cohort doesn't reduce this required identity population.
 
 Record the failed command, its scope and `as_of`, and the error. Pause affected
 Derivations and exports, and request a supported capacity change from the
-maintainer. If a historical result is sufficient, select an earlier `as_of`
-whose complete populations fit the limits and label the result with that
-boundary. That result excludes later evidence. Don't trim identity files,
+maintainer. Don't trim identity files,
 quarantine valid Facts, or divide one organization into artificial tenants to
 bypass the completeness check.
 
