@@ -1,11 +1,11 @@
 [project]
 name = "sediment-capture"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sediment capture: gateway adapters, OTLP translators, forge parsers"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
-dependencies = ["sediment-core==0.1.0"]
+dependencies = ["sediment-core==0.2.0"]
 
 [project.urls]
 Source = "https://github.com/sediment-ai/sediment"

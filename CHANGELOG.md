@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-09-23
+
 ### Contributor checks
 
 - Exclude HTTP(S) URLs from local documentation-path checks. Upstream evidence

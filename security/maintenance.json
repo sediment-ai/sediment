@@ -4960,7 +4960,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-capture": {
@@ -4971,7 +4972,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-cli": {
@@ -4982,7 +4984,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-core": {
@@ -4993,7 +4996,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-derive": {
@@ -5004,7 +5008,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-export": {
@@ -5015,7 +5020,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/semantic-router": {

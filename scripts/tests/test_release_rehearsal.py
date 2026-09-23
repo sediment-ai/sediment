@@ -296,24 +296,29 @@ def test_source_validator_rejects_release_skew(
     tmp_path: Path, defect: str, expected: str
 ) -> None:
     root = _copy_release_source(tmp_path)
-    tag = "v0.1.0"
+    current = re.search(
+        r'^version = "([^"]+)"', (root / "pyproject.toml").read_text(), re.M
+    ).group(1)
+    tag = f"v{current}"
     if defect == "version":
         path = root / "packages" / "capture" / "pyproject.toml"
         path.write_text(
-            path.read_text().replace('version = "0.1.0"', 'version = "9.9.9"')
+            path.read_text().replace(f'version = "{current}"', 'version = "9.9.9"')
         )
     elif defect == "requirement":
         path = root / "packages" / "capture" / "pyproject.toml"
         path.write_text(
-            path.read_text().replace("sediment-core==0.1.0", "sediment-core")
+            path.read_text().replace(f"sediment-core=={current}", "sediment-core")
         )
     elif defect == "runtime":
         path = root / "apps" / "api" / "sediment_api" / "__init__.py"
-        path.write_text(path.read_text().replace('"0.1.0"', '"9.9.9"'))
+        path.write_text(path.read_text().replace(f'"{current}"', '"9.9.9"'))
     elif defect == "release-shape":
         path = root / "pyproject.toml"
         path.write_text(
-            path.read_text().replace('version = "0.1.0"', 'version = "0.1.0rc1.post1"')
+            path.read_text().replace(
+                f'version = "{current}"', f'version = "{current}rc1.post1"'
+            )
         )
     else:
         tag = "v9.9.9"

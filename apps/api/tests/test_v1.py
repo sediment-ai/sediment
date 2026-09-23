@@ -101,7 +101,7 @@ def test_me_happy_path(client: TestClient) -> None:
     assert resp.status_code == 200
     assert resp.json() == {
         "org_id": ORG,
-        "version": "0.1.0",
+        "version": "0.2.0",
         "authority": "operator",
         "client_id": "operator",
     }
