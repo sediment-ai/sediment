@@ -122,6 +122,43 @@ def test_navigation_checks_nested_guides_and_changelog(tmp_path):
     assert "CHANGELOG.md: broken link: docs/missing-migration.md" in problems
 
 
+def test_navigation_ignores_remote_urls_and_checks_adjacent_local_docs(tmp_path):
+    root = _mini_repo(tmp_path)
+    (root / "security").mkdir()
+    (root / "security" / "maintenance.json").write_text(
+        json.dumps(
+            {
+                "evidence": "https://github.com/vendor/project/blob/rev/docs/release.md",
+                "source": "http://example.com/docs/upstream.md#support",
+                "guide": "docs/missing-local.md",
+            }
+        )
+    )
+    problems: list[str] = []
+
+    check_docs.check_navigation(problems, root)
+
+    assert [p for p in problems if p.startswith("security/maintenance.json:")] == [
+        "security/maintenance.json: referenced doc does not exist: "
+        "docs/missing-local.md"
+    ]
+
+
+def test_router_ignores_upstream_doc_urls(tmp_path):
+    root = _mini_repo(tmp_path)
+    with (root / "AGENTS.md").open("a") as agents:
+        agents.write(
+            "[upstream](https://github.com/vendor/project/blob/rev/docs/upstream.md) "
+            "and `docs/missing-local.md`.\n"
+        )
+    problems: list[str] = []
+
+    check_docs.check_router(problems, root)
+
+    assert "dead route in AGENTS.md: docs/upstream.md" not in problems
+    assert "dead route in AGENTS.md: docs/missing-local.md" in problems
+
+
 def _git(cwd, *args):
     subprocess.run(
         ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],

@@ -4,6 +4,8 @@
 
 ### Contributor checks
 
+- Exclude HTTP(S) URLs from local documentation-path checks. Upstream evidence
+  links no longer fail as missing Sediment files; local paths remain checked.
 - Route changes to the root `README.md` through the existing prose checks in
   continuous integration (CI). Mixed changes, executable files, symlinks,
   deletions, renames, manual runs, and unavailable Git history retain full
