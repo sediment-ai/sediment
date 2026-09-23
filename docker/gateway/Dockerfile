@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 FROM ghcr.io/astral-sh/uv:0.12.17@sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc AS uv
-FROM ghcr.io/berriai/litellm:v1.102.0@sha256:32cfd7a427f6470033b4dcc9e75dfbea2aa32dbc298b0b511a40e962ce818362 AS runtime-files
+FROM ghcr.io/berriai/litellm:v1.102.1@sha256:87f34979b9f8cb274fac90ca8a4fdda07d8480de22755562a26adeb95ce20d02 AS runtime-files
 # Vendor 1.102.0 predates these compatible fixes. Remove the Python overrides
 # when a supported vendor image contains them; dependency consistency gates it.
 # The supplied routing/callback does not use the legacy Langfuse v2 SDK. Its
