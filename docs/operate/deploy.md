@@ -83,7 +83,7 @@ curl -fsS http://127.0.0.1:8000/health
 ```
 
 ```text
-{"status":"ok","version":"0.1.0"}
+{"status":"ok","version":"0.2.0"}
 ```
 
 Compose waits for PostgreSQL, provisions separate database roles, and applies

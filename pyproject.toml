@@ -3,17 +3,17 @@
 # top-level cli/ member (distribution `sediment-cli`, command `sediment`);
 # everything publishes from the members.
 name = "sediment"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turn AI developer workflow traces into RL-ready training data"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 dependencies = [
-    "sediment-core==0.1.0",
-    "sediment-capture==0.1.0",
-    "sediment-derive==0.1.0",
-    "sediment-export==0.1.0",
-    "sediment-api==0.1.0",
-    "sediment-cli==0.1.0",
+    "sediment-core==0.2.0",
+    "sediment-capture==0.2.0",
+    "sediment-derive==0.2.0",
+    "sediment-export==0.2.0",
+    "sediment-api==0.2.0",
+    "sediment-cli==0.2.0",
 ]
 
 [dependency-groups]

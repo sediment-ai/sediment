@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Sediment API
   description: 'Self-hosted ingest: facts in through three doors (ADR 0001)'
-  version: 0.1.0
+  version: 0.2.0
 paths:
   /ingest/gateway:
     post:
