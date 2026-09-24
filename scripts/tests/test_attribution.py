@@ -2920,6 +2920,56 @@ def test_doctor_server_unreachable_fails(tmp_path, monkeypatch) -> None:
     assert "unreachable" in detail
 
 
+@pytest.mark.parametrize("authority", ["ingest", "operator"])
+def test_doctor_checks_capture_only_enrollment(tmp_path, monkeypatch, authority):
+    mod = _load_module()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("SEDIMENT_URL", raising=False)
+    monkeypatch.delenv("SEDIMENT_INGEST_TOKEN", raising=False)
+    url = "http://127.0.0.1:8000"
+    (tmp_path / ".sediment").mkdir()
+    (tmp_path / ".sediment/config.json").write_text(
+        json.dumps(
+            {
+                "current": url,
+                "servers": {
+                    url: {
+                        "capture_token": "private-capture-token",
+                        "capture_authority": "ingest",
+                        "capture_client_id": "alice",
+                    }
+                },
+            }
+        )
+    )
+    opener = _FakeOpener(
+        _FakeResponse(
+            json.dumps(
+                {
+                    "org_id": "pilot",
+                    "authority": authority,
+                    "client_id": "alice",
+                }
+            ).encode()
+        )
+    )
+    monkeypatch.setattr(mod.urllib.request, "build_opener", lambda *_: opener)
+
+    findings = []
+    mod._doctor_server(findings)
+
+    [(status, check, detail)] = findings
+    assert check == f"server[{url}]"
+    assert "private-capture-token" not in detail
+    assert opener.request.get_header("Authorization") == "Bearer private-capture-token"
+    if authority == "ingest":
+        assert status == mod.DOCTOR_OK
+        assert "ingest token valid" in detail
+    else:
+        assert status == mod.DOCTOR_FAIL
+        assert "--capture" in detail
+
+
 @pytest.mark.parametrize(
     "url",
     [

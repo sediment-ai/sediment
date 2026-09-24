@@ -4,6 +4,8 @@
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -86,3 +88,75 @@ def test_shared_writable_parent_is_rejected(tmp_path):
         assert not (tmp_path / ".env").exists()
     finally:
         tmp_path.chmod(0o700)
+
+
+def test_named_clients_can_enroll_from_a_generated_environment(tmp_path):
+    path = tmp_path / ".env"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-S",  # Deployment generation must work without workspace dependencies.
+            str(ROOT / "scripts/create_deploy_env.py"),
+            "--output",
+            str(path),
+            "--ingest-client",
+            "alice-laptop",
+            "--ingest-client",
+            "bob.desktop",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    values = dict(
+        line.split("=", 1)
+        for line in path.read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+    clients = json.loads(values["SEDIMENT_INGEST_TOKENS"])
+    assert set(clients) == {"gateway", "alice-laptop", "bob.desktop"}
+    tokens = list(clients.values())
+    assert len(set(tokens)) == 3
+    assert all(len(token) == 64 for token in tokens)
+    assert values["SEDIMENT_OPERATOR_TOKEN"] not in tokens
+    assert all(token not in result.stdout + result.stderr for token in tokens)
+    assert path.stat().st_mode & 0o777 == 0o600
+    # Import the server's eager Settings singleton in a separate process so
+    # this generated deployment cannot become another test's configuration.
+    validation = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from sediment_api.config import settings; "
+            "settings.validate_production_security()",
+        ],
+        cwd=tmp_path,
+        env={
+            **{k: v for k, v in os.environ.items() if not k.startswith("SEDIMENT_")},
+            "SEDIMENT_DATABASE_URL": "postgresql+psycopg://runtime@localhost/sediment",
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert validation.returncode == 0, validation.stderr
+
+
+@pytest.mark.parametrize(
+    "clients",
+    [
+        ("operator",),
+        ("legacy",),
+        ("retrieval",),
+        ("gateway",),
+        ("alice", "alice"),
+        ("",),
+        ("a" * 65,),
+        ("alice\nSEDIMENT_DEV_MODE=true",),
+        ("${TOKEN}",),
+    ],
+)
+def test_invalid_client_names_leave_no_environment_file(tmp_path, clients):
+    path = tmp_path / ".env"
+    with pytest.raises(ValueError, match="client"):
+        module().create_environment(path, ingest_clients=clients)
+    assert not path.exists()

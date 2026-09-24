@@ -156,6 +156,6 @@ printf '\nInstalled %s.\n' "$SPEC"
 if [ "$CAPTURE_ONLY" = 0 ]; then
     echo "Start your local server: sediment server"
 else
-    echo "Connect to a deployment: sediment login <url>"
-    echo "For capture, enroll a separate ingest credential: sediment login <url> --capture --with-token"
+    echo "Enroll capture: sediment login <url> --capture"
+    echo "Then install repository hooks: sediment install /path/to/repo"
 fi

@@ -237,6 +237,7 @@ def test_capture_only_does_not_require_system_package_access(installer):
     result = run("--capture-only")
     assert result.returncode == 0, result.stderr
     assert "sediment login" in result.stdout
+    assert "Enroll capture: sediment login <url> --capture\n" in result.stdout
     assert "sediment server" not in result.stdout
     assert not any(call[0] in ("apt-get", "brew", "sudo") for call in commands())
 
