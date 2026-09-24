@@ -13,9 +13,8 @@ capture. Gateway and transcript capture require separate configuration.
 You need:
 
 - a macOS or Linux developer machine
-- the Sediment CLI
-- the URL and an ingest-only token for a Sediment endpoint
-- git and Python 3.12 on `PATH`
+- the approved Sediment release version, endpoint URL, and your ingest-only token
+- Git and curl on `PATH`
 - a git repository
 - Claude Code, Codex, Cursor, or pi for agent hooks
 
@@ -24,6 +23,27 @@ and shell hooks and refuses Windows installation before changing configuration.
 
 The installer skips an agent whose configuration directory doesn't exist. If
 you install an agent later, run the installer again.
+
+## Install the CLI
+
+Replace the version placeholder with the operator's approved release:
+
+```bash
+curl -fsSL https://sediment.so/install.sh | \
+  sh -s -- --capture-only --version '<approved release version>'
+```
+
+The installer supplies Python 3.12 and the CLI without changing host packages.
+If it prints a PATH instruction, run it in this terminal and later capture shells.
+Verify the installed version:
+
+```bash
+sediment --version
+```
+
+For a pilot that requires a source revision or pi, use
+[Install a pinned checkout](../operate/run-pilot.md#install-a-pinned-checkout)
+instead of the package installer.
 
 ## Connect the CLI
 
@@ -59,9 +79,6 @@ Run the installer once for each repository that you want to capture:
 sediment install --user-id '<developer>' /path/to/repo
 ```
 
-Restart active agent Sessions after installation. Agents read their hooks and
-environment at startup.
-
 Keep the installed CLI at its original path; hooks reference its absolute path.
 For source installs, keep the checkout and Python environment in place.
 Reinstall after moving them.
@@ -69,42 +86,7 @@ Reinstall after moving them.
 Reinstallation updates Sediment's marked entries and preserves unrelated
 configuration. The installer refuses malformed agent JSON files.
 
-### Agent hooks
-
-The installer configures the agents that it finds on the machine:
-
-| Agent | Installed integration |
-|---|---|
-| [Claude Code](agents/claude-code.md) | A `PostToolUse` entry in `~/.claude/settings.json` |
-| [Codex](agents/codex.md) | A hook entry in `~/.codex/hooks.json` |
-| [Cursor](agents/cursor.md) | Native `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
-| pi | The extension under `shims/pi/`, when you run the installer from a checkout |
-
-Supported edits mark the Session in the repository's Git directory. For pi,
-run the installer from a source checkout: the installed CLI package doesn't
-contain `shims/pi/`. See [pi setup](agent-integrations.md#pi).
-
-### Git hooks
-
-The installer adds three marked blocks to the repository's hook directory:
-
-- `post-commit` writes the collected Session identifiers to
-  `refs/notes/sediment`.
-- `prepare-commit-msg` carries notes through a local squash merge.
-- `pre-push` reconciles and pushes the notes ref with the branch push.
-
-The installer appends to existing shell hooks, including husky and
-`core.hooksPath` setups. It never replaces the script. A non-shell hook is left
-untouched with an instruction to wire the command by hand.
-
-The hooks are best-effort. They can't fail a commit or push. Marker, stamp,
-reconciliation, and notes-push failures write content-free diagnostics to
-`~/.sediment/attribution.log`. A zero hook exit code doesn't prove capture.
-
-The installer also sets `notes.rewriteRef=refs/notes/sediment`. Git then carries
-the note through `commit --amend` and rebase.
-
-### Agent environment
+## Load the agent environment
 
 Load the generated environment before starting an agent:
 
@@ -129,6 +111,13 @@ When you rewrite the generated environment, repeat the original `--user-id`,
 reinstall preserves an existing generated pi transcript opt-in. It doesn't
 preserve omitted identity or gateway arguments.
 
+Follow your [agent guide](agent-integrations.md) to select its telemetry profile
+or trust its hooks. Then start the agent from this shell in the enrolled
+repository. Fully quit an existing desktop process first; it can retain the
+old environment.
+
+[Verify capture](#verify-capture) before adding optional channels.
+
 ## Route inference calls through a gateway
 
 If your deployment exposes a large language model (LLM) gateway, add its URL
@@ -140,7 +129,10 @@ sediment install \
   --gateway-key "$SEDIMENT_GATEWAY_KEY" \
   --user-id '<developer>' \
   /path/to/repo
+. "$HOME/.sediment/env.sh"
 ```
+
+Restart the agent from this shell before verifying gateway capture.
 
 The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
 `SEDIMENT_GATEWAY_KEY` into the agent environment. The upstream provider key
@@ -255,6 +247,43 @@ unsupported requirements. Missing, incomplete, or unreadable evidence fails
 verification; organization-wide Fact counts don't substitute for it. Follow
 [Run a Cursor, pi, and Codex pilot](../operate/run-pilot.md) for the three
 complete edit-to-commit checks.
+
+## Installed hooks
+
+### Agent hooks
+
+The installer configures the agents that it finds on the machine:
+
+| Agent | Installed integration |
+|---|---|
+| [Claude Code](agents/claude-code.md) | A `PostToolUse` entry in `~/.claude/settings.json` |
+| [Codex](agents/codex.md) | A hook entry in `~/.codex/hooks.json` |
+| [Cursor](agents/cursor.md) | Native `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
+| pi | The extension under `shims/pi/`, when you run the installer from a checkout |
+
+Supported edits mark the Session in the repository's Git directory. For pi,
+run the installer from a source checkout: the installed CLI package doesn't
+contain `shims/pi/`. See [pi setup](agent-integrations.md#pi).
+
+### Git hooks
+
+The installer adds three marked blocks to the repository's hook directory:
+
+- `post-commit` writes the collected Session identifiers to
+  `refs/notes/sediment`.
+- `prepare-commit-msg` carries notes through a local squash merge.
+- `pre-push` reconciles and pushes the notes ref with the branch push.
+
+The installer appends to existing shell hooks, including husky and
+`core.hooksPath` setups. It never replaces the script. A non-shell hook is left
+untouched with an instruction to wire the command by hand.
+
+The hooks are best-effort. They can't fail a commit or push. Marker, stamp,
+reconciliation, and notes-push failures write content-free diagnostics to
+`~/.sediment/attribution.log`. A zero hook exit code doesn't prove capture.
+
+The installer also sets `notes.rewriteRef=refs/notes/sediment`. Git then carries
+the note through `commit --amend` and rebase.
 
 ## Repair or recover capture
 

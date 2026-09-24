@@ -1,7 +1,5 @@
 # Quickstart
 
-Capture your first agent Session on one machine.
-
 Run a local server and verify synthetic capture in a scratch repository.
 For a shared deployment, start at
 [Deploy the API](operate/deploy.md#2-deploy-the-api).
@@ -88,13 +86,14 @@ and named ingest identities, follow [Configure local capture](capture/local-capt
 
 `error: is the server running?` means step 2's verification never passed.
 
-## 4. Wire a demo repo and this machine
+## 4. Install capture in a scratch repository
 
-Use a scratch repo so the quickstart leaves your real work untouched:
+Use an unused directory for the scratch repository:
 
 ```bash
-git init -q ~/sediment-quickstart
-cd ~/sediment-quickstart
+test ! -e "$HOME/sediment-quickstart" || exit 1
+git init -q "$HOME/sediment-quickstart"
+cd "$HOME/sediment-quickstart"
 sediment install .
 ```
 
@@ -108,25 +107,15 @@ Verify:
 sediment doctor . && echo "doctor exit 0"
 ```
 
+After the configuration checks, a successful run ends with:
+
 ```text
-ok    claude-code hook: present in /Users/you/.claude/settings.json
-info  codex hook: not detected (/Users/you/.codex does not exist)
-info  cursor hooks: Cursor not detected (no ~/.cursor)
-info  pi extension: pi not detected (no ~/.pi/agent)
-info  fleet template: init.templateDir unset — not a fleet machine
-info  attribution log: /Users/you/.sediment/attribution.log: no events recorded
-ok    server[http://127.0.0.1:8000]: reachable, token valid (org default)
-ok    hooks[/Users/you/sediment-quickstart]: all three current in ...
-ok    notes.rewriteRef[/Users/you/sediment-quickstart]: refs/notes/sediment
-info  notes ref[/Users/you/sediment-quickstart]: no origin remote; none yet locally
-ok    markers[/Users/you/sediment-quickstart]: no unconsumed markers
 doctor exit 0
 ```
 
-Rows depend on the installed agents. `info` is informational; `FAIL` makes
-`doctor` exit nonzero. Require `doctor exit 0` before continuing.
+Rows depend on the installed agents. Resolve any `FAIL` result before continuing.
 
-## 5. Prove the capture chain
+## 5. Verify the Git hooks
 
 Create a synthetic Session marker and commit it to verify the Git hooks:
 
@@ -141,11 +130,10 @@ git notes --ref=refs/notes/sediment show HEAD
 {"v": 1, "sessions": [{"tool": "claude-code", "session_id": "quickstart", "stamped_at": "2026-08-14T00:33:32+00:00"}]}
 ```
 
-The note records the synthetic Session-to-commit relationship in Git. A mirror
-refresh after a Push can store a Session-to-commit observation; Attribution is
-then derived. The local note alone doesn't add a server Fact.
+Require `session_id` to be `quickstart`; your timestamp differs. This local note
+doesn't add a server Fact.
 
-## 6. Prove the server side
+## 6. Verify server capture
 
 `demo` posts one synthetic inference call and one Developer decision through
 the same ingest routes that clients use. It then prints the Fact counts:
@@ -154,54 +142,20 @@ the same ingest routes that clients use. It then prints the Fact counts:
 sediment demo
 ```
 
+Require `inference_calls` and `developer_decisions` to each have at least one
+row. A successful run ends with:
+
 ```text
-posting demo session (synthetic) to http://127.0.0.1:8000
-  posted 1 completion and 1 decision as session sediment-demo
-
-table                  total  visible
-sessions                   1        -
-inference_calls            1        1
-developer_decisions        1        1
-ci_outcomes                0        0
-pushes                     0        0
-edit_observations          0        0
-rejected_edits             0        0
-retry_linkages             0        0
-quarantine_revision: 0
-
 These are synthetic facts, not your agent's. They prove the ingest path works end to end.
 ```
 
-The demo verifies synthetic ingestion and storage. Repeating it retains the
-same Facts through database deduplication. Verify your agent separately.
-
-## 7. Use it on real work
-
-```bash
-sediment install /path/to/your-repo
-```
-
-Load `. "$HOME/.sediment/env.sh"`, then restart the agent. Edit a file and
-commit the change.
-`sediment facts` grows `developer_decisions` when the agent emits a supported
-decision event. Each commit carries its own Session note.
-
-[Agent integrations](capture/agent-integrations.md) routes you to the
-agent-specific decision, inference-call, Edit observation, and verification
-steps.
-
-Each verb prints its own help (`sediment install --help`).
-
-## Configure additional capture
-
-Use [Agent integrations](capture/agent-integrations.md) to configure native
-decisions and optional Edit observations. Connect [managed capture](capture/managed-capture.md)
-for gateway Inference calls, Pushes, pull requests, and CI outcomes.
+Repeating the demo retains the same Facts through database deduplication.
 
 ## Clean up the demo
 
 ```bash
-sediment uninstall ~/sediment-quickstart && rm -rf ~/sediment-quickstart
+cd "$HOME"
+sediment uninstall "$HOME/sediment-quickstart" && rm -rf "$HOME/sediment-quickstart"
 ```
 
 That leaves the local server's data. To remove it, press Ctrl+C in the server
@@ -214,17 +168,6 @@ rm -rf ~/.sediment/server
 
 ## Next steps
 
-- [Agent integrations](capture/agent-integrations.md) — compare evidence and
-  configure Claude Code, Codex, Cursor, pi, or Copilot Chat
-- [Configure local capture](capture/local-capture.md) — connect real
-  repositories and opt in to transcript capture
-- [Roll out managed capture](capture/managed-capture.md) — connect a gateway,
-  webhooks, private mirrors, and a developer fleet
-- [How capture works](explanation/how-capture-works.md) — understand the five
-  signals and their privacy boundaries
-- [Architecture](explanation/architecture.md) — understand the components,
-  data flow, persistence boundaries, and network boundaries
-- [Deploy runbook](operate/deploy.md) — run the production server on Docker
-  Compose
-- [Choose a training export](exports/training-exports.md) — prepare and audit
-  DPO, SFT, diff-SFT, Recovery, or RLVR rows
+- [Configure your agent](capture/agent-integrations.md) to capture real work.
+  Follow its install, environment, restart, and Session verification steps.
+- [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.

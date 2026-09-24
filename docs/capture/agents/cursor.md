@@ -30,7 +30,8 @@ requests.
 ## Before you begin
 
 You need the Sediment CLI, an endpoint and ingest-only token, a git repository, and
-the local Cursor desktop app installed under `~/.cursor`.
+the local Cursor desktop app with its `cursor` command-line launcher. Start and
+close Cursor once so `~/.cursor` exists.
 
 For deployment and shared setup, see [Configure local capture](../local-capture.md).
 
@@ -58,16 +59,19 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    If `~/.cursor` doesn't exist, the installer skips the Cursor hooks. Install
    or start Cursor, then run `sediment install` again.
 
-3. Restart the local Cursor desktop app after installation.
+3. Fully quit Cursor. Load the environment and launch Cursor from this shell:
+
+   ```bash
+   . "$HOME/.sediment/env.sh"
+   cursor /path/to/repo
+   ```
+
+   An already running desktop process can retain its earlier environment.
 
 ## Configure Developer decisions
 
-The installer writes the dedicated endpoint and token from `sediment login --capture`.
-Load them before starting Cursor:
-
-```bash
-. "$HOME/.sediment/env.sh"
-```
+The generated environment supplies the endpoint and token from
+`sediment login --capture`.
 
 If another system owns the environment and you used `--no-env`, supply:
 
@@ -111,7 +115,8 @@ Remote checks require a separate [operator login](../local-capture.md#verify-cap
    sediment doctor --fetch /path/to/repo
    ```
 
-2. Use local Cursor desktop Agent or Tab to edit a file.
+2. Ask Cursor Agent to create a harmless file with its `Write` tool. Tab edits
+   don't produce the Developer decision that this check requires.
 
 3. Commit the change.
 

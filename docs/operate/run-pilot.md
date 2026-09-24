@@ -31,8 +31,9 @@ and agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-b
 
 1. Complete [Deploy Sediment](deploy.md) at the approved revision, including
    HTTPS ingress, private Git access, webhooks, and a tested backup.
-2. [Verify the approved build](#verify-the-approved-build) against a separate
-   disposable PostgreSQL 17 instance. Keep its acceptance record.
+2. [Match the installed build to its release evidence](validate-deployment.md#verify-the-installed-build).
+   Keep that evidence with the deployment record; you don't need to rerun the
+   release rehearsal to install an approved build.
 3. Give each developer these settings through the team's credential channel:
 
    | Setting | Value |
@@ -90,7 +91,7 @@ Capture-only machines don't need PostgreSQL client libraries.
 If you use pi, install its locked runtime and shim dependencies from this checkout:
 
 ```bash
-npm ci --prefix shims/pi --include=dev --no-audit --no-fund || exit 1
+npm ci --prefix "$SEDIMENT_CHECKOUT/shims/pi" --include=dev --no-audit --no-fund || exit 1
 export PATH="$SEDIMENT_CHECKOUT/shims/pi/node_modules/.bin:$PATH"
 node --version
 pi --version
@@ -425,43 +426,6 @@ for merge retention. Compare models only within matched scope and coverage.
 [Preserve the result](measure-agent-work.md#preserve-an-operational-result)
 before changing software or capture configuration.
 
-## Verify the approved build
-
-On the operator's test machine, provide a disposable PostgreSQL 17 instance with
-an administrative role that can create and drop databases. Don't use the pilot
-instance. From a clean checkout of the approved revision, save the
-[release rehearsal](rehearse-release.md#run-the-no-publish-rehearsal) result:
-
-```bash
-SEDIMENT_REVISION='<approved full commit hash>'
-export SEDIMENT_TEST_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/postgres'
-ACCEPTANCE_DIR="$HOME/sediment-acceptance"
-ACCEPTANCE_LOG="$ACCEPTANCE_DIR/pipeline-acceptance-$SEDIMENT_REVISION.log"
-ACCEPTANCE_TMP="$ACCEPTANCE_LOG.tmp"
-
-mkdir -p "$ACCEPTANCE_DIR"
-rm -f "$ACCEPTANCE_TMP"
-if {
-  test "${#SEDIMENT_REVISION}" -eq 40 &&
-  test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
-  test -z "$(git status --porcelain=v1 --untracked-files=all)" &&
-  printf 'sediment_revision=%s\nworktree=clean\n' "$SEDIMENT_REVISION" &&
-  uv run python scripts/release_rehearsal.py
-} >"$ACCEPTANCE_TMP" 2>&1
-then
-  mv "$ACCEPTANCE_TMP" "$ACCEPTANCE_LOG"
-else
-  cat "$ACCEPTANCE_TMP"
-  rm -f "$ACCEPTANCE_TMP"
-  exit 1
-fi
-cat "$ACCEPTANCE_LOG"
-```
-
-Retain the pass message, `pipeline acceptance:` record, revision, and
-`worktree=clean` line. This synthetic rehearsal doesn't replace live harness,
-gateway, or forge verification.
-
 ## Update or end enrollment
 
 Before updating the checkout, endpoint, or token, end agent Sessions, record the
@@ -487,8 +451,8 @@ to a different destination. If the original endpoint is unavailable, retain
 the queue with its original configuration or obtain participant approval to
 delete it under the deployment's retention procedure.
 
-Check out the approved successor at the same path and repeat the locked Python
-install and, if used, pi install. Rerun `sediment install` for each repository
+Return to `$SEDIMENT_CHECKOUT`, check out the approved successor at the same
+path, and repeat the locked Python install and, if used, pi install. Rerun `sediment install` for each repository
 with the same developer identifier, profile, approved flags, and gateway arguments.
 
 After token rotation, rerun `sediment login --capture` and profile enrollment.
