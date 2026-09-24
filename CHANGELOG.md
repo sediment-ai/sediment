@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Installation
+
+- Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
+  gateway's reviewed OpenSSL and supporting packages so rolling repository
+  updates don't introduce an OpenSSL configuration-file conflict.
+
 ## 0.2.0 — 2026-09-23
 
 ### Contributor checks
