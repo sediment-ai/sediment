@@ -1,7 +1,7 @@
 # Validate a deployment
 
 Verify capture, data integrity, recovery, and capacity before expanding a pilot.
-Use [Run a Cursor, pi, and Codex pilot](run-pilot.md) for enrollment commands.
+Use [Run a Cursor and Codex pilot](run-pilot.md) for enrollment commands.
 Keep results and source evidence in protected storage outside the documentation
 and record each check as verified, failed, unverified, or not applicable.
 
@@ -59,9 +59,9 @@ or live harness delivery.
 2. Verify deployment tenancy, separate ingest and operator credentials,
    authenticated network paths, private Git access, and credential permissions.
    Follow [Check release and deployment security](security.md).
-3. Record each harness's executable path and version. The pilot checkout's
-   `npm ci --include=dev` installs the pinned pi runtime; require that executable
-   on PATH. A Codex CLI profile check doesn't verify Desktop.
+3. Record each harness's executable path and version. pi capture requires a
+   source checkout; follow the [pi integration guide](../capture/agent-integrations.md#pi).
+   A Codex CLI profile check doesn't verify Desktop.
 4. For marker-client upgrades, pause hooks across linked worktrees, reconcile
    markers, replace every helper, and restart harnesses. Don't mix old and
    generation-aware writers.
@@ -132,8 +132,7 @@ Use one commit operation at a time per worktree. Separate worktrees still share
 the notes ref and can encounter a busy writer. If a stamp is busy or its outcome
 is unknown, inspect its target before continuing.
 
-Follow [workstation recovery](run-pilot.md#verify-workstation-recovery) and
-[sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
+Follow [sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
 Buffer enrollment covers pi decisions and opted-in transcripts, with separate
 gateway enrollment. It doesn't cover Cursor hooks, native Codex telemetry, or
 forge webhooks. Retain receipts before they expire. Stopped workers don't enforce
