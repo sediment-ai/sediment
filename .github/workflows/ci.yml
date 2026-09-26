@@ -49,7 +49,7 @@ jobs:
       - name: Scan complete pull-request tree for secrets
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         env:
-          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.5@sha256:1cec88f18ca39e26e04e61fe9d886c9c4e5f2fc0ba4f2ed185cac0722bd8a076
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.6@sha256:cc1a591e83fec7bf56f64c15beaaa5d8e3d179a4165a03a087d07165296ef7df
         run: |
           scan_root="${RUNNER_TEMP}/sediment-secret-scan"
           mkdir "$scan_root"
@@ -59,9 +59,9 @@ jobs:
             "$TRUFFLEHOG_IMAGE" filesystem /scan \
             --fail --no-update --github-actions \
             --results=verified,unknown --exclude-detectors=lob
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - run: uv sync --locked
       - name: Select validation scope
@@ -171,20 +171,21 @@ jobs:
       # finding — measured, not theoretical. Treat a lone `unknown` whose text
       # is a verification error as infra, and re-run.
       # Dependabot bumps the action SHA below; the `version` input is a
-      # separate pin it does not track, so bump both together.
+      # separate pin it does not track. Bump the action, version, and
+      # complete-tree image tag and digest together.
       # Lob is excluded (twice-measured false-positive class):
       # its detector matches any `test_<35-36 word chars>` token near a
       # "lob" substring ("blob", "global"), i.e. ordinary pytest function
       # names, and its verifier "verifies" them. This repo will never hold
       # a real Lob (postal mail API) credential; re-include if one is ever
       # actually adopted.
-      - uses: trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6 # v3.97.5
+      - uses: trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a # v3.97.6
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
           base: ${{ steps.secret-range.outputs.base || '' }}
           head: ${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}
-          version: "3.97.5"
+          version: "3.97.6"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database
         if: always() && steps.scope.outputs.full == 'true'

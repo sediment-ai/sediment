@@ -26,6 +26,26 @@ def load():
     return module
 
 
+def test_freeze_accepts_locked_evaluation_harness_and_rejects_other_versions(
+    monkeypatch,
+):
+    mod = load()
+    lock = json.loads((SCRIPT.parents[1] / "shims/pi/package-lock.json").read_text())
+    version = lock["packages"]["node_modules/@earendil-works/pi-coding-agent"][
+        "version"
+    ]
+    config = {"agent_image": "agent", "gate_image": "gate"}
+    monkeypatch.setattr(
+        mod,
+        "command",
+        lambda *a, **kw: f"{version}\nv24.21.0\nPython 3.12.14\n".encode(),
+    )
+    assert mod.freeze(config)["harness"] == version
+    monkeypatch.setattr(mod, "command", lambda *a, **kw: b"0.0.0\n")
+    with pytest.raises(mod.EvaluationError, match="unsupported_harness"):
+        mod.freeze(config)
+
+
 def test_admission_reserves_attempts_atomically_including_failed_forwards():
     mod = load()
     budget = mod.AttemptBudget()

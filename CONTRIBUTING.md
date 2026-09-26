@@ -15,7 +15,7 @@ documents first.
 
 For source-checkout setup and local capture verification, follow the
 [Quickstart](docs/quickstart.md). For team enrollment, use
-[Run a Cursor, pi, and Codex pilot](docs/operate/run-pilot.md). For contributor
+[Run a Cursor and Codex pilot](docs/operate/run-pilot.md). For contributor
 setup and checks, use [Onboarding](docs/onboarding.md). The
 [documentation site](https://docs.sediment.so) covers capture, deployment,
 Derivations, and exports.

@@ -1,7 +1,7 @@
 # Agent integrations
 
 Choose the evidence you need, then follow the matching agent guide. For team
-enrollment from a pinned checkout, use the [pilot guide](../operate/run-pilot.md).
+enrollment, use the [pilot guide](../operate/run-pilot.md).
 
 ## Compare integrations
 
@@ -108,9 +108,9 @@ sediment doctor /path/to/repo --agent pi --session-id '<Session identifier>'
 ```
 
 Add `--transcripts` when you opted in to content capture. Add `--inference-calls`
-only for a Session routed through a gateway. The
-[Pilot gateway procedure](../operate/run-pilot.md#add-approved-gateway-capture)
-provides a concrete `models.json` entry. [Configure local capture](local-capture.md)
+only for a Session routed through a gateway. [Configure inference-call capture
+for pi](#configure-inference-call-capture-for-pi) provides the provider settings.
+[Configure local capture](local-capture.md)
 defines the shared endpoint, git hook, and transcript privacy behavior.
 
 To enable agent-requested evidence from one previous Session, configure the
@@ -119,6 +119,53 @@ in an isolated agent environment. This registers `sediment_retrieve_context`
 without changing capture settings. The [continuation guide](../operate/resume-with-evidence.md#enable-agent-requested-retrieval)
 defines source authorization and response limits. Retrieval never falls back to
 your ingest token or operator login.
+
+### Configure inference-call capture for pi
+
+Configure the gateway to serve the developer's existing model before routing
+traffic. Follow [Configure inference-call capture](managed-capture.md#configure-inference-call-capture)
+for the capture callback.
+
+For pi using an Anthropic-compatible route, merge this provider into
+`~/.pi/agent/models.json`. Preserve existing providers. Replace the URL and
+model placeholder with the deployment values:
+
+```json
+{
+  "providers": {
+    "sediment": {
+      "baseUrl": "https://sediment-llm.example.com",
+      "api": "anthropic-messages",
+      "apiKey": "$SEDIMENT_GATEWAY_KEY",
+      "models": [{"id": "<existing Anthropic model ID>"}]
+    }
+  }
+}
+```
+
+Load `SEDIMENT_GATEWAY_KEY` from the team's credential mechanism into the pi
+environment. `apiKey` uses `$SEDIMENT_GATEWAY_KEY` literally in the JSON file so
+pi resolves the variable.
+
+If pi's custom-model defaults differ, copy input capabilities, reasoning
+settings, context, and output limits from the existing model definition.
+Omitted price fields aren't evidence of zero cost.
+
+The shim defaults to provider `sediment` and API `anthropic-messages`. If you
+use another registered provider or API, set `SEDIMENT_PROVIDER_ID` and
+`SEDIMENT_PROVIDER_API` to match it.
+
+Open `/model` to reload the model file, then select the matching model. To start
+a separate Session, replace the repository path and model ID:
+
+```bash
+cd /path/to/repo
+pi --provider sediment --model '<existing Anthropic model ID>'
+```
+
+After a routed Session, repeat the pi edit and commit check with
+`--inference-calls`. Require `ok` for the Session Inference call. A successful
+model response alone doesn't verify capture.
 
 ## GitHub Copilot Chat
 

@@ -42,7 +42,7 @@ export async function exerciseEvidence(endpoint: string, token: string, known?: 
     let references: Reference[] = known ? [{ inference_call_id: known.inference_call_id, side: "output", message_index: 0, part_index: 2 }] : [];
     session.agent.streamFunction = ((_model: unknown, context: Parameters<typeof session.agent.streamFunction>[1]) => {
       turns++;
-      assert.equal(context.tools?.length, names.length);
+      assert.equal(context.messages.find((message) => message.role === "system")?.toolsAdded?.length, names.length);
       const result = (id: string, denied?: string) => {
         const message = context.messages.find((message) => message.role === "toolResult" && message.toolCallId === id);
         assert.ok(message && message.role === "toolResult");

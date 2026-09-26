@@ -316,8 +316,8 @@ schedule a maintenance window for large datasets.
 Stop the API and gateway before changing database roles or credentials. Preserve
 `POSTGRES_PASSWORD`: changing it in `.env` doesn't rotate an initialized server.
 
-Choose the approved successor's full commit hash. Use a pinned checkout for
-upgrades as well as first installation.
+For a Docker Compose deployment, rebuild the services from the approved
+successor's full commit hash.
 
 If your existing `.env` predates separate database roles and operator tokens,
 prepare its replacement before running Compose against the updated checkout:
