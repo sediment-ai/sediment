@@ -191,7 +191,7 @@ delivery owner also trigger this workflow. To exercise the same test locally,
 set `SEDIMENT_PI_TEST_PYTHON` to the installed environment's Python executable
 and `SEDIMENT_PI_TEST_INSTALLED_BIN` to its `bin` directory before `npm test`.
 
-The lockfile pins pi 0.84.1 (`@earendil-works/pi-coding-agent`) as a development
+The lockfile pins pi 0.86.1 (`@earendil-works/pi-coding-agent`) as a development
 dependency. The native retrieval test exercises its extension registration,
 argument validation, agent loop, and model-visible tool result with a scripted
 model stream. It makes no paid inference request and downloads no package during
