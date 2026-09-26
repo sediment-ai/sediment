@@ -20,84 +20,14 @@ deployment, the operator front door is the `sediment` CLI —
 
 ## Local setup
 
-Use Python 3.12 and [uv](https://docs.astral.sh/uv/) for the Python workspace.
-Use Node 24 for the pi shim. Never use `pip install` in this repository.
+Use the [contributor environment and checks](../CONTRIBUTING.md#contributor-environment-and-checks)
+for Python 3.12, Node 24, and local validation. To install Sediment as an operator,
+follow the [Quickstart](quickstart.md).
 
-```bash
-git clone https://github.com/sediment-ai/sediment.git && cd sediment
-uv python pin 3.12
-uv sync --locked
-```
+## Full pre-review check
 
-### Focused checks
-
-PostgreSQL contract tests need a disposable PostgreSQL 17 instance and an
-administrative role that can create and drop databases. Use its administrative
-URL. The fixtures create isolated worker databases and remove them after the
-suite. They retain a reusable migrated template database for later runs.
-
-```bash
-export SEDIMENT_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/postgres
-export SEDIMENT_DATABASE_URL="$SEDIMENT_TEST_DATABASE_URL"
-```
-
-With PostgreSQL available, run the smallest relevant package suite while you
-work. For example:
-
-```bash
-uv run pytest packages/core
-```
-
-### Full pre-review check
-
-With PostgreSQL available, run the Python and documentation checks that
-continuous integration (CI) enforces.
-
-The first command migrates the exact database in `SEDIMENT_DATABASE_URL`.
-Use only the disposable instance from the setup procedure. The release
-rehearsal creates, migrates, and removes its own scratch database.
-
-```bash
-uv run sediment db upgrade
-uv run ruff check .
-uv run ruff format --check .
-uv run python scripts/add_spdx.py --check
-uv run python scripts/check_docs.py --base origin/main
-uv run python scripts/dump_openapi.py --check
-uv run python scripts/gen_cli_docs.py --check
-uv run python scripts/gen_api_docs.py --check
-uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
-uv run pytest -q --durations=30
-uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
-```
-
-The release rehearsal includes the first-party dependency metadata audit.
-TruffleHog secret scanning is CI-only because this repository doesn't define a
-supported local secret-audit command.
-
-Run the TypeScript checks from `shims/pi/`:
-
-```bash
-npm ci --no-audit --no-fund
-npm run typecheck
-npm test
-```
-
-These commands run the local shim checks. The [shims workflow](../.github/workflows/shims.yml)
-also builds and installs the Python wheels outside the checkout and sets
-`SEDIMENT_PI_TEST_PYTHON` and `SEDIMENT_PI_TEST_INSTALLED_BIN` to exercise the
-installed helper. Without the installed-bin setting, the local suite skips
-that acceptance test.
-
-Every ready pull request reports the stable `shims` check. The workflow runs
-installed-helper checks when shim, delivery, dependency, or selector files change.
-Other changes receive an explicit not-applicable result. Missing history or an
-unreadable diff selects the checks; manual and selected push runs also execute
-them. A failed selection or incomplete selected check fails the job.
-
-After this workflow is present on `main`, require the GitHub Actions `shims`
-check in the branch ruleset. Requiring it before the workflow reaches `main`
-can block unrelated pull requests that still use the path-filtered workflow.
+Run the [contributor checks](../CONTRIBUTING.md#full-pre-review-check) before
+opening a pull request. TruffleHog remains a CI-only check.
 
 ## Your first pull request
 

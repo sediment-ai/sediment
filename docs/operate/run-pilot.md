@@ -4,9 +4,8 @@ Prepare a shared deployment, enroll developers, and verify capture before
 expanding the pilot. For a one-machine evaluation, use the
 [Quickstart](../quickstart.md).
 
-For pi, select a published release containing the bundled extension. Release
-0.2.0 doesn't include it. Complete the
-[pi prerequisites](../capture/agent-integrations.md#pi) before enrollment.
+For pi, use the [pi integration guide](../capture/agent-integrations.md#pi),
+including its release and runtime requirements.
 
 ## Prepare the deployment
 

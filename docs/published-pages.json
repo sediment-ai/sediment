@@ -24,7 +24,7 @@
     {
       "source": "docs/operate/deploy.md",
       "destination": "operate/deploy",
-      "description": "Run the Sediment API, PostgreSQL fact store, and git mirror on a host."
+      "description": "Install the published package, connect PostgreSQL, and expose the API through HTTPS."
     },
     {
       "source": "docs/operate/security.md",
@@ -46,7 +46,8 @@
     {
       "source": "docs/operate/rehearse-release.md",
       "destination": "operate/rehearse-release",
-      "description": "Build and exercise all six distributions without publishing them."
+      "description": "Review published release evidence and verify the installed deployment.",
+      "title": "Review release verification"
     },
     {
       "source": "docs/operate/measure-agent-work.md",

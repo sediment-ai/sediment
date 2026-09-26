@@ -10,7 +10,7 @@ enrollment, use the [pilot guide](../operate/run-pilot.md).
 | [Claude Code](#claude-code) | Accept / reject | Yes | Opt-in |
 | [Codex](#codex) | Accept / reject | Yes | Opt-in: single-file patches |
 | [Cursor](#cursor) | Implicit accepts for successful Agent writes | Yes | No extractor |
-| [pi](#pi) | Implicit accepts | Yes | Opt-in |
+| [pi](#pi) (check release requirement) | Implicit accepts | Yes | Opt-in |
 | [Copilot Chat](#github-copilot-chat) | Accept / reject / retention | No installer hook | No extractor |
 
 Cursor Tab edits write commit Attribution without a Developer decision because
@@ -49,12 +49,21 @@ verification. Cursor has no supported Inference-call or Edit observation capture
 
 ## pi
 
-The CLI package includes the MIT-licensed pi extension. Install pi 0.84.1 or
-later with Node 24, then start pi once to create `~/.pi/agent`. The extension
-needs no source checkout or npm dependencies. Node 22.19 or later in the Node 22
-release line also meets both pi's and the extension's runtime requirements.
+Select a [published release](https://github.com/sediment-ai/sediment/releases)
+whose release notes include the bundled pi extension. Release 0.2.0 doesn't
+include it. This procedure requires that packaged extension.
 
-Connect the CLI and register the extension in `~/.pi/agent/settings.json`:
+Install Node 24 and pi 0.84.1 through pi's package distribution:
+
+```bash
+npm install --global @earendil-works/pi-coding-agent@0.84.1
+node --version
+pi --version
+```
+
+Start pi once to create `~/.pi/agent`, authenticate your model, then close pi.
+The Sediment package supplies its extension without additional npm dependencies.
+Connect the CLI and register the extension:
 
 ```bash
 sediment login https://sediment-api.example.com --capture
@@ -65,6 +74,9 @@ sediment install --user-id alice /path/to/repo
 Replace `alice` with your developer identifier. The generated environment sets
 `SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` for decision delivery.
 Restart pi from that environment. Attribution remains independent of telemetry.
+If the extension is missing or unregistered, `sediment doctor` reports `FAIL`.
+After moving the CLI, rerun `sediment install` and remove stale extension paths
+from `~/.pi/agent/settings.json`.
 
 If you approve sending applied text and observed file text, opt in:
 
