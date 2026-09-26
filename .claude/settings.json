@@ -1,16 +1,4 @@
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "printf 'The repo router follows. Read it; it governs this session.\\n\\n' && cat \"$CLAUDE_PROJECT_DIR/AGENTS.md\""
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(uv sync:*)",
