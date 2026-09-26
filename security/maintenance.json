@@ -2304,18 +2304,20 @@
       ]
     },
     "deb/libssl3": {
-      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim.",
-      "evidence": "https://wiki.debian.org/LTS",
+      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim. Debian LTS DLA-4795-1 publishes 3.0.22-1~deb12u1 as the bookworm security update on 2026-09-25.",
+      "evidence": "https://lists.debian.org/debian-lts-announce/2026/09/msg00030.html",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/openssl/",
       "source_package": "openssl",
       "source_versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ]
     },
     "deb/libstdc++6": {
@@ -2649,18 +2651,20 @@
       ]
     },
     "deb/openssl": {
-      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim.",
-      "evidence": "https://wiki.debian.org/LTS",
+      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim. Debian LTS DLA-4795-1 publishes 3.0.22-1~deb12u1 as the bookworm security update on 2026-09-25.",
+      "evidence": "https://lists.debian.org/debian-lts-announce/2026/09/msg00030.html",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/openssl/",
       "source_package": "openssl",
       "source_versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ]
     },
     "deb/passwd": {
@@ -5283,17 +5287,18 @@
       ]
     },
     "pypi/uvicorn": {
-      "basis": "Reviewed on 2026-09-15: Uvicorn 0.51.0, 0.52.4, and 0.53.0 are unwithdrawn upstream releases. Release 0.53.0 supports Python 3.12; experimental HTTP/2 requires explicit configuration. Its default proxy trust adds IPv6 loopback. Upstream specifies vulnerability reporting but no release-specific support window; this assessment expires with the catalog.",
-      "evidence": "https://github.com/Kludex/uvicorn/releases/tag/0.53.0",
+      "basis": "Reviewed 0.54.0 on 2026-09-26 against its unyanked PyPI metadata, upstream release, and source comparison with reviewed 0.53.0. Runtime changes add optional zttp HTTP/2 response trailers and Early Hints; default HTTP/1.1 startup and package requirements remain unchanged. The scanned Python 3.12.14, FastAPI 0.141.1, Starlette 1.7.0, anyio 4.15.1, Click 8.5.0, and h11 0.16.0 versions pass an isolated lifespan, HTTP request, and shutdown probe. Previously reviewed versions remain listed. Upstream specifies vulnerability reporting without a release-specific support window; this assessment expires with the catalog.",
+      "evidence": "https://github.com/Kludex/uvicorn/releases/tag/0.54.0",
       "provider": "Upstream project",
       "source": "https://github.com/Kludex/uvicorn",
-      "source_updated_at": "2026-09-12T09:07:53Z",
+      "source_updated_at": "2026-09-26T08:27:01Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.51.0",
         "0.52.4",
-        "0.53.0"
+        "0.53.0",
+        "0.54.0"
       ]
     },
     "pypi/uvloop": {
