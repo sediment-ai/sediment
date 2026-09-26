@@ -41,9 +41,9 @@ Verify the installed version:
 sediment --version
 ```
 
-For a pilot that requires a source revision, use
-[Install a pinned checkout](../operate/run-pilot.md#install-a-pinned-checkout)
-instead of the package installer.
+For pi, select a published release containing the bundled extension, then complete
+the [pi integration setup](agent-integrations.md#pi). Release 0.2.0 doesn't
+include the extension.
 
 ## Connect the CLI
 
@@ -245,8 +245,8 @@ that Session and its Session/tool entry in the local `HEAD` note. Add
 Add `--inference-calls` for a gateway-routed Session. Cursor rejects both
 unsupported requirements. Missing, incomplete, or unreadable evidence fails
 verification; organization-wide Fact counts don't substitute for it. Follow
-[Run a Cursor, pi, and Codex pilot](../operate/run-pilot.md) for the three
-complete edit-to-commit checks.
+[Run a Cursor and Codex pilot](../operate/run-pilot.md) for the complete
+edit-to-commit checks.
 
 ## Installed hooks
 

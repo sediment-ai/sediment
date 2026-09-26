@@ -35,7 +35,7 @@ export async function exerciseDiscovery(endpoint: string, token: string): Promis
     let selectedId: string | undefined;
     session.agent.streamFunction = ((_model: unknown, context: Parameters<typeof session.agent.streamFunction>[1]) => {
       turns++;
-      assert.equal(context.tools?.length, 2);
+      assert.equal(context.messages.find((message) => message.role === "system")?.toolsAdded?.length, 2);
       const result = (id: string) => {
         const message = context.messages.find((message) => message.role === "toolResult" && message.toolCallId === id);
         assert.ok(message && message.role === "toolResult");
