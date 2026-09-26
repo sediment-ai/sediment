@@ -59,19 +59,24 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    If `~/.cursor` doesn't exist, the installer skips the Cursor hooks. Install
    or start Cursor, then run `sediment install` again.
 
-3. Fully quit Cursor. Load the environment and launch Cursor from this shell:
+3. Open the enrolled repository in Cursor:
 
    ```bash
-   . "$HOME/.sediment/env.sh"
    cursor /path/to/repo
    ```
 
-   An already running desktop process can retain its earlier environment.
+   Managed Cursor hooks read `~/.sediment/env.sh` for each successful Agent
+   `Write`. You don't need to source the file or restart Cursor to load capture
+   settings. After upgrading Sediment, rerun `sediment install` to update the
+   hook commands.
 
 ## Configure Developer decisions
 
 The generated environment supplies the endpoint and token from
-`sediment login --capture`.
+`sediment login --capture`. Managed hooks pass its absolute path through
+`--env-file` and read its exports as literal data. The file owns the capture
+endpoint, token, and developer identity together; inherited Cursor settings
+don't override them. Sediment doesn't execute shell commands from this file.
 
 If another system owns the environment and you used `--no-env`, supply:
 
@@ -79,6 +84,11 @@ If another system owns the environment and you used `--no-env`, supply:
 export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
 export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
 ```
+
+With `--no-env`, hooks inherit Cursor's process environment and ignore the
+generated file. Fully quit Cursor, then launch it from the configured shell.
+Rerun `sediment install --no-env /path/to/repo` to switch an existing managed
+installation to this mode.
 
 The Cursor adapter doesn't infer its endpoint from
 `OTEL_EXPORTER_OTLP_ENDPOINT`. Without `SEDIMENT_OTLP_ENDPOINT`, it still marks
@@ -163,6 +173,12 @@ only the marker, so they don't satisfy this decision check. Cursor rejects
   diagnostic. A successful Agent `Write` can still emit its Developer decision.
 - Hook errors and delivery failures don't block Cursor. The adapter writes a
   size-limited diagnostic to standard error and skips the affected evidence.
+- If the managed environment file is missing or malformed, a successful Agent
+  `Write` still creates its Session marker but skips the Developer decision.
+  Rerun `sediment install` to regenerate the file. `doctor` reports a failed
+  configuration check when this file is unreadable, invalid, or lacks the
+  endpoint or token. A passing configuration check doesn't prove delivery;
+  verify the actual Session after another Agent `Write`.
 - If `doctor --fetch` reports a notes-ref failure, follow
   [Repair a notes ref](../local-capture.md#repair-a-notes-ref).
 

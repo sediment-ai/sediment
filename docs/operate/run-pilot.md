@@ -96,7 +96,7 @@ file before testing the next:
 
    | Agent | Start |
    | --- | --- |
-   | Cursor desktop | Fully quit Cursor, then run `cursor "$PILOT_REPO"` from this shell. |
+   | Cursor desktop | Run `cursor "$PILOT_REPO"`. Managed hooks read the capture environment for each successful Agent `Write`. With `install --no-env`, fully quit Cursor first and launch it from this shell. |
    | pi | Run `cd "$PILOT_REPO"` and `pi` from this shell. |
    | Codex CLI | Run `codex --profile sediment-pilot -C "$PILOT_REPO"`. Use `/hooks` to review and trust the Sediment hooks. |
 
