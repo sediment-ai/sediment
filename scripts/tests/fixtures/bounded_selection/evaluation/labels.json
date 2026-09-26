@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "note": "Evaluation labels. Never part of a coding-agent or selector input.",
+  "families": {
+    "event-rollup": {
+      "set": "heldout",
+      "module": "event_rollup.py",
+      "rule": "last line with a given id is authoritative",
+      "obsolete": "keeping the first line with that id",
+      "distractor": "optional_schema_linter unavailable"
+    },
+    "layered-config": {
+      "set": "heldout",
+      "module": "layered_config.py",
+      "rule": "deletes that key",
+      "obsolete": "is ignored, so the earlier value",
+      "distractor": "optional_toml_linter unavailable"
+    },
+    "duration-parse": {
+      "set": "development",
+      "module": "durations.py",
+      "rule": "legacy scheduler value measured in minutes",
+      "obsolete": "legacy scheduler value measured in seconds",
+      "distractor": "optional_unit_linter unavailable"
+    }
+  },
+  "profiles": {
+    "missing": {"necessary": "rule", "source_requires": ["rule"]},
+    "redundant": {"necessary": null, "source_requires": ["rule", "distractor"]},
+    "correction": {"necessary": "rule", "source_requires": ["rule", "obsolete", "distractor"]}
+  }
+}

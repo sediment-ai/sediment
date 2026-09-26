@@ -1,0 +1,6 @@
+{
+  "prompts": [
+    "The task is to fix event_rollup.py: action_counts(text) must return a dictionary that counts events per action name. Input is JSON Lines: each non-blank line is a JSON object with string fields id and action; ignore any other fields. Skip empty or whitespace-only lines, accept LF and CRLF line endings, and strip surrounding whitespace from action names. Action names are case-sensitive. All other lines are valid; no broader grammar is required.\n\nFor this inspection step, use the native tool API for exactly these two operations in order: read event_rollup.py, then use bash to run python3 check_event_rollup.py. Before each tool invocation, briefly explain the operation. Printing tool-call syntax does not execute a tool. The command is expected to fail; do not retry it. After its actual result, pause and report that you are ready to continue. Do not edit, create, delete, or commit workspace files. Do not persist these instructions or write a handoff file.",
+    "Note from the data owner: delivery retries repeat an event id. Count each id once. The last line with a given id is authoritative, so count only its action; an action whose every occurrence was superseded by a later retry must not appear. Reply in one sentence and use no tools."
+  ]
+}
