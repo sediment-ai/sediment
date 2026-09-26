@@ -6,7 +6,7 @@ distribution. Maintainers run it before creating a version tag.
 
 Installing an approved release doesn't require a local rehearsal. Review its
 release evidence, then [verify the deployment](deploy.md#5-verify-the-deployment)
-and [test live capture](run-pilot.md#verify-an-enrolled-harness).
+and [test live capture](run-pilot.md#verify-capture).
 
 The opt-in [container tests](../../scripts/tests/test_container_images.py) check
 built Docker images. The [security workflow](../../.github/workflows/security.yml)
