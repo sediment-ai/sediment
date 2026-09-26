@@ -48,11 +48,8 @@ Follow the
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
 
-For a shared pilot, [deploy on one EC2 instance](docs/operate/deploy.md#deploy-a-pilot-on-ec2).
-The setup starts PostgreSQL, Sediment, LiteLLM, and HTTPS through Compose. Supply
-a hostname, certificate contact email, and Anthropic API key; the setup generates
-the internal credentials. Follow the [pilot guide](docs/operate/run-pilot.md) to
-enroll developers and verify capture.
+For a shared pilot, [install the published server package](docs/operate/deploy.md).
+Follow the [pilot guide](docs/operate/run-pilot.md) to enroll developers and verify capture.
 
 ## Architecture
 
@@ -60,7 +57,7 @@ enroll developers and verify capture.
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Agent, gateway, and repository events flow into immutable Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
+    <img alt="Agent, gateway, and repository events flow into Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
   </picture>
 </p>
 

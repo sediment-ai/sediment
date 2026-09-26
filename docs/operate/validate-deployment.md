@@ -1,7 +1,7 @@
 # Validate a deployment
 
 Verify capture, data integrity, recovery, and capacity before expanding a pilot.
-Use [Run a Cursor, pi, and Codex pilot](run-pilot.md) for enrollment commands.
+Use [Run a Cursor and Codex pilot](run-pilot.md) for enrollment commands.
 Keep results and source evidence in protected storage outside the documentation
 and record each check as verified, failed, unverified, or not applicable.
 
@@ -15,7 +15,7 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 | Record | Include |
 | --- | --- |
 | Scope | Organization, repository identity, harnesses, models, capture channels, and excluded uses |
-| Software | Server/client revisions, package and harness versions, image digests, lockfile digest, and consumer profile/version |
+| Software | Server/client release versions, installed package and harness versions, and consumer profile/version |
 | Infrastructure | Host resources, storage quotas, network paths, credential authorities, sender supervisors, and backup destination |
 | Evidence boundary | Timezone-aware window and cutoff, Fact snapshot, policy, quarantine revision, and required mirror objects/refs |
 | Workload | Expected volume, payload sizes, concurrency, delivery latency, acceptable recovery time, and acceptable data loss |
@@ -24,32 +24,16 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 
 ## Verify the installed build
 
-1. Review the selected revision's continuous integration (CI), shim,
-   schema-compatibility, consumer, and release-rehearsal results. Retain the
-   acceptance record and artifact hashes. Record failures and skips; a check
-   that didn't run remains unverified.
-2. Match installed revisions and artifact identities to that evidence. If you
-   qualify a modified or unverified build, run the missing checks and
-   [record its rehearsal](rehearse-release.md#record-a-revision-bound-rehearsal)
-   against a disposable database.
-3. Verify the deployed API, database, and live capture with the
+1. Review the selected release's continuous integration (CI), schema, consumer,
+   and security results. Retain the release version and package identities.
+2. Run `sediment --version` on the server and clients. Compare the API's health
+   version with the installed release. A check that didn't run remains unverified.
+3. Verify database access, live capture, and restart persistence with the
    [deployment checks](deploy.md#5-verify-the-deployment) and
-   [pilot procedure](run-pilot.md). Release checks use synthetic inputs.
+   [pilot procedure](run-pilot.md).
 
-To rehearse Docker installation on a machine with Docker and the Python workspace
-installed, run:
-
-```bash
-SEDIMENT_TEST_DOCKER_PILOT=1 uv run pytest -q scripts/tests/test_docker_pilot.py
-```
-
-The check builds a separate Compose project with fresh credentials, volumes, and
-an allocated loopback port. It verifies readiness, migrations, operator commands,
-capture-only enrollment, credential permissions, synthetic ingestion and signed
-webhooks, duplicate delivery, Git notes, restart persistence, and uninstall. It
-removes only its test containers, volumes, and image tags. It doesn't configure
-your agent settings or verify HTTPS ingress, private Git access, paid gateways,
-or live harness delivery.
+Release verification uses synthetic inputs. It doesn't establish your network,
+credential, private-repository, or live harness behavior.
 
 ## Verify privacy, authorities, and source coverage
 
@@ -59,9 +43,9 @@ or live harness delivery.
 2. Verify deployment tenancy, separate ingest and operator credentials,
    authenticated network paths, private Git access, and credential permissions.
    Follow [Check release and deployment security](security.md).
-3. Record each harness's executable path and version. The pilot checkout's
-   `npm ci --include=dev` installs the pinned pi runtime; require that executable
-   on PATH. A Codex CLI profile check doesn't verify Desktop.
+3. Record each harness's executable path and version. For pi, meet the
+   [release and runtime requirements](../capture/agent-integrations.md#pi).
+   A Codex CLI profile check doesn't verify Desktop.
 4. For marker-client upgrades, pause hooks across linked worktrees, reconcile
    markers, replace every helper, and restart harnesses. Don't mix old and
    generation-aware writers.
@@ -132,8 +116,7 @@ Use one commit operation at a time per worktree. Separate worktrees still share
 the notes ref and can encounter a busy writer. If a stamp is busy or its outcome
 is unknown, inspect its target before continuing.
 
-Follow [workstation recovery](run-pilot.md#verify-workstation-recovery) and
-[sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
+Follow [sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
 Buffer enrollment covers pi decisions and opted-in transcripts, with separate
 gateway enrollment. It doesn't cover Cursor hooks, native Codex telemetry, or
 forge webhooks. Retain receipts before they expire. Stopped workers don't enforce

@@ -81,4 +81,4 @@ proxy startup, streamed and non-streamed Anthropic completions, their captured
 content, standalone callback delivery, protocol
 dependency interoperability, and rejected configurations. The security workflow
 runs these gateway tests against each scanned architecture. The deployment
-runbook is [Deploy Sediment](../../docs/operate/deploy.md).
+runbook is [Rehearse the single-host Compose deployment](../README.md).
