@@ -11,6 +11,11 @@ handoff, install each participating harness, and verify one Session per harness.
 Complete the enabled [deployment validation checks](validate-deployment.md)
 before expanding the pilot.
 
+If the operator approves a released CLI package, use the
+[package installation procedure](../capture/local-capture.md#install-the-cli)
+instead of a checkout. The package includes the pi extension. Complete the
+same enrollment and Session verification steps in this guide.
+
 ## Agree the capture scope
 
 Record repositories, developers, harness versions, models, the pilot window,
@@ -58,7 +63,7 @@ Install Git and uv. Use a POSIX shell for these commands; uv selects Python
 | --- | --- |
 | Cursor | Install and authenticate Cursor, including its command-line launcher. |
 | Codex CLI | Install and authenticate Codex 0.153.4 for this profile and transcript procedure. |
-| pi | Install Node 24. The locked checkout supplies pi 0.84.1 in the pi-only step. |
+| pi | Install Node 24 and pi 0.84.1. The Sediment CLI supplies the extension. |
 
 Start and close Cursor or Codex once before enrollment so its configuration
 directory exists. The installer skips undetected harnesses.
@@ -88,18 +93,18 @@ Require the first output to match the approved commit. Keep the checkout and
 `.venv` at this path; hooks reference them. In later shells, export the same PATH.
 Capture-only machines don't need PostgreSQL client libraries.
 
-If you use pi, install its locked runtime and shim dependencies from this checkout:
+If you use pi, install its runtime separately. The Sediment extension needs no
+npm dependencies:
 
 ```bash
-npm ci --prefix "$SEDIMENT_CHECKOUT/shims/pi" --include=dev --no-audit --no-fund || exit 1
-export PATH="$SEDIMENT_CHECKOUT/shims/pi/node_modules/.bin:$PATH"
+npm install --global @earendil-works/pi-coding-agent@0.84.1 || exit 1
 node --version
 pi --version
 ```
 
 Require Node 24 and pi 0.84.1. Start pi once to create `~/.pi/agent`, authenticate
 your existing model with `/login` or your credential mechanism, then close pi.
-Keep this pi directory on PATH in later shells. If you use only gateway
+Keep pi and the Sediment CLI on PATH in later shells. If you use only gateway
 credentials, complete [Add approved gateway capture](#add-approved-gateway-capture)
 before verifying pi.
 
@@ -456,7 +461,8 @@ the queue with its original configuration or obtain participant approval to
 delete it under the deployment's retention procedure.
 
 Return to `$SEDIMENT_CHECKOUT`, check out the approved successor at the same
-path, and repeat the locked Python install and, if used, pi install. Rerun `sediment install` for each repository
+path, and repeat the locked Python install. If you installed a released CLI
+package, upgrade that package instead. Rerun `sediment install` for each repository
 with the same developer identifier, profile, approved flags, and gateway arguments.
 
 After token rotation, rerun `sediment login --capture` and profile enrollment.

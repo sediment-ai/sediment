@@ -1841,9 +1841,7 @@ def _doctor_pi_extension() -> Finding:
     FAIL (a doctor that goes red for normal states gets ignored). pi present
     but the shim unregistered is FAIL — those sessions are never marked.
 
-    An installed CLI cannot resolve the shim directory at all, so it
-    has no path to compare and reports info rather than a verdict — same
-    rule, applied to a registration this build cannot check.
+    Installed CLIs carry the same MIT extension as source checkouts.
     """
     path = _pi_settings_path()
     if not path.parent.exists():
@@ -1857,13 +1855,10 @@ def _doctor_pi_extension() -> Finding:
         )
     shim = _pi_extension_dir()
     if shim is None:
-        # Absent, never guessed at: str(None) yielded the literal "None",
-        # which matches no real path, so a correctly registered machine
-        # reported FAIL and doctor exited 1.
         return (
-            DOCTOR_INFO,
+            DOCTOR_FAIL,
             "pi extension",
-            "not checkable from an installed CLI (shims are checkout-only)",
+            "extension files missing — reinstall sediment-cli, then run install",
         )
     extensions = config.get("extensions")
     if isinstance(extensions, list) and str(shim) in extensions:
@@ -2198,9 +2193,10 @@ def _pi_settings_path() -> Path:
 
 
 def _pi_extension_dir() -> Path | None:
-    """The pi shim (shims/pi/) — checkout-only: shims are not shipped
-    in the sediment-cli wheel, so an installed CLI resolves None and the pi
-    registration skips with a message."""
+    """Resolve the packaged MIT extension, or the editable checkout's shim."""
+    packaged = Path(__file__).resolve().parent / "_pi"
+    if (packaged / "index.ts").is_file():
+        return packaged
     return _repo_root_file("shims", "pi")
 
 
@@ -2446,10 +2442,11 @@ def _install_pi_extension() -> str:
         return _skipped(
             "pi extension: skipped (pi not detected — ~/.pi/agent does not exist)"
         )
-    if _pi_extension_dir() is None:
+    shim = _pi_extension_dir()
+    if shim is None:
         return _skipped(
-            "pi extension: skipped (shims/pi not present — checkout-only; "
-            "run install from a sediment checkout to register it)"
+            "pi extension: skipped (extension files missing — "
+            "reinstall sediment-cli, then run install)"
         )
     config = _load_json(path)
     if config is None:
@@ -2465,7 +2462,7 @@ def _install_pi_extension() -> str:
             "NOT installed — fix the file and re-run install"
         )
         return "skipped"
-    entry = str(_pi_extension_dir())
+    entry = str(shim)
     if entry in extensions:
         return "already present"
     extensions.append(entry)
@@ -2482,7 +2479,10 @@ def _remove_pi_extension() -> bool:
     extensions = config.get("extensions")
     if not isinstance(extensions, list):
         return False
-    entry = str(_pi_extension_dir())
+    shim = _pi_extension_dir()
+    if shim is None:
+        return False
+    entry = str(shim)
     if entry not in extensions:
         return False
     extensions.remove(entry)

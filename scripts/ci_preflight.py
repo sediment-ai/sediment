@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PROSE_FILES = {"CONTEXT.md", "CHANGELOG.md", "README.md"}
 PROSE_DIRS = ("docs/explanation/", "docs/agents/", "docs/adr/")
 SHIM_FILES = {
+    "cli/hatch_build.py",
+    "cli/sediment_cli/attribution.py",
     "cli/sediment_cli/delivery.py",
     "cli/sediment_cli/cli.py",
     "cli/pyproject.toml",

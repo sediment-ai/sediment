@@ -41,7 +41,7 @@ Verify the installed version:
 sediment --version
 ```
 
-For a pilot that requires a source revision or pi, use
+For a pilot that requires a source revision, use
 [Install a pinned checkout](../operate/run-pilot.md#install-a-pinned-checkout)
 instead of the package installer.
 
@@ -259,11 +259,13 @@ The installer configures the agents that it finds on the machine:
 | [Claude Code](agents/claude-code.md) | A `PostToolUse` entry in `~/.claude/settings.json` |
 | [Codex](agents/codex.md) | A hook entry in `~/.codex/hooks.json` |
 | [Cursor](agents/cursor.md) | Native `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
-| pi | The extension under `shims/pi/`, when you run the installer from a checkout |
+| pi | The MIT-licensed extension bundled with the CLI, registered in `~/.pi/agent/settings.json` |
 
-Supported edits mark the Session in the repository's Git directory. For pi,
-run the installer from a source checkout: the installed CLI package doesn't
-contain `shims/pi/`. See [pi setup](agent-integrations.md#pi).
+Supported edits mark the Session in the repository's Git directory. The pi
+extension needs no checkout or npm install. See [pi setup](agent-integrations.md#pi)
+for pi and Node prerequisites. If pi is present, `doctor` reports `FAIL` when
+the extension is missing or unregistered. After upgrading or moving the CLI,
+rerun `sediment install` and remove any stale extension path from pi settings.
 
 ### Git hooks
 

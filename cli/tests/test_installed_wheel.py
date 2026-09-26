@@ -444,6 +444,97 @@ def test_installed_wheel_dispatches_cursor_hook(
     )
 
 
+def test_installed_wheel_registers_pi_outside_checkout(tmp_path, installed_wheels):
+    wheels, venv = installed_wheels
+    sediment = venv / "bin" / "sediment"
+    home = tmp_path / "home"
+    settings = home / ".pi" / "agent" / "settings.json"
+    settings.parent.mkdir(parents=True)
+    original = {"extensions": ["/another/extension"], "theme": "dark"}
+    settings.write_text(json.dumps(original))
+    repo = tmp_path / "repo"
+    subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
+    environment = {
+        "HOME": str(home),
+        "PATH": f"{venv / 'bin'}:/usr/bin:/bin",
+        "NO_COLOR": "1",
+        "GIT_CONFIG_NOSYSTEM": "1",
+    }
+
+    def command(*args):
+        return subprocess.run(
+            [str(sediment), *args],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+    def pi_finding():
+        result = command("doctor")
+        return next(
+            line for line in result.stdout.splitlines() if "pi extension:" in line
+        )
+
+    assert pi_finding().startswith("FAIL")
+    for _ in range(2):
+        result = command("install", str(repo), "--no-env")
+        assert result.returncode == 0, result.stderr
+        config = json.loads(settings.read_text())
+        assert config["theme"] == "dark"
+        foreign, entry = config["extensions"]
+        assert foreign == "/another/extension"
+        extension = Path(entry)
+        assert extension.is_relative_to(venv)
+        assert (extension / "index.ts").is_file()
+        assert not (extension / "node_modules").exists()
+        assert pi_finding().startswith("ok")
+
+    result = command("uninstall", str(repo), "--agents")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(settings.read_text()) == original
+    assert pi_finding().startswith("FAIL")
+
+    [wheel] = wheels.glob("sediment_cli-*.whl")
+    source = REPO_ROOT / "shims" / "pi"
+    runtime = [
+        source / name for name in ("index.ts", "package.json", "LICENSE", "README.md")
+    ]
+    runtime.extend(sorted((source / "lib").glob("*.ts")))
+    with zipfile.ZipFile(wheel) as archive:
+        for path in runtime:
+            packaged = archive.read(f"sediment_cli/_pi/{path.relative_to(source)}")
+            assert packaged == path.read_bytes()
+            if path.suffix == ".ts":
+                assert packaged.startswith(b"// SPDX-License-Identifier: MIT\n")
+
+
+def test_pi_wheel_rebuilt_from_sdist_preserves_runtime(tmp_path, installed_wheels):
+    wheels, _ = installed_wheels
+    # uv's default build creates an sdist, then builds a wheel from that archive.
+    result = subprocess.run(
+        ["uv", "build", "--package", "sediment-cli", "--out-dir", str(tmp_path)],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    [direct] = wheels.glob("sediment_cli-*.whl")
+    [rebuilt] = tmp_path.glob("sediment_cli-*.whl")
+    with zipfile.ZipFile(direct) as first, zipfile.ZipFile(rebuilt) as second:
+        runtime = {
+            name for name in first.namelist() if name.startswith("sediment_cli/_pi/")
+        }
+        assert runtime
+        assert runtime == {
+            name for name in second.namelist() if name.startswith("sediment_cli/_pi/")
+        }
+        for name in runtime:
+            assert first.read(name) == second.read(name)
+
+
 def test_installed_server_manages_database_and_preserves_facts(
     tmp_path, installed_wheels
 ):

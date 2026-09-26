@@ -140,9 +140,9 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   of the unattended allowlist.
 - `doctor [REPO ...]` reports and never repairs. It exits 1 on any FAIL,
   and it is safe to run unattended. Only `--fetch` writes, and it writes one
-  tracking ref. An absent agent reports `info`, never FAIL — and so does a
-  check this build cannot make: an installed CLI carries no `shims/`, so the
-  pi registration is uncheckable rather than broken.
+  tracking ref. An absent agent reports `info`, never FAIL. With pi present,
+  a missing or unregistered extension fails. `cli/hatch_build.py` bundles the
+  MIT runtime from `shims/pi` in wheels and source distributions; editable installs resolve the checkout. Node and npm aren't Python build dependencies.
 - The stamper's `config.json` (`auto_install_remotes`) is owner policy.
   It makes `mark` install git hooks into matching repos, so review its prefixes
   the way you would review an ACL.
