@@ -11,6 +11,12 @@
 
 ### Operational evidence
 
+- Add a separate bounded JEV selection experiment. It keeps the first keyword
+  evidence and asks JEV three yes/no questions about up to four later
+  candidates, compared with keyword selection over 24 continuations. Provider
+  failures fall back to keyword output with a recorded reason. The gate records
+  pi's adaptive output allowance. Live results require JEV access and a coding
+  backend; implementation alone doesn't establish savings.
 - Add a separate budgeted-resumption experiment with no history, full history,
   keyword selection, and JEV selection before the first coding call. Freeze
   three synthetic profiles and measure 36 fresh continuations with independent

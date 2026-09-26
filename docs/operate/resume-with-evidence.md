@@ -217,6 +217,98 @@ captured Fact. Independent checks include quoted newlines and the historical
 business constraint. This diagnostic measures consumer-triggered initial
 selection; it doesn't demonstrate autonomous retrieval during an ongoing Session.
 
+## Compare bounded JEV selection
+
+Use `scripts/bounded_selection_eval.py` to compare keyword selection (K) with a
+bounded JEV policy (J1) before the first coding call. J1 keeps the first two
+keyword parts as initial evidence and asks JEV about up to four later
+candidates. This separate experiment runs 24 continuations across six held-out
+tasks. The [bounded-selection specification](../superpowers/specs/2026-09-26-bounded-jev-selection-design.md)
+defines the policy, fixtures, and acceptance targets.
+
+1. Prepare the isolated runtime and private configuration described in
+   [Run the maintained continuation comparison](#run-the-maintained-continuation-comparison).
+   Set both `api_url` and `operator_api_url` to the host-reachable API address;
+   the selector runs on the host. Build the agent image from
+   `shims/pi/Dockerfile.evaluation` and the gate image from the repository
+   `Dockerfile`. Record both image IDs, the backend version, the model digest,
+   and the template hash in a private runtime-identity JSON file.
+2. Set `JEV_API_KEY` in the environment of the process that runs the command.
+   Keep it out of prompts, shell tracing, logs, Git, and agent containers. If
+   outbound HTTPS requires a local proxy, pass `--jev-proxy` with its loopback
+   address and `--jev-ca-bundle` with its CA bundle. The runner ignores ambient
+   proxy variables.
+3. Optional: check the JEV route and the pinned model:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py jev-check \
+     --output /absolute/private/jev-check
+   ```
+
+4. Optional: run the development probes. The ledger caps live probes at 12
+   across every invocation. Probes use the development family only:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py dev-probe \
+     --ledger /absolute/private/probe-ledger.json \
+     --output /absolute/private/dev-probe-1
+   ```
+
+5. Run the native and JEV preflight. Require `passed: true`:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py preflight \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --output /absolute/private/bounded-preflight
+   ```
+
+6. Capture the six held-out source Sessions:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py source \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --output /absolute/private/bounded-source
+   ```
+
+   Set `SEDIMENT_RETRIEVAL_SESSION_IDS` to exactly the six returned Session IDs.
+   Rotate `SEDIMENT_RETRIEVAL_TOKEN`, restart the API, and update the private
+   configuration's `retrieval_token`. Source capture costs stay separate from
+   per-resumption costs.
+7. Run the frozen matrix into a directory that doesn't exist:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py run \
+     --config /absolute/private/evaluation.json \
+     --runtime-identity /absolute/private/runtime-identity.json \
+     --source /absolute/private/bounded-source \
+     --preflight /absolute/private/bounded-preflight \
+     --output /absolute/private/bounded-matrix
+   ```
+
+   If the process stops, repeat the command with `--resume`. The runner records
+   a started slot without a result as `interrupted` and continues with the next
+   slot; it never reruns a slot. An instrument failure stops the experiment and
+   blocks resumption.
+8. Summarize the recorded runs:
+
+   ```bash
+   uv run python scripts/bounded_selection_eval.py summarize \
+     --output /absolute/private/bounded-matrix
+   ```
+
+   Report every slot, both arms' quality, per-model usage, fallback runs, and
+   the paired differences. A negative result completes the experiment. Keep
+   raw records private and archive them before the runtime expires.
+
+If you choose a coding model other than the pinned Ministral model, pass
+`--coding-model` to every command and report the result as a separate
+experiment. To check the selector against a real API and PostgreSQL without
+a model, run `uv run python scripts/bounded_selection_acceptance.py
+--database-url <administrative URL>`. Its JEV stand-in returns controlled
+answers, so it proves wiring, not model judgment.
+
 ## Run the maintained continuation comparison
 
 The checkout's `scripts/session_context_retrieval_eval.py` runs one disposable
