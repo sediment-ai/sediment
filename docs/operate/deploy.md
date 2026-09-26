@@ -10,7 +10,7 @@ You need:
 
 - a supported Debian or Ubuntu host, or macOS with Homebrew;
 - Git, curl, OpenSSL, and permission to install the host libraries;
-- a dedicated PostgreSQL 17 instance and database, with an administrative
+- a dedicated PostgreSQL 17 instance and database, with a PostgreSQL superuser
   connection for role provisioning and migrations;
 - a stable HTTPS endpoint, private persistent storage, and encrypted backups.
 
@@ -36,9 +36,11 @@ sediment --version
 
 ### Configure PostgreSQL
 
-Create a dedicated database instance through your PostgreSQL operator or service. Give
-Sediment an administrative connection that can provision database roles and
-migrate that database. Don't point it at a database used by another application.
+Create a dedicated PostgreSQL 17 instance and database. Set the bootstrap
+connection to a PostgreSQL superuser (`rolsuper=true`). Role provisioning rejects
+non-superuser administrators, including managed database services that don't
+provide superuser access. Don't point Sediment at a database used by another
+application.
 
 Set these variables in the server account's private environment. Replace the
 example organization, database connection, and permitted Git hosts:
@@ -319,7 +321,7 @@ inference content goes. Sediment doesn't add analytics or crash reporting.
 - **Installation fails:** check access to the package index and the installer's
   stated host-library prerequisites.
 - **API startup fails:** inspect supervisor logs and database reachability.
-  Verify the private environment and administrative provisioning connection.
+  Verify the private environment and the PostgreSQL superuser bootstrap connection.
 - **Ingest returns `503 database_unavailable`:** restore database access, then
   retry retained payloads. Database deduplication doesn't recover unsent events.
 - **Health succeeds but capture is absent:** run the agent's Session check and
