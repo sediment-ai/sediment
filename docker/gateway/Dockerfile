@@ -15,11 +15,17 @@ FROM ghcr.io/berriai/litellm:v1.102.1@sha256:87f34979b9f8cb274fac90ca8a4fdda07d8
 # The vendor pins OS package revisions in world. Release those revision locks
 # so the signed distribution repository can supply security fixes.
 # Pin reviewed released builds before upgrading: apk sorts development
-# snapshots after the corresponding released version.
+# snapshots after the corresponding released version. Keep the reviewed OpenSSL
+# 3.6 package set: the 4.0 transition has conflicting configuration ownership.
+# Other pins retain the package revisions in security/maintenance.json.
 RUN sed -i 's/=.*//' /etc/apk/world \
     && apk add --no-cache \
         'python-3.13=3.13.15-r8' 'python-3.13-base=3.13.15-r8' \
         'zlib=1.3.2-r7' \
+        'openssl=3.6.4-r7' 'libcrypto3=3.6.4-r7' 'libssl3=3.6.4-r7' \
+        'openssl-provider-legacy-allowed=4.0.2-r3' \
+        'apk-tools=2.14.10-r14' 'ca-certificates-bundle=20260909-r0' \
+        'libuuid=2.42.3-r4' \
     && apk upgrade --no-cache \
     && apk del --no-cache nodejs libevent \
     && rm /usr/local/bin/pgbouncer
@@ -31,7 +37,7 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
         'opentelemetry-exporter-otlp==1.44.0' \
         'opentelemetry-instrumentation-fastapi==0.65b0' 'google-cloud-kms==3.16.0' \
         'typing-extensions==4.16.0' 'fastapi-sso==0.23.0' 'referencing==0.37.0' \
-        'idna==3.20' 'python-dotenv==1.2.3' 'huggingface-hub==1.32.0' \
+        'idna==3.20' 'python-dotenv==1.2.3' 'tokenizers==0.23.1' \
         'websockets==17.1' 'mcp==1.30.0' 'gunicorn==26.2.0' \
         'polars==1.44.2' 'cryptography==50.0.1' 'numpy==2.5.3' \
     && uv pip uninstall --python /app/.venv/bin/python \
@@ -40,8 +46,19 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
         smithy-aws-core smithy-aws-event-stream smithy-core smithy-http \
         smithy-json awscrt ijson \
     && uv pip check --python /app/.venv/bin/python
+# Tokenizers' Rust Hub download caller retains its API in Hub 2. Keep the
+# compatibility declaration explicit, hash guarded, and tested at that caller.
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    --mount=type=bind,source=docker/gateway/patch_tokenizers.py,target=/tmp/patch_tokenizers.py \
+    python /tmp/patch_tokenizers.py /app/.venv/lib/python3.13/site-packages/tokenizers-0.23.1.dist-info \
+    && uv pip install --python /app/.venv/bin/python --no-cache \
+        'huggingface-hub==2.0.0' 'httpx2==2.13.1' 'httpcore2==2.13.1' \
+        'truststore==0.10.4' \
+    && uv pip check --python /app/.venv/bin/python
 RUN --mount=type=bind,source=docker/gateway/patch_proxy.py,target=/tmp/patch_proxy.py \
     python /tmp/patch_proxy.py /app/.venv/lib/python3.13/site-packages/litellm/proxy
+RUN --mount=type=bind,source=docker/gateway/patch_tarfile.py,target=/tmp/patch_tarfile.py \
+    python /tmp/patch_tarfile.py /usr/lib/python3.13/tarfile.py
 COPY docker/gateway/entrypoint.py /usr/local/bin/sediment-gateway.py
 RUN rm -rf /opt/prisma /app/.venv/lib/python3.13/site-packages/prisma \
     && mkdir -p /data/delivery \
@@ -57,8 +74,8 @@ COPY --from=runtime-files / /
 WORKDIR /app
 USER 65532:65532
 LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson" \
-    io.sediment.source-patches="LiteLLM proxy database retry decorators removed; docker/gateway/patch_proxy.py" \
-    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.3,huggingface-hub=1.32.0,websockets=17.1,mcp=1.30.0,gunicorn=26.2.0,polars=1.44.2,cryptography=50.0.1,numpy=2.5.3"
+    io.sediment.source-patches="LiteLLM proxy database retry decorators removed; docker/gateway/patch_proxy.py; CPython CVE-2026-82049 backport b8f23e307097552eaea2604383a12ab280520d0d; docker/gateway/patch_tarfile.py; Tokenizers 0.23.1 tested Hub 2.0.0 dependency declaration; docker/gateway/patch_tokenizers.py" \
+    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.3,tokenizers=0.23.1,huggingface-hub=2.0.0,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,mcp=1.30.0,gunicorn=26.2.0,polars=1.44.2,cryptography=50.0.1,numpy=2.5.3"
 ENV PATH="/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin" \
     HOME=/tmp \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

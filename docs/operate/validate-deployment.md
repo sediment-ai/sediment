@@ -24,14 +24,17 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 
 ## Verify the installed build
 
-1. Run the required continuous integration (CI), shim, schema-compatibility, and
-   pinned consumer checks for the selected revision. Record failures and skips;
-   a job that doesn't run remains unverified.
-2. Run the [release rehearsal](rehearse-release.md#run-the-no-publish-rehearsal)
-   from a clean checkout against a disposable database. Retain its revision,
-   runtime versions, acceptance record, artifact hashes, and replay results.
-3. Match installed artifact identities to the tested build. Use real harness
-   trials to verify capture; the rehearsal uses synthetic inputs.
+1. Review the selected revision's continuous integration (CI), shim,
+   schema-compatibility, consumer, and release-rehearsal results. Retain the
+   acceptance record and artifact hashes. Record failures and skips; a check
+   that didn't run remains unverified.
+2. Match installed revisions and artifact identities to that evidence. If you
+   qualify a modified or unverified build, run the missing checks and
+   [record its rehearsal](rehearse-release.md#record-a-revision-bound-rehearsal)
+   against a disposable database.
+3. Verify the deployed API, database, and live capture with the
+   [deployment checks](deploy.md#5-verify-the-deployment) and
+   [pilot procedure](run-pilot.md). Release checks use synthetic inputs.
 
 ## Verify privacy, authorities, and source coverage
 
@@ -41,8 +44,9 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 2. Verify deployment tenancy, separate ingest and operator credentials,
    authenticated network paths, private Git access, and credential permissions.
    Follow [Check release and deployment security](security.md).
-3. Record each harness's executable path and version. pi shim dependencies don't
-   install the pi runtime. A Codex CLI profile check doesn't verify Desktop.
+3. Record each harness's executable path and version. The pilot checkout's
+   `npm ci --include=dev` installs the pinned pi runtime; require that executable
+   on PATH. A Codex CLI profile check doesn't verify Desktop.
 4. For marker-client upgrades, pause hooks across linked worktrees, reconcile
    markers, replace every helper, and restart harnesses. Don't mix old and
    generation-aware writers.

@@ -135,6 +135,12 @@ extensions. Compare `gateway_caller_files` with the reviewed LiteLLM and
 `onelogin/saml2` sources. Changed files require another source review; matching
 hashes establish integrity, not approval. Retain that review with the image evidence.
 
+The gateway backports CPython's CVE-2026-82049 fix to the released runtime.
+Its package version remains visible in scanner reports. The
+`tarfile_hardlink_fix` condition requires the exact patched source hash and no
+cached bytecode. Review the upstream patch and both architecture tests before
+approving a disposition for that package.
+
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
 source, or scanner error blocks the gate. Keep failed evidence for investigation.

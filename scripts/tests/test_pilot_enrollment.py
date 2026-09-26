@@ -18,10 +18,11 @@ from sediment_cli import attribution
 
 
 PILOT_GUIDE = Path(__file__).parents[2] / "docs/operate/run-pilot.md"
+RELEASE_GUIDE = Path(__file__).parents[2] / "docs/operate/rehearse-release.md"
 
 
-def _pilot_shell_block(containing: str) -> str:
-    guide = PILOT_GUIDE.read_text(encoding="utf-8")
+def _guide_shell_block(containing: str, path: Path = PILOT_GUIDE) -> str:
+    guide = path.read_text(encoding="utf-8")
     matches = [
         textwrap.dedent(block)
         for _, block in re.findall(
@@ -750,8 +751,8 @@ def test_delivery_enrollment_is_explicit_and_doctor_reports_worker(
     assert str(directory) in (home / ".sediment/env.sh").read_text()
 
 
-def test_private_pilot_rehearsal_block_binds_clean_revision_and_test_database() -> None:
-    block = _pilot_shell_block("scripts/release_rehearsal.py")
+def test_release_rehearsal_block_binds_clean_revision_and_test_database() -> None:
+    block = _guide_shell_block("ACCEPTANCE_TMP=", RELEASE_GUIDE)
 
     assert "SEDIMENT_TEST_DATABASE_URL=" in block
     assert "SEDIMENT_DATABASE_URL" not in block
@@ -767,7 +768,7 @@ def test_private_pilot_rehearsal_block_binds_clean_revision_and_test_database() 
     assert 'rm -f "$ACCEPTANCE_TMP"\n  exit 1' in block
 
 
-def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
+def test_release_rehearsal_block_executes_as_an_atomic_record(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "repo"
@@ -777,7 +778,7 @@ def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
     git(repo, "config", "user.email", "pilot@example.invalid")
     git(repo, "commit", "--allow-empty", "-qm", "initial")
     revision = git(repo, "rev-parse", "HEAD")
-    block = _pilot_shell_block("scripts/release_rehearsal.py").replace(
+    block = _guide_shell_block("ACCEPTANCE_TMP=", RELEASE_GUIDE).replace(
         "SEDIMENT_REVISION='<approved full commit hash>'",
         f"SEDIMENT_REVISION='{revision}'",
     )
@@ -855,7 +856,7 @@ def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
 def test_private_pilot_guide_requires_supervised_recovery_and_safe_lifecycle() -> None:
     guide = PILOT_GUIDE.read_text(encoding="utf-8")
     flat_guide = " ".join(guide.split())
-    supervisor = _pilot_shell_block("delivery replay --watch")
+    supervisor = _guide_shell_block("delivery replay --watch")
     recovery = guide.split("## Verify workstation recovery", 1)[1].split(
         "## Add approved gateway capture", 1
     )[0]
@@ -1176,7 +1177,7 @@ def test_private_pilot_recovery_block_uses_operator_transport(enrollment, mode):
     url = f"http://127.0.0.1:{server.server_port}"
     login(home, url=url, token="recovery-ingest")
     block = (
-        _pilot_shell_block("RECOVERY_SESSION_ID=")
+        _guide_shell_block("RECOVERY_SESSION_ID=")
         .replace("<Session identifier from the note>", "recovery-session")
         .replace(
             "RECOVERY_EVENT='developer_decision'", "RECOVERY_EVENT='edit_observation'"

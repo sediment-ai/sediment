@@ -46,10 +46,13 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    If `~/.claude` doesn't exist, the installer skips the Claude Code hook.
    Install or start Claude Code, then run `sediment install` again.
 
-3. Load the environment, then restart Claude Code:
+3. End active Claude Code Sessions, then load the environment and start Claude
+   Code in the enrolled repository:
 
    ```bash
    . "$HOME/.sediment/env.sh"
+   cd /path/to/repo
+   claude
    ```
 
 ## Configure Developer decisions
@@ -79,6 +82,7 @@ sediment install \
   --gateway-key "$SEDIMENT_GATEWAY_KEY" \
   --user-id alice \
   /path/to/repo
+. "$HOME/.sediment/env.sh"
 ```
 
 The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
