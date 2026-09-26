@@ -56,7 +56,7 @@ pi, and Copilot Chat. Available signals vary by agent.
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Agent, gateway, and repository events flow into immutable Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
+    <img alt="Agent, gateway, and repository events flow into Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
   </picture>
 </p>
 
