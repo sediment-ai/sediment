@@ -171,3 +171,5 @@ rm -rf ~/.sediment/server
 - [Configure your agent](capture/agent-integrations.md) to capture real work.
   Follow its install, environment, restart, and Session verification steps.
 - [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.
+  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers Compose's
+  generated credentials, database connections, and persistent volume.

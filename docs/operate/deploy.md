@@ -46,6 +46,11 @@ Run the remaining host commands from this directory. If another Sediment stack
 exists on this host, [choose a separate project and ports](#run-a-second-local-deployment)
 before starting this one.
 
+If `sediment server` is running on this host, stop it with Ctrl+C before using
+Compose's default API port, `8000`. To keep both deployments running, choose a
+different Compose API port. Compose creates its own PostgreSQL volume; it
+doesn't reuse or import the local database under `~/.sediment/server`.
+
 Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
@@ -74,6 +79,36 @@ credential channel. Reserve `SEDIMENT_OPERATOR_TOKEN` for queries and reports.
 The generator never prints secrets. To add a client after installation, follow
 [credential rotation](#6-upgrade-the-deployment).
 
+### Configure PostgreSQL
+
+Keep the four generated database passwords in `.env`. The supplied
+[`docker-compose.yml`](../../docker-compose.yml) uses them as follows:
+
+| Setting | Database role | Used by |
+| --- | --- | --- |
+| `POSTGRES_PASSWORD` | `sediment` | PostgreSQL initialization and the migration service's bootstrap connection. |
+| `SEDIMENT_MIGRATOR_PASSWORD` | `sediment_migrator` | The migration service to own and migrate the schema. |
+| `SEDIMENT_RUNTIME_PASSWORD` | `sediment_runtime` | The API to store and read Facts. |
+| `SEDIMENT_OPERATOR_PASSWORD` | `sediment_operator` | The operator profile to run database checks, Derivations, exports, and quarantine operations. |
+
+Compose sets the database name to `sediment` and connects services to
+`postgres:5432` on the internal `database` network. You don't need to install
+PostgreSQL on the host or publish port `5432`.
+
+Compose builds `SEDIMENT_BOOTSTRAP_DATABASE_URL` for `migrate` and a separate
+`SEDIMENT_DATABASE_URL` for each of `api` and `operator` from those passwords.
+You don't need to add a connection URL to `.env`. Keep the generated hexadecimal
+passwords; they are safe to include in these URLs. For an existing deployment,
+follow [credential rotation](#6-upgrade-the-deployment) instead of replacing
+passwords before a restart.
+
+The `postgres` service stores data in the `sediment-postgres` named volume at
+`/var/lib/postgresql/data`. Keep this volume when restarting or rebuilding.
+LiteLLM sends captured Inference calls to `http://api:8000`; the API writes
+them to PostgreSQL. The gateway doesn't receive database credentials.
+
+### Start the API and database
+
 Build and start the deployment with its source identity:
 
 ```bash
@@ -95,8 +130,10 @@ curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
 {"status":"ok","version":"0.2.0"}
 ```
 
-Compose builds the images, provisions separate database roles, and applies
-migrations. It returns success after PostgreSQL and the API pass health checks.
+Compose waits for PostgreSQL to pass its health check, then runs `migrate` to
+provision the database roles and apply migrations. It starts the API only after
+`migrate` exits successfully. The start command returns success after PostgreSQL
+and the API pass health checks.
 The 120-second readiness limit starts after image building. If startup fails,
 inspect the containers and logs before retrying the same start command:
 
@@ -164,7 +201,7 @@ staging volumes:
 
 ```bash
 docker compose --profile operator run --rm operator sediment facts
-docker compose ps -a
+docker compose ps -a postgres migrate api
 ```
 
 `sediment facts` prints total and Derivation-visible rows. Zero counts are
