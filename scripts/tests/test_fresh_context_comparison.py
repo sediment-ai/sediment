@@ -43,7 +43,7 @@ def test_selected_task_is_frozen_and_cross_task_source_is_refused(
 ):
     mod = load()
     monkeypatch.setattr(
-        mod, "command", lambda *a, **kw: b"0.84.1\nv24.14.0\nPython 3.12.14\n"
+        mod, "command", lambda *a, **kw: b"0.86.1\nv24.21.0\nPython 3.12.14\n"
     )
     config = {"agent_image": "agent", "gate_image": "gate"}
     original = mod.freeze(config)

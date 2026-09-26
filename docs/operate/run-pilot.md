@@ -58,7 +58,7 @@ Install Git and uv. Use a POSIX shell for these commands; uv selects Python
 | --- | --- |
 | Cursor | Install and authenticate Cursor, including its command-line launcher. |
 | Codex CLI | Install and authenticate Codex 0.153.4 for this profile and transcript procedure. |
-| pi | Install Node 24. The locked checkout supplies pi 0.84.1 in the pi-only step. |
+| pi | Install Node 24. The locked checkout supplies pi 0.86.1 in the pi-only step. |
 
 Start and close Cursor or Codex once before enrollment so its configuration
 directory exists. The installer skips undetected harnesses.
@@ -97,7 +97,7 @@ node --version
 pi --version
 ```
 
-Require Node 24 and pi 0.84.1. Start pi once to create `~/.pi/agent`, authenticate
+Require Node 24 and pi 0.86.1. Start pi once to create `~/.pi/agent`, authenticate
 your existing model with `/login` or your credential mechanism, then close pi.
 Keep this pi directory on PATH in later shells. If you use only gateway
 credentials, complete [Add approved gateway capture](#add-approved-gateway-capture)
