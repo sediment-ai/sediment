@@ -14,8 +14,7 @@ Sediment credentials and configures the service connections. You supply the
 hostname, a certificate contact email, and an Anthropic API key. The bundled
 gateway supports Anthropic models.
 
-Review the [release evidence and proxy coverage limit](security.md#review-the-supplied-evidence)
-before approving the deployment.
+Before deploying, review [which components the release scanner checks](security.md#review-the-supplied-evidence).
 
 1. Launch a maintained Ubuntu 24.04 instance with at least 4 vCPUs and 8 GB of
    memory. Use encrypted persistent storage with room for image builds, Facts,
@@ -24,18 +23,19 @@ before approving the deployment.
 2. Install Git, Python 3.12, [Docker Engine and its Compose plugin](https://docs.docker.com/engine/install/ubuntu/).
    Complete Docker's [non-root access setup](https://docs.docker.com/engine/install/linux-postinstall/)
    for the operator account, then sign in again. Verify `docker info` and
-   `docker compose version`. Docker access grants host administration authority.
+   `docker compose version`. Docker access gives this account root-level control
+   of the host.
 3. Associate an [Elastic IP address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html).
    Create one DNS A record, such as `sediment.example.com`, pointing to that
    address. If you publish an AAAA record, IPv6 must also reach the host.
 4. Allow inbound TCP ports 80 and 443 in the instance security group and host
    firewall. Restrict SSH to the operator's address. Don't open ports 5432,
    8000, or 4000. Keep port 80 available for certificate renewal.
-5. Clone the approved revision and create the private configuration. Replace
-   the commit placeholder and example hostname with your approved values:
+5. Clone the repository and check out the commit you want to deploy. Replace
+   the commit placeholder with its full hash and the example hostname with yours:
 
    ```bash
-   SEDIMENT_REVISION='<approved full commit hash>'
+   SEDIMENT_REVISION='<full commit hash>'
    git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
    cd sediment || exit 1
    git checkout --detach "$SEDIMENT_REVISION" || exit 1
@@ -47,8 +47,8 @@ before approving the deployment.
    Enter the certificate contact email and provider key at the prompts. The
    provider-key prompt hides input. The generator creates `.env` with mode 0600
    and refuses to overwrite it. It generates distinct internal credentials,
-   records the source identity, and sets `COMPOSE_PROFILES=https`. No uv or
-   host installation of Sediment packages is required.
+   records the commit and source fingerprint, and sets `COMPOSE_PROFILES=https`.
+   You don't need uv or Sediment packages on the host.
    The directory permission command removes shared write access; Ubuntu can
    otherwise create the checkout with group write permission, which setup rejects.
 6. Start the complete deployment:
@@ -108,7 +108,7 @@ You need:
 - a maintained host with at least 4 vCPUs and 8 GB of memory; allocate these
   resources to Docker Desktop's virtual machine when using it
 - Docker Desktop or Docker Engine with Docker Compose
-- Git, curl, uv, and the approved full Sediment commit hash
+- Git, curl, uv, and the full hash of the Sediment commit you want to deploy
 
 Start Docker, then check the host tools:
 
@@ -127,10 +127,10 @@ and optional gateway to loopback. Your ingress is the only off-host path.
 ## 2. Deploy the API
 
 Before building, review [release security evidence](security.md). On the
-deployment host, check out the approved revision:
+deployment host, check out the commit you want to deploy:
 
 ```bash
-SEDIMENT_REVISION='<approved full commit hash>'
+SEDIMENT_REVISION='<full commit hash>'
 git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
 cd sediment || exit 1
 git checkout --detach "$SEDIMENT_REVISION" || exit 1
@@ -267,8 +267,8 @@ at ingress; the API doesn't provide that limit.
 If you use Cloudflare, follow its
 [local tunnel setup](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/create-local-tunnel/)
 and [service installation](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/as-a-service/linux/).
-Cloudflare carries requests through its edge. If that boundary is outside your
-approved perimeter, use internal ingress.
+Cloudflare carries requests through its network. If your data must stay within
+your own network, use an internal proxy.
 
 Remote clients use the HTTPS deployment root, such as
 `https://sediment-api.example.com`. `sediment login` rejects embedded credentials,
@@ -330,7 +330,7 @@ Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
 supports `claude-*` routing; other providers require a separate gateway
 configuration. See the [gateway boundary](../../docker/gateway/README.md).
 
-If you authorize persistent storage of unredacted capture payloads, set
+If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
 `sediment-delivery` named volume and owns a replay worker for its process
 lifetime. Leave the setting empty for direct best-effort delivery.
@@ -415,8 +415,8 @@ schedule a maintenance window for large datasets.
 Stop the API and gateway before changing database roles or credentials. Preserve
 `POSTGRES_PASSWORD`: changing it in `.env` doesn't rotate an initialized server.
 
-Choose the approved successor's full commit hash. Use a pinned checkout for
-upgrades as well as first installation.
+Choose the full hash of the commit you want to deploy. Pin the checkout to that
+commit when upgrading, as you do for the first installation.
 
 If your existing `.env` predates separate database roles and operator tokens,
 prepare its replacement before running Compose against the updated checkout:
@@ -427,7 +427,7 @@ prepare its replacement before running Compose against the updated checkout:
    then generate a separate private candidate:
 
    ```bash
-   SEDIMENT_REVISION='<approved successor full commit hash>'
+   SEDIMENT_REVISION='<full commit hash to deploy>'
    git fetch --tags origin || exit 1
    git checkout --detach "$SEDIMENT_REVISION" || exit 1
    test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
@@ -437,7 +437,7 @@ prepare its replacement before running Compose against the updated checkout:
 
 3. In a private editor, copy the existing `POSTGRES_PASSWORD`, `SEDIMENT_ORG_ID`,
    webhook secret, clone-host policy, provider key, and gateway master key into
-   `.env.next`. Preserve authorized delivery-retention settings. Keep the
+   `.env.next`. Keep the agreed delivery-retention settings. Keep the
    generated migrator, runtime, operator database passwords, operator HTTP token,
    gateway ingest token, and matching named ingest map. If existing clients use
    `SEDIMENT_API_BEARER_TOKEN`, retain that value as an ingest-only compatibility
@@ -457,7 +457,7 @@ For a deployment already using separate credentials, preserve its private
 
 ```bash
 set -e
-SEDIMENT_REVISION='<approved successor full commit hash>'
+SEDIMENT_REVISION='<full commit hash to deploy>'
 git fetch --tags origin
 docker compose --profile gateway stop gateway api
 git checkout --detach "$SEDIMENT_REVISION"

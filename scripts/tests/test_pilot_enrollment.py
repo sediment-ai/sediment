@@ -858,7 +858,7 @@ def test_private_pilot_guide_requires_supervised_recovery_and_safe_lifecycle() -
     flat_guide = " ".join(guide.split())
     supervisor = _guide_shell_block("delivery replay --watch")
     recovery = guide.split("## Verify workstation recovery", 1)[1].split(
-        "## Add approved gateway capture", 1
+        "## Add gateway capture", 1
     )[0]
     flat_recovery = " ".join(recovery.split())
     lifecycle = guide.split("## Update or end enrollment", 1)[1]
@@ -879,7 +879,7 @@ def test_private_pilot_guide_requires_supervised_recovery_and_safe_lifecycle() -
     assert "Replay refuses to send retained payloads to a different destination" in (
         flat_lifecycle
     )
-    assert "outage and sender-restart recovery gates remain open" in guide
+    assert "recovery from outages and sender restarts as unverified" in guide
 
 
 def test_fleet_bundle_ships_standalone_transport_implementation(enrollment, tmp_path):

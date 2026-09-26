@@ -109,7 +109,7 @@ sediment doctor /path/to/repo --agent pi --session-id '<Session identifier>'
 
 Add `--transcripts` when you opted in to content capture. Add `--inference-calls`
 only for a Session routed through a gateway. The
-[Pilot gateway procedure](../operate/run-pilot.md#add-approved-gateway-capture)
+[Pilot gateway procedure](../operate/run-pilot.md#add-gateway-capture)
 provides a concrete `models.json` entry. [Configure local capture](local-capture.md)
 defines the shared endpoint, git hook, and transcript privacy behavior.
 

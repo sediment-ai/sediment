@@ -426,7 +426,7 @@ for status codes and closed refusal reasons.
 
 Use a small task with an explicit goal, constraints, and final verification
 command. This procedure targets pi `0.86.1` with Node.js 24 and the existing
-[pi gateway setup](run-pilot.md#add-approved-gateway-capture). Its commands follow
+[pi gateway setup](run-pilot.md#add-gateway-capture). Its commands follow
 the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/README.md).
 A live run requires your approved model endpoint.
 

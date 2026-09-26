@@ -22,7 +22,7 @@ and shell hooks; it refuses Windows installation before changing configuration.
 
 ## Choose capture paths
 
-Enable only the evidence that participants approve:
+Agree with participants on which evidence to capture, then enable those paths:
 
 | Evidence | Setup |
 | --- | --- |
@@ -41,9 +41,9 @@ The push webhook stores a Push Fact even when a mirror refresh fails. Notes
 Attribution needs the mirror, so private repositories require read-only git
 credentials on the API host.
 
-Before mounting private Git credentials, reassess the default image and Git
-configuration conditions in [the security procedure](../operate/security.md).
-A custom credential mount falls outside the supplied deployment assurance.
+Before mounting private Git credentials, review the image and Git configuration
+requirements in [Check release and deployment security](../operate/security.md).
+The supplied release evidence doesn't cover custom credential mounts.
 Then mount a deployment-local `.netrc` through `docker-compose.override.yml`:
 
 ```yaml
@@ -117,10 +117,9 @@ Sediment doesn't serve the model request.
 
 ### Choose a gateway path
 
-Decision: use [bundled LiteLLM](#enable-the-bundled-litellm-gateway) for the
-supplied Anthropic routes, or connect an existing LiteLLM gateway for other
-models. Sediment registers only the LiteLLM adapter; an enum value alone doesn't
-add support for another payload format.
+Use [bundled LiteLLM](#enable-the-bundled-litellm-gateway) for Anthropic models.
+For other models, connect an existing LiteLLM gateway. Sediment's gateway
+adapter supports only the LiteLLM payload format.
 
 Use the [gateway envelope and status codes](../reference/api.md#post-ingestgateway).
 The callback must retain the complete input, output, model, available usage and
@@ -162,7 +161,7 @@ port exactly; it never authorizes OTLP delivery or another destination.
 The callback uses five-second HTTP timeouts and preserves capture identity and
 observation time across retries. Capture failures don't fail the model request.
 
-If you authorize local storage of the prepared payload, set
+If you agree to store the prepared payload on disk, set
 `SEDIMENT_DELIVERY_DIR` to a private directory on persistent storage. The payload
 can contain unredacted prompts, code, or credentials before server redaction.
 The callback starts a replay worker for its process lifetime. Without this

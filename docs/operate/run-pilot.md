@@ -1,7 +1,7 @@
 # Run a Cursor, pi, and Codex pilot
 
-Enroll macOS or Linux developers in a shared deployment. Complete the operator
-handoff, install each participating harness, and verify one Session per harness.
+Enroll macOS or Linux developers in a shared deployment. Prepare the deployment,
+install each participating harness, and verify one Session per harness.
 
 | Owner | Tasks |
 | --- | --- |
@@ -16,9 +16,9 @@ before expanding the pilot.
 Record repositories, developers, harness versions, models, the pilot window,
 and the questions you want to answer.
 
-Decision: enroll Developer decisions and commit Attribution after agreeing each
-harness's payload. Add Edit observations or gateway capture only for the
-evidence that the participants approve.
+Agree with participants on the data that each harness sends. Start with
+Developer decisions and commit Attribution. If participants opt in to additional
+data collection, enable Edit observations or gateway capture.
 
 Codex native telemetry can contain patch code even with `log_user_prompt=false`
 and transcripts disabled. pi decisions are metadata-only. Transcripts add applied
@@ -29,19 +29,20 @@ and agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-b
 
 ## Prepare the deployment
 
-1. Complete [Deploy a pilot on EC2](deploy.md#deploy-a-pilot-on-ec2) at the
-   approved revision. Configure private Git access, webhooks, and a tested backup.
+1. [Deploy a pilot on EC2](deploy.md#deploy-a-pilot-on-ec2).
+   Configure private Git access and webhooks. Back up the database and test
+   restoration.
 2. [Match the installed build to its release evidence](validate-deployment.md#verify-the-installed-build).
    Keep that evidence with the deployment record; you don't need to rerun the
-   release rehearsal to install an approved build.
+   release rehearsal for a build that already has matching evidence.
 3. Give each developer these settings through the team's credential channel:
 
    | Setting | Value |
    | --- | --- |
-   | Source | Sediment repository URL and full approved commit hash |
+   | Source | Sediment repository URL and full commit hash |
    | Capture | HTTPS API root and that developer's named ingest-only token |
    | Identity | Developer identifier and local pilot repository path |
-   | Consent | Approved harnesses, transcript capture, and sender buffering |
+   | Consent | Harnesses, transcript capture, and sender buffering that participants agree to use |
    | Gateway, if enabled | URL, client key, supported API, and the developer's existing model ID |
 
 Keep deployment configuration and operator credentials out of harnesses. Keep
@@ -51,18 +52,18 @@ gateway serves Anthropic `claude-*` models; other models need a separate gateway
 
 ### Single-host deployment
 
-Decision: use the bundled Traefik proxy for a pilot on one EC2 instance. Compose
+Use the bundled Traefik proxy for a pilot on one EC2 instance. Compose
 starts PostgreSQL, the API, LiteLLM, and the proxy. Traefik obtains and renews
 the certificate, redirects HTTP to HTTPS, and applies request limits. The proxy
-uses checked-in routes without Docker-socket access. A single host doesn't
-provide high availability; an existing managed load balancer can supply ingress
-through the [external HTTPS setup](deploy.md#3-expose-a-public-https-endpoint).
+uses the route configuration in the repository and doesn't access the Docker
+socket. If the host fails, all four services stop. If you use a managed load
+balancer, follow the [external HTTPS setup](deploy.md#3-expose-a-public-https-endpoint).
 
-The operator supplies a public hostname, certificate contact email, and Anthropic
+Supply a public hostname, certificate contact email, and Anthropic
 API key. The setup generates the internal credentials. Point one DNS A record
 at the instance's Elastic IP, then follow the [EC2 startup and verification
-steps](deploy.md#deploy-a-pilot-on-ec2). Review the [proxy release-evidence
-limit](security.md#review-the-supplied-evidence) before approving a pilot.
+steps](deploy.md#deploy-a-pilot-on-ec2). Before deploying, review
+[which components the release scanner checks](security.md#review-the-supplied-evidence).
 
 | Address | Service |
 | --- | --- |
@@ -91,7 +92,7 @@ Replace the example values with the operator's handoff:
 
 ```bash
 SEDIMENT_CHECKOUT="$HOME/.local/share/sediment-pilot"
-SEDIMENT_REVISION='<approved full commit hash>'
+SEDIMENT_REVISION='<full commit hash>'
 PILOT_REPO='/absolute/path/to/pilot-repo'
 PILOT_USER_ID='alice'
 PILOT_API_URL='https://sediment-api.example.com'
@@ -108,7 +109,7 @@ git rev-parse HEAD
 sediment --version
 ```
 
-Require the first output to match the approved commit. Keep the checkout and
+Check that the first output matches `SEDIMENT_REVISION`. Keep the checkout and
 `.venv` at this path; hooks reference them. In later shells, export the same PATH.
 Capture-only machines don't need PostgreSQL client libraries.
 
@@ -124,7 +125,7 @@ pi --version
 Require Node 24 and pi 0.86.1. Start pi once to create `~/.pi/agent`, authenticate
 your existing model with `/login` or your credential mechanism, then close pi.
 Keep this pi directory on PATH in later shells. If you use only gateway
-credentials, complete [Add approved gateway capture](#add-approved-gateway-capture)
+credentials, complete [Add gateway capture](#add-gateway-capture)
 before verifying pi.
 
 ## Enroll the developer machine
@@ -152,8 +153,8 @@ The generated environment enables Cursor and pi delivery. Codex uses a private
 `sediment-pilot.config.toml` under `CODEX_HOME`, or `~/.codex`, with a resolved
 token. Keep that file private; TOML token placeholders don't resolve.
 
-If participants approve Edit observations, add the opt-in and reload the
-environment:
+If participants opt in to Edit observations, enable transcript capture and
+reload the environment:
 
 ```bash
 sediment install --user-id "$PILOT_USER_ID" --transcripts \
@@ -168,7 +169,7 @@ Leave `SEDIMENT_EXTRACT_ON_SETTLE` unset for interactive pi. See
 
 ### Enroll bounded workstation delivery
 
-If participants approve persistent unredacted payload storage, enable buffering
+If participants agree to store unredacted payloads on disk, enable buffering
 for pi Developer decisions and pi/Codex transcripts. Use private persistent
 storage and an encrypted volume when required; the helper doesn't encrypt it.
 
@@ -205,11 +206,11 @@ Follow [sender buffer operations](../capture/local-capture.md#preserve-prepared-
 for capacity, expiry, and recovery. A stopped host can retain unredacted payloads
 past 24 hours. The buffer keeps content-free terminal receipts for seven days.
 
-If the participants don't authorize this storage, leave
+If participants don't agree to this storage, leave
 `SEDIMENT_DELIVERY_DIR` unset and record workstation delivery as `best_effort`.
-The outage and sender-restart recovery gates remain open. The buffer doesn't
-cover Cursor hooks, native Codex telemetry, or forge webhooks. Those channels
-retain separate acceptance gates.
+Record recovery from outages and sender restarts as unverified. The buffer
+doesn't cover Cursor hooks, native Codex telemetry, or forge webhooks. Test
+recovery for those channels separately.
 
 ## Verify an enrolled harness
 
@@ -219,7 +220,7 @@ Create test files on a dedicated branch:
 git -C "$PILOT_REPO" switch -c sediment-pilot-check
 ```
 
-Run only the checks for enrolled harnesses. An authorized operator must first
+Run only the checks for enrolled harnesses. The operator must first
 run `sediment login "$PILOT_API_URL"` on the machine that runs Session checks.
 This read credential stays separate from capture enrollment; the installer
 never distributes it to harnesses.
@@ -270,8 +271,8 @@ If the note is missing, use the
    ```
 
 2. In a separate Session, ask pi to create a harmless `pilot_pi.py` file with
-   its `write` tool. Review the file, then end the Session. Approved transcript
-   capture runs at Session shutdown.
+   its `write` tool. Review the file, then end the Session. If you enabled
+   transcript capture, it runs at Session shutdown.
 3. Commit the file and inspect its note:
 
    ```bash
@@ -301,8 +302,8 @@ decision and note. A successful tool execution remains an implicit accept.
 
 2. Run `/hooks` and review and trust the Sediment hooks.
 3. In a separate Session, ask Codex to create `pilot_codex.py` with a
-   single-file patch. Review the file, then end the Session so approved
-   transcript capture can run.
+   single-file patch. Review the file, then end the Session. If you enabled
+   transcript capture, it runs at Session shutdown.
 4. Commit the file and inspect its note:
 
    ```bash
@@ -340,7 +341,7 @@ log in there with your separate operator credential.
    Session so its extractor runs.
 4. Require at least one pending entry and no blocked entries from
    `sediment delivery status`. A note or successful harness action isn't
-   durable-enqueue evidence.
+   proof that the buffer stored the payload.
 5. Stop and restart the replay worker through the named process supervisor
    while the API remains stopped. Require the worker to return and the pending
    entry to remain.
@@ -375,12 +376,12 @@ log in there with your separate operator credential.
    PY
    ```
 
-This procedure closes only the workstation channel that you run. The buffer
-doesn't cover Cursor hooks, native Codex telemetry, or forge webhooks. Test the
-embedded gateway's separate buffer with a real routed call. Retain those live
-results as evidence for your deployment's recovery checks.
+This procedure verifies recovery only for the workstation channel that you test.
+The buffer doesn't cover Cursor hooks, native Codex telemetry, or forge webhooks.
+Test the embedded gateway's separate buffer with a real routed call. Retain
+those live results as evidence for your deployment's recovery checks.
 
-## Add approved gateway capture
+## Add gateway capture
 
 Keep the developer's model unchanged. Configure the gateway to serve that same
 model before routing traffic. Follow
@@ -440,7 +441,7 @@ sediment commit "$(git -C "$PILOT_REPO" rev-parse HEAD)"
 
 Require the remote note ref, the server's observed Session-to-commit
 relationship, and the expected CI outcome after the workflow finishes. Verify
-a real, approved pull-request merge before interpreting merge retention. The
+a real pull-request merge before interpreting merge retention. The
 deployment must receive its signed webhook and read the repository's private
 Git data.
 
@@ -476,12 +477,13 @@ sediment delivery status
 
 Require `pending: 0` and `blocked: 0`. Replay refuses to send retained payloads
 to a different destination. If the original endpoint is unavailable, retain
-the queue with its original configuration or obtain participant approval to
-delete it under the deployment's retention procedure.
+the queue with its original configuration. If participants agree to deletion,
+follow the deployment's retention procedure to delete it.
 
-Return to `$SEDIMENT_CHECKOUT`, check out the approved successor at the same
-path, and repeat the locked Python install and, if used, pi install. Rerun `sediment install` for each repository
-with the same developer identifier, profile, approved flags, and gateway arguments.
+Return to `$SEDIMENT_CHECKOUT` and check out the commit you want to install at
+the same path. Repeat the locked Python install. If you use pi, repeat its
+install too. Rerun `sediment install` for each repository with the same developer
+identifier, profile, capture options, and gateway arguments.
 
 After token rotation, rerun `sediment login --capture` and profile enrollment.
 An environment change doesn't refresh Codex's resolved header token.
@@ -502,9 +504,9 @@ Session checks. Review changed Codex hooks. After marker-client updates, repeat
 concurrent edit/stamp checks across linked worktrees before unattended capture.
 
 Before removing the last enrolled repository, stop and disable the replay worker.
-Drain pending and blocked entries to the approved receiver, or obtain participant
-approval to delete them under the retention procedure. Keep the checkout and
-queue in place while the worker runs.
+Send pending and blocked entries to their original destination. If participants
+agree to deletion, follow the retention procedure to delete the entries.
+Keep the checkout and queue in place while the worker runs.
 
 From the installing checkout, remove repository capture:
 
@@ -521,8 +523,9 @@ sediment uninstall "$PILOT_REPO" --agents
 Follow [Uninstall capture](../capture/local-capture.md#uninstall-capture) for
 profile and environment cleanup. User-level removal affects all repositories
 using those hooks. Remove unused gateway providers and restart harnesses before
-removing the checkout and supervisor configuration. Remove the delivery directory
-only after its entries reach the approved terminal state.
+removing the checkout and supervisor configuration. After you send or delete all
+pending and blocked entries under the retention procedure, remove the delivery
+directory.
 
 Uninstalling doesn't erase stored Facts or historical commit notes. If removal
 of captured data is required, use the operator's
