@@ -18,6 +18,15 @@ LiteLLM features, Google provider routes, and the legacy Langfuse integration
 aren't supported by this image. The standalone Sediment callback remains
 available for a separately maintained gateway.
 
+The image uses Hugging Face Hub 2.0.0, which receives upstream security fixes.
+Tokenizers 0.23.1 retains its original code. A guarded metadata patch declares
+its tested compatibility with that exact Hub version and updates the wheel's
+file-integrity record. This is Sediment's compatibility declaration; upstream
+Tokenizers still declares Hub versions below 2. Image tests exercise the real
+Hub download caller with revisions and credentials, local Claude token counting,
+and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
+Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
+
 LiteLLM 1.102.1 also bundles optional PostgreSQL clients and Bedrock real-time
 packages. The image removes these unused dependencies, including the native
 `awscrt` library. It removes the bundled PgBouncer executable and its unused
@@ -35,6 +44,15 @@ The image pins both Python operating system packages to `3.13.15-r8`. This
 uses CPython release `3.13.15`. The pins prevent `apk` from selecting a
 development snapshot that sorts after the released version. Security probes
 preserve the complete observed version and reject unreleased runtimes.
+
+The image applies CPython's
+[CVE-2026-82049 fix](https://github.com/python/cpython/commit/b8f23e307097552eaea2604383a12ab280520d0d)
+to that released runtime. The patch resolves a hard-link target before linking
+it, so archive extraction cannot relocate a symbolic link outside the destination.
+The patch requires the exact input and output file hashes and removes cached
+bytecode. Image tests exercise both extraction filters. Security evidence retains
+the patched file hash; the package inventory still reports `3.13.15-r8`.
+Remove this backport when a reviewed released package includes the fix.
 
 The image pins the OpenSSL 3.6.4-r7 packages and reviewed legacy provider.
 This avoids the OpenSSL 4 package transition's conflicting ownership of

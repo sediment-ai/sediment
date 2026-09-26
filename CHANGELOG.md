@@ -4,6 +4,11 @@
 
 ### Installation
 
+- Use the maintained Hugging Face Hub 2 release in the gateway. Declare and test
+  Tokenizers compatibility with that exact version without changing its code.
+- Backport CPython's archive hard-link fix to the gateway's released Python
+  runtime. Guard the patch against vendor source changes and retain its exact
+  file identity in security evidence.
 - Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
   gateway's reviewed OpenSSL and supporting packages so rolling repository
   updates don't introduce an OpenSSL configuration-file conflict.
