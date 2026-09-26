@@ -39,6 +39,7 @@ updates:
       - /
       - /docker/postgres
       - /docker/gateway
+      - /docker/proxy
     # Runtime-line migrations require a separate compatibility review.
     ignore:
       - dependency-name: python

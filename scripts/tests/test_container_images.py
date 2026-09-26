@@ -386,6 +386,41 @@ def test_gateway_compression_uses_reviewed_released_zlib() -> None:
     assert result.returncode == 0
 
 
+def test_gateway_tls_uses_reviewed_openssl_packages() -> None:
+    catalog = json.loads((ROOT / "security/maintenance.json").read_text())
+    reviewed = {
+        name: catalog["packages"]["apk/" + name]["versions"]
+        for name in ("openssl", "libcrypto3", "libssl3")
+    }
+    result = docker(
+        "run",
+        "--rm",
+        "--network=none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        r"""
+import json, pathlib, ssl, sys
+installed = {}
+for record in pathlib.Path('/lib/apk/db/installed').read_text().split('\n\n'):
+    fields = dict(line.split(':', 1) for line in record.splitlines() if ':' in line)
+    if 'P' in fields:
+        installed[fields['P']] = fields['V']
+world = pathlib.Path('/etc/apk/world').read_text().splitlines()
+for name, versions in json.loads(sys.argv[1]).items():
+    assert installed[name] in versions, (name, installed[name], versions)
+    assert name + '=' + installed[name] in world, name
+assert ssl.OPENSSL_VERSION.startswith('OpenSSL ' + installed['libssl3'].split('-r')[0] + ' ')
+context = ssl.create_default_context()
+assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+assert context.get_ca_certs()
+""",
+        json.dumps(reviewed),
+    )
+    assert result.returncode == 0
+
+
 def test_gateway_tar_filters_keep_relocated_hardlinks_inside_destination() -> None:
     result = docker(
         "run",
@@ -508,7 +543,7 @@ def test_gateway_starts_routes_completion_and_captures(streaming: bool) -> None:
         image("GATEWAY"),
         "-c",
         r"""
-import importlib.util,json,os,subprocess,sys,tempfile,threading,time,urllib.request
+import importlib.util,json,os,subprocess,sys,tempfile,threading,time,urllib.error,urllib.request
 from http.server import BaseHTTPRequestHandler,HTTPServer
 streaming = sys.argv[1] == 'True'
 assert os.getuid() != 0
@@ -590,6 +625,16 @@ general_settings:
                     with urllib.request.urlopen('http://127.0.0.1:14000/health/liveliness',timeout=1): break
                 except Exception: time.sleep(0.5)
             else: raise RuntimeError('gateway did not become ready')
+            for key in (None, 'invalid-key', 'sk-invalid-key'):
+                headers = {} if key is None else {'Authorization': 'Bearer ' + key}
+                denied = urllib.request.Request('http://127.0.0.1:14000/v1/models', headers=headers)
+                try:
+                    urllib.request.urlopen(denied, timeout=5)
+                except urllib.error.HTTPError as exc:
+                    assert exc.code == 401, (key, exc.code)
+                else:
+                    raise AssertionError('gateway accepted an invalid credential')
+            assert not upstream
             request=urllib.request.Request('http://127.0.0.1:14000/v1/chat/completions',data=json.dumps({'model':'image-test','messages':[{'role':'user','content':'image test'}],'stream':streaming}).encode(),headers={'Authorization':'Bearer sk-image-test-only','Content-Type':'application/json','x-sediment-session':'00000000-0000-0000-0000-000000000002'})
             with urllib.request.urlopen(request,timeout=20) as response:
                 if streaming:

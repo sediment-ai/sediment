@@ -1,8 +1,10 @@
-# LiteLLM config for the OPTIONAL bundled gateway (compose profile
-# `gateway`). This is the quickstart on-ramp for teams with no gateway yet —
-# if you already run LiteLLM, don't use this file: add the two
-# `litellm_settings`/callback lines below to YOUR config instead
-# (docs/operate/deploy.md, path 1).
+# LiteLLM configuration for the optional Compose gateway service.
+# Set its credentials in .env, then run:
+# docker compose --profile gateway up -d --build
+# Compose mounts this file at /app/config.yaml and starts LiteLLM with it.
+# See docs/operate/deploy.md#enable-bundled-litellm for setup and verification.
+# If you operate an existing gateway, see docs/capture/managed-capture.md
+# for callback configuration instead.
 
 model_list:
   # Anthropic passthrough: any claude-* model an agent asks for is forwarded

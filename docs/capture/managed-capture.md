@@ -44,7 +44,7 @@ credentials on the API host.
 Before mounting private Git credentials, reassess the default image and Git
 configuration conditions in [the security procedure](../operate/security.md).
 A custom credential mount falls outside the supplied deployment assurance.
-Then mount a deployment-local `.netrc` through `compose.override.yml`:
+Then mount a deployment-local `.netrc` through `docker-compose.override.yml`:
 
 ```yaml
 services:
@@ -95,6 +95,14 @@ Redelivery returns `"stored": false` when database uniqueness finds the same
 Fact. It is a successful acknowledgment. The
 [API reference](../reference/api.md) defines supported events and repository
 identity fields.
+
+If delivery fails after a DNS change, verify the hostname's public A record and
+HTTPS certificate. Check **Recent Deliveries** in the repository's webhook
+settings for GitHub's result; a request from your machine doesn't verify
+GitHub's connection. After connectivity recovers, [redeliver the failed
+events](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/redelivering-webhooks).
+GitHub doesn't automatically redeliver failed deliveries. Keep certificate and
+webhook signature verification enabled during recovery.
 
 For another continuous integration (CI) system, send normalized results to
 [`POST /ingest/ci`](../reference/api.md#post-ingestci) with an ingest token.
@@ -180,6 +188,11 @@ protocol carrier. The API skips unresolved calls and logs
 identity parsing changes.
 
 ### Enable the bundled LiteLLM gateway
+
+The [EC2 pilot setup](../operate/deploy.md#deploy-a-pilot-on-ec2) enables the
+gateway with HTTPS. Its base URL is `https://sediment.example.com/llm`, and
+clients authenticate with the private `LITELLM_MASTER_KEY`. The Anthropic key
+stays on the server.
 
 Follow [Enable bundled LiteLLM](../operate/deploy.md#enable-bundled-litellm).
 The supplied configuration routes `claude-*` to Anthropic without model

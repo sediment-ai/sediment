@@ -430,3 +430,47 @@ def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(
                     assert supplied.get(key) == value
                 else:
                     assert key not in supplied
+
+
+def test_pilot_profile_starts_gateway_and_private_proxy(tmp_path):
+    values = {
+        **_core_environment(),
+        "COMPOSE_PROFILES": "https",
+        "SEDIMENT_DOMAIN": "sediment.example.com",
+        "SEDIMENT_ACME_EMAIL": "ops@example.com",
+    }
+    project = _compose_project(tmp_path, values)
+    result = subprocess.run(
+        ["docker", "compose", "config", "--format", "json"],
+        cwd=project,
+        env={**os.environ, **values},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    services = json.loads(result.stdout)["services"]
+    assert "proxy" in services
+    assert "gateway" in services
+    proxy = services["proxy"]
+    assert set(proxy["networks"]) == {"edge"}
+    assert proxy["depends_on"]["gateway"]["condition"] == "service_healthy"
+    assert proxy["depends_on"]["api"]["condition"] == "service_healthy"
+    assert {p["published"] for p in proxy["ports"]} == {"80", "443"}
+    assert proxy["read_only"] is True
+    assert proxy["cap_drop"] == ["ALL"]
+    assert all("docker.sock" not in str(m) for m in proxy["volumes"])
+    assert not any(
+        "TOKEN" in key or "PASSWORD" in key or "API_KEY" in key
+        for key in proxy["environment"]
+    )
+    assert proxy["healthcheck"]["test"]
+    assert any(m["type"] == "volume" for m in proxy["volumes"])
+
+
+def test_gateway_readiness_checks_the_running_application(tmp_path):
+    values = _core_environment()
+    project = _compose_project(tmp_path, values)
+    result = _compose_config(project, {**os.environ, **values})
+    assert result.returncode == 0, result.stderr
+    gateway = json.loads(result.stdout)["services"]["gateway"]
+    assert "/health/liveliness" in " ".join(gateway["healthcheck"]["test"])

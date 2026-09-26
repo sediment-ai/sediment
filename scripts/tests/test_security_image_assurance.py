@@ -115,7 +115,7 @@ def deployment(root):
     }
     services = {
         name: copy.deepcopy(runtime)
-        for name in ("postgres", "migrate", "api", "operator", "gateway")
+        for name in ("postgres", "migrate", "api", "operator", "gateway", "proxy")
     }
     services["postgres"].update(
         cap_add=["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETUID", "SETGID"],
@@ -159,18 +159,42 @@ def deployment(root):
             "SEDIMENT_API_BEARER_TOKEN": "gateway-token",
             "SEDIMENT_INGEST_URL": "http://api:8000",
             "SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN": "http://api:8000",
+            "ANTHROPIC_API_KEY": "provider-key",
+            "LITELLM_MASTER_KEY": "master-key",
         },
+    )
+    services["proxy"].update(
+        networks={"edge": {}},
+        environment={"SEDIMENT_DOMAIN": "sediment.example.com"},
+        volumes=[
+            {
+                "type": "bind",
+                "source": str(root / "docker/proxy/routes.yml"),
+                "target": "/etc/traefik/routes.yml",
+                "read_only": True,
+            },
+            {"type": "volume", "source": "sediment-certificates", "target": "/data"},
+        ],
     )
     return {
         "services": services,
         "networks": {"database": {"internal": True}, "edge": {}},
-        "volumes": {},
+        "volumes": {"sediment-certificates": {}},
     }
 
 
 def test_deployment_controls_accept_only_the_scoped_posture(tmp_path):
     predicates = assurance().deployment_predicates(deployment(tmp_path), tmp_path)
     assert predicates and all(predicates.values()), predicates
+
+
+@pytest.mark.parametrize("secret", ["gateway-token", "provider-key", "master-key"])
+def test_proxy_cannot_receive_application_credentials(tmp_path, secret):
+    config = deployment(tmp_path)
+    config["services"]["proxy"]["environment"]["LEAK"] = secret
+    assert not assurance().deployment_predicates(config, tmp_path)[
+        "database_credentials_separated"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -187,6 +211,16 @@ def test_deployment_controls_accept_only_the_scoped_posture(tmp_path):
         (
             lambda c: c["services"]["gateway"]["networks"].update(database={}),
             "database_isolated",
+        ),
+        (
+            lambda c: c["services"]["proxy"]["networks"].update(database={}),
+            "database_isolated",
+        ),
+        (
+            lambda c: c["services"]["proxy"]["volumes"][0].update(
+                source="/var/run/docker.sock", target="/var/run/docker.sock"
+            ),
+            "no_host_data_mounts",
         ),
         (
             lambda c: c["services"]["api"]["environment"].update(

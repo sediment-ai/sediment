@@ -1,10 +1,105 @@
 # Deploy Sediment
 
-Run the API, PostgreSQL Fact store, and Git mirror with Docker Compose on a
-Linux virtual machine or Docker Desktop on macOS. For a local Docker evaluation,
+Run the API, PostgreSQL Fact store, LiteLLM, and HTTPS with Docker Compose.
+For a shared single-host deployment, follow [Deploy a pilot on EC2](#deploy-a-pilot-on-ec2).
+For API-only deployment, use the remaining sections. For a local Docker evaluation,
 complete sections 1, 2, and 5. For a shared pilot, complete sections 1–5 before
 [enrolling developers](run-pilot.md). For evaluation without Docker, use the
 [Quickstart](../quickstart.md).
+
+## Deploy a pilot on EC2
+
+Use this path for one EC2 instance and one public hostname. The setup generates
+Sediment credentials and configures the service connections. You supply the
+hostname, a certificate contact email, and an Anthropic API key. The bundled
+gateway supports Anthropic models.
+
+Review the [release evidence and proxy coverage limit](security.md#review-the-supplied-evidence)
+before approving the deployment.
+
+1. Launch a maintained Ubuntu 24.04 instance with at least 4 vCPUs and 8 GB of
+   memory. Use encrypted persistent storage with room for image builds, Facts,
+   mirrors, and backups. Configure the storage and backup controls in
+   [Privacy and data handling](#8-privacy-and-data-handling).
+2. Install Git, Python 3.12, [Docker Engine and its Compose plugin](https://docs.docker.com/engine/install/ubuntu/).
+   Complete Docker's [non-root access setup](https://docs.docker.com/engine/install/linux-postinstall/)
+   for the operator account, then sign in again. Verify `docker info` and
+   `docker compose version`. Docker access grants host administration authority.
+3. Associate an [Elastic IP address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html).
+   Create one DNS A record, such as `sediment.example.com`, pointing to that
+   address. If you publish an AAAA record, IPv6 must also reach the host.
+4. Allow inbound TCP ports 80 and 443 in the instance security group and host
+   firewall. Restrict SSH to the operator's address. Don't open ports 5432,
+   8000, or 4000. Keep port 80 available for certificate renewal.
+5. Clone the approved revision and create the private configuration. Replace
+   the commit placeholder and example hostname with your approved values:
+
+   ```bash
+   SEDIMENT_REVISION='<approved full commit hash>'
+   git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
+   cd sediment || exit 1
+   git checkout --detach "$SEDIMENT_REVISION" || exit 1
+   test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
+   chmod go-w .
+   python3 scripts/create_deploy_env.py --domain sediment.example.com
+   ```
+
+   Enter the certificate contact email and provider key at the prompts. The
+   provider-key prompt hides input. The generator creates `.env` with mode 0600
+   and refuses to overwrite it. It generates distinct internal credentials,
+   records the source identity, and sets `COMPOSE_PROFILES=https`. No uv or
+   host installation of Sediment packages is required.
+   The directory permission command removes shared write access; Ubuntu can
+   otherwise create the checkout with group write permission, which setup rejects.
+6. Start the complete deployment:
+
+   ```bash
+   docker compose up -d --build --wait
+   docker compose ps -a
+   ```
+
+   PostgreSQL, the API, LiteLLM, and the proxy report `healthy`. The one-shot
+   migration service exits with code 0. If startup fails, inspect
+   `docker compose logs --tail 100 postgres migrate api gateway proxy`.
+7. Verify the public certificate and both routes:
+
+   ```bash
+   curl -fsS https://sediment.example.com/health
+   curl -fsS https://sediment.example.com/llm/health/liveliness
+   ```
+
+   The API returns `{"status":"ok","version":"0.1.0"}`. The gateway liveness
+   request succeeds. Don't bypass certificate verification. Container health
+   doesn't prove that DNS resolves or that certificate issuance succeeds.
+   If the proxy starts before public DNS resolves, correct DNS, then run
+   `docker compose restart proxy` to retry certificate issuance. Repeat both
+   public checks after the restart.
+
+Give developers `https://sediment.example.com` as the Sediment endpoint and
+`https://sediment.example.com/llm` as the gateway base URL.
+To generate named capture credentials during setup, add `--ingest-client NAME`
+once per developer machine. The gateway uses the
+private `.env` value `LITELLM_MASTER_KEY` for client authentication. The provider
+key stays on the server. Follow [Configure capture](#4-configure-capture) for
+client enrollment, Session identity, and forge webhooks. A liveness check alone
+doesn't verify provider access or stored Inference calls.
+
+Traefik obtains and renews the certificate, redirects HTTP to HTTPS, and removes
+`/llm` before forwarding gateway requests. The `sediment-certificates` volume
+preserves certificate state across restarts. The proxy runs without root,
+capabilities, Docker-socket access, or application credentials. Each router
+limits requests from a direct peer to an average of 100 per second with a burst
+of 200; excess requests return 429. Clients behind one outbound address share
+that allowance. Client-supplied forwarded-address headers don't select it.
+
+To stop and start this deployment, run `docker compose down` and
+`docker compose up -d --wait`. Preserve `.env` and the volumes. Follow
+[Upgrade the deployment](#6-upgrade-the-deployment) when source or credentials
+change. Certificate renewal requires outbound certificate-authority access and
+inbound port 80 even after initial setup.
+
+If you run an existing ingress or only need the API, use the remaining sections.
+A cloud load balancer doesn't remove this single instance's availability limit.
 
 ## 1. Prerequisites
 
@@ -161,6 +256,9 @@ and `4000`; volume names in this guide assume those defaults.
 
 ## 3. Expose a public HTTPS endpoint
 
+The [EC2 pilot setup](#deploy-a-pilot-on-ec2) includes HTTPS. If you operate
+external ingress, leave the `https` profile disabled.
+
 Route your HTTPS API hostname to `http://127.0.0.1:8000` through a reverse
 proxy or tunnel on the host. Keep the Compose ports bound to loopback. Preserve
 request bodies and authorization headers, and rate-limit authentication attempts
@@ -248,10 +346,11 @@ docker compose --profile gateway up --build --wait --wait-timeout 120
 docker compose --profile gateway ps gateway
 ```
 
-The gateway has no Compose health check; require a successful authenticated model
+Compose checks gateway liveness. Also require a successful authenticated model
 request and captured Inference call before declaring that path ready.
-Route a separate HTTPS gateway hostname to `http://127.0.0.1:4000` through
-your ingress. The gateway receives provider and ingest credentials, but no
+If you use external ingress, route its HTTPS gateway hostname to
+`http://127.0.0.1:4000`. The bundled proxy instead serves the gateway at `/llm`
+on the API hostname. The gateway receives provider and ingest credentials, but no
 database credentials. Its callback sends Inference calls to `http://api:8000`.
 A capture failure doesn't retract a successful model response.
 
@@ -489,6 +588,7 @@ before enabling capture.
 | `sediment-postgres` | Facts and schema |
 | `sediment-mirror` | Bare Git mirrors |
 | `sediment-export` | Operator-created exports |
+| `sediment-certificates` | HTTPS certificate private keys and renewal state |
 | `sediment-staging` | Private, disposable Derivation and export payloads; may contain unredacted content |
 | `sediment-delivery` | Optional unredacted gateway retries |
 
@@ -541,7 +641,7 @@ mirrors, exports, staging, and buffered deliveries. You cannot undo it.** Save
 any required database backup and exports first:
 
 ```bash
-docker compose --profile gateway --profile operator down --volumes
+docker compose --profile gateway --profile https --profile operator down --volumes
 ```
 
 To remove only the mirror, stop the stack, remove its volume, and restart:
@@ -558,7 +658,7 @@ The API recreates mirrors after later push webhooks.
 
 | Direction | Connection |
 | --- | --- |
-| Inbound | API on `127.0.0.1:8000`; optional gateway on `127.0.0.1:4000`. Ingress provides remote access. |
+| Inbound | API on `127.0.0.1:8000`; gateway on `127.0.0.1:4000`. The `https` profile exposes proxy ports 80 and 443; external ingress supplies access otherwise. |
 | Outbound from API | Git fetches to permitted clone hosts when mirroring is enabled. |
 | Outbound from gateway | Model requests to Anthropic and capture callbacks to the API over the Compose network. |
 
@@ -652,5 +752,5 @@ or [Roll out managed capture](../capture/managed-capture.md#verify-the-rollout).
    to remove fleet hooks, gateway callbacks, telemetry, and forge webhooks.
 3. If you need the dataset, create and extract the backup from
    [Operating cadence](#7-operating-cadence).
-4. Run `docker compose --profile gateway --profile operator down --volumes` on the host.
+4. Run `docker compose --profile gateway --profile https --profile operator down --volumes` on the host.
 5. Remove the ingress routes and DNS records that served this deployment.

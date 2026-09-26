@@ -36,8 +36,10 @@ Anthropic routes retain the same provider boundary.
 The Dockerfile records pinned input images and direct dependency updates.
 Image labels record removed packages and source patches. The final software
 bill of materials records the resolved components. The guarded source patch
-removes only the unused database retry decorators and imports; it rejects an
-unexpected vendor source hash or patch site.
+removes unused database retry decorators and imports. It guards Prisma error
+predicates when Prisma is absent and returns 401 for an incorrect master key.
+Missing or invalid keys don't require a database and don't cause an import
+failure. The patch rejects an unexpected vendor source hash or patch site.
 
 The image pins both Python operating system packages to `3.13.15-r8`. This
 [Wolfi build recipe](https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml)
@@ -66,6 +68,12 @@ prevents a release candidate from replacing the reviewed package during
 symbol check; the pin doesn't repair the library. Review an available released
 fix before changing the pin. The pypdf override uses `6.19.0`, which bounds
 alphabetical PDF page labels; an image test verifies the reader's fallback.
+
+OpenSSL, libcrypto3, and libssl3 stay on the maintenance catalog's reviewed
+`3.6.4-r7` packages. Wolfi's r8 transition adds OpenSSL 4 libraries whose
+configuration files conflict with the pinned vendor image during an upgrade.
+The explicit pins keep clean builds on the reviewed package set. Review the
+transition and refresh image evidence before advancing them.
 
 If you change these inputs or provider boundaries, run the image tests on both
 architectures and retain the resulting inventories and scans. Tests exercise

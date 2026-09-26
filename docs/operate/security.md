@@ -23,6 +23,13 @@ If you omit the optional gateway, exclude it from your deployed inventory. Keep
 its release evidence with the other supplied artifacts. If you use your own
 gateway or database, inventory and assess that software separately.
 
+The pilot's Traefik image is pinned by digest, but the release scanner covers
+only the API, PostgreSQL, and gateway images. It doesn't produce a proxy
+inventory or support verdict. Assess the proxy separately before approving a
+deployment; passing Compose acceptance doesn't qualify it as a release artifact.
+[Issue 124](https://github.com/sediment-ai/sediment/issues/124) tracks proxy
+release qualification.
+
 ## Confine agent retrieval access
 
 If you enable context retrieval, bind its credential to one source Session or

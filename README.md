@@ -48,7 +48,11 @@ Follow the
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
 
-[Deploy a shared server](docs/operate/deploy.md).
+For a shared pilot, [deploy on one EC2 instance](docs/operate/deploy.md#deploy-a-pilot-on-ec2).
+The setup starts PostgreSQL, Sediment, LiteLLM, and HTTPS through Compose. Supply
+a hostname, certificate contact email, and Anthropic API key; the setup generates
+the internal credentials. Follow the [pilot guide](docs/operate/run-pilot.md) to
+enroll developers and verify capture.
 
 ## Architecture
 

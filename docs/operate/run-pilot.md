@@ -29,8 +29,8 @@ and agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-b
 
 ## Prepare the deployment
 
-1. Complete [Deploy Sediment](deploy.md) at the approved revision, including
-   HTTPS ingress, private Git access, webhooks, and a tested backup.
+1. Complete [Deploy a pilot on EC2](deploy.md#deploy-a-pilot-on-ec2) at the
+   approved revision. Configure private Git access, webhooks, and a tested backup.
 2. [Match the installed build to its release evidence](validate-deployment.md#verify-the-installed-build).
    Keep that evidence with the deployment record; you don't need to rerun the
    release rehearsal to install an approved build.
@@ -48,6 +48,30 @@ Keep deployment configuration and operator credentials out of harnesses. Keep
 upstream provider keys on the gateway. If gateway capture is required, verify
 model availability and a funded provider account before handoff. The bundled
 gateway serves Anthropic `claude-*` models; other models need a separate gateway.
+
+### Single-host deployment
+
+Decision: use the bundled Traefik proxy for a pilot on one EC2 instance. Compose
+starts PostgreSQL, the API, LiteLLM, and the proxy. Traefik obtains and renews
+the certificate, redirects HTTP to HTTPS, and applies request limits. The proxy
+uses checked-in routes without Docker-socket access. A single host doesn't
+provide high availability; an existing managed load balancer can supply ingress
+through the [external HTTPS setup](deploy.md#3-expose-a-public-https-endpoint).
+
+The operator supplies a public hostname, certificate contact email, and Anthropic
+API key. The setup generates the internal credentials. Point one DNS A record
+at the instance's Elastic IP, then follow the [EC2 startup and verification
+steps](deploy.md#deploy-a-pilot-on-ec2). Review the [proxy release-evidence
+limit](security.md#review-the-supplied-evidence) before approving a pilot.
+
+| Address | Service |
+| --- | --- |
+| `https://sediment.example.com` | API, developer enrollment, and forge webhooks |
+| `https://sediment.example.com/llm` | Authenticated LiteLLM gateway |
+| Internal Compose network | PostgreSQL; no public database port |
+
+Verify a real agent Session, commit Attribution, and forge delivery using the
+checks in this guide. Container health alone doesn't establish capture coverage.
 
 ## Install a pinned checkout
 

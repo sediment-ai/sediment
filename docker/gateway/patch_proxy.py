@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Remove database-only retries from the pinned no-database LiteLLM proxy."""
+"""Remove database retries and guard absent Prisma in the pinned LiteLLM proxy."""
 
 from __future__ import annotations
 
@@ -18,6 +18,14 @@ SOURCES = {
         "eb990a71d0c12cb7d8115de0daf39c662915134cf0ca35cc79b4e48552437cf2",
         11,
     ),
+    "db/exception_handler.py": (
+        "16036ddb46573dfa04746c2a21a844c9d04ac18a81e40f436a3000d84a66c2be",
+        8,
+    ),
+    "auth/user_api_key_auth.py": (
+        "5d294cc1818ccb9451f9a1a39ecf0a402fdfd265800e14c2348a00ec20832fd5",
+        1,
+    ),
 }
 
 
@@ -28,6 +36,47 @@ def patch_proxy(root: Path) -> None:
             raise ValueError(f"Unexpected LiteLLM source: {name}")
     replacements = {}
     for name, source in sources.items():
+        if name == "auth/user_api_key_auth.py":
+            # This image accepts only its master key; no key database is missing.
+            old = (
+                b'                message="No connected db.",\n'
+                b"                type=ProxyErrorTypes.no_db_connection,\n"
+                b"                code=400,\n"
+            )
+            if source.count(old) != SOURCES[name][1]:
+                raise ValueError(f"Unexpected LiteLLM patch sites: {name}")
+            replacements[name] = source.replace(
+                old,
+                b'                message="Invalid proxy API key.",\n'
+                b"                type=ProxyErrorTypes.auth_error,\n"
+                b"                code=401,\n",
+            )
+            continue
+        if name == "db/exception_handler.py":
+            # Every selected import is inside a Boolean Prisma-error predicate.
+            # Without Prisma, no exception can be an instance of its error types.
+            lines = source.splitlines(keepends=True)
+            selected = [
+                index
+                for index, line in enumerate(lines)
+                if line
+                in (
+                    b"        import prisma\n",
+                    b"        import prisma.engine.errors\n",
+                )
+            ]
+            if len(selected) != SOURCES[name][1]:
+                raise ValueError(f"Unexpected LiteLLM patch sites: {name}")
+            for index in selected:
+                lines[index] = (
+                    b"        try:\n    "
+                    + lines[index]
+                    + b"        except ModuleNotFoundError:\n            return False\n"
+                )
+            updated = b"".join(lines)
+            ast.parse(updated)
+            replacements[name] = updated
+            continue
         tree = ast.parse(source)
         remove: set[int] = set()
         imports = decorators = 0
@@ -72,7 +121,11 @@ def patch_proxy(root: Path) -> None:
         replacements[name] = updated
     for name, updated in replacements.items():
         (root / name).write_bytes(updated)
-        for bytecode in (root / "__pycache__").glob(f"{Path(name).stem}.*.pyc"):
+        for bytecode in (
+            (root / name)
+            .parent.joinpath("__pycache__")
+            .glob(f"{Path(name).stem}.*.pyc")
+        ):
             bytecode.unlink()
 
 

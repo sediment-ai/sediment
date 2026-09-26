@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Deployment
+
+- Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
+  the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
+  provider access, and configure one hostname with automatic certificate renewal.
+- Wait for gateway readiness during Compose startup. Return 401 for missing or
+  incorrect gateway keys without importing the removed Prisma dependency.
+- Document checkout permissions required by the private credential generator
+  on Ubuntu.
+- Exercise both gateway protocols, streaming capture, HTTPS routing, credential
+  boundaries, request limits, and persistence in an opt-in Compose acceptance test.
+
 ### Contributor checks
 
 - Test the pi shim against pi-coding-agent 0.86.1 and read its transcript-based

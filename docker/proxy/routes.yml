@@ -1,0 +1,37 @@
+# A single hostname; the file provider evaluates the environment template.
+http:
+  routers:
+    api:
+      rule: 'Host(`{{ env "SEDIMENT_DOMAIN" }}`)'
+      entryPoints: [websecure]
+      middlewares: [request-limit]
+      service: api
+      tls:
+        certResolver: letsencrypt
+    gateway:
+      rule: 'Host(`{{ env "SEDIMENT_DOMAIN" }}`) && (Path(`/llm`) || PathPrefix(`/llm/`))'
+      entryPoints: [websecure]
+      middlewares: [request-limit, gateway-prefix]
+      service: gateway
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    request-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        # Default source is the direct peer, never a client-supplied header.
+    gateway-prefix:
+      stripPrefix:
+        prefixes: [/llm]
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: http://api:8000
+    gateway:
+      loadBalancer:
+        responseForwarding:
+          flushInterval: -1ms
+        servers:
+          - url: http://gateway:4000
