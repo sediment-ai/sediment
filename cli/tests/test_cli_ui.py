@@ -109,7 +109,8 @@ def test_version_renders_compact_logo_and_installed_version(
     assert max(map(len, art)) == 30  # 28-column mark plus left margin.
     assert art[0] == "    ▄████▄  ▄▄████▄  ▄▄████▄"
     assert art[-1] == "    ▀████▀▀  ▀████▀▀  ▀████▀"
-    assert lines[-3:] == [f"  sediment {__version__}", "  sediment.so", ""]
+    assert lines[-2:] == [f"  {__version__}", ""]
+    assert "sediment" not in plain
     assert capsys.readouterr().err == ""
 
 

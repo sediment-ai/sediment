@@ -5,7 +5,8 @@
 ### Command line
 
 - Show the compact signal-red Sediment logo with `sediment --version` on
-  supported interactive terminals. Preserve version-only output for pipes,
+  supported interactive terminals, followed by the version number without a
+  name or website footer. Preserve version-only output for pipes,
   `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
 
 ### Contributor checks
