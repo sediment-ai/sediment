@@ -98,8 +98,8 @@ sediment install .
 ```
 
 `install` adds repository git hooks, user-level hooks for detected agents, and
-an environment file. pi requires a source checkout; a package-only installation
-doesn't include its extension.
+an environment file. The CLI package includes the pi extension; pi requires
+its own [runtime setup](capture/agent-integrations.md#pi).
 
 Verify:
 

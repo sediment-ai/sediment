@@ -278,6 +278,8 @@ def test_routine_dependency_updates_are_grouped_without_changing_daily_checks():
         ("scripts/tests/test_ci_preflight.py", True),
         ("README.md", False),
         ("docs/capture/agents/pi.md", False),
+        ("cli/hatch_build.py", True),
+        ("cli/sediment_cli/attribution.py", True),
         ("packages/export/example.py", False),
     ],
 )

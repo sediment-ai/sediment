@@ -443,7 +443,7 @@ doesn't reinstall an integration that you already removed:
 
 9. On each machine that used pi or transcript capture, follow the Local capture
    [agent uninstall procedure](local-capture.md#uninstall-capture) once. Run it
-   from the checkout that installed pi, or remove a stale pi entry manually.
+   with the CLI installation that registered pi, or remove a stale pi entry manually.
 10. Run `sediment uninstall /path/to/repo` for every other existing clone. The
     command removes copied hook blocks and repository-level notes configuration.
 11. Remove the fleet prefix through MDM after the system and repository

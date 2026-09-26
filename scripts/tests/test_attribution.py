@@ -2693,17 +2693,10 @@ def test_doctor_pi_not_detected_is_info_not_fail(tmp_path: Path) -> None:
     assert line.startswith("info")
 
 
-def test_doctor_pi_uncheckable_from_installed_cli_is_info(
+def test_doctor_pi_missing_packaged_extension_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An installed CLI resolves no shim directory.
-
-    Shims ship in no wheel, so ``_pi_extension_dir()`` is None off a
-    checkout. It used to reach ``str(None)`` — the literal "None", matching
-    no real path — so a correctly registered machine reported FAIL and
-    ``doctor`` exited 1. Only the resolution differs between the two halves
-    here; the settings file is the same registered one.
-    """
+    """A missing extension cannot pass enrollment on a machine with pi."""
     module = _load_module()
     settings = tmp_path / ".pi" / "agent" / "settings.json"
     settings.parent.mkdir(parents=True)
@@ -2711,14 +2704,14 @@ def test_doctor_pi_uncheckable_from_installed_cli_is_info(
     settings.write_text(json.dumps({"extensions": [str(shim)]}), encoding="utf-8")
     monkeypatch.setattr(module, "_pi_settings_path", lambda: settings)
 
-    monkeypatch.setattr(module, "_repo_root_file", lambda *parts: shim)
+    monkeypatch.setattr(module, "_pi_extension_dir", lambda: shim)
     assert module._doctor_pi_extension()[0] == module.DOCTOR_OK
 
-    monkeypatch.setattr(module, "_repo_root_file", lambda *parts: None)
+    monkeypatch.setattr(module, "_pi_extension_dir", lambda: None)
     status, check, detail = module._doctor_pi_extension()
-    assert status == module.DOCTOR_INFO
+    assert status == module.DOCTOR_FAIL
     assert check == "pi extension"
-    assert "checkout-only" in detail
+    assert "reinstall" in detail
 
 
 def test_mark_accepts_pi_tool(tmp_path: Path) -> None:

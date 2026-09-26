@@ -4,6 +4,10 @@
 
 ### Installation
 
+- Ship the MIT-licensed pi extension in the CLI wheel and source distribution.
+  `sediment install` registers it without a checkout or npm dependencies.
+  With pi present, `doctor` fails when the extension is missing or unregistered.
+  `sediment uninstall --agents` removes the registration.
 - Use the maintained Hugging Face Hub 2 release in the gateway. Declare and test
   Tokenizers compatibility with that exact version without changing its code.
 - Backport CPython's archive hard-link fix to the gateway's released Python

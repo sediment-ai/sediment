@@ -16,6 +16,8 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
 COPY packages/ packages/
 COPY apps/ apps/
 COPY cli/ cli/
+COPY shims/pi/index.ts shims/pi/package.json shims/pi/LICENSE shims/pi/README.md shims/pi/
+COPY shims/pi/lib/ shims/pi/lib/
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --frozen --no-dev --no-editable \
     && uv pip check --python /app/.venv/bin/python

@@ -49,15 +49,16 @@ verification. Cursor has no supported Inference-call or Edit observation capture
 
 ## pi
 
-The installer registers `shims/pi/` in `~/.pi/agent/settings.json` when you run
-it from a Sediment source checkout. The installed CLI package doesn't include
-the extension.
+The CLI package includes the MIT-licensed pi extension. Install pi 0.84.1 or
+later with Node 24, then start pi once to create `~/.pi/agent`. The extension
+needs no source checkout or npm dependencies. Node 22.19 or later in the Node 22
+release line also meets both pi's and the extension's runtime requirements.
 
-Connect the CLI and install from the checkout:
+Connect the CLI and register the extension in `~/.pi/agent/settings.json`:
 
 ```bash
 sediment login https://sediment-api.example.com --capture
-uv run sediment install --user-id alice /path/to/repo
+sediment install --user-id alice /path/to/repo
 . "$HOME/.sediment/env.sh"
 ```
 
@@ -68,7 +69,7 @@ Restart pi from that environment. Attribution remains independent of telemetry.
 If you approve sending applied text and observed file text, opt in:
 
 ```bash
-uv run sediment install --user-id alice --transcripts /path/to/repo
+sediment install --user-id alice --transcripts /path/to/repo
 . "$HOME/.sediment/env.sh"
 ```
 
