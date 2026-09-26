@@ -13,6 +13,21 @@
   gateway's reviewed OpenSSL and supporting packages so rolling repository
   updates don't introduce an OpenSSL configuration-file conflict.
 
+- Wait for API health in Docker deployment instructions. Support separate
+  Compose project image tags and loopback ports for local pilot rehearsals.
+  Include operator volumes in the deployment teardown command.
+- Generate named pilot capture credentials with repeatable `--ingest-client`
+  options. Capture-only installation points developers to ingest enrollment.
+- Let deployment smoke checks use the generated operator credential when the
+  legacy bearer token is unset.
+- Verify capture-only logins in `sediment doctor` without requiring an operator
+  credential. Use the doctor user agent when verifying sourced ingest credentials
+  through ingress filters. Operator containers no longer rerun role provisioning.
+- Add an opt-in Docker rehearsal covering fresh installation, enrollment,
+  synthetic capture, duplicate delivery, restart persistence, and cleanup.
+- Discover Homebrew's PostgreSQL client library in release rehearsal and test
+  setup, matching local server startup without an extra PATH adjustment.
+
 ## 0.2.0 — 2026-09-23
 
 ### Contributor checks

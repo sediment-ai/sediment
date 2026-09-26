@@ -36,6 +36,21 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
    [deployment checks](deploy.md#5-verify-the-deployment) and
    [pilot procedure](run-pilot.md). Release checks use synthetic inputs.
 
+To rehearse Docker installation on a machine with Docker and the Python workspace
+installed, run:
+
+```bash
+SEDIMENT_TEST_DOCKER_PILOT=1 uv run pytest -q scripts/tests/test_docker_pilot.py
+```
+
+The check builds a separate Compose project with fresh credentials, volumes, and
+an allocated loopback port. It verifies readiness, migrations, operator commands,
+capture-only enrollment, credential permissions, synthetic ingestion and signed
+webhooks, duplicate delivery, Git notes, restart persistence, and uninstall. It
+removes only its test containers, volumes, and image tags. It doesn't configure
+your agent settings or verify HTTPS ingress, private Git access, paid gateways,
+or live harness delivery.
+
 ## Verify privacy, authorities, and source coverage
 
 1. Agree each channel's payload with participants. Codex telemetry can include

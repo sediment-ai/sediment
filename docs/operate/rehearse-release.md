@@ -32,6 +32,9 @@ Use a disposable PostgreSQL instance so rehearsal load doesn't affect a deployme
 
 ## Run the no-publish rehearsal
 
+On macOS, install the client library with `brew install libpq`. The rehearsal
+discovers Homebrew's installation without a PATH change.
+
 From the repository root, run:
 
 ```bash

@@ -10,19 +10,21 @@ but Python 3 and a checkout.
 
     python3 scripts/smoke.py [base_url]     # default http://127.0.0.1:8000
 
-Credentials come from SEDIMENT_API_BEARER_TOKEN / SEDIMENT_GITHUB_WEBHOOK_SECRET
-in the environment, falling back to the .env at the repo root.
+Credentials come from SEDIMENT_API_BEARER_TOKEN or SEDIMENT_OPERATOR_TOKEN,
+plus SEDIMENT_GITHUB_WEBHOOK_SECRET. Explicit environment credentials take
+precedence over the .env at the repo root.
 
 NOTE: this plants synthetic facts in ALL FOUR fact tables (session
 ``sess-smoke``, the fixtures' sessions, repo acme-corp/backend-service).
 Run it against a fresh stack before real capture starts (reset:
-``docker compose down -v``); on a stack holding real facts, quarantine
+``docker compose --profile gateway --profile operator down --volumes``);
+on a stack holding real facts, quarantine
 instead — the completion by session id, the rest per fact id from the PASS
 lines below (docs/operate/deploy.md §8.3). Re-runs are expected to report
 ``stored: false``: the redelivery collapsed on a UNIQUE index, which is the
 dedup contract working, not a failure. The OTLP door's ``{}`` success shape
 hides per-record results by design — confirm decisions landed with the
-fact counts in docs/operate/deploy.md §6.2.
+fact counts in docs/operate/deploy.md §5.
 """
 
 from __future__ import annotations
@@ -107,11 +109,17 @@ def main() -> int:
     except ValueError as error:
         logger.error("invalid deployment URL: %s", error)
         return 2
-    token = _env("SEDIMENT_API_BEARER_TOKEN")
+    token = (
+        os.environ.get("SEDIMENT_API_BEARER_TOKEN")
+        or os.environ.get("SEDIMENT_OPERATOR_TOKEN")
+        or _env("SEDIMENT_API_BEARER_TOKEN")
+        or _env("SEDIMENT_OPERATOR_TOKEN")
+    )
     secret = _env("SEDIMENT_GITHUB_WEBHOOK_SECRET")
     if not token or not secret:
         logger.error(
-            "SEDIMENT_API_BEARER_TOKEN / SEDIMENT_GITHUB_WEBHOOK_SECRET not found "
+            "SEDIMENT_OPERATOR_TOKEN (or SEDIMENT_API_BEARER_TOKEN) and "
+            "SEDIMENT_GITHUB_WEBHOOK_SECRET are required "
             "in the environment or %s",
             HERE.parent / ".env",
         )

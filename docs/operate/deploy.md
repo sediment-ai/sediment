@@ -1,20 +1,30 @@
 # Deploy Sediment
 
-Operators use this guide to install the API, PostgreSQL Fact store, and Git
-mirror on a shared host with Docker Compose. Complete sections 1–5 before
-[enrolling pilot developers](run-pilot.md). For one-machine evaluation, use the
+Run the API, PostgreSQL Fact store, and Git mirror with Docker Compose on a
+Linux virtual machine or Docker Desktop on macOS. For a local Docker evaluation,
+complete sections 1, 2, and 5. For a shared pilot, complete sections 1–5 before
+[enrolling developers](run-pilot.md). For evaluation without Docker, use the
 [Quickstart](../quickstart.md).
 
 ## 1. Prerequisites
 
 You need:
 
-- a maintained host with at least 4 vCPUs, 8 GB of memory, Docker Engine,
-  and Compose v2
-- dedicated storage with an enforced quota and an off-host backup destination
+- a maintained host with at least 4 vCPUs and 8 GB of memory; allocate these
+  resources to Docker Desktop's virtual machine when using it
+- Docker Desktop or Docker Engine with Docker Compose
 - Git, curl, uv, and the approved full Sediment commit hash
-- a stable HTTPS endpoint for remote clients and forge webhooks
-- a maintained age installation and an off-host recovery identity for backups
+
+Start Docker, then check the host tools:
+
+```bash
+docker info >/dev/null && docker compose version
+git --version && curl --version && uv --version
+```
+
+Before a shared pilot, prepare dedicated storage with an enforced quota, a stable
+HTTPS endpoint, and encrypted backups with a tested restoration procedure.
+The backup procedure uses age and an off-host recovery identity.
 
 Developer machines connect outbound to the deployment. Compose binds the API
 and optional gateway to loopback. Your ingress is the only off-host path.
@@ -32,18 +42,22 @@ git checkout --detach "$SEDIMENT_REVISION" || exit 1
 test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
 ```
 
-Run the remaining host commands from this directory. Compose uses the fixed
-project name `sediment`; another checkout on this host can recreate the same
-containers.
+Run the remaining host commands from this directory. If another Sediment stack
+exists on this host, [choose a separate project and ports](#run-a-second-local-deployment)
+before starting this one.
 
 Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
 ```bash
-uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py
+uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py \
+  --ingest-client alice-laptop --ingest-client bob-laptop
 ```
 
-The generator refuses existing files and directories writable by another user.
+Replace the client names with your participants; repeat `--ingest-client` for
+each machine. The generator writes a distinct ingest-only token for each client
+and a separate gateway token. It refuses existing files and directories writable
+by another user.
 Keep `.env` private. Don't source it or distribute it to developers.
 
 Edit these deployment settings in `.env`:
@@ -52,19 +66,13 @@ Edit these deployment settings in `.env`:
 | --- | --- |
 | `SEDIMENT_ORG_ID` | Set the deployment's organization identifier. |
 | `SEDIMENT_ALLOWED_CLONE_HOSTS` | Set the permitted Git hosts; the default is `["github.com"]`. |
-| `SEDIMENT_INGEST_TOKENS` | Add a distinct token for each capture client to the JSON object. Preserve the generated `gateway` entry. |
 | `SEDIMENT_DEV_MODE` | Keep `false`. |
 
-Generate each additional capture token with:
-
-```bash
-uv run --python 3.12.14 --no-project python -c 'import secrets; print(secrets.token_hex(32))'
-```
-
-Add the result under a client name such as `alice`; `operator`, `legacy`, and
-`retrieval` are reserved. Distribute only that client's token through your
+Open `.env` in a private editor to retrieve each client's entry from
+`SEDIMENT_INGEST_TOKENS`. Distribute only that entry's token through your
 credential channel. Reserve `SEDIMENT_OPERATOR_TOKEN` for queries and reports.
-Production tokens and webhook secrets require at least 24 characters.
+The generator never prints secrets. To add a client after installation, follow
+[credential rotation](#6-upgrade-the-deployment).
 
 Build and start the deployment with its source identity:
 
@@ -73,7 +81,7 @@ set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
-docker compose up -d --build
+docker compose up --build --wait --wait-timeout 120
 ```
 
 Wait for the API to become ready:
@@ -87,9 +95,10 @@ curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
 {"status":"ok","version":"0.2.0"}
 ```
 
-Compose waits for PostgreSQL, provisions separate database roles, and applies
-migrations before starting the API. The API checks the schema and runtime
-privileges. If the health request fails, check startup status:
+Compose builds the images, provisions separate database roles, and applies
+migrations. It returns success after PostgreSQL and the API pass health checks.
+The 120-second readiness limit starts after image building. If startup fails,
+inspect the containers and logs before retrying the same start command:
 
 ```bash
 docker compose ps -a
@@ -97,6 +106,21 @@ docker compose logs postgres migrate api
 ```
 
 Database and mirror volumes survive image rebuilds and `docker compose down`.
+
+### Run a second local deployment
+
+Before its first start, set these values in the second checkout's private `.env`:
+
+```dotenv
+COMPOSE_PROJECT_NAME=sediment-evaluation
+SEDIMENT_API_PORT=18080
+SEDIMENT_GATEWAY_PORT=14000
+```
+
+The project name separates containers, volumes, networks, and image tags. Keep it
+unchanged when restarting. Use `http://127.0.0.1:18080` for this stack's API checks
+and login. Ports remain bound to loopback. The defaults are `sediment`, `8000`,
+and `4000`; volume names in this guide assume those defaults.
 
 ## 3. Expose a public HTTPS endpoint
 
@@ -128,7 +152,8 @@ loopback hosts.
 
 ## 5. Verify the deployment
 
-Check the public health endpoint:
+For remote clients, check the public health endpoint. For Docker Desktop
+evaluation, use the loopback health check from section 2:
 
 ```bash
 curl -sf https://sediment-api.example.com/health
@@ -140,11 +165,6 @@ staging volumes:
 ```bash
 docker compose --profile operator run --rm operator sediment facts
 docker compose ps -a
-docker volume inspect \
-  sediment_sediment-postgres \
-  sediment_sediment-mirror \
-  sediment_sediment-export \
-  sediment_sediment-staging
 ```
 
 `sediment facts` prints total and Derivation-visible rows. Zero counts are
@@ -162,6 +182,11 @@ Record the revision, image identities, health result, database status, and
 backup restore result. Then complete the
 [pilot handoff](run-pilot.md#prepare-the-deployment). Health and empty Fact counts
 don't verify live capture; use the pilot's Session and forge checks for that.
+
+Operator commands connect through the separate operator database role and don't
+rerun provisioning. To stop and resume the same deployment, run
+`docker compose down`, then `docker compose up --wait --wait-timeout 120`.
+Keep `.env` and omit `--volumes` to retain credentials and Facts.
 
 ### Enable bundled LiteLLM
 
@@ -182,10 +207,12 @@ set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
-docker compose --profile gateway up -d --build
+docker compose --profile gateway up --build --wait --wait-timeout 120
 docker compose --profile gateway ps gateway
 ```
 
+The gateway has no Compose health check; require a successful authenticated model
+request and captured Inference call before declaring that path ready.
 Route a separate HTTPS gateway hostname to `http://127.0.0.1:4000` through
 your ingress. The gateway receives provider and ingest credentials, but no
 database credentials. Its callback sends Inference calls to `http://api:8000`.
@@ -302,7 +329,7 @@ test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
-docker compose up -d --build --force-recreate postgres migrate api
+docker compose up --build --force-recreate --wait --wait-timeout 120 postgres migrate api
 curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
   -fsS http://127.0.0.1:8000/health
 ```
@@ -315,7 +342,13 @@ To rotate runtime, migrator, or operator database credentials, stop the API and
 gateway, replace the corresponding private `.env` values, and rerun provisioning
 before recreating their consumers. To rotate an ingest token, replace only that
 entry in `SEDIMENT_INGEST_TOKENS`, update its enrolled client, and recreate the
-API. The gateway's token must match its named map entry. Rotate the operator
+API with `docker compose up --wait --wait-timeout 120 api`. To enroll another
+client, generate a distinct token with
+`uv run --no-project python -c 'import secrets; print(secrets.token_hex(32))'`,
+add it under a unique name in `SEDIMENT_INGEST_TOKENS`, then recreate the API
+with the same command. Keep existing entries; don't regenerate `.env`.
+Client names `operator`, `legacy`, and `retrieval` are reserved.
+The gateway's token must match its named map entry. Rotate the operator
 HTTP token independently. Remove `SEDIMENT_API_BEARER_TOKEN` after migrating
 legacy capture clients; that token grants ingest authority only.
 
@@ -471,7 +504,7 @@ mirrors, exports, staging, and buffered deliveries. You cannot undo it.** Save
 any required database backup and exports first:
 
 ```bash
-docker compose --profile gateway down -v
+docker compose --profile gateway --profile operator down --volumes
 ```
 
 To remove only the mirror, stop the stack, remove its volume, and restart:
@@ -479,7 +512,7 @@ To remove only the mirror, stop the stack, remove its volume, and restart:
 ```bash
 docker compose down
 docker volume rm sediment_sediment-mirror
-docker compose up -d
+docker compose up --wait --wait-timeout 120
 ```
 
 The API recreates mirrors after later push webhooks.
@@ -557,9 +590,9 @@ an internal gateway alone doesn't keep that content inside the perimeter.
   `docker compose --profile operator run --rm operator sediment db status` to distinguish an
   absent, behind, at-head, or ahead revision without changing it. Startup
   diagnostics name only the sanitized database target and never credentials.
-- **Compose uses another checkout's `.env`:** the project name is `sediment`,
-  so a second checkout can recreate the same containers. Stop the deployment
-  from its owning directory before you start another checkout.
+- **Compose recreates another checkout's containers:** both checkouts selected
+  the same project name. Keep the original deployment's `.env` intact. Set a
+  distinct project name and ports in the evaluation checkout before starting it.
 - **The bundled gateway exits during startup:** run
   `docker compose logs gateway`. Its entrypoint names a missing
   `ANTHROPIC_API_KEY` or `LITELLM_MASTER_KEY` before LiteLLM starts.
@@ -582,5 +615,5 @@ or [Roll out managed capture](../capture/managed-capture.md#verify-the-rollout).
    to remove fleet hooks, gateway callbacks, telemetry, and forge webhooks.
 3. If you need the dataset, create and extract the backup from
    [Operating cadence](#7-operating-cadence).
-4. Run `docker compose --profile gateway down -v` on the host.
+4. Run `docker compose --profile gateway --profile operator down --volumes` on the host.
 5. Remove the ingress routes and DNS records that served this deployment.

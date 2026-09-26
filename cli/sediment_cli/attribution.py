@@ -2755,7 +2755,8 @@ def _verify_capture_override(url: str, token: str) -> None:
     if not _safe_server_url(url) or any(ord(c) < 32 or ord(c) == 127 for c in token):
         raise ValueError("capture override must have verified ingest authority")
     request = urllib.request.Request(
-        f"{url.rstrip('/')}/v1/me", headers={"Authorization": f"Bearer {token}"}
+        f"{url.rstrip('/')}/v1/me",
+        headers={"Authorization": f"Bearer {token}", "User-Agent": _DOCTOR_USER_AGENT},
     )
     try:
         opener = urllib.request.build_opener(_RejectRedirects())
@@ -3277,13 +3278,23 @@ def _doctor_server(findings: list[Finding]) -> None:
     """Server section: reachability, token validity, version skew.
     stdlib urllib, so the copied-file fleet form stays dependency-free."""
     cfg = _cli_config()
+    authority = "operator"
+    login = "sediment login"
+    if cfg is None:
+        authority = "ingest"
+        login = "sediment login <url> --capture"
+        try:
+            cfg = _cli_config(capture=True)
+        except ValueError:
+            findings.append((DOCTOR_FAIL, "server", _CAPTURE_LOGIN))
+            return
     if cfg is None:
         findings.append(
             (
                 DOCTOR_INFO,
                 "server",
-                "not logged in (sediment login <url>) — remote verbs and "
-                "env wiring unavailable",
+                "no credential enrolled; run sediment login <url> --capture "
+                "for capture or sediment login <url> for operator reads",
             )
         )
         return
@@ -3305,7 +3316,7 @@ def _doctor_server(findings: list[Finding]) -> None:
         body = json.loads(raw)
     except urllib.error.HTTPError as exc:
         detail = (
-            "token rejected (401) — re-run sediment login"
+            f"token rejected (401) — re-run {login}"
             if exc.code == 401
             else f"HTTP {exc.code}"
         )
@@ -3319,16 +3330,16 @@ def _doctor_server(findings: list[Finding]) -> None:
             (DOCTOR_FAIL, check, "unreadable identity response; verification failed")
         )
         return
-    if not isinstance(body, dict) or body.get("authority") != "operator":
+    if not isinstance(body, dict) or body.get("authority") != authority:
         findings.append(
             (
                 DOCTOR_FAIL,
                 check,
-                "operator authority required; run sediment login with an operator token",
+                f"{authority} authority required; run {login} with an {authority} token",
             )
         )
         return
-    detail = f"reachable, operator token valid (org {body.get('org_id')})"
+    detail = f"reachable, {authority} token valid (org {body.get('org_id')})"
     try:
         from sediment_api import __version__ as client_version
     except ImportError:  # standalone copied-file run — skew unknowable

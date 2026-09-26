@@ -36,6 +36,8 @@ FIRST_PARTY = {
     "sediment-api",
     "sediment-cli",
 }
+
+
 PROJECT_URLS = {"Source", "Documentation", "Issues", "Changelog"}
 REQUIRED_CONTENT = {
     "sediment-core": (
@@ -636,6 +638,41 @@ def test_rehearsal_does_not_report_success_when_runtime_check_fails() -> None:
     assert any("runtime rehearsal" in error for error in errors), errors
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="Homebrew library discovery")
+def test_scratch_database_finds_homebrew_libpq_in_a_fresh_process(postgres_admin_url):
+    if not shutil.which("brew"):
+        pytest.skip("Homebrew is required by the macOS installation guide")
+    environment = os.environ.copy()
+    # A typical Homebrew install leaves keg-only libpq off PATH. Isolate the
+    # process so another test's driver import cannot make this check pass.
+    environment["PATH"] = os.pathsep.join(
+        entry
+        for entry in environment["PATH"].split(os.pathsep)
+        if not (Path(entry) / "pg_config").exists()
+    )
+    environment["SEDIMENT_TEST_DATABASE_URL"] = postgres_admin_url
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "\n".join(
+                [
+                    "import os, runpy, sys",
+                    "rehearsal = runpy.run_path(sys.argv[1])",
+                    "with rehearsal['scratch_database'](os.environ['SEDIMENT_TEST_DATABASE_URL']) as url:",
+                    "    assert 'sediment_rehearsal_' in url",
+                ]
+            ),
+            str(REPO_ROOT / "scripts/release_rehearsal.py"),
+        ],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 @pytest.mark.parametrize("query_override", [False, True])
 def test_runtime_corpus_owns_and_cleans_an_exact_scratch_database(
     query_override, postgres_admin_url
@@ -840,10 +877,19 @@ def test_rehearsal_cannot_pass_with_missing_pipeline_stage(stage):
 
 
 def test_installed_rehearsal_executes_and_reports_every_pipeline_stage(
-    capsys, postgres_admin_url
+    capsys, postgres_admin_url, monkeypatch
 ):
     from sqlalchemy import create_engine
 
+    if sys.platform == "darwin":
+        monkeypatch.setenv(
+            "PATH",
+            os.pathsep.join(
+                entry
+                for entry in os.environ["PATH"].split(os.pathsep)
+                if not (Path(entry) / "pg_config").exists()
+            ),
+        )
     rehearsal = _load_rehearsal()
     errors = rehearsal.rehearse(REPO_ROOT, postgres_admin_url)
     assert errors == []

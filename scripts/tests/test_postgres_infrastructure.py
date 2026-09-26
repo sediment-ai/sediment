@@ -15,7 +15,7 @@ def test_compose_runs_migrations_before_api() -> None:
     migration = compose["services"]["migrate"]
     api = compose["services"]["api"]
 
-    assert postgres["image"] == "sediment-postgres:local"
+    assert postgres["image"] == "${COMPOSE_PROJECT_NAME:-sediment}-postgres:local"
     assert postgres["build"]["context"] == "."
     assert postgres["build"]["dockerfile"] == "docker/postgres/Dockerfile"
     assert postgres["healthcheck"]["test"] == [

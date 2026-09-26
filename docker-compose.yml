@@ -25,7 +25,7 @@ services:
     build:
       <<: *api-build
       dockerfile: docker/postgres/Dockerfile
-    image: sediment-postgres:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-postgres:local
     # The entrypoint initializes volume ownership, then runs as postgres.
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
     mem_limit: 1g
@@ -53,7 +53,7 @@ services:
   migrate:
     <<: *runtime
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     restart: "no"
     mem_limit: 512m
     cpus: 1.0
@@ -73,7 +73,7 @@ services:
   api:
     <<: *runtime
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     mem_limit: 2g
     cpus: 2.0
     pids_limit: 256
@@ -95,7 +95,10 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    ports: [127.0.0.1:8000:8000]
+    ports:
+      - target: 8000
+        published: "${SEDIMENT_API_PORT:-8000}"
+        host_ip: 127.0.0.1
     volumes:
       - sediment-mirror:/data/mirror
     tmpfs: ["/tmp:size=256m,mode=1777"]
@@ -111,7 +114,7 @@ services:
     <<: *runtime
     profiles: [operator]
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     restart: "no"
     mem_limit: 2g
     cpus: 1.0
@@ -131,8 +134,8 @@ services:
     tmpfs: ["/tmp:size=256m,mode=1777"]
     networks: [database]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
 
   gateway:
     <<: *runtime
@@ -140,7 +143,7 @@ services:
     build:
       <<: *api-build
       dockerfile: docker/gateway/Dockerfile
-    image: sediment-gateway:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-gateway:local
     mem_limit: 2g
     cpus: 2.0
     pids_limit: 256
@@ -163,7 +166,10 @@ services:
         exec python /usr/local/bin/sediment-gateway.py "$$@"
       - sediment-gateway
     command: [--config, /app/config.yaml, --port, "4000"]
-    ports: [127.0.0.1:4000:4000]
+    ports:
+      - target: 4000
+        published: "${SEDIMENT_GATEWAY_PORT:-4000}"
+        host_ip: 127.0.0.1
     environment:
       SEDIMENT_INGEST_URL: http://api:8000
       SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN: http://api:8000

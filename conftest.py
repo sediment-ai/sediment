@@ -33,6 +33,13 @@ PostgresDatabaseFactory = Callable[..., str]
 PostgresStoreFactory = Callable[[], tuple[str, object]]
 
 
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Match runtime library discovery before fixtures import the driver."""
+    from sediment_core.postgres_engine import configure_libpq
+
+    configure_libpq()
+
+
 def _migration_digest(paths: list[Path] | None = None) -> str:
     """Hash ordered Alembic revision names and bytes without import side effects."""
     if paths is None:

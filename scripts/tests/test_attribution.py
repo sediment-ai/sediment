@@ -2920,6 +2920,120 @@ def test_doctor_server_unreachable_fails(tmp_path, monkeypatch) -> None:
     assert "unreachable" in detail
 
 
+@pytest.mark.parametrize("authority", ["ingest", "operator"])
+def test_doctor_checks_capture_only_enrollment(tmp_path, monkeypatch, authority):
+    mod = _load_module()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("SEDIMENT_URL", raising=False)
+    monkeypatch.delenv("SEDIMENT_INGEST_TOKEN", raising=False)
+    url = "http://127.0.0.1:8000"
+    (tmp_path / ".sediment").mkdir()
+    (tmp_path / ".sediment/config.json").write_text(
+        json.dumps(
+            {
+                "current": url,
+                "servers": {
+                    url: {
+                        "capture_token": "private-capture-token",
+                        "capture_authority": "ingest",
+                        "capture_client_id": "alice",
+                    }
+                },
+            }
+        )
+    )
+    opener = _FakeOpener(
+        _FakeResponse(
+            json.dumps(
+                {
+                    "org_id": "pilot",
+                    "authority": authority,
+                    "client_id": "alice",
+                }
+            ).encode()
+        )
+    )
+    monkeypatch.setattr(mod.urllib.request, "build_opener", lambda *_: opener)
+
+    findings = []
+    mod._doctor_server(findings)
+
+    [(status, check, detail)] = findings
+    assert check == f"server[{url}]"
+    assert "private-capture-token" not in detail
+    assert opener.request.get_header("Authorization") == "Bearer private-capture-token"
+    if authority == "ingest":
+        assert status == mod.DOCTOR_OK
+        assert "ingest token valid" in detail
+    else:
+        assert status == mod.DOCTOR_FAIL
+        assert "--capture" in detail
+
+
+def test_doctor_verifies_sourced_capture_credentials_behind_a_user_agent_filter(
+    tmp_path, monkeypatch
+):
+    received = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            agent = self.headers.get("User-Agent", "")
+            received.append((self.path, self.headers.get("Authorization"), agent))
+            # Match an ingress that rejects the default urllib signature.
+            self.send_response(403 if agent.startswith("Python-urllib") else 200)
+            self.end_headers()
+            self.wfile.write(
+                b'{"org_id":"acme","authority":"ingest","client_id":"developer"}'
+            )
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}"
+        home = tmp_path / "home"
+        monkeypatch.delenv("SEDIMENT_URL", raising=False)
+        _login_config(home, url)
+        config_path = home / ".sediment/config.json"
+        config = json.loads(config_path.read_text())
+        del config["servers"][url]["token"]
+        config_path.write_text(json.dumps(config))
+        repo = installed_repo(tmp_path, home)
+        result = subprocess.run(
+            [
+                "/bin/sh",
+                "-ec",
+                '. "$HOME/.sediment/env.sh"; exec "$@"',
+                "capture-doctor",
+                sys.executable,
+                str(SCRIPT),
+                "doctor",
+                str(repo),
+            ],
+            cwd=repo,
+            env={**os.environ, **doctor_env(home)},
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert findings(result)[f"server[{url}]"] == (
+            "ok reachable, ingest token valid (org acme)"
+        )
+        assert received
+        assert all(
+            request == ("/v1/me", "Bearer tok-405", "sediment-doctor/1")
+            for request in received
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 @pytest.mark.parametrize(
     "url",
     [

@@ -14,8 +14,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def create_environment(path: Path) -> None:
+def create_environment(path: Path, *, ingest_clients: tuple[str, ...] = ()) -> None:
     """Create a 0600 environment file, refusing existing paths and shared writers."""
+    # Keep this bootstrap script stdlib-only. The Settings contract test checks
+    # that these names and generated secrets satisfy the server's authority rules.
+    seen = {"gateway", "operator", "legacy", "retrieval"}
+    for client in ingest_clients:
+        if (
+            not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}", client)
+            or client in seen
+        ):
+            raise ValueError(
+                "ingest client names must be unique, unreserved, and 1–64 ASCII "
+                "letters, digits, dots, underscores, or hyphens, starting with "
+                "a letter or digit (gateway is generated automatically)"
+            )
+        seen.add(client)
     parent = path.parent.stat()
     if parent.st_uid != os.getuid() or parent.st_mode & 0o022:
         raise PermissionError(
@@ -35,7 +49,11 @@ def create_environment(path: Path) -> None:
     }
     values["LITELLM_MASTER_KEY"] = "sk-" + secrets.token_hex(32)
     values["SEDIMENT_INGEST_TOKENS"] = json.dumps(
-        {"gateway": values["SEDIMENT_GATEWAY_INGEST_TOKEN"]}, separators=(",", ":")
+        {
+            "gateway": values["SEDIMENT_GATEWAY_INGEST_TOKEN"],
+            **{client: secrets.token_hex(32) for client in ingest_clients},
+        },
+        separators=(",", ":"),
     )
     content = (ROOT / ".env.example").read_text()
     for name, value in values.items():
@@ -61,17 +79,30 @@ def create_environment(path: Path) -> None:
             os.close(fd)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path(".env"))
+    parser.add_argument(
+        "--ingest-client",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="generate a separate ingest-only token for this client; repeat per client",
+    )
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
     args = parser.parse_args()
     try:
-        create_environment(args.output)
+        create_environment(args.output, ingest_clients=tuple(args.ingest_client))
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Cannot create private environment file: {exc}\n")
     print(f"Created private environment file: {args.output}")
+    print("Set SEDIMENT_ORG_ID and review SEDIMENT_ALLOWED_CLONE_HOSTS before startup.")
     print(
-        "Set the deployment organization and optional Anthropic provider key before startup."
+        "Share only each client's entry in SEDIMENT_INGEST_TOKENS, never the whole file."
     )
     return 0
 

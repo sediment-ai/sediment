@@ -114,11 +114,15 @@ sediment login "$PILOT_API_URL" --capture
 sediment install --user-id "$PILOT_USER_ID" \
   --codex-profile sediment-pilot "$PILOT_REPO"
 . "$HOME/.sediment/env.sh"
+sediment doctor "$PILOT_REPO"
 ```
 
 `login --capture` prompts for the ingest-only token. Review the installation
 summary: the installer adds hooks for detected harnesses, including Claude Code,
 and preserves unrelated entries.
+Require a valid server token and no `FAIL` rows from `doctor`. If only capture
+is enrolled, `doctor` verifies the ingest token. This configuration check doesn't
+require operator access or prove that an agent has delivered a Session.
 
 The generated environment enables Cursor and pi delivery. Codex uses a private
 `sediment-pilot.config.toml` under `CODEX_HOME`, or `~/.codex`, with a resolved
