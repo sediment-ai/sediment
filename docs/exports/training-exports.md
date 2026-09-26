@@ -47,11 +47,11 @@ projections have these requirements:
 
 The canonical Derivation policy defaults `eval_fraction` to `0.1`.
 
-On a deployment, run the command in the operator container, which mounts the
-export and private staging volumes. For example:
+Run the installed CLI in the configured operator shell. Use private output and
+staging directories with enough space. For example:
 
 ```bash
-docker compose --profile operator run --rm operator sediment export dpo --out /data/export
+sediment export dpo --out /data/export
 ```
 
 ## Export a reviewed bundle

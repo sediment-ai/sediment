@@ -2,8 +2,8 @@
 
 Compare model outcomes, investigate missing commit evidence, and measure
 retention with read-only reports. Run CLI reports on the deployment host with
-operator database access. For Compose, prefix each command with
-`docker compose --profile operator run --rm operator`.
+operator database access configured through
+[Deploy Sediment](deploy.md#5-verify-the-deployment).
 
 Remote API examples require `SEDIMENT_OPERATOR_TOKEN`. Capture tokens don't
 authorize reports or queries.

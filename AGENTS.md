@@ -183,7 +183,7 @@ Grouped by reader intent; `docs/` subdirectories mirror these groups.
 | Topic | Read |
 |---|---|
 | Deploy, enroll a team, and verify a self-hosted installation | `docs/operate/deploy.md`; `docs/operate/security.md`; `docs/operate/run-pilot.md`; `docs/operate/validate-deployment.md` |
-| Rehearse releases; measure and investigate agent work | `docs/operate/rehearse-release.md`; `docs/operate/lifecycle-report.md`; `docs/operate/measure-agent-work.md` |
+| Review releases; measure and investigate agent work | `docs/operate/rehearse-release.md`; `docs/operate/lifecycle-report.md`; `docs/operate/measure-agent-work.md` |
 | Network exposure: ports, outbound, perimeter | [Network exposure](docs/operate/deploy.md#84-network-exposure) |
 | Quarantine / incident response | [Quarantine and wholesale deletion](docs/operate/deploy.md#83-quarantine-and-wholesale-deletion), then `docs/agents/fact-store.md` + `docs/agents/api-and-operations.md` |
 | Sim: scenario explainer | `sim/README.md` |

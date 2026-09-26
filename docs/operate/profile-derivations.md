@@ -10,7 +10,7 @@ Restore a backup into a separate PostgreSQL instance and copy its mirrors.
 Configure the candidate to use those copies. Keep credentials in a protected
 environment file. Do not print its contents.
 
-Record the source revision, image digest, dependency versions, schema revision,
+Record the Sediment release version, installed dependency versions, schema revision,
 visible Fact counts, quarantine revision, and mirror revisions. For reports,
 record the exact cohort and `as_of`. For Derivations, retain the policy and scope;
 the bundle derives `as_of` from its evidence.
@@ -25,7 +25,7 @@ Record each budget before starting:
 
 | Resource | What to record |
 | --- | --- |
-| Container memory | Memory ceiling and swap setting; include all worker processes |
+| Process memory | Memory ceiling and swap setting; include all worker processes |
 | Concurrency | Simultaneous report requests and worker count |
 | Work unit | Largest content row, complete Session, and complete training group |
 | Storage | Private staging allowance, output capacity, filesystem quota, and free space |
@@ -33,7 +33,7 @@ Record each budget before starting:
 
 Use one workload at a time for the first measurements. Leave host memory for
 PostgreSQL and unrelated services. A successful serial request does not qualify
-several simultaneous workers in the same container.
+several simultaneous workers under the same resource limits.
 
 | Encoded population | Default byte limit |
 | --- | --- |
@@ -201,213 +201,13 @@ isolated resources created for the profile.
 
 ## Rehearse capture alongside batch work
 
-From a source checkout, use `scripts/capacity_rehearsal.py` to test a declared
-synthetic population. Install the locked workspace dependencies and PostgreSQL
-client libraries first. Set `SEDIMENT_DATABASE_URL` through your protected
-environment to an isolated administrative database whose role can create and
-drop databases. The script creates and removes one random scratch database.
-It doesn't migrate the administrative database.
+Use a separate deployment with representative, approved data. Run normal agent
+capture while you execute the installed `sediment derive`, `sediment report`,
+and `sediment export` commands. Record latency, failures, memory, and storage.
 
-```bash
-uv sync --locked
-uv run python scripts/capacity_rehearsal.py \
-  --profile sim/profiles/capacity-smoke.json \
-  --out /data/capacity-smoke
-```
+Compare receipt counts with stored Facts and inspect every exclusion. A quiet
+workload doesn't establish peak capacity. Repeat the workload after a restart
+to verify recovery.
 
-Use an unused output path on a disk-backed filesystem. The script creates a
-private directory and retains synthetic artifacts, logs, and `report.json`.
-The `receipts/` journals retain acknowledged gateway identities, timings, and
-byte counts, including when a later gate fails. They contain no message bodies.
-The report's `failures` list retains recorded failure categories. Its `reason`
-field identifies the first recorded category, which can come from cleanup.
-After the smoke run passes, inspect the pilot target before allocating resources:
-
-```bash
-uv run python scripts/capacity_rehearsal.py \
-  --profile sim/profiles/capacity-pilot.json \
-  --out /data/capacity-pilot-plan --plan-only
-```
-
-The pilot declares 100 total team Sessions per week, 100 calls per Session, and
-24 weeks: 2,400 Sessions and 240,000 calls. `plan.json` reports an **unmeasured**
-target, known limits, and repeated text bytes. Plan-only exit status 0 means that
-planning succeeded; it never qualifies the workload. Text estimates exclude raw
-payloads, serialization, indexes, and PostgreSQL compression. They cannot size a
-deployment's physical disk.
-
-If the plan exceeds a runtime limit, a full rehearsal can record that refusal;
-the target remains unqualified. In particular, complete bundle identity evidence
-has a 50,000-call ceiling. A 100-call Session repeats 10,100 parts, within keyword
-streaming's 16,384-part ceiling; total bytes and candidate state have independent
-limits. Exact-reference reads have separate limits.
-Do not truncate Facts or treat a smaller probe as proof of the full target.
-
-If resources permit the declared workload, repeat without `--plan-only` and use
-a different output path. Exit status 0 qualifies the declared synthetic profile;
-status 1 records a failed probe, and status 2 identifies an invocation failure.
-
-Edit a copy of the profile to declare your workload. Every field is required;
-unknown fields and invalid sizes fail before database or process creation.
-
-| Dimension | Meaning |
-| --- | --- |
-| `schema_version` | Profile contract version, 1 |
-| `developers` | Synthetic developer identities represented in historical Sessions |
-| `history_weeks`, `sessions_per_week` | Historical Session population; Sessions per week is the total across developers |
-| `calls_per_session` | Calls in each complete historical Session |
-| `history_bytes`, `output_bytes` | ASCII bytes per user message and assistant response; later calls repeat all earlier turns |
-| `live_interval_ms`, `max_live_calls` | Delay between sequential live requests and maximum live population |
-| `job_timeout_seconds` | Deadline for each child job or HTTP report request |
-| `max_process_rss_mib`, `max_workspace_mib` | Post-run limits for sampled aggregate process RSS and logical workspace bytes |
-
-Read the report's measurement scope before using a passing result. The portable
-sampler includes the runner, sender, API, workers, and batch processes. It excludes
-PostgreSQL memory, container memory, and database storage. Its checks don't enforce
-memory or filesystem ceilings. Record those deployment budgets separately.
-
-The runner captures live gateway calls and runs one in-flight exact evidence
-read during reports, Derivation, and SFT/RLVR exports. The reader uses a
-retrieval credential restricted to one synthetic Session and checks the
-complete selected part. `exact_retrieval` separates successful latency from
-capacity refusals; `receipts/exact.jsonl` records content-free timings and
-hashes. Each job must contain a completed capture request, and at least one
-must contain a successful exact read. The runner checks duplicate receipts
-against stored Facts and requires positive training rows. It stops capture
-before comparing repeated builds.
-
-During Derivation, it delivers a signed Push and requires a Session-to-commit
-observation. Redelivery must retain the receipt and visible observation. This
-doesn't verify a second background refresh, mirror-lock contention, or the full
-mirror queue. Inspect the synthetic API log if observation times out.
-
-If a job has no completed capture request within its execution interval, the
-probe fails with `no_ingest_overlap`. If no operation contains a completed exact
-read, it fails with `no_exact_read_overlap`. Those results mean the run lacks coexistence
-evidence; it doesn't establish a deployment capacity failure. Choose a shorter
-live interval or a larger declared workload before repeating the probe.
-
-The runner handles SIGINT and SIGTERM by stopping its owned processes and removing
-its scratch database. It records interruption as a failed run. SIGKILL and host
-failure bypass this cleanup; retain the output directory for investigation.
-
-The profiles don't convert lines of code into Inference calls. Historical gateway
-timestamps spread a population over weeks; the semantic Push and CI evidence is
-contemporary. This rehearsal doesn't reproduce months of changing repository
-history. The local fixture uses development mode and file-based mirrors. For
-deployment verification, repeat representative workloads under the deployment's
-security settings and total resource limits.
-
-## Measure agent evidence retrieval
-
-Use `scripts/agent_evidence_benchmark.py` to measure a loopback API and its
-disposable evidence workers against real PostgreSQL. Set
-`SEDIMENT_TEST_DATABASE_URL` to an owned disposable cluster. The script creates,
-migrates, and removes its own database. Sync the runtime checkout with
-`uv sync --locked --python 3.12` before running it.
-
-```bash
-uv run python scripts/agent_evidence_benchmark.py \
-  --runtime /path/to/sediment-checkout \
-  --output /data/evidence-keyword \
-  --sessions 8 --background 20000 \
-  --modes keyword --samples 30 --waves 10 --clients 1 5 10
-```
-
-Use a different unused output directory for each run. Repeat with `--sessions 1`
-and `--sessions 32` to vary the authorized source size. Hold this size fixed and
-change `--background` to measure unrelated organization history. Compare clean
-runtime revisions using the same script and arguments. Check fixture and
-successful keyword response hashes before comparing timings.
-
-Run each mode separately for comparable traffic conditions. `keyword` measures
-discovery followed by selected-Session keyword retrieval. `exact` discovers a
-preview and fetches its reference. `known` fetches a fixed known reference
-without discovery. The latter two modes require the scoped exact API. They use
-different selection semantics and do not establish equivalent context quality.
-
-Inspect `report.json` for successful latency and capacity refusals separately,
-response bytes, sampled API process-tree memory, and verified overlapping capture
-receipts. The capture probe counts HTTP 503 refusals separately from stored
-receipts and continues with a distinct event without retrying the refused event.
-Read `diagnostic.json` for startup, source, selection, encoding, and
-actual SQL plans. Diagnostic stage times are not public request latencies.
-The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
-and host limits separately. A scripted chooser exercises transport; it measures
-neither decision-model quality nor inference cost.
-
-### Qualify a growing Session
-
-Use `scripts/keyword_streaming_benchmark.py` for the pilot's 100-call Session.
-It creates and removes a scratch database in the owned cluster named by
-`SEDIMENT_TEST_DATABASE_URL`. The deterministic fixture repeats earlier turns,
-with 8 KiB of user text and 2 KiB of assistant text per turn: 10,100 parts and
-49.32 MiB of canonical text. An independent complete eager selection supplies
-the expected strict response bytes outside the measured API processes.
-
-```bash
-uv run python scripts/keyword_streaming_benchmark.py \
-  --calls 100 --sessions 1 --entropy varied --samples 3 --waves 2 --quarantine \
-  --rss-limit-mib 768 --database-cpu-limit 2 --database-memory-mib 2048 \
-  --output /data/keyword-100
-```
-
-The command checks fixed, selected, and discovery routes, plus an exact-reference
-control. It runs paired reads alongside acknowledged capture, then repeats after
-Quarantine and release. Inspect `report.json` for full-response hashes, coverage,
-latency, refusals, receipt conservation, sampled API process-tree memory, and
-cleanup. `diagnostic.json` records server-cursor use and SQL plans separately.
-The declared database resource limits must match limits that you set externally.
-The sampler excludes PostgreSQL and the oracle and can miss brief memory peaks.
-The 768 MiB planning check applies only to the successful single-Session,
-100-call profile; it isn't a general process-memory guarantee.
-
-If the older runtime refuses this fixture, select its installed checkout with
-`--runtime` and `--baseline-refusal evidence_source_limit`. Expected refusals
-are controls, not successful qualification. Use a fresh output directory per run.
-Use `--calls 10 --sessions 4` to check a smaller aggregate grant. Use
-`--scenario source-limit`, `row-limit`, `part-limit`, or `state-limit` for complete
-refusals. The `tiny-parts` and `nested-tools` scenarios measure decoded-row memory.
-Omit `--quarantine` for these controls. Passing one 100-call Session doesn't
-qualify 32 equally large Sessions, full pilot exports, or an agent's judgment.
-
-## Measure repeated-history storage
-
-Use `scripts/storage_history_benchmark.py` to measure one growing synthetic
-Session through PostgreSQL. Set `SEDIMENT_TEST_DATABASE_URL` to an owned
-disposable cluster with database creation and removal authority. Install native
-`pg_dump` and `pg_restore` clients that support the server version.
-
-```bash
-uv run python scripts/storage_history_benchmark.py \
-  --out /data/storage-varied-pglz \
-  --checkpoints 1,10,100,250 --input-bytes 8192 --output-bytes 2048 \
-  --entropy varied --compression pglz \
-  --pg-dump /path/to/pg_dump --pg-restore /path/to/pg_restore \
-  --timeout 1200
-```
-
-Use an unused output directory. Run comparisons sequentially, away from latency
-qualification. Compare `varied/pglz`, `varied/lz4`, and `repeated/pglz` using the
-same checkpoints and body sizes. If the PostgreSQL build lacks LZ4 compression,
-the command fails visibly; record that unavailable comparison. `varied` generates
-distinct deterministic text per turn. Later calls repeat those exact earlier
-messages. `repeated` uses highly compressible text and cannot establish typical
-storage costs.
-
-Read `report.json` for logical input/output/raw bytes, compressed datum sizes,
-heap and index sizes, and TOAST (PostgreSQL's oversized-value storage) sizes.
-Inclusive table totals already contain TOAST; don't add them again. The report
-records streamed Fact reads, exact-reference reads, and full-Session/context
-capacity refusals separately. The command checks exact values, distinct Facts,
-redelivery, Quarantine, and a native compressed backup restored into another
-owned database. It removes both databases and the verified archive, retaining
-content-free measurements. Exit status 0 means that calibration and restore
-checks passed; it doesn't qualify the pilot.
-
-Read costs follow insertion and storage scans, so they don't represent cold
-caches. Python peak memory excludes PostgreSQL and native clients. Database
-sizes exclude write-ahead logs, mirrors, and training artifacts. A projection
-from one Session to 2,400 Sessions is a sample-based estimate; record its formula,
-compression, content distribution, and omitted costs. A storage representation
-change requires separate migration and restore evidence.
+The [maintainer performance rehearsals](../../CONTRIBUTING.md#maintainer-performance-rehearsals)
+record the synthetic qualification procedures used during development.
