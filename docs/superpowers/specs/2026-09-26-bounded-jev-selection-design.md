@@ -130,9 +130,10 @@ continuation uses a distinct Session, container, and workspace copy.
 
 ### Generation contract
 
-The earlier gate required `max_tokens` to equal 2048. Pinned pi 0.84.1 lowers
-it to `min(2048, max(1, 16384 − estimated context − 4096))` under context
-pressure, so long-context runs stopped at that guard. Both arms use one
+The earlier gate required `max_tokens` to equal 2048. The pinned pi harness
+lowers it to `min(2048, max(1, 16384 − estimated context − 4096))` under
+context pressure, so long-context runs stopped at that guard. Versions 0.84.1
+and 0.86.1 share this rule; the protocol records the pinned version. Both arms use one
 contract: `temperature` 0, streaming, the pinned model, and an integer
 `max_tokens` from 1 to 2048. The gate records every request's value.
 Compaction, automatic retries, and native retrieval tools stay disabled. The

@@ -104,8 +104,8 @@ def generation_contract() -> dict:
         "stream": True,
         "max_tokens_ceiling": OUTPUT_CEILING,
         "max_tokens_rule": (
-            "pi 0.84.1 clampMaxTokensToContext: min(2048, max(1, 16384 - "
-            "estimated context tokens - 4096)); every value is recorded"
+            f"pi {legacy.PI_VERSION} clampMaxTokensToContext: min(2048, max(1, "
+            "16384 - estimated context tokens - 4096)); every value is recorded"
         ),
         "context_window": CONTEXT_WINDOW,
         "coding_model_calls": legacy.MODEL_CALL_LIMIT,
