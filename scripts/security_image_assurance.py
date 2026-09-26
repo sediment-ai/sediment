@@ -624,6 +624,25 @@ for path in sorted(files):
 print(json.dumps(result, sort_keys=True))
 """
 
+GATEWAY_TARFILE_PROBE = r"""
+import hashlib
+import json
+import tarfile
+from pathlib import Path
+
+path = Path(tarfile.__file__)
+if path != Path('/usr/lib/python3.13/tarfile.py') or any(
+    parent.is_symlink() for parent in (path, *path.parents)
+):
+    raise RuntimeError('unexpected gateway tarfile source path')
+digest = hashlib.sha256(path.read_bytes()).hexdigest()
+print(json.dumps({
+    'path': str(path),
+    'sha256': digest,
+    'bytecode_present': any((path.parent / '__pycache__').glob('tarfile.*.pyc')),
+}))
+"""
+
 
 def _container_probe(image_id: str, script: str, *, root_user: bool = False) -> dict:
     # Read-search permits a complete file inventory through private directories.
@@ -883,6 +902,22 @@ def collect_assurance(
     }
     if artifact == "gateway":
         record["gateway_caller_files"] = probe_gateway_callers(image_id)
+        tarfile = _container_probe(
+            image_id, "python -B - <<'PY'\n" + GATEWAY_TARFILE_PROBE + "\nPY"
+        )
+        if (
+            set(tarfile) != {"path", "sha256", "bytecode_present"}
+            or tarfile.get("path") != "/usr/lib/python3.13/tarfile.py"
+            or not re.fullmatch(r"[a-f0-9]{64}", str(tarfile.get("sha256")))
+            or type(tarfile.get("bytecode_present")) is not bool
+        ):
+            raise AssuranceFailure("gateway tarfile patch evidence is incomplete")
+        record["gateway_tarfile"] = tarfile
+        predicates["tarfile_hardlink_fix"] = (
+            tarfile["sha256"]
+            == "9600de643ae7efed27009ee6c86aee60cebe335c0e732797c06db74dc719cefd"
+            and not tarfile["bytecode_present"]
+        )
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{artifact}-{architecture}.assurance.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n"

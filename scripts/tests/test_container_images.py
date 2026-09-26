@@ -297,6 +297,76 @@ print('protocol consumers interoperate')
     assert "protocol consumers interoperate" in result.stdout
 
 
+def test_gateway_tokenizers_and_hub2_download_and_count_tokens() -> None:
+    result = docker(
+        "run",
+        "--rm",
+        "--network=none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        r"""
+import os
+os.environ['LITELLM_LOCAL_MODEL_COST_MAP']='True'
+os.environ['HF_HUB_DISABLE_XET']='1'
+os.environ['HF_HUB_DISABLE_TELEMETRY']='1'
+import tempfile, threading, json, hashlib, base64, csv, io
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from importlib.metadata import distribution, version
+calls=[]
+body_holder={}
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self,*args): pass
+    def do_HEAD(self): self.respond(False)
+    def do_GET(self): self.respond(True)
+    def respond(self,send_body):
+        calls.append({'method':self.command,'path':self.path,'authorization':self.headers.get('Authorization')})
+        body=body_holder['body']
+        self.send_response(200)
+        self.send_header('Content-Length',str(len(body)))
+        self.send_header('ETag','"'+hashlib.sha1(body).hexdigest()+'"')
+        self.send_header('X-Repo-Commit','a'*40)
+        self.end_headers()
+        if send_body: self.wfile.write(body)
+server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+os.environ['HF_ENDPOINT']=f'http://127.0.0.1:{server.server_port}'
+os.environ['HF_HUB_CACHE']=tempfile.mkdtemp(prefix='hub2-cache-')
+thread=threading.Thread(target=server.serve_forever,daemon=True)
+thread.start()
+from tokenizers import Tokenizer, models, pre_tokenizers
+import huggingface_hub, httpx, httpx2
+source=Tokenizer(models.WordLevel({'[UNK]':0,'hello':1,'pilot':2},unk_token='[UNK]'))
+source.pre_tokenizer=pre_tokenizers.Whitespace()
+body_holder['body']=source.to_str().encode()
+for name,token in [('anonymous',None),('authorized','local-review-token')]:
+    tokenizer=Tokenizer.from_pretrained('sediment/'+name,revision='pilot-revision',token=token)
+    assert tokenizer.encode('hello pilot').ids==[1,2]
+    assert tokenizer.decode([1,2])=='hello pilot'
+    selected=[call for call in calls if '/'+name+'/' in call['path']]
+    assert {call['method'] for call in selected}=={'HEAD','GET'},selected
+    assert all(call['path']==f'/sediment/{name}/resolve/pilot-revision/tokenizer.json' for call in selected),selected
+    expected=None if token is None else 'Bearer '+token
+    assert all(call['authorization']==expected for call in selected),selected
+import litellm
+from litellm.utils import _load_huggingface_tokenizer
+local=_load_huggingface_tokenizer('anthropic')
+assert local.decode(local.encode('hello pilot').ids)=='hello pilot'
+ids=litellm.encode(model='claude-2',text='hello pilot')
+assert ids and litellm.decode(model='claude-2',tokens=ids)=='hello pilot'
+assert litellm.token_counter(model='claude-2',text='hello pilot')>0
+p=distribution('tokenizers')._path/'METADATA'
+row=next(row for row in csv.reader(io.StringIO((p.parent/'RECORD').read_text())) if row[0]==p.parent.name+'/METADATA')
+expected_hash='sha256='+base64.urlsafe_b64encode(hashlib.sha256(p.read_bytes()).digest()).rstrip(b'=').decode()
+assert row[1:]==[expected_hash,str(p.stat().st_size)]
+print(json.dumps({'result':'PASS','versions':{n:version(n) for n in ('litellm','tokenizers','huggingface-hub','httpx','httpcore','httpx2','httpcore2','truststore')},'tokenizers_metadata_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'request_methods':[c['method'] for c in calls],'checks':['real Rust Tokenizer.from_pretrained','real Hub 2 hf_hub_download against loopback HTTP server','HEAD/GET revision routing','anonymous requests omit Authorization','string token propagated as Bearer','local Claude tokenizer encode/decode','LiteLLM Claude encode/decode/token_counter','Tokenizers METADATA RECORD integrity','HTTPX and HTTPX2 module coexistence']},indent=2))
+server.shutdown()
+""",
+    )
+    assert '"result": "PASS"' in result.stdout
+
+
 def test_gateway_compression_uses_reviewed_released_zlib() -> None:
     result = docker(
         "run",
@@ -314,6 +384,55 @@ def test_gateway_compression_uses_reviewed_released_zlib() -> None:
         "assert zlib.decompress(zlib.compress(payload)) == payload",
     )
     assert result.returncode == 0
+
+
+def test_gateway_tar_filters_keep_relocated_hardlinks_inside_destination() -> None:
+    result = docker(
+        "run",
+        "--rm",
+        "--network=none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        r"""
+import io,pathlib,tarfile,tempfile
+for extraction_filter in ('data', 'tar'):
+    with tempfile.TemporaryDirectory() as directory:
+        root=pathlib.Path(directory)
+        outside=root/'escape'
+        outside.write_bytes(b'private outside file')
+        outside.chmod(0o600)
+        before=outside.stat()
+        destination=root/'extracted'
+        destination.mkdir()
+        archive=io.BytesIO()
+        with tarfile.open(fileobj=archive,mode='w') as writer:
+            regular=tarfile.TarInfo('a/escape')
+            regular.size=len(b'decoy')
+            writer.addfile(regular,io.BytesIO(b'decoy'))
+            symlink=tarfile.TarInfo('a/b/s')
+            symlink.type=tarfile.SYMTYPE
+            symlink.linkname='../escape'
+            writer.addfile(symlink)
+            hardlink=tarfile.TarInfo('s')
+            hardlink.type=tarfile.LNKTYPE
+            hardlink.linkname='a/b/s'
+            hardlink.mode=0o777
+            writer.addfile(hardlink)
+        archive.seek(0)
+        with tarfile.open(fileobj=archive) as reader:
+            reader.extractall(destination,filter=extraction_filter)
+        relocated=destination/'s'
+        assert not relocated.is_symlink(), extraction_filter
+        assert relocated.read_bytes()==b'decoy', extraction_filter
+        after=outside.stat()
+        assert (after.st_mode,after.st_mtime_ns)==(before.st_mode,before.st_mtime_ns)
+        assert outside.read_bytes()==b'private outside file'
+print('tar extraction filters preserve the destination boundary')
+""",
+    )
+    assert "tar extraction filters preserve the destination boundary" in result.stdout
 
 
 def test_gateway_pdf_reader_bounds_alphabetical_page_labels() -> None:

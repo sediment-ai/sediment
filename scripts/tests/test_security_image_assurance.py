@@ -622,7 +622,11 @@ def test_gateway_probe_rejects_a_mutable_image_reference(monkeypatch):
 
 
 @pytest.mark.parametrize("artifact", ["gateway", "api"])
-def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, artifact):
+@pytest.mark.parametrize("patched", [False, True])
+@pytest.mark.parametrize("bytecode_present", [False, True])
+def test_caller_evidence_is_retained_only_for_gateway(
+    tmp_path, monkeypatch, artifact, patched, bytecode_present
+):
     module = assurance()
     root = source_tree(tmp_path / "source")
     image = "sha256:" + "a" * 64
@@ -636,6 +640,16 @@ def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, art
         return files
 
     monkeypatch.setattr(module, "probe_gateway_callers", probe)
+    tarfile = {
+        "path": "/usr/lib/python3.13/tarfile.py",
+        "sha256": (
+            "9600de643ae7efed27009ee6c86aee60cebe335c0e732797c06db74dc719cefd"
+            if patched
+            else "9fedddf7e814c226cb7e1ac0aa603092eda40047367ec00ad740a81484a17d01"
+        ),
+        "bytecode_present": bytecode_present,
+    }
+    monkeypatch.setattr(module, "_container_probe", lambda *args: tarfile)
     out = tmp_path / "evidence"
     result = module.collect_assurance(image, artifact, "amd64", out, root=root)
     retained = json.loads((out / f"{artifact}-amd64.assurance.json").read_text())
@@ -644,8 +658,14 @@ def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, art
     assert "gateway_caller_files" not in result["predicates"]
     if artifact == "gateway":
         assert result["gateway_caller_files"] == files
+        assert result["gateway_tarfile"] == tarfile
+        assert result["predicates"]["tarfile_hardlink_fix"] == (
+            patched and not bytecode_present
+        )
     else:
         assert "gateway_caller_files" not in result
+        assert "gateway_tarfile" not in result
+        assert "tarfile_hardlink_fix" not in result["predicates"]
 
 
 def test_real_gateway_caller_evidence():

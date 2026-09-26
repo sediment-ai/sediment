@@ -474,7 +474,7 @@
       ]
     },
     "apk/python-3.13": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
       "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
@@ -489,7 +489,7 @@
       ]
     },
     "apk/python-3.13-base": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
       "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
@@ -3862,6 +3862,18 @@
         "1.0.9"
       ]
     },
+    "pypi/httpcore2": {
+      "basis": "Reviewed non-yanked 2.13.1 on 2026-09-26 against its PyPI metadata and the shared Pydantic HTTPX2 upstream release. It requires Python >=3.10 and satisfies the exact httpx2 2.13.1 dependency. The repository is open and active. Its inherited Pydantic security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; it does not infer a fixed upstream support date.",
+      "evidence": "https://pypi.org/project/httpcore2/2.13.1/",
+      "provider": "Upstream project",
+      "source": "https://github.com/pydantic/httpx2",
+      "source_updated_at": "2026-09-24T13:41:35Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "2.13.1"
+      ]
+    },
     "pypi/httpx": {
       "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
       "evidence": "https://pypi.org/project/httpx/",
@@ -3886,18 +3898,31 @@
         "0.4.3"
       ]
     },
+    "pypi/httpx2": {
+      "basis": "Reviewed non-yanked 2.13.1 on 2026-09-26 against its PyPI metadata and the Pydantic upstream release. It requires Python >=3.10 and pins httpcore2==2.13.1. The repository is open and active. Its inherited Pydantic security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; it does not infer a fixed upstream support date.",
+      "evidence": "https://pypi.org/project/httpx2/2.13.1/",
+      "provider": "Upstream project",
+      "source": "https://github.com/pydantic/httpx2",
+      "source_updated_at": "2026-09-24T13:41:35Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "2.13.1"
+      ]
+    },
     "pypi/huggingface-hub": {
-      "basis": "Upstream applies security fixes only to the latest release and does not promise older-release backports. The online gate must confirm the latest non-prerelease, non-yanked registry version. Reviewed 1.32.0 on 2026-09-18 against its released security policy and non-yanked PyPI metadata; the release supports the supplied Python runtimes.",
-      "evidence": "https://raw.githubusercontent.com/huggingface/huggingface_hub/8814aabc81298df547bece9e71e4e88d3e513928/SECURITY.md",
+      "basis": "Upstream applies security fixes only to the latest release and does not backport fixes to older releases. Reviewed 2.0.0 on 2026-09-26 against its release security policy and non-yanked PyPI metadata. Its declared Python >=3.10.0 requirement includes gateway Python 3.13.15. The online gate must still confirm the latest non-prerelease, non-yanked registry version. This review does not establish Tokenizers or LiteLLM compatibility; their gateway acceptance checks remain required.",
+      "evidence": "https://raw.githubusercontent.com/huggingface/huggingface_hub/97c5f5f2030c2df01b60548f7d357970a106cd7d/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/huggingface/huggingface_hub",
-      "source_updated_at": "2026-09-18T11:51:26Z",
+      "source_updated_at": "2026-09-26T03:01:56Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
         "1.31.0",
-        "1.32.0"
+        "1.32.0",
+        "2.0.0"
       ]
     },
     "pypi/humanfriendly": {
@@ -5176,9 +5201,9 @@
       ]
     },
     "pypi/tokenizers": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/tokenizers/",
-      "provider": "Upstream project",
+      "basis": "Reviewed Tokenizers 0.23.1 on 2026-09-26 against its non-yanked PyPI wheels and immutable upstream source. Sediment applies a guarded downstream metadata patch declaring compatibility only with Hub 2.0.0; upstream Tokenizers retains its below-2 constraint. The compiled Tokenizers code is unchanged. Both wheel architectures share the reviewed metadata hash. Native image tests exercise the real Rust Hub download caller with revisions and credentials and local Claude token counting. The image label identifies the patch and its file-integrity record is updated. This compatibility assessment expires with the catalog.",
+      "evidence": "https://github.com/huggingface/tokenizers/blob/7f1623b90b5adfb9bc327d4c3468d2f70bbce262/bindings/python/src/tokenizer.rs",
+      "provider": "Upstream project; Sediment Hub 2 compatibility declaration",
       "source": "https://github.com/huggingface/tokenizers",
       "source_updated_at": "2026-09-11T15:58:59Z",
       "status": "maintained",
@@ -5222,6 +5247,18 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "4.67.3"
+      ]
+    },
+    "pypi/truststore": {
+      "basis": "Reviewed non-yanked 0.10.4 on 2026-09-26 against its PyPI metadata, upstream release, and security disclosure policy. It requires Python >=3.10, declares no runtime dependencies, and satisfies the httpx2 and httpcore2 truststore>=0.10 requirements. The repository is open and not archived. Its security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; repository status and release age are not a release-specific support guarantee.",
+      "evidence": "https://pypi.org/project/truststore/0.10.4/",
+      "provider": "Upstream project",
+      "source": "https://github.com/sethmlarson/truststore",
+      "source_updated_at": "2025-11-28T16:40:58Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "0.10.4"
       ]
     },
     "pypi/typer": {
