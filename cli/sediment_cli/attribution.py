@@ -2755,7 +2755,8 @@ def _verify_capture_override(url: str, token: str) -> None:
     if not _safe_server_url(url) or any(ord(c) < 32 or ord(c) == 127 for c in token):
         raise ValueError("capture override must have verified ingest authority")
     request = urllib.request.Request(
-        f"{url.rstrip('/')}/v1/me", headers={"Authorization": f"Bearer {token}"}
+        f"{url.rstrip('/')}/v1/me",
+        headers={"Authorization": f"Bearer {token}", "User-Agent": _DOCTOR_USER_AGENT},
     )
     try:
         opener = urllib.request.build_opener(_RejectRedirects())

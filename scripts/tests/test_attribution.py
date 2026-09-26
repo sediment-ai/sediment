@@ -2970,6 +2970,70 @@ def test_doctor_checks_capture_only_enrollment(tmp_path, monkeypatch, authority)
         assert "--capture" in detail
 
 
+def test_doctor_verifies_sourced_capture_credentials_behind_a_user_agent_filter(
+    tmp_path, monkeypatch
+):
+    received = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            agent = self.headers.get("User-Agent", "")
+            received.append((self.path, self.headers.get("Authorization"), agent))
+            # Match an ingress that rejects the default urllib signature.
+            self.send_response(403 if agent.startswith("Python-urllib") else 200)
+            self.end_headers()
+            self.wfile.write(
+                b'{"org_id":"acme","authority":"ingest","client_id":"developer"}'
+            )
+
+        def log_message(self, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}"
+        home = tmp_path / "home"
+        monkeypatch.delenv("SEDIMENT_URL", raising=False)
+        _login_config(home, url)
+        config_path = home / ".sediment/config.json"
+        config = json.loads(config_path.read_text())
+        del config["servers"][url]["token"]
+        config_path.write_text(json.dumps(config))
+        repo = installed_repo(tmp_path, home)
+        result = subprocess.run(
+            [
+                "/bin/sh",
+                "-ec",
+                '. "$HOME/.sediment/env.sh"; exec "$@"',
+                "capture-doctor",
+                sys.executable,
+                str(SCRIPT),
+                "doctor",
+                str(repo),
+            ],
+            cwd=repo,
+            env={**os.environ, **doctor_env(home)},
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert findings(result)[f"server[{url}]"] == (
+            "ok reachable, ingest token valid (org acme)"
+        )
+        assert received
+        assert all(
+            request == ("/v1/me", "Bearer tok-405", "sediment-doctor/1")
+            for request in received
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 @pytest.mark.parametrize(
     "url",
     [

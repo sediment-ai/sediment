@@ -16,7 +16,8 @@
 - Let deployment smoke checks use the generated operator credential when the
   legacy bearer token is unset.
 - Verify capture-only logins in `sediment doctor` without requiring an operator
-  credential. Operator containers no longer rerun database role provisioning.
+  credential. Use the doctor user agent when verifying sourced ingest credentials
+  through ingress filters. Operator containers no longer rerun role provisioning.
 - Add an opt-in Docker rehearsal covering fresh installation, enrollment,
   synthetic capture, duplicate delivery, restart persistence, and cleanup.
 - Discover Homebrew's PostgreSQL client library in release rehearsal and test
