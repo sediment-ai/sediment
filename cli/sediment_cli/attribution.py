@@ -692,7 +692,8 @@ def cmd_cursor_hook(env_file: str | None = None) -> int:
         except (OSError, UnicodeError, ValueError):
             _cursor_trail(
                 "capture environment is missing, unreadable, or invalid; "
-                "run sediment install; decision skipped"
+                "run sediment login --capture, then sediment install; "
+                "decision skipped"
             )
             return 0
         # The enrolled endpoint and token are one configuration. Never borrow
@@ -1917,7 +1918,7 @@ def _doctor_pi_extension() -> Finding:
     )
 
 
-def _doctor_cursor_hooks() -> Finding:
+def _doctor_cursor_hooks(*, capture: bool = True) -> Finding:
     path = _cursor_hooks_path()
     if not path.parent.exists():
         return (DOCTOR_INFO, "cursor hooks", "Cursor not detected (no ~/.cursor)")
@@ -1979,7 +1980,10 @@ def _doctor_cursor_hooks() -> Finding:
                 "cursor hooks",
                 f"{event} has a stale matcher or shape; run install",
             )
-    status, _, detail = _doctor_capture_endpoint(cursor=True)
+    # `--agent cursor` reports this in its own capture endpoint row.
+    status, _, detail = (
+        _doctor_capture_endpoint(cursor=True) if capture else (DOCTOR_OK, "", "")
+    )
     if status == DOCTOR_FAIL:
         return (status, "cursor hooks", detail)
     return (DOCTOR_OK, "cursor hooks", f"present in {path}")
@@ -2030,7 +2034,7 @@ def cmd_doctor(
                 )
             )
     if agent in (None, "cursor"):
-        findings.append(_doctor_cursor_hooks())
+        findings.append(_doctor_cursor_hooks(capture=agent is None))
     if agent in (None, "pi"):
         findings.append(_doctor_pi_extension())
     if agent is not None:
@@ -3096,7 +3100,8 @@ def _doctor_capture_endpoint(
                 return (
                     DOCTOR_FAIL,
                     "capture endpoint",
-                    "Cursor capture environment is missing, unreadable, or invalid; run sediment install",
+                    "Cursor capture environment is missing, unreadable, or "
+                    f"invalid; {_CAPTURE_LOGIN}, then run sediment install",
                 )
     configured = environment.get("SEDIMENT_OTLP_ENDPOINT")
     if not configured:

@@ -1579,7 +1579,10 @@ def test_cursor_managed_environment_failure_keeps_marker_and_reports(
     assert not _CursorDecisionCapture.requests
     assert "capture environment" in result.stderr
     assert "unterminated" not in result.stderr
+    assert "sediment login --capture" in result.stderr
     assert mod._doctor_cursor_hooks()[0] == mod.DOCTOR_FAIL
+    # `--agent cursor` reports the environment once, in the capture endpoint row.
+    assert mod._doctor_cursor_hooks(capture=False)[0] == mod.DOCTOR_OK
     assert (
         mod._doctor_capture_endpoint(required=True, cursor=True)[0] == mod.DOCTOR_FAIL
     )
