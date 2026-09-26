@@ -42,13 +42,12 @@ curl -fsSL https://sediment.so/install.sh | sh
 sediment server
 ```
 
-If the installer prints a PATH instruction, run it before `sediment server`.
-
-Sediment manages a local PostgreSQL database. Follow the
+Follow the
 [Quickstart](docs/quickstart.md) to connect an agent and verify capture.
 
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
+
 [Deploy a shared server](docs/operate/deploy.md).
 
 ## Architecture
