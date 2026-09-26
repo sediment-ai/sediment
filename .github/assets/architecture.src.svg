@@ -32,7 +32,7 @@
   Dark: ground #111111, ink #FFFFFF, signal #F13D4F.
   Light: paper #F1EEE7, ink #111111, accent #C42033.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 520" role="img" aria-label="Coding agents, model gateways, and repository events send evidence to Sediment. Immutable Facts in PostgreSQL support engineering reports, selected agent context, and training datasets on your infrastructure. Git mirrors supply history for Derivations.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 520" role="img" aria-label="Coding agents, model gateways, and repository events send evidence to Sediment. Facts in PostgreSQL support engineering reports, selected agent context, and training datasets on your infrastructure.">
   <defs>
     <marker id="arw" viewBox="0 0 8 8" refX="6" refY="3.5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0 L7 3.5 L0 7 z" fill="#F13D4F" />
@@ -61,23 +61,13 @@
       <text x="440" y="164" fill="#FFFFFF">Capture and validate</text>
       <path d="M440 180 V205" fill="none" stroke="#F13D4F" marker-end="url(#arw)" />
       <rect x="276" y="214" width="328" height="70" fill="#111111" stroke="#F13D4F" />
-      <text x="440" y="241" fill="#FFFFFF" font-size="17" font-weight="600">Immutable Facts</text>
+      <text x="440" y="241" fill="#FFFFFF" font-size="17" font-weight="600">Facts</text>
       <text x="440" y="266" fill="#FFFFFF" font-size="12">PostgreSQL evidence store</text>
     </g>
     <g fill="none" stroke="#F13D4F" stroke-opacity="0.8">
       <path d="M440 284 V316 H156 V378" marker-end="url(#arw)" />
       <path d="M440 316 V378" marker-end="url(#arw)" />
       <path d="M440 316 H724 V378" marker-end="url(#arw)" />
-    </g>
-    <g fill="#111111">
-      <rect x="77" y="336" width="158" height="23" />
-      <rect x="362" y="336" width="156" height="23" />
-      <rect x="615" y="336" width="218" height="23" />
-    </g>
-    <g fill="#FFFFFF" font-size="11" text-anchor="middle">
-      <text x="156" y="352">Pure Derivations</text>
-      <text x="440" y="352">Bounded evidence reads</text>
-      <text x="724" y="352">Derivations + exports</text>
     </g>
     <g fill="#111111" stroke="#FFFFFF" stroke-opacity="0.35">
       <rect x="32" y="386" width="248" height="72" />
@@ -91,7 +81,6 @@
       <text x="440" y="439" font-size="11">Operator-selected source parts</text>
       <text x="724" y="415" font-size="16" font-weight="600">Build training data</text>
       <text x="724" y="439" font-size="11">Evidence-backed training rows</text>
-      <text x="440" y="487" font-size="11">Git mirrors supply repository history for Derivations.</text>
     </g>
   </g>
 </svg>
