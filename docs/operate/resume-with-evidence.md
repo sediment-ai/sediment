@@ -426,7 +426,7 @@ for status codes and closed refusal reasons.
 
 Use a small task with an explicit goal, constraints, and final verification
 command. This procedure targets pi `0.84.1` with Node.js 24 and the existing
-[pi gateway setup](run-pilot.md#add-approved-gateway-capture). Its commands follow
+[pi gateway setup](../capture/agent-integrations.md#configure-inference-call-capture-for-pi). Its commands follow
 the [tagged pi CLI and Session documentation](https://github.com/badlogic/pi-mono/blob/v0.84.1/packages/coding-agent/README.md).
 A live run requires your approved model endpoint.
 

@@ -41,9 +41,8 @@ Verify the installed version:
 sediment --version
 ```
 
-For a pilot that requires a source revision or pi, use
-[Install a pinned checkout](../operate/run-pilot.md#install-a-pinned-checkout)
-instead of the package installer.
+For pi, complete the [pi integration setup](agent-integrations.md#pi)
+separately. The PyPI package doesn't include the pi extension.
 
 ## Connect the CLI
 

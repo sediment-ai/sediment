@@ -132,8 +132,7 @@ Use one commit operation at a time per worktree. Separate worktrees still share
 the notes ref and can encounter a busy writer. If a stamp is busy or its outcome
 is unknown, inspect its target before continuing.
 
-Follow [workstation recovery](run-pilot.md#verify-workstation-recovery) and
-[sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
+Follow [sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
 Buffer enrollment covers pi decisions and opted-in transcripts, with separate
 gateway enrollment. It doesn't cover Cursor hooks, native Codex telemetry, or
 forge webhooks. Retain receipts before they expire. Stopped workers don't enforce

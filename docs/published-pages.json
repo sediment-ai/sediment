@@ -35,7 +35,7 @@
       "source": "docs/operate/run-pilot.md",
       "destination": "operate/run-pilot",
       "title": "Run a Cursor, pi, and Codex pilot",
-      "description": "Enroll a team from a pinned source checkout and verify each harness's capture."
+      "description": "Install Sediment, enroll a team, and verify agent and forge capture."
     },
     {
       "source": "docs/operate/validate-deployment.md",
