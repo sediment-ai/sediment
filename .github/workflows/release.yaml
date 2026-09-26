@@ -74,7 +74,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
 
       - name: Rehearse the complete release without publishing
@@ -122,7 +122,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
 
       - name: Add the installer, support metadata, and SHA256SUMS
@@ -179,7 +179,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
 
       - name: Publish to PyPI
         run: >-
