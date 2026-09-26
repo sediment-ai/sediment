@@ -84,10 +84,11 @@ export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose up --build --wait --wait-timeout 120
 ```
 
-Verify it from the host:
+Wait for the API to become ready:
 
 ```bash
-curl -fsS http://127.0.0.1:8000/health
+curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
+  -fsS http://127.0.0.1:8000/health
 ```
 
 ```text
@@ -176,8 +177,9 @@ Inspect the PostgreSQL revision without changing it:
 docker compose --profile operator run --rm operator sediment db status
 ```
 
-Require `at_head` before enrollment. Record the revision, image identities,
-health result, database status, and backup restore result. Then complete the
+Require `at_head`. Before enrollment, [create and restore a backup](#back-up-and-restore).
+Record the revision, image identities, health result, database status, and
+backup restore result. Then complete the
 [pilot handoff](run-pilot.md#prepare-the-deployment). Health and empty Fact counts
 don't verify live capture; use the pilot's Session and forge checks for that.
 
@@ -193,9 +195,18 @@ Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
 supports `claude-*` routing; other providers require a separate gateway
 configuration. See the [gateway boundary](../../docker/gateway/README.md).
 
-Start the complete profile:
+If you authorize persistent storage of unredacted capture payloads, set
+`SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
+`sediment-delivery` named volume and owns a replay worker for its process
+lifetime. Leave the setting empty for direct best-effort delivery.
+
+From the deployment checkout, build and start the gateway with its source identity:
 
 ```bash
+set -e
+SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose --profile gateway up --build --wait --wait-timeout 120
 docker compose --profile gateway ps gateway
 ```
@@ -207,10 +218,6 @@ your ingress. The gateway receives provider and ingest credentials, but no
 database credentials. Its callback sends Inference calls to `http://api:8000`.
 A capture failure doesn't retract a successful model response.
 
-If you authorize persistent storage of unredacted capture payloads, set
-`SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
-`sediment-delivery` named volume and owns a replay worker for its process
-lifetime. Leave the setting empty for direct best-effort delivery.
 If the volume is unsafe, unavailable, or busy, the callback attempts direct
 delivery and logs the reason.
 See [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
@@ -322,8 +329,9 @@ test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
-docker compose up --build --force-recreate --wait --wait-timeout 120 api
-curl -sf http://127.0.0.1:8000/health
+docker compose up --build --force-recreate --wait --wait-timeout 120 postgres migrate api
+curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
+  -fsS http://127.0.0.1:8000/health
 ```
 
 If you use the gateway, rebuild and start that profile after the API is healthy.
@@ -412,7 +420,7 @@ revision, Fact counts, quarantine log, and a representative export against the
 backup record. Destroy only that disposable test database after verification.
 Follow [pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html) for the
 archive and connection options. Record the backup timestamp, restore result,
-and recovery duration. Test restoration before deployment and after
+and recovery duration. Test restoration before enrollment and after
 schema or backup-tool changes.
 
 If you enable the bundled gateway, review unresolved completion identity:

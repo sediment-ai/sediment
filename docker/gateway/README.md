@@ -36,6 +36,12 @@ uses CPython release `3.13.15`. The pins prevent `apk` from selecting a
 development snapshot that sorts after the released version. Security probes
 preserve the complete observed version and reject unreleased runtimes.
 
+The image pins the OpenSSL 3.6.4-r7 packages and reviewed legacy provider.
+This avoids the OpenSSL 4 package transition's conflicting ownership of
+`/etc/ssl` configuration files. The package manager, certificate bundle, and
+libuuid also stay at the revisions in `security/maintenance.json`. Update these
+pins with their maintenance reviews and image checks.
+
 The image also pins zlib to the reviewed Wolfi `1.3.2-r7` release. The pin
 prevents a release candidate from replacing the reviewed package during
 `apk upgrade`. The zlib finding retains its exact caller assessment and native

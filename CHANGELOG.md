@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Installation
+
+- Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
+  gateway's reviewed OpenSSL and supporting packages so rolling repository
+  updates don't introduce an OpenSSL configuration-file conflict.
+
 - Wait for API health in Docker deployment instructions. Support separate
   Compose project image tags and loopback ports for local pilot rehearsals.
   Include operator volumes in the deployment teardown command.

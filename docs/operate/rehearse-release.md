@@ -2,7 +2,16 @@
 
 Use the release rehearsal to build and exercise all six distributions without
 publishing them. Each distribution produces one wheel and one source
-distribution. Run the rehearsal before you create a version tag.
+distribution. Maintainers run it before creating a version tag.
+
+Installing an approved release doesn't require a local rehearsal. Review its
+release evidence, then [verify the deployment](deploy.md#5-verify-the-deployment)
+and [test live capture](run-pilot.md#verify-an-enrolled-harness).
+
+The opt-in [container tests](../../scripts/tests/test_container_images.py) check
+built Docker images. The [security workflow](../../.github/workflows/security.yml)
+runs the gateway cases against its built images. These checks validate builds;
+customer installation uses the deployment checks.
 
 ## Prerequisites
 
@@ -66,6 +75,42 @@ Provenance, so bytes across those revisions differ.
 The rehearsal uses synthetic inputs. Live harness, gateway, forge, and model
 behavior require separate verification. pi's installed-helper check runs in the
 `shims` workflow. A passing rehearsal doesn't establish training quality.
+
+## Record a revision-bound rehearsal
+
+If you need an acceptance record for a source revision, use the disposable
+PostgreSQL instance from [Prerequisites](#prerequisites). From a clean checkout
+of the approved revision, run:
+
+```bash
+SEDIMENT_REVISION='<approved full commit hash>'
+export SEDIMENT_TEST_DATABASE_URL='postgresql+psycopg://postgres:postgres@localhost:5432/postgres'
+ACCEPTANCE_DIR="$HOME/sediment-acceptance"
+ACCEPTANCE_LOG="$ACCEPTANCE_DIR/pipeline-acceptance-$SEDIMENT_REVISION.log"
+ACCEPTANCE_TMP="$ACCEPTANCE_LOG.tmp"
+
+mkdir -p "$ACCEPTANCE_DIR"
+rm -f "$ACCEPTANCE_TMP"
+if {
+  test "${#SEDIMENT_REVISION}" -eq 40 &&
+  test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
+  test -z "$(git status --porcelain=v1 --untracked-files=all)" &&
+  printf 'sediment_revision=%s\nworktree=clean\n' "$SEDIMENT_REVISION" &&
+  uv run python scripts/release_rehearsal.py
+} >"$ACCEPTANCE_TMP" 2>&1
+then
+  mv "$ACCEPTANCE_TMP" "$ACCEPTANCE_LOG"
+else
+  cat "$ACCEPTANCE_TMP"
+  rm -f "$ACCEPTANCE_TMP"
+  exit 1
+fi
+cat "$ACCEPTANCE_LOG"
+```
+
+Retain the pass message, `pipeline acceptance:` record, revision, and
+`worktree=clean` line. This synthetic rehearsal doesn't replace live harness,
+gateway, or forge verification.
 
 ## Rehearse a tag build
 

@@ -24,14 +24,17 @@ Record these inputs before testing. Retain earlier attempts when repeating a che
 
 ## Verify the installed build
 
-1. Run the required continuous integration (CI), shim, schema-compatibility, and
-   pinned consumer checks for the selected revision. Record failures and skips;
-   a job that doesn't run remains unverified.
-2. Run the [release rehearsal](rehearse-release.md#run-the-no-publish-rehearsal)
-   from a clean checkout against a disposable database. Retain its revision,
-   runtime versions, acceptance record, artifact hashes, and replay results.
-3. Match installed artifact identities to the tested build. Use real harness
-   trials to verify capture; the rehearsal uses synthetic inputs.
+1. Review the selected revision's continuous integration (CI), shim,
+   schema-compatibility, consumer, and release-rehearsal results. Retain the
+   acceptance record and artifact hashes. Record failures and skips; a check
+   that didn't run remains unverified.
+2. Match installed revisions and artifact identities to that evidence. If you
+   qualify a modified or unverified build, run the missing checks and
+   [record its rehearsal](rehearse-release.md#record-a-revision-bound-rehearsal)
+   against a disposable database.
+3. Verify the deployed API, database, and live capture with the
+   [deployment checks](deploy.md#5-verify-the-deployment) and
+   [pilot procedure](run-pilot.md). Release checks use synthetic inputs.
 
 To rehearse Docker installation on a machine with Docker and the Python workspace
 installed, run:

@@ -46,9 +46,10 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    writes the shared telemetry environment. The `sediment` Codex profile keeps
    your model and other settings and adds native telemetry.
 
-3. Start Codex with the telemetry profile:
+3. Load the environment, then start Codex with the telemetry profile:
 
    ```bash
+   . "$HOME/.sediment/env.sh"
    codex --profile sediment -C /path/to/repo
    ```
 
@@ -133,7 +134,7 @@ bundled Claude-only example doesn't serve native OpenAI model requests.
 
    ```bash
    SEDIMENT_GATEWAY_KEY='<gateway client key>' \
-   codex --profile gateway
+   codex --profile gateway -C /path/to/repo
    ```
 
 The gateway profile disables `image_generation` because the bundled LiteLLM

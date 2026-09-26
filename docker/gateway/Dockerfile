@@ -15,11 +15,17 @@ FROM ghcr.io/berriai/litellm:v1.102.1@sha256:87f34979b9f8cb274fac90ca8a4fdda07d8
 # The vendor pins OS package revisions in world. Release those revision locks
 # so the signed distribution repository can supply security fixes.
 # Pin reviewed released builds before upgrading: apk sorts development
-# snapshots after the corresponding released version.
+# snapshots after the corresponding released version. Keep the reviewed OpenSSL
+# 3.6 package set: the 4.0 transition has conflicting configuration ownership.
+# Other pins retain the package revisions in security/maintenance.json.
 RUN sed -i 's/=.*//' /etc/apk/world \
     && apk add --no-cache \
         'python-3.13=3.13.15-r8' 'python-3.13-base=3.13.15-r8' \
         'zlib=1.3.2-r7' \
+        'openssl=3.6.4-r7' 'libcrypto3=3.6.4-r7' 'libssl3=3.6.4-r7' \
+        'openssl-provider-legacy-allowed=4.0.2-r3' \
+        'apk-tools=2.14.10-r14' 'ca-certificates-bundle=20260909-r0' \
+        'libuuid=2.42.3-r4' \
     && apk upgrade --no-cache \
     && apk del --no-cache nodejs libevent \
     && rm /usr/local/bin/pgbouncer
