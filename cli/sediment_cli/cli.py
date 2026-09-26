@@ -1469,7 +1469,7 @@ def _dpo_profile_name(name: str) -> str:
 
 class _VersionAction(argparse._VersionAction):
     def __call__(self, parser, namespace, values, option_string=None):
-        banner = ui.version_banner(self.version % {"prog": parser.prog})
+        banner = ui.version_banner(__version__)
         if banner is None:
             return super().__call__(parser, namespace, values, option_string)
         # argparse's help formatter folds whitespace, which distorts the mark.

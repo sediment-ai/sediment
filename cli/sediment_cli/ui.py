@@ -87,11 +87,7 @@ def version_banner(version: str) -> str | None:
         _LOGO.encode(getattr(sys.stdout, "encoding", None) or "ascii")
     except (UnicodeEncodeError, LookupError):
         return None
-    return (
-        f"\n{style(_LOGO, 'signal')}\n\n"
-        f"  {style(version, 'bold')}\n"
-        f"  {style('sediment.so', 'dim')}\n\n"
-    )
+    return f"\n{style(_LOGO, 'signal')}\n\n  {style(version, 'bold')}\n\n"
 
 
 def glyph(char: str, name: str, stream: TextIO | None = None) -> str:
