@@ -13,7 +13,7 @@ You need:
 - a maintained host with at least 4 vCPUs and 8 GB of memory; allocate these
   resources to Docker Desktop's virtual machine when using it
 - Docker Desktop or Docker Engine with Docker Compose
-- Git, curl, uv, and the approved full Sediment commit hash
+- Git, curl, uv, and the Sediment release version you want to deploy
 
 Start Docker, then check the host tools:
 
@@ -32,14 +32,14 @@ and optional gateway to loopback. Your ingress is the only off-host path.
 ## 2. Deploy the API
 
 Before building, review [release security evidence](security.md). On the
-deployment host, check out the approved revision:
+deployment host, select a [published release](https://github.com/sediment-ai/sediment/releases)
+by version (without the `v` prefix):
 
 ```bash
-SEDIMENT_REVISION='<approved full commit hash>'
+SEDIMENT_VERSION='0.2.0'
 git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
 cd sediment || exit 1
-git checkout --detach "$SEDIMENT_REVISION" || exit 1
-test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
+git checkout --detach "refs/tags/v$SEDIMENT_VERSION" || exit 1
 ```
 
 Run the remaining host commands from this directory. If another Sediment stack
@@ -55,14 +55,11 @@ Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
 ```bash
-uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py \
-  --ingest-client alice-laptop --ingest-client bob-laptop
+uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py
 ```
 
-Replace the client names with your participants; repeat `--ingest-client` for
-each machine. The generator writes a distinct ingest-only token for each client
-and a separate gateway token. It refuses existing files and directories writable
-by another user.
+The generator creates separate database, operator, webhook, and gateway
+credentials. It refuses existing files and directories writable by another user.
 Keep `.env` private. Don't source it or distribute it to developers.
 
 Edit these deployment settings in `.env`:
@@ -73,11 +70,20 @@ Edit these deployment settings in `.env`:
 | `SEDIMENT_ALLOWED_CLONE_HOSTS` | Set the permitted Git hosts; the default is `["github.com"]`. |
 | `SEDIMENT_DEV_MODE` | Keep `false`. |
 
-Open `.env` in a private editor to retrieve each client's entry from
-`SEDIMENT_INGEST_TOKENS`. Distribute only that entry's token through your
-credential channel. Reserve `SEDIMENT_OPERATOR_TOKEN` for queries and reports.
-The generator never prints secrets. To add a client after installation, follow
-[credential rotation](#6-upgrade-the-deployment).
+For each developer machine, generate a distinct ingest-only token in a private
+terminal:
+
+```bash
+uv run --python 3.12.14 --no-project python -c 'import secrets; print(secrets.token_hex(32))'
+```
+
+In a private editor, add each token to the `SEDIMENT_INGEST_TOKENS` JSON object
+in `.env` under a unique client name, such as `alice-laptop`. Preserve its
+`gateway` entry. Names `operator`, `legacy`, and `retrieval` are reserved.
+
+Distribute only that client's token through your credential channel. Reserve
+`SEDIMENT_OPERATOR_TOKEN` for queries and reports. To add a client after
+installation, follow [credential rotation](#6-upgrade-the-deployment).
 
 ### Configure PostgreSQL
 
@@ -109,7 +115,8 @@ them to PostgreSQL. The gateway doesn't receive database credentials.
 
 ### Start the API and database
 
-Build and start the deployment with its source identity:
+Build and start the selected release. The commands derive the commit hash and
+source digest for image provenance; you don't need to look up a commit hash:
 
 ```bash
 set -e
@@ -146,7 +153,11 @@ Database and mirror volumes survive image rebuilds and `docker compose down`.
 
 ### Run a second local deployment
 
-Before its first start, set these values in the second checkout's private `.env`:
+Release `0.2.0` uses fixed ports and image names. Use another host for a second
+deployment of that release.
+
+If your release supports configurable ports and project-scoped image names,
+set these values in the second deployment's private `.env` before its first start:
 
 ```dotenv
 COMPOSE_PROJECT_NAME=sediment-evaluation
@@ -316,8 +327,8 @@ schedule a maintenance window for large datasets.
 Stop the API and gateway before changing database roles or credentials. Preserve
 `POSTGRES_PASSWORD`: changing it in `.env` doesn't rotate an initialized server.
 
-For a Docker Compose deployment, rebuild the services from the approved
-successor's full commit hash.
+For a Docker Compose deployment, set `SEDIMENT_VERSION` to the target release
+version without the `v` prefix. Git resolves the corresponding release tag.
 
 If your existing `.env` predates separate database roles and operator tokens,
 prepare its replacement before running Compose against the updated checkout:
@@ -328,10 +339,9 @@ prepare its replacement before running Compose against the updated checkout:
    then generate a separate private candidate:
 
    ```bash
-   SEDIMENT_REVISION='<approved successor full commit hash>'
+   SEDIMENT_VERSION='<target release version>'
    git fetch --tags origin || exit 1
-   git checkout --detach "$SEDIMENT_REVISION" || exit 1
-   test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
+   git checkout --detach "refs/tags/v$SEDIMENT_VERSION" || exit 1
    chmod 600 .env
    uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py --output .env.next
    ```
@@ -358,11 +368,10 @@ For a deployment already using separate credentials, preserve its private
 
 ```bash
 set -e
-SEDIMENT_REVISION='<approved successor full commit hash>'
+SEDIMENT_VERSION='<target release version>'
 git fetch --tags origin
 docker compose --profile gateway stop gateway api
-git checkout --detach "$SEDIMENT_REVISION"
-test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
+git checkout --detach "refs/tags/v$SEDIMENT_VERSION"
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
 SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
