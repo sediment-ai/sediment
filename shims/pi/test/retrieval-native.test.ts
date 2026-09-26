@@ -13,7 +13,7 @@ import sedimentPi from "../index.ts";
 
 const text = '{"schema_version":1,"policy_version":1,"source_session_id":"source","quarantine_revision":0,"status":"matched","capture_completeness":"unknown","coverage":{"visible_inference_calls":1,"quarantined_inference_calls":0,"scanned_parts":1,"complete_visible_scan":true},"skipped":{"reasoning_part":0,"non_finite_number":0,"no_match":0,"repeated_content":0,"item_limit":0,"response_budget":0},"items":[{"score":1,"evidence":{"reference":{"inference_call_id":"call","side":"output","message_index":0,"part_index":0},"observed_at":"2026-09-21T12:00:00+00:00","role":"tool","finish_reason":null,"part":{"type":"tool_call_response","id":"tool","result":{"integer":9007199254740993,"text":"\\ud800\\u0000"}}}}]}';
 
-test("pi 0.84.1 routes a native retrieval call into the next model request losslessly", async () => {
+test("pi 0.86.1 routes a native retrieval call into the next model request losslessly", async () => {
   const root = mkdtempSync(join(tmpdir(), "sediment-native-retrieval-"));
   const originalFetch = globalThis.fetch;
   const previous = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith("SEDIMENT_")));
@@ -51,7 +51,7 @@ test("pi 0.84.1 routes a native retrieval call into the next model request lossl
     let rejectedResult: unknown;
     session.agent.streamFunction = ((_model: unknown, context: Parameters<typeof session.agent.streamFunction>[1]) => {
       turns++;
-      assert.equal(context.tools?.length, 1);
+      assert.equal(context.messages.find((message) => message.role === "system")?.toolsAdded?.length, 1);
       if (turns === 2) {
         observedResult = context.messages.find((message) => message.role === "toolResult" && message.toolCallId === "native-call");
         rejectedResult = context.messages.find((message) => message.role === "toolResult" && message.toolCallId === "native-invalid");
