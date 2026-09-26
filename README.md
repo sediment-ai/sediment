@@ -11,6 +11,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](CONTRIBUTING.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Follow @sedimentai on X](https://img.shields.io/badge/Follow-%40sedimentai-000000?logo=x&logoColor=white)](https://x.com/sedimentai)
+[![Join Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/RbPc6PFTb)
 
 [Website](https://sediment.so) |
 [Documentation](https://docs.sediment.so) |
