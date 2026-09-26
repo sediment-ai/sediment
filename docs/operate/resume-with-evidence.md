@@ -173,7 +173,7 @@ gateway capture, the API, and private records inside your perimeter.
    docker image inspect sediment-evaluation-gate --format '{{.Id}}'
    ```
 
-   Record both image IDs. The agent image pins pi, Node.js, and Python. The
+   Record both image IDs. The agent image pins pi 0.86.1, Node.js, and Python. The
    counter uses the API image's HTTP client without starting its API. The frozen
    pi profile preserves empty assistant content; the prefix check remains exact.
 

@@ -5,7 +5,8 @@
 ### Contributor checks
 
 - Test the pi shim against pi-coding-agent 0.86.1 and read its transcript-based
-  tool declarations in the native test harnesses.
+  tool declarations in the native test harnesses. Align the continuation
+  comparison's version check with its locked evaluation image.
 - Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.6. Keep the
   TruffleHog action, executable, and complete-tree scanner image pins aligned.
 
