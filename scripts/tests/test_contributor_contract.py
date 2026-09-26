@@ -242,7 +242,7 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     assert "git archive HEAD" in tree_scan["run"]
     assert "filesystem /scan" in tree_scan["run"]
     assert re.fullmatch(
-        r"ghcr\.io/trufflesecurity/trufflehog:3\.97\.5@sha256:[0-9a-f]{64}",
+        r"ghcr\.io/trufflesecurity/trufflehog:3\.97\.6@sha256:[0-9a-f]{64}",
         tree_scan["env"]["TRUFFLEHOG_IMAGE"],
     )
     dependency_install = next(
@@ -253,8 +253,8 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     assert steps.index(tree_scan) < dependency_install
     assert any(
         step.get("uses")
-        == "trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6"
-        and step["with"]["version"] == "3.97.5"
+        == "trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a"
+        and step["with"]["version"] == "3.97.6"
         for step in steps
     )
 

@@ -40,7 +40,7 @@ import httpx
 FIXTURES = Path(__file__).parent / "tests/fixtures/session_context_retrieval"
 PREFLIGHT_FIXTURES = Path(__file__).parent / "tests/fixtures/native_tool_preflight"
 MODEL = "ministral-3:14b-instruct-2512-q4_K_M"
-PI_VERSION = "0.84.1"
+PI_VERSION = "0.86.1"
 MODEL_CALL_LIMIT = 12
 RETRIEVAL_CALL_LIMIT = 4
 RUN_SECONDS = 900

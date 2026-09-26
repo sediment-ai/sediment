@@ -298,7 +298,7 @@ def test_shipment_source_fails_for_quoted_csv_and_keeps_rule_out_of_public_files
 def test_shipment_freeze_rejects_other_task_source(tmp_path, monkeypatch):
     mod = load()
     monkeypatch.setattr(
-        mod, "command", lambda *a, **kw: b"0.84.1\nv24.14.0\nPython 3.12.14\n"
+        mod, "command", lambda *a, **kw: b"0.86.1\nv24.21.0\nPython 3.12.14\n"
     )
     config = {"agent_image": "agent", "gate_image": "gate"}
     frozen = mod.freeze(config, "shipment-totals")
