@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Command line
+
+- Show the compact signal-red Sediment logo with `sediment --version` on
+  supported interactive terminals. Preserve version-only output for pipes,
+  `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
+
 ### Installation
 
 - Use the maintained Hugging Face Hub 2 release in the gateway. Declare and test

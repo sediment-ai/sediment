@@ -1467,6 +1467,16 @@ def _dpo_profile_name(name: str) -> str:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+class _VersionAction(argparse._VersionAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        banner = ui.version_banner(self.version % {"prog": parser.prog})
+        if banner is None:
+            return super().__call__(parser, namespace, values, option_string)
+        # argparse's help formatter folds whitespace, which distorts the mark.
+        parser._print_message(banner, sys.stdout)
+        parser.exit()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The argparse tree, extracted so the golden --help test can walk it."""
     parser = _ArgumentParser(
@@ -1475,7 +1485,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__.splitlines()[1],
     )
     parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}"
+        "--version", action=_VersionAction, version=f"%(prog)s {__version__}"
     )
     # prog passed explicitly: argparse otherwise derives it by formatting the
     # parent usage through the formatter, which would drag the USAGE: heading
