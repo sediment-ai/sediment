@@ -10,7 +10,7 @@ enrollment, use the [pilot guide](../operate/run-pilot.md).
 | [Claude Code](#claude-code) | Accept / reject | Yes | Opt-in |
 | [Codex](#codex) | Accept / reject | Yes | Opt-in: single-file patches |
 | [Cursor](#cursor) | Implicit accepts for successful Agent writes | Yes | No extractor |
-| [pi](#pi) | Implicit accepts | Yes | Opt-in |
+| [pi](#pi) (check release requirement) | Implicit accepts | Yes | Opt-in |
 | [Copilot Chat](#github-copilot-chat) | Accept / reject / retention | No installer hook | No extractor |
 
 Cursor Tab edits write commit Attribution without a Developer decision because
@@ -49,26 +49,39 @@ verification. Cursor has no supported Inference-call or Edit observation capture
 
 ## pi
 
-The installer registers `shims/pi/` in `~/.pi/agent/settings.json` when you run
-it from a Sediment source checkout. The installed CLI package doesn't include
-the extension.
+Select a [published release](https://github.com/sediment-ai/sediment/releases)
+whose release notes include the bundled pi extension. Release 0.2.0 doesn't
+include it. This procedure requires that packaged extension.
 
-Connect the CLI and install from the checkout:
+Install Node 24 and pi 0.84.1 through pi's package distribution:
+
+```bash
+npm install --global @earendil-works/pi-coding-agent@0.84.1
+node --version
+pi --version
+```
+
+Start pi once to create `~/.pi/agent`, authenticate your model, then close pi.
+The Sediment package supplies its extension without additional npm dependencies.
+Connect the CLI and register the extension:
 
 ```bash
 sediment login https://sediment-api.example.com --capture
-uv run sediment install --user-id alice /path/to/repo
+sediment install --user-id alice /path/to/repo
 . "$HOME/.sediment/env.sh"
 ```
 
 Replace `alice` with your developer identifier. The generated environment sets
 `SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` for decision delivery.
 Restart pi from that environment. Attribution remains independent of telemetry.
+If the extension is missing or unregistered, `sediment doctor` reports `FAIL`.
+After moving the CLI, rerun `sediment install` and remove stale extension paths
+from `~/.pi/agent/settings.json`.
 
 If you approve sending applied text and observed file text, opt in:
 
 ```bash
-uv run sediment install --user-id alice --transcripts /path/to/repo
+sediment install --user-id alice --transcripts /path/to/repo
 . "$HOME/.sediment/env.sh"
 ```
 

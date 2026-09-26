@@ -137,12 +137,12 @@ bundled Claude-only example doesn't serve native OpenAI model requests.
    codex --profile gateway -C /path/to/repo
    ```
 
-The gateway profile disables `image_generation` because the bundled LiteLLM
+The gateway profile disables `image_generation` because the LiteLLM
 bridge rejects that tool. Codex carries Session identity in
 `x-codex-turn-metadata`; this route doesn't carry a user identifier.
 
 [Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-sets up the server-side callback and gateway.
+describes the required server-side capture integration.
 
 ## Configure Edit observations
 

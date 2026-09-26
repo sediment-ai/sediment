@@ -35,50 +35,40 @@ resource measurement and qualification boundaries.
 
 ## Install the matching optional environment
 
-Run these commands in a separate Sediment checkout with Python 3.12. The
-consumer packages don't belong in the API deployment's base environment.
-`uv sync` can remove optional packages; after installing them, use the
-interpreter and CLI in `.venv` directly.
+Keep optional consumer packages separate from the API environment. For the
+Hugging Face profiles, create an isolated Python 3.12 environment and install the
+published Sediment release with the versions listed in the
+[compatibility reference](../reference/compatibility.md):
 
 ```bash
-uv sync --locked
-uv pip install --python .venv/bin/python -r requirements/compatibility/hf.txt
+uv venv --python 3.12 "$HOME/.local/share/sediment-consumer"
+uv pip install --python "$HOME/.local/share/sediment-consumer/bin/python" \
+  'sediment-cli==0.2.0' 'datasets==5.0.1' 'trl==1.13.0' \
+  'transformers==5.17.0' 'torch==2.14.0'
+export PATH="$HOME/.local/share/sediment-consumer/bin:$PATH"
 ```
 
-For SWE-bench, replace the optional installation with:
+Fireworks format profiles need no optional package. They validate the format;
+they don't upload data or run a hosted training job.
 
-```bash
-uv pip install --python .venv/bin/python -r requirements/compatibility/swe.txt
-uv pip install --python .venv/bin/python --no-deps \
-  'swebench @ git+https://github.com/SWE-bench/SWE-bench.git@87ab1f6ced28f75ba73ca899dc759b019310944a'
-```
-
-For NeMo Gym, use:
-
-```bash
-uv pip install --python .venv/bin/python -r requirements/compatibility/nemo.txt
-uv pip install --python .venv/bin/python --no-deps \
-  'nemo-gym @ git+https://github.com/NVIDIA-NeMo/Gym.git@27e921137042dcdb8a39c7169128619b9108074b'
-```
-
-Those two installations qualify the loader/parser imports. They don't install
-or qualify every upstream server, telemetry integration, or training runtime.
-Fireworks format profiles require no optional package. They validate the
-published format; they don't run a hosted upload or training job.
+The exact SWE-bench and NeMo profile qualifications use upstream revisions that
+aren't supplied by the Sediment package. This guide doesn't provide a package-only
+setup for those environments. Use canonical exports without `--profile`, or an
+independently qualified consumer environment that meets the reference contract.
 
 ## Export SFT or DPO
 
 If captured CI evidence supports verified imitation, select `sft_verified`:
 
 ```bash
-.venv/bin/sediment export sft --from /data/derived/review \
+sediment export sft --from /data/derived/review \
   --recipe sft_verified --profile hf-trl-sft-v1 --out /data/consumer/hf-sft
 ```
 
 If captured human preferences support DPO, select `dpo_human`:
 
 ```bash
-.venv/bin/sediment export dpo --from /data/derived/review \
+sediment export dpo --from /data/derived/review \
   --recipe dpo_human --profile hf-trl-dpo-v2 --out /data/consumer/hf-dpo
 ```
 
@@ -156,7 +146,7 @@ These values describe your consumer setup. The evidence sidecar identifies
 the operator as their source; they aren't reconstructed inference-request Facts.
 
 ```bash
-.venv/bin/sediment export rlvr --from /data/derived/review \
+sediment export rlvr --from /data/derived/review \
   --target nemo-gym --profile nemo-gym-rollouts-v1 \
   --consumer-config /data/nemo.json --out /data/consumer/nemo
 ```
@@ -222,7 +212,7 @@ the tests you run. Sediment validates the fields and parser registration but
 doesn't run the image or establish test transitions.
 
 ```bash
-.venv/bin/sediment export rlvr --from /data/derived/review \
+sediment export rlvr --from /data/derived/review \
   --target swe-bench --profile swe-bench-tasks-v1 \
   --consumer-config /data/swe.json --out /data/consumer/swe
 ```
