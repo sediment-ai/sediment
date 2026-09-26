@@ -317,7 +317,7 @@ Stop the API and gateway before changing database roles or credentials. Preserve
 `POSTGRES_PASSWORD`: changing it in `.env` doesn't rotate an initialized server.
 
 For a Docker Compose deployment, rebuild the services from the approved
-release source.
+successor's full commit hash.
 
 If your existing `.env` predates separate database roles and operator tokens,
 prepare its replacement before running Compose against the updated checkout:

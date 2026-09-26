@@ -244,8 +244,8 @@ that Session and its Session/tool entry in the local `HEAD` note. Add
 Add `--inference-calls` for a gateway-routed Session. Cursor rejects both
 unsupported requirements. Missing, incomplete, or unreadable evidence fails
 verification; organization-wide Fact counts don't substitute for it. Follow
-[Run a Cursor, pi, and Codex pilot](../operate/run-pilot.md) for the three
-complete edit-to-commit checks.
+[Run a Cursor and Codex pilot](../operate/run-pilot.md) for the complete
+edit-to-commit checks.
 
 ## Installed hooks
 

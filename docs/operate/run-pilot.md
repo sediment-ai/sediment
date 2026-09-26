@@ -1,8 +1,12 @@
-# Run a Cursor, pi, and Codex pilot
+# Run a Cursor and Codex pilot
 
 Prepare a shared deployment, enroll developers, and verify capture before
 expanding the pilot. For a one-machine evaluation, use the
 [Quickstart](../quickstart.md).
+
+This guide doesn't cover pi. The published package doesn't include the pi
+extension, so pi capture requires a Sediment source checkout. The
+[pi integration guide](../capture/agent-integrations.md#pi) describes that setup.
 
 ## Prepare the deployment
 
@@ -19,22 +23,25 @@ outputs.
 Agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
 before enrollment.
 
-Give each developer the API URL, a named ingest-only token through your
-credential channel, and their developer identifier. Keep operator credentials
+Give each developer the API URL, the approved release version, a named
+ingest-only token through your credential channel, and their developer
+identifier. The approved release version is the `version` that the
+deployment's `/health` endpoint reports. Keep operator credentials
 with the people who verify and report on capture.
 
 ## Install Sediment
 
-On each developer machine, use macOS with Homebrew, Debian, or Ubuntu. Run the
-installer as your normal user; Debian and Ubuntu require `sudo`. Git and `curl`
-must be on PATH.
+On each macOS or Linux developer machine, make sure Git and `curl` are on PATH.
+Replace the version placeholder with the approved release version:
 
 ```bash
-curl -fsSL https://sediment.so/install.sh | sh
+curl -fsSL https://sediment.so/install.sh | \
+  sh -s -- --capture-only --version '<approved release version>'
 ```
 
-The installer installs the published `sediment-cli` package from PyPI. If it
-prints a PATH instruction, run that instruction before continuing.
+The installer installs that version of the published `sediment-cli` package
+from PyPI without changing host packages. If it prints a PATH instruction, run
+that instruction before continuing. Require the approved version:
 
 ```bash
 sediment --version
@@ -43,15 +50,12 @@ sediment --version
 Install and authenticate each participating agent through its normal setup.
 Start and close it once before enrollment so its configuration directory exists.
 
-For pi, complete the [pi integration setup](../capture/agent-integrations.md#pi)
-separately. The PyPI package doesn't include the pi extension.
-
 ## Enroll each developer
+
+If the developer doesn't use Codex, omit `--codex-profile sediment-pilot`.
 
 Replace these values with the deployment URL, developer identifier, and local
 repository path:
-
-If the developer doesn't use Codex, omit `--codex-profile sediment-pilot`.
 
 ```bash
 PILOT_API_URL='https://sediment-api.example.com'
@@ -95,11 +99,10 @@ file before testing the next:
    | --- | --- |
    | Cursor desktop | Fully quit Cursor, then run `cursor "$PILOT_REPO"` from this shell. |
    | Codex CLI | Run `codex --profile sediment-pilot -C "$PILOT_REPO"`. Use `/hooks` to review and trust the Sediment hooks. |
-   | pi | After the separate integration setup, run `cd "$PILOT_REPO"` and `pi`. |
 
 2. Ask the agent to create a harmless file. Use Cursor Agent rather than Tab,
-   a single-file patch in Codex, or pi's `write` tool. End the Session so any
-   enabled transcript capture can run.
+   or a single-file patch in Codex. End the Session so any enabled transcript
+   capture can run.
 3. Review and commit only that file, then inspect the commit note:
 
    ```bash
@@ -109,7 +112,7 @@ file before testing the next:
    ```
 
 4. Copy the `session_id` from the note entry for that agent. Replace the
-   placeholders, using `cursor`, `codex`, or `pi` for the agent, and run:
+   placeholders, using `cursor` or `codex` for the agent, and run:
 
    ```bash
    sediment doctor "$PILOT_REPO" --agent '<agent>' \
@@ -144,7 +147,7 @@ Use [Measure agent work](measure-agent-work.md) for reports. Keep denominators,
 coverage, and skip counts with each result:
 
 - Cursor supplies neither Inference calls nor Edit observations.
-- pi/Cursor implicit accepts and automatic Codex approvals aren't human-explicit
+- Cursor implicit accepts and automatic Codex approvals aren't human-explicit
   accepted work.
 - Session-end retention needs Edit observations. Merge retention also needs Git
   and pull-request evidence.
@@ -164,7 +167,8 @@ to drain retained payloads to their original destination. Restart the worker
 after reenrollment, or disable it when ending enrollment.
 
 Before upgrading, end active Sessions, record `sediment --version`, and back up
-the deployment. Rerun the curl installer, repeat enrollment with the same
+the deployment. Upgrade the deployment before capture clients. Rerun the curl
+installer with the new approved release version, repeat enrollment with the same
 identifier and approved options, and repeat the capture checks.
 
 After rotating an ingest token, repeat `sediment login --capture` and

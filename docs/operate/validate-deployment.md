@@ -1,7 +1,7 @@
 # Validate a deployment
 
 Verify capture, data integrity, recovery, and capacity before expanding a pilot.
-Use [Run a Cursor, pi, and Codex pilot](run-pilot.md) for enrollment commands.
+Use [Run a Cursor and Codex pilot](run-pilot.md) for enrollment commands.
 Keep results and source evidence in protected storage outside the documentation
 and record each check as verified, failed, unverified, or not applicable.
 
@@ -59,9 +59,9 @@ or live harness delivery.
 2. Verify deployment tenancy, separate ingest and operator credentials,
    authenticated network paths, private Git access, and credential permissions.
    Follow [Check release and deployment security](security.md).
-3. Record each harness's executable path and version. The pilot checkout's
-   `npm ci --include=dev` installs the pinned pi runtime; require that executable
-   on PATH. A Codex CLI profile check doesn't verify Desktop.
+3. Record each harness's executable path and version. pi capture requires a
+   source checkout; follow the [pi integration guide](../capture/agent-integrations.md#pi).
+   A Codex CLI profile check doesn't verify Desktop.
 4. For marker-client upgrades, pause hooks across linked worktrees, reconcile
    markers, replace every helper, and restart harnesses. Don't mix old and
    generation-aware writers.
