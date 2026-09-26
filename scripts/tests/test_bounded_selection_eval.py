@@ -602,3 +602,149 @@ def test_nonloopback_proxy_is_refused_before_any_request(tmp_path, monkeypatch, 
     assert run.main() == 1
     assert "invalid_transport" in capsys.readouterr().out
     assert not (tmp_path / "out").exists()
+
+
+def fake_continuation(run, monkeypatch, tmp_path, *, stopped=None, calls=3, fail=None):
+    """Drive one continuation with recorded gate files and no containers."""
+    import bounded_evidence_selection as selector
+    import budgeted_resumption_eval as earlier
+    from contextlib import contextmanager
+
+    source = tmp_path / "source"
+    source.mkdir()
+    legacy.initialize_task(
+        source / "snapshot", run.FIXTURES / "families/event-rollup/workspace"
+    )
+    records = tmp_path / "records"
+    records.mkdir()
+    validated = []
+
+    def select(config, session, call, query, arm, output, **kwargs):
+        Path(output).mkdir()
+        metrics = selector._metrics(arm)
+        metrics["selection"]["decision"] = "keyword"
+        legacy.write_json(
+            Path(output) / "selection.json", {"status": "selected", "metrics": metrics}
+        )
+        return selector.base.Selection("", (), metrics, "selected")
+
+    class Rpc:
+        deadline = float("inf")
+
+        class process:
+            returncode = 0
+
+        def request(self, kind, **fields):
+            return {"sessionId": "fresh", "model": {"id": legacy.MODEL}}
+
+        def wait_settled(self):
+            return {}
+
+    @contextmanager
+    def agent(config, records_, workspace):
+        if fail:
+            raise legacy.EvaluationError(fail)
+        gate = legacy.private_directory(records_ / "gate")
+        for index in range(calls):
+            legacy.write_json(
+                gate / f"{index}.meta.json",
+                {
+                    "route": "model",
+                    "id": str(index),
+                    "started_unix": index,
+                    "complete": True,
+                    "status": 200,
+                    "request_bytes": 10,
+                    "response_bytes": 20,
+                    "sampling": {"max_tokens": 2048},
+                },
+            )
+            (gate / f"{index}.response").write_bytes(
+                b'data: {"usage":{"prompt_tokens":5,"completion_tokens":1}}\n'
+            )
+        yield Rpc()
+        declined = 1 if stopped == "budget_exhausted" else 0
+        legacy.write_json(
+            records_ / "gate-health.json",
+            {
+                "ready": True,
+                "stopped": stopped,
+                "budget": {
+                    "model": {"forwarded": calls, "declined": declined},
+                    "retrieval": {"forwarded": 0, "declined": 0},
+                },
+            },
+        )
+
+    monkeypatch.setattr(selector, "select_evidence", select)
+    monkeypatch.setattr(run, "isolated_agent", agent)
+    monkeypatch.setattr(legacy, "initialize_rpc", lambda rpc: "fresh")
+    monkeypatch.setattr(
+        legacy, "read_captured_calls", lambda *a, **k: ([{"x": 1}], [[]])
+    )
+    monkeypatch.setattr(earlier, "verify_context_delivery", lambda *a: None)
+
+    def validate(config, family, workspace, output):
+        validated.append(family)
+        return {
+            "behavior_pass": True,
+            "constraint_pass": False,
+            "verification_error": None,
+        }
+
+    monkeypatch.setattr(run, "validate_workspace", validate)
+    manifest = {
+        "source_session_id": "source",
+        "final_call_id": "call",
+        "history_sha256": "a" * 64,
+        "quarantine_revision": 0,
+        "workspace": legacy.workspace_identity(source / "snapshot"),
+    }
+    slot = {
+        "slot": 1,
+        "family": "event-rollup",
+        "profile": "missing",
+        "arm": "K",
+        "repetition": 1,
+    }
+    config = {"model": legacy.MODEL}
+    row = run.continuation(config, source, manifest, slot, records, None, None)
+    return row, validated
+
+
+def test_continuation_records_complete_measurement(tmp_path, monkeypatch):
+    run = module()
+    row, validated = fake_continuation(run, monkeypatch, tmp_path)
+    assert row["status"] == "settled" and row["measurement_complete"] is True
+    assert row["coding_usage"]["input"] == 15 and validated == ["event-rollup"]
+    assert row["requests"]["coding_dispatches"] == 3
+    assert row["traffic"]["coding_request_bytes"] == 30
+    assert row["selector_usage"]["input_tokens"] == 0
+
+
+def test_proven_call_limit_stop_is_a_measured_unsuccessful_continuation(
+    tmp_path, monkeypatch
+):
+    run = module()
+    row, validated = fake_continuation(
+        run, monkeypatch, tmp_path, stopped="budget_exhausted", calls=12
+    )
+    assert row["status"] == "budget_exhausted" and row["measured"] is True
+    assert row["instrument_failure"] is False and validated == ["event-rollup"]
+
+
+def test_unproven_call_limit_stop_is_an_instrument_failure(tmp_path, monkeypatch):
+    run = module()
+    row, _ = fake_continuation(
+        run, monkeypatch, tmp_path, stopped="budget_exhausted", calls=5
+    )
+    assert row["status"] == "budget_unproven" and row["instrument_failure"] is True
+
+
+def test_harness_failure_after_launch_still_validates_workspace(tmp_path, monkeypatch):
+    run = module()
+    row, validated = fake_continuation(
+        run, monkeypatch, tmp_path, fail="gate_start_failed"
+    )
+    assert row["status"] == "gate_start_failed" and row["instrument_failure"] is True
+    assert validated == ["event-rollup"] and row["behavior_pass"] is True

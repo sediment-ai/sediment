@@ -949,6 +949,12 @@ def continuation(
         httpx.HTTPError,
     ):
         row["status"] = "continuation_failed"
+    if row["coding_launched"] and row["verification_error"] == "not_run":
+        # A harness failure after launch still leaves a checkable workspace.
+        try:
+            row.update(validate_workspace(config, family, workspace, records))
+        except OSError:
+            row["verification_error"] = "verification_failed"
     traffic = (
         legacy.gate_records(records / "gate") if (records / "gate").exists() else []
     )
