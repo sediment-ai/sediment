@@ -80,9 +80,9 @@ helper process proves that the receiver stored a Fact.
 
 [Sender replay operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
 defines consent, permissions, limits, retention, retry timing, credential changes,
-and worker enrollment. [Gateway deployment](../operate/deploy.md#enable-bundled-litellm)
-requires server upgrade before callback rollout and describes the gateway-owned
-worker. Pi's Attribution channel remains independent of delivery. Transcript
+and worker enrollment. [Gateway deployment](../operate/deploy.md#connect-a-gateway)
+describes gateway integration. Upgrade the server before its capture clients;
+the gateway owns its delivery worker. Pi's Attribution channel remains independent of delivery. Transcript
 replay uses the prepared observation instead of extracting it again.
 
 ### Acceptance boundaries
@@ -95,7 +95,7 @@ credential checks live in `litellm/tests/test_sediment_callback.py`.
 `shims/pi/test/delivery.test.ts` and `shims/pi/test/process.test.ts` cover the
 installed helper's process contract and independent capture channels.
 
-The [installed release rehearsal](../operate/rehearse-release.md#run-the-no-publish-rehearsal)
+The [installed release rehearsal](../../CONTRIBUTING.md#run-the-no-publish-rehearsal)
 checks outage, restart, lost response, stored source identities, reports, bundle
 roundtrip, and eligible training output over repeated delivery of the same Facts.
 Its synthetic corpus doesn't establish live harness compatibility. Live pi,

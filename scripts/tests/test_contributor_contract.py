@@ -155,7 +155,7 @@ def test_active_contributor_surfaces_use_current_vocabulary_and_checks() -> None
         "npm run typecheck",
         "npm test",
     ):
-        assert command in onboarding
+        assert command in _read("CONTRIBUTING.md")
     assert "Python 3.12" in onboarding
     assert "Node 24" in onboarding
     assert "TruffleHog" in onboarding

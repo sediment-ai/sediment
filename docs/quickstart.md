@@ -18,8 +18,7 @@ curl -fsSL https://sediment.so/install.sh | sh
 
 The installer installs `sediment-cli` from PyPI in an isolated tool environment
 with Python 3.12. It installs `uv` if needed, plus the maintained host libraries
-that the local PostgreSQL server needs. You don't need a source checkout or
-Docker.
+that the local PostgreSQL server needs.
 
 If the installer prints an `export PATH=...` instruction, run it in this
 terminal before continuing. Repeat the same instruction in each terminal where
@@ -98,8 +97,8 @@ sediment install .
 ```
 
 `install` adds repository git hooks, user-level hooks for detected agents, and
-an environment file. pi requires a source checkout; a package-only installation
-doesn't include its extension.
+an environment file. For pi, check the
+[release and runtime requirements](capture/agent-integrations.md#pi).
 
 Verify:
 
@@ -171,5 +170,5 @@ rm -rf ~/.sediment/server
 - [Configure your agent](capture/agent-integrations.md) to capture real work.
   Follow its install, environment, restart, and Session verification steps.
 - [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.
-  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers Compose's
-  generated credentials, database connections, and persistent volume.
+  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers the
+  shared database connection, credentials, and persistent storage.
