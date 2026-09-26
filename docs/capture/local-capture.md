@@ -106,15 +106,20 @@ If another system owns the agent environment, pass `--no-env`. The
 [CLI reference](../reference/cli.md#sediment-install) lists every install
 flag.
 
+Managed Cursor hooks read the generated file on each successful Agent `Write`;
+they don't depend on Cursor inheriting the shell environment. After upgrading,
+rerun `sediment install` to update the hook commands. With `--no-env`, Cursor
+hooks use the process environment instead.
+
 When you rewrite the generated environment, repeat the original `--user-id`,
 `--gateway-url`, and `--gateway-key` values that you still need. An ordinary
 reinstall preserves an existing generated pi transcript opt-in. It doesn't
 preserve omitted identity or gateway arguments.
 
 Follow your [agent guide](agent-integrations.md) to select its telemetry profile
-or trust its hooks. Then start the agent from this shell in the enrolled
-repository. Fully quit an existing desktop process first; it can retain the
-old environment.
+or trust its hooks. For integrations that inherit environment settings, start
+the agent from this shell in the enrolled repository. Fully quit an existing
+desktop process first; it can retain the old environment.
 
 [Verify capture](#verify-capture) before adding optional channels.
 
@@ -207,9 +212,11 @@ sediment doctor --fetch /path/to/repo
 ```
 
 `doctor` reports `ok`, `FAIL`, or `info` and exits `1` on a failed check.
-Uninstalled agents and unset endpoints report `info`. Installed but unhooked
-agents and rejected endpoints report `FAIL`. These checks verify configuration;
-use a Session check to verify delivery.
+Uninstalled agents and unmanaged unset endpoints report `info`. Installed but
+unhooked agents and rejected endpoints report `FAIL`. Managed Cursor hooks also
+report `FAIL` when their environment file is unreadable, invalid, or lacks the
+endpoint or token. These checks verify configuration; use a Session check to
+verify delivery.
 
 After an agent edit, commit the change. From the repository, inspect its note
 and push:

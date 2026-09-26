@@ -624,7 +624,31 @@ def _cursor_decision_payload(
     }
 
 
-def cmd_cursor_hook() -> int:
+_CURSOR_CAPTURE_ENV = (
+    "SEDIMENT_OTLP_ENDPOINT",
+    "SEDIMENT_INGEST_TOKEN",
+    "OTEL_RESOURCE_ATTRIBUTES",
+)
+
+
+def _read_cursor_env(path: Path) -> dict[str, str]:
+    """Read generated exports as literal data, never execute a shell profile."""
+    fields = shlex.split(path.read_text(encoding="utf-8"), comments=True)
+    values: dict[str, str] = {}
+    if len(fields) % 2:
+        raise ValueError("invalid capture environment")
+    for keyword, assignment in zip(fields[::2], fields[1::2], strict=True):
+        key, separator, value = assignment.partition("=")
+        if keyword != "export" or not separator:
+            raise ValueError("invalid capture environment")
+        if key in _CURSOR_CAPTURE_ENV:
+            if key in values:
+                raise ValueError("duplicate capture setting")
+            values[key] = value
+    return values
+
+
+def cmd_cursor_hook(env_file: str | None = None) -> int:
     """Translate one native Cursor hook payload without blocking Cursor."""
     occurred_at_ns = time.time_ns()
     try:
@@ -662,10 +686,29 @@ def cmd_cursor_hook() -> int:
         _cursor_trail("missing tool_use_id; decision skipped")
         return 0
 
+    if env_file is not None:
+        try:
+            environment = _read_cursor_env(Path(env_file))
+        except (OSError, UnicodeError, ValueError):
+            _cursor_trail(
+                "capture environment is missing, unreadable, or invalid; "
+                "run sediment login --capture, then sediment install; "
+                "decision skipped"
+            )
+            return 0
+        # The enrolled endpoint and token are one configuration. Never borrow
+        # a stale credential (including the generic header fallback) from Cursor.
+        for key in (*_CURSOR_CAPTURE_ENV, "OTEL_EXPORTER_OTLP_HEADERS"):
+            os.environ.pop(key, None)
+        os.environ.update(environment)
+
     try:
         telemetry = _transcript_client()
         endpoint = telemetry._endpoint()
         if endpoint is None:
+            _cursor_trail(
+                "SEDIMENT_OTLP_ENDPOINT is missing or invalid; decision skipped"
+            )
             return 0
         decision = _cursor_decision_payload(
             session_id,
@@ -1875,7 +1918,7 @@ def _doctor_pi_extension() -> Finding:
     )
 
 
-def _doctor_cursor_hooks() -> Finding:
+def _doctor_cursor_hooks(*, capture: bool = True) -> Finding:
     path = _cursor_hooks_path()
     if not path.parent.exists():
         return (DOCTOR_INFO, "cursor hooks", "Cursor not detected (no ~/.cursor)")
@@ -1921,19 +1964,28 @@ def _doctor_cursor_hooks() -> Finding:
                 "cursor hooks",
                 f"{path} invokes {script}, which does not exist — re-run install",
             )
-        desired = _cursor_hook_entry(_script_invocation("cursor-hook"), matcher)
-        if ours[0].get("command") != desired["command"]:
+        command = ours[0]["command"]
+        if command not in {
+            _cursor_hook_command(env=True),
+            _cursor_hook_command(env=False),
+        }:
             return (
                 DOCTOR_FAIL,
                 "cursor hooks",
                 f"{event} has a stale command; run install",
             )
-        if ours[0] != desired:
+        if ours[0] != _cursor_hook_entry(command, matcher):
             return (
                 DOCTOR_FAIL,
                 "cursor hooks",
                 f"{event} has a stale matcher or shape; run install",
             )
+    # `--agent cursor` reports this in its own capture endpoint row.
+    status, _, detail = (
+        _doctor_capture_endpoint(cursor=True) if capture else (DOCTOR_OK, "", "")
+    )
+    if status == DOCTOR_FAIL:
+        return (status, "cursor hooks", detail)
     return (DOCTOR_OK, "cursor hooks", f"present in {path}")
 
 
@@ -1982,7 +2034,7 @@ def cmd_doctor(
                 )
             )
     if agent in (None, "cursor"):
-        findings.append(_doctor_cursor_hooks())
+        findings.append(_doctor_cursor_hooks(capture=agent is None))
     if agent in (None, "pi"):
         findings.append(_doctor_pi_extension())
     if agent is not None:
@@ -2015,7 +2067,10 @@ def cmd_doctor(
     if agent is None:
         _doctor_server(findings)
     findings.append(
-        _doctor_capture_endpoint(required=agent in ("cursor", "pi") or transcripts)
+        _doctor_capture_endpoint(
+            required=agent in ("cursor", "pi") or transcripts,
+            cursor=agent == "cursor",
+        )
     )
     findings.append(_doctor_delivery(os.environ.get("SEDIMENT_DELIVERY_DIR")))
     for repo in repos:
@@ -2356,7 +2411,14 @@ def _cursor_hook_entries_error(entries: list[object]) -> str | None:
     return None
 
 
-def _install_cursor_hooks() -> str:
+def _cursor_hook_command(*, env: bool) -> str:
+    subcommand = "cursor-hook"
+    if env:
+        subcommand += f" --env-file {shlex.quote(str(_sh_env_file()))}"
+    return _script_invocation(subcommand)
+
+
+def _install_cursor_hooks(*, env: bool = True) -> str:
     path = _cursor_hooks_path()
     if not path.parent.exists():
         return _skipped(
@@ -2402,7 +2464,7 @@ def _install_cursor_hooks() -> str:
             )
             return "skipped"
 
-    command = _script_invocation("cursor-hook")
+    command = _cursor_hook_command(env=env)
     changed = not has_version
     found_existing = False
     for event, matcher in _CURSOR_HOOKS.items():
@@ -3017,11 +3079,34 @@ _CAPTURE_ENDPOINT_FORMS = (
 )
 
 
-def _doctor_capture_endpoint(required: bool = False) -> Finding:
-    configured = os.environ.get("SEDIMENT_OTLP_ENDPOINT")
+def _doctor_capture_endpoint(
+    required: bool = False, *, cursor: bool = False
+) -> Finding:
+    environment = os.environ
+    managed = False
+    if cursor:
+        config = _load_json(_cursor_hooks_path()) or {}
+        hooks = config.get("hooks", {})
+        entries = hooks.get("postToolUse", []) if isinstance(hooks, dict) else []
+        managed = isinstance(entries, list) and any(
+            isinstance(entry, dict)
+            and entry.get("command") == _cursor_hook_command(env=True)
+            for entry in entries
+        )
+        if managed:
+            try:
+                environment = _read_cursor_env(_sh_env_file())
+            except (OSError, UnicodeError, ValueError):
+                return (
+                    DOCTOR_FAIL,
+                    "capture endpoint",
+                    "Cursor capture environment is missing, unreadable, or "
+                    f"invalid; {_CAPTURE_LOGIN}, then run sediment install",
+                )
+    configured = environment.get("SEDIMENT_OTLP_ENDPOINT")
     if not configured:
         return (
-            DOCTOR_FAIL if required else DOCTOR_INFO,
+            DOCTOR_FAIL if required or managed else DOCTOR_INFO,
             "capture endpoint",
             "SEDIMENT_OTLP_ENDPOINT is unset; dedicated hook delivery is disabled",
         )
@@ -3034,6 +3119,18 @@ def _doctor_capture_endpoint(required: bool = False) -> Finding:
             DOCTOR_FAIL,
             "capture endpoint",
             "capture helper unavailable; install the matching capture clients",
+        )
+    if managed and not environment.get("SEDIMENT_INGEST_TOKEN"):
+        return (
+            DOCTOR_FAIL,
+            "capture endpoint",
+            "Cursor capture environment lacks SEDIMENT_INGEST_TOKEN; run sediment install",
+        )
+    if managed:
+        return (
+            DOCTOR_OK,
+            "capture endpoint",
+            "Cursor managed endpoint is accepted; ingest token is configured",
         )
     return (DOCTOR_OK, "capture endpoint", "SEDIMENT_OTLP_ENDPOINT is accepted")
 
@@ -3398,7 +3495,7 @@ def cmd_install(
     if agents:
         claude_status = _install_claude_hook()
         codex_status = _install_codex_hook()
-        cursor_status = _install_cursor_hooks()
+        cursor_status = _install_cursor_hooks(env=env)
         pi_status = _install_pi_extension()
         print(
             f"{ok}agent hooks: "
@@ -3649,7 +3746,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="sediment", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("cursor-hook", help="translate one native Cursor hook event")
+    p_cursor = sub.add_parser(
+        "cursor-hook", help="translate one native Cursor hook event"
+    )
+    p_cursor.add_argument(
+        "--env-file",
+        help="read capture settings from the generated environment file as literal data",
+    )
 
     p_mark = sub.add_parser("mark", help="record a session marker (agent hook)")
     # Registration twin of AgentHarness (models.py): a harness's shim can
@@ -3736,7 +3839,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_install.add_argument(
         "--no-env",
         action="store_true",
-        help="skip writing the agent telemetry env files; by default "
+        help="skip writing the agent telemetry env files and let Cursor hooks "
+        "inherit capture settings from their process; by default "
         "install generates them from the `sediment login` config",
     )
     p_install.add_argument(
@@ -3803,7 +3907,7 @@ def main(argv: list[str] | None = None) -> int:
         _error("Windows capture is unsupported; run sediment install on macOS or Linux")
         return 1
     if args.command == "cursor-hook":
-        return cmd_cursor_hook()
+        return cmd_cursor_hook(args.env_file)
     if args.command == "mark":
         return cmd_mark(args.tool)
     if args.command == "stamp":

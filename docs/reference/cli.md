@@ -446,7 +446,7 @@ Options:
 |---|---|
 | `--no-agents` | skip user-level hooks for Claude Code, Codex, Cursor, and pi |
 | `--transcripts` | opt in to the SessionEnd transcript extractor: ships applied edit text and observed file text to the ingest endpoint, plus the PreToolUse snapshot hook whose line hashes let it report how many lines something other than the agent changed; also enable pi Edit observations in the generated environment |
-| `--no-env` | skip writing the agent telemetry env files; by default install generates them from the `sediment login` config |
+| `--no-env` | skip writing the agent telemetry env files and let Cursor hooks inherit capture settings from their process; by default install generates them from the `sediment login` config |
 | `--user-id` | stamp OTEL_RESOURCE_ATTRIBUTES=user.id=<value> into the env files (per-developer attribution) |
 | `--codex-profile` | write a Codex telemetry profile with resolved login credentials (0600); preserve its model and unrelated settings |
 | `--gateway-url` | also wire ANTHROPIC_BASE_URL to this LLM gateway |
