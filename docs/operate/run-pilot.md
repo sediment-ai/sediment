@@ -206,13 +206,15 @@ enrolling more repositories; organization-wide Fact counts don't verify a Sessio
 
 ## Verify Cursor desktop
 
-1. Fully quit Cursor, then launch it from the shell that loaded Sediment's
-   environment. An already running desktop process can retain its earlier
-   environment:
+1. Open the enrolled repository in Cursor. Managed hooks read Sediment's
+   generated capture environment for each successful Agent `Write`:
 
    ```bash
    cursor "$PILOT_REPO"
    ```
+
+   If you installed with `--no-env`, fully quit Cursor first, then launch it
+   from the shell that loaded the capture environment.
 2. In a separate Agent conversation, ask Cursor to create a harmless file
    named `pilot_cursor.py`. Use an Agent write for this check; Tab doesn't
    produce a Developer decision.

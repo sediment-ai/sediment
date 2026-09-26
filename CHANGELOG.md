@@ -4,6 +4,10 @@
 
 ### Installation
 
+- Load managed capture settings inside Cursor hooks so desktop Agent writes
+  don't depend on inherited shell variables. Preserve process-owned settings
+  with `install --no-env`. Doctor checks the managed file; capture failures
+  retain Session markers and report content-free diagnostics.
 - Use the maintained Hugging Face Hub 2 release in the gateway. Declare and test
   Tokenizers compatibility with that exact version without changing its code.
 - Backport CPython's archive hard-link fix to the gateway's released Python

@@ -1465,6 +1465,184 @@ def test_cursor_hook_install_is_additive_idempotent_and_uninstall_is_scoped(
     assert config["hooks"]["afterTabFileEdit"] == []
 
 
+@pytest.fixture
+def cursor_managed_install(tmp_path, monkeypatch, cursor_decision_endpoint):
+    mod = _load_module()
+    repo = make_repo(tmp_path / "repo")
+    assert (
+        run_cli(["install", str(repo), "--no-agents", "--no-env"], cwd=repo).returncode
+        == 0
+    )
+    config = tmp_path / ".cursor" / "hooks.json"
+    config.parent.mkdir()
+    environment = tmp_path / "capture env's.sh"
+    monkeypatch.setattr(mod, "_cursor_hooks_path", lambda: config)
+    monkeypatch.setattr(mod, "_sh_env_file", lambda: environment)
+    monkeypatch.setattr(mod, "_fish_env_file", lambda: tmp_path / "capture.fish")
+    mod._write_env_files(
+        mod._env_pairs(
+            cursor_decision_endpoint, "cursor-token", "developer", None, None
+        )
+    )
+    # A GUI process has neither the endpoint nor the credential from this file.
+    monkeypatch.delenv("SEDIMENT_INGEST_TOKEN", raising=False)
+    return mod, repo, config, environment
+
+
+@pytest.mark.parametrize("stale_parent", [False, True])
+def test_cursor_installed_hook_loads_managed_environment(
+    cursor_managed_install, monkeypatch, stale_parent
+):
+    mod, repo, config, _ = cursor_managed_install
+    if stale_parent:
+        monkeypatch.setenv("SEDIMENT_OTLP_ENDPOINT", "http://127.0.0.1:1")
+        monkeypatch.setenv("SEDIMENT_INGEST_TOKEN", "another-deployments-token")
+    mod._install_cursor_hooks()
+    command = json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=json.dumps(_native_cursor_payload(repo)),
+        text=True,
+        capture_output=True,
+        cwd=repo,
+        timeout=20,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert len(_CursorDecisionCapture.requests) == 1, result.stderr
+    path, authorization, payload = _CursorDecisionCapture.requests[0]
+    assert path == "/v1/logs"
+    assert authorization == "Bearer cursor-token"
+    assert marker_file(repo).exists()
+    assert _otlp_string_attributes(payload["resourceLogs"][0]["resource"]) == {
+        "user.id": "developer"
+    }
+    assert mod._doctor_cursor_hooks()[0] == mod.DOCTOR_OK
+    assert mod._doctor_capture_endpoint(required=True, cursor=True)[0] == mod.DOCTOR_OK
+
+
+def test_cursor_no_env_reinstall_preserves_external_environment(cursor_managed_install):
+    mod, repo, config, environment = cursor_managed_install
+    original = environment.read_bytes()
+    mod._install_cursor_hooks()
+    mod._install_cursor_hooks(env=False)
+    command = json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+    assert command == mod._script_invocation("cursor-hook")
+    assert environment.read_bytes() == original
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=json.dumps(_native_cursor_payload(repo)),
+        text=True,
+        capture_output=True,
+        cwd=repo,
+        timeout=20,
+    )
+    assert result.returncode == 0
+    assert not _CursorDecisionCapture.requests
+    assert "SEDIMENT_OTLP_ENDPOINT" in result.stderr
+    assert marker_file(repo).exists()
+    assert mod._doctor_cursor_hooks()[0] == mod.DOCTOR_OK
+    assert (
+        mod._doctor_capture_endpoint(required=True, cursor=True)[0] == mod.DOCTOR_FAIL
+    )
+    mod._install_cursor_hooks()
+    assert (
+        "--env-file"
+        in json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+    )
+
+
+@pytest.mark.parametrize(
+    "bad_environment", [None, "export SECRET='unterminated", "exit 0\n"]
+)
+def test_cursor_managed_environment_failure_keeps_marker_and_reports(
+    cursor_managed_install, bad_environment
+):
+    mod, repo, config, environment = cursor_managed_install
+    mod._install_cursor_hooks()
+    if bad_environment is None:
+        environment.unlink()
+    else:
+        environment.write_text(bad_environment)
+    command = json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=json.dumps(_native_cursor_payload(repo)),
+        text=True,
+        capture_output=True,
+        cwd=repo,
+        timeout=20,
+    )
+    assert result.returncode == 0
+    assert marker_file(repo).exists()
+    assert not _CursorDecisionCapture.requests
+    assert "capture environment" in result.stderr
+    assert "unterminated" not in result.stderr
+    assert mod._doctor_cursor_hooks()[0] == mod.DOCTOR_FAIL
+    assert (
+        mod._doctor_capture_endpoint(required=True, cursor=True)[0] == mod.DOCTOR_FAIL
+    )
+
+
+def test_cursor_managed_environment_does_not_execute_shell(cursor_managed_install):
+    mod, repo, config, environment = cursor_managed_install
+    target = repo / "must-not-exist"
+    with environment.open("a") as stream:
+        stream.write(f"export UNRELATED=$(touch {target})\n")
+    mod._install_cursor_hooks()
+    command = json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=json.dumps(_native_cursor_payload(repo)),
+        text=True,
+        capture_output=True,
+        cwd=repo,
+        timeout=20,
+    )
+    assert result.returncode == 0
+    assert not target.exists()
+    assert not _CursorDecisionCapture.requests
+    assert "capture environment" in result.stderr
+
+
+def test_cursor_managed_environment_never_borrows_inherited_credentials(
+    cursor_managed_install, monkeypatch
+):
+    mod, repo, config, environment = cursor_managed_install
+    environment.write_text(
+        "\n".join(
+            line
+            for line in environment.read_text().splitlines()
+            if not line.startswith(
+                ("export SEDIMENT_INGEST_TOKEN=", "export OTEL_EXPORTER_OTLP_HEADERS=")
+            )
+        )
+        + "\n"
+    )
+    monkeypatch.setenv("SEDIMENT_INGEST_TOKEN", "another-deployments-token")
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_HEADERS", "Authorization=Bearer another-token"
+    )
+    mod._install_cursor_hooks()
+    command = json.loads(config.read_text())["hooks"]["postToolUse"][0]["command"]
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=json.dumps(_native_cursor_payload(repo)),
+        text=True,
+        capture_output=True,
+        cwd=repo,
+        timeout=20,
+    )
+    assert result.returncode == 0
+    assert not _CursorDecisionCapture.requests
+    assert "credentials_missing" in result.stderr
+    assert "another" not in result.stderr
+    assert (
+        mod._doctor_capture_endpoint(required=True, cursor=True)[0] == mod.DOCTOR_FAIL
+    )
+
+
 @pytest.mark.parametrize(
     "original",
     [
@@ -2010,7 +2188,9 @@ def findings(result: subprocess.CompletedProcess) -> dict[str, str]:
     return out
 
 
-def installed_repo(tmp_path: Path, home: Path, name: str = "r") -> Path:
+def installed_repo(
+    tmp_path: Path, home: Path, name: str = "r", *, env: bool = False
+) -> Path:
     """A repo in the state a correct install leaves: git hooks, agent hook
     entries under the fixture HOME, notes.rewriteRef.
 
@@ -2021,7 +2201,12 @@ def installed_repo(tmp_path: Path, home: Path, name: str = "r") -> Path:
     (home / ".cursor").mkdir(parents=True, exist_ok=True)
     (home / ".pi" / "agent").mkdir(parents=True, exist_ok=True)
     repo = make_repo(tmp_path / name)
-    result = run_cli(["install", str(repo)], cwd=repo, extra_env=doctor_env(home))
+    # These fixtures exercise hook structure without capture enrollment.
+    result = run_cli(
+        ["install", str(repo), *([] if env else ["--no-env"])],
+        cwd=repo,
+        extra_env=doctor_env(home),
+    )
     assert result.returncode == 0, result.stderr
     return repo
 
@@ -3001,7 +3186,7 @@ def test_doctor_verifies_sourced_capture_credentials_behind_a_user_agent_filter(
         config = json.loads(config_path.read_text())
         del config["servers"][url]["token"]
         config_path.write_text(json.dumps(config))
-        repo = installed_repo(tmp_path, home)
+        repo = installed_repo(tmp_path, home, env=True)
         result = subprocess.run(
             [
                 "/bin/sh",
