@@ -7,21 +7,21 @@ under ``NO_COLOR`` or ``TERM=dumb`` — piped output, tests, and CI read
 exactly the bytes they read before this module existed. Truecolor when
 ``COLORTERM`` advertises it, 256-color approximations otherwise.
 
-The palette is the site design system (the ``--sds-*`` tokens): sandstone
-is the one accent, phosphor means success, iron oxide means failure,
-bleached is for headings, and hierarchy below that is dim — never a fourth
-color. Flat color only (the brand allows no gradients), so the strata mark
-is three flat bands, light to dark.
+The version banner uses the signal-red knot mark. Other output retains
+the sandstone palette: phosphor means success, iron oxide means failure,
+and bleached is for headings. All colors are flat.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from typing import TextIO
 
 # name -> (truecolor RGB, 256-color fallback), from the brand kit.
 _PALETTE = {
+    "signal": ((241, 61, 79), 203),  # --sed-signal · knot mark
     "sandstone": ((196, 147, 90), 173),  # --sds-sandstone · primary accent
     "phosphor": ((95, 216, 149), 78),  # positive / success
     "iron-oxide": ((184, 73, 43), 130),  # negative / errors
@@ -30,6 +30,28 @@ _PALETTE = {
 }
 _ATTRS = {"bold": "\x1b[1m", "dim": "\x1b[2m"}
 _RESET = "\x1b[0m"
+
+# Approved 28-column by 14-row conversion of the Sediment knot mark.
+# Keep this text in step with sediment-site's terminal response.
+_LOGO = "\n".join(
+    f"  {line}"
+    for line in (
+        "  ▄████▄  ▄▄████▄  ▄▄████▄",
+        "▄███▀▀▀ ▄███▀▀▀▀ ▄███▀▀▀███▄",
+        "███   ▄█████▄  ▄█████▄   ███",
+        "▀██▄▄███▀▀▀██████▀▀▀███▄ ▀██",
+        " ▀█████      ▀▀▀     ████▄",
+        " ▄ ▀███▄            ▄██████",
+        "███  ▀███          ▄██▀  ███",
+        "███  ▄███          ▀██▄  ███",
+        " ██████▀            ▀███▄ ▀▀",
+        "  ▀████      ▄▄      █████▄",
+        "▄█▄ ▀███▄▄▄██████▄▄▄███▀▀██▄",
+        "███   ▀█████▀  ▀█████▀   ███",
+        "▀███▄▄▄███▀ ▄▄▄▄███▀ ▄▄▄███▀",
+        "  ▀████▀▀  ▀████▀▀  ▀████▀",
+    )
+)
 
 
 def on(stream: TextIO | None = None) -> bool:
@@ -55,6 +77,17 @@ def style(text: str, *names: str, stream: TextIO | None = None) -> str:
         return text
     codes = "".join(_ATTRS.get(n) or _fg(n) for n in names)
     return f"{codes}{text}{_RESET}"
+
+
+def version_banner(version: str) -> str | None:
+    """Render the knot and version when stdout supports the complete banner."""
+    if not on() or shutil.get_terminal_size().columns < 30:
+        return None
+    try:
+        _LOGO.encode(getattr(sys.stdout, "encoding", None) or "ascii")
+    except (UnicodeEncodeError, LookupError):
+        return None
+    return f"\n{style(_LOGO, 'signal')}\n\n  {style(version, 'bold')}\n\n"
 
 
 def glyph(char: str, name: str, stream: TextIO | None = None) -> str:
