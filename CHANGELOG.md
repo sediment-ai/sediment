@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Command line
+
+- Show the compact signal-red Sediment logo with `sediment --version` on
+  supported interactive terminals, followed by the version number without a
+  name or website footer. Preserve version-only output for pipes,
+  `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
+
 ### Contributor checks
 
 - Test the pi shim against pi-coding-agent 0.86.1 and read its transcript-based

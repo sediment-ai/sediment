@@ -82,10 +82,10 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   relevant. On an expected validation, filesystem, or database error, write
   `error: …` to stderr and exit 1. Apply that boundary before opening a local
   store and around every pre-argparse dispatch.
-- Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only. Pipes,
-  `NO_COLOR`, and `TERM=dumb` all get byte-identical plain text
-  (`cli/tests/test_cli_ui.py`). Help names the full installed command path.
-  Direct script and fleet invocations of `attribution.py` use plain output.
+- Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
+  Pipes, `NO_COLOR`, and `TERM=dumb` retain byte-identical plain text. Direct script and fleet invocations of `attribution.py` use plain output.
+  `--version` shows the static signal-red knot followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
+  The banner adds no dependency or network request. Help names the full installed command path.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works
   without a valid `SEDIMENT_ORG_ID`. `export dpo` defaults to `dpo_human`;
   `export sft` and `export diff-sft` default to `sft_curated`. Operators must
