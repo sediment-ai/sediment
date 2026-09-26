@@ -24,24 +24,27 @@ The shim has no runtime package dependencies and doesn't require `npm install`.
 Your pi installation is a separate prerequisite: inventory its packages and
 support status before installing it in your deployment.
 
-Run it from a checkout: shims are not shipped in the `sediment-cli` wheel,
-so an installed CLI resolves no shim directory and skips the pi
-registration with a message.
+The `sediment-cli` wheel includes the extension's TypeScript source, package
+manifest, README, and MIT license. Its SPDX headers remain intact. No build or
+dependency installation runs on the developer machine. Start pi once to create
+`~/.pi/agent`, then run:
 
 ```
 sediment install <repo>
 ```
 
-registers this directory in `~/.pi/agent/settings.json` (`extensions` list)
-alongside the git hooks and the claude-code/codex hook fragments.
-`uninstall --agents` removes the entry; `doctor` checks it.
+The command registers the packaged extension in `~/.pi/agent/settings.json`
+(`extensions` list) alongside the Git hooks and detected agent hooks. Editable
+source installations register `shims/pi/` instead. `uninstall --agents` removes
+the entry. With pi present, `doctor` reports `FAIL` if the extension is missing
+or unregistered. Keep `sediment` on PATH when you start pi.
 
 ## Opt in to Edit observations
 
 Transcript capture sends applied edit text and observed file text. Decision
 capture and Attribution don't authorize that content capture.
 
-To opt in, run `sediment install --transcripts <repo>` from the checkout.
+To opt in, run `sediment install --transcripts <repo>`.
 Load the generated environment before you restart pi.
 
 If you use `--no-env`, set the endpoint, token, and explicit content opt-in in
@@ -185,9 +188,10 @@ npm test           # node --test (type stripping; Node 24 or Node 22.18+)
 npm run typecheck  # tsc --noEmit
 ```
 
-The `shims` workflow builds and installs Sediment wheels, then runs the pi
-delivery test against that installed command. Changes to the shared Python
-delivery owner also trigger this workflow. To exercise the same test locally,
+The `shims` workflow builds and installs Sediment wheels. Its tests load the
+registered extension through pi's native loader outside the checkout and verify
+capture through the installed command. Packaging, registration, and shared Python
+delivery changes also trigger this workflow. To exercise the same tests locally,
 set `SEDIMENT_PI_TEST_PYTHON` to the installed environment's Python executable
 and `SEDIMENT_PI_TEST_INSTALLED_BIN` to its `bin` directory before `npm test`.
 
