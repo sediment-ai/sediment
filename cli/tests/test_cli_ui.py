@@ -100,8 +100,8 @@ def test_version_renders_compact_logo_and_installed_version(
 
     output = _version_output(monkeypatch)
 
-    red = "\x1b[38;2;241;61;79m" if truecolor else "\x1b[38;5;203m"
-    assert red in output
+    assert "\x1b[38;" not in output  # the knot takes the terminal's own ink
+    assert f"\x1b[1m{__version__}" in output
     plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
     lines = plain.splitlines()
     art = [line for line in lines if any(char in line for char in "█▀▄")]

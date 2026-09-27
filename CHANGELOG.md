@@ -30,9 +30,9 @@
   enqueue lock could fail. Callers that allow a direct fallback then sent the
   payload without buffering it. Enqueue creates the lock exclusively and opens
   the existing file when another publisher creates it first.
-- Show the compact signal-red Sediment logo with `sediment --version` on
-  supported interactive terminals, followed by the version number without a
-  name or website footer. Preserve version-only output for pipes,
+- Show the compact Sediment logo with `sediment --version` on supported
+  interactive terminals, in the terminal's own text color, followed by the
+  version number without a name or website footer. Preserve version-only output for pipes,
   `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
 - Read a missing `--mirror-path` without creating it. Reports and exports treat
   every mirror there as absent instead of writing lock files under that path,
