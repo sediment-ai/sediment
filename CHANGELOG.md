@@ -32,6 +32,8 @@
 
 ### Contributor checks
 
+- Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
+  comparison's exact version check and task-selection tests with the lockfile.
 - Route agents through `AGENTS.md` alone. Claude Code reads it directly, so
   remove `CLAUDE.md` and the `SessionStart` hook that repeated it, and stop
   requiring `CLAUDE.md` in the docs check. Prune the router and correct its
