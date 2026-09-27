@@ -54,6 +54,11 @@
       "title": "Review release verification"
     },
     {
+      "source": "docs/operate/rehearse-compose.md",
+      "destination": "operate/rehearse-compose",
+      "description": "Build and qualify the repository's PostgreSQL, API, LiteLLM, and Traefik containers on one host."
+    },
+    {
       "source": "docs/operate/measure-agent-work.md",
       "destination": "operate/measure-agent-work",
       "description": "Compare agent outcomes, find accepted work that did not ship, and inspect merge retention."
