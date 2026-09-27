@@ -27,8 +27,9 @@ Hub download caller with revisions and credentials, local Claude token counting,
 and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
 Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
 
-LiteLLM 1.102.1 also bundles optional PostgreSQL clients and Bedrock real-time
-packages. The image removes these unused dependencies, including the native
+LiteLLM 1.103.0 also bundles optional PostgreSQL clients, Bedrock real-time
+packages, the Vertex speech SDK, and an HTTP/2 stack that LiteLLM never
+enables. The image removes these unused dependencies, including the native
 `awscrt` library. It removes the bundled PgBouncer executable and its unused
 libevent dependency, and rejects `LITELLM_PGBOUNCER_*` settings before startup.
 Anthropic routes retain the same provider boundary.
@@ -36,10 +37,12 @@ Anthropic routes retain the same provider boundary.
 The Dockerfile records pinned input images and direct dependency updates.
 Image labels record removed packages and source patches. The final software
 bill of materials records the resolved components. The guarded source patch
-removes unused database retry decorators and imports. It guards Prisma error
-predicates when Prisma is absent and returns 401 for an incorrect master key.
+removes unused database retry decorators and imports. When Prisma is absent,
+its error predicates return `False` and its SQLSTATE lookup returns `None`. The
+patch returns 401 for an incorrect master key.
 Missing or invalid keys don't require a database and don't cause an import
-failure. The patch rejects an unexpected vendor source hash or patch site.
+failure. The patch rejects an unexpected vendor source hash, patch site, or
+classifier return type.
 
 The image pins both Python operating system packages to `3.13.15-r8`. This
 [Wolfi build recipe](https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml)

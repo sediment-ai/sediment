@@ -80,6 +80,11 @@
 - Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
   gateway's reviewed OpenSSL and supporting packages so rolling repository
   updates don't introduce an OpenSSL configuration-file conflict.
+- Update the supplied gateway to LiteLLM 1.103.0, the release that the
+  latest-stable security gate requires. The guarded vendor patch covers the
+  Prisma SQLSTATE lookup that 1.103.0 adds and returns `None` from it when
+  Prisma is absent. Remove the Vertex speech SDK and the HTTP/2 stack that this
+  release adds, which the gateway doesn't use.
 
 - Wait for API health in Docker deployment instructions. Support separate
   Compose project image tags and loopback ports for local pilot rehearsals.

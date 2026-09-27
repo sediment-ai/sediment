@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 FROM ghcr.io/astral-sh/uv:0.12.19@sha256:04d046b13e60d6bcec73cbc5e1cad25d680dea90c8573340950a0ac2d1aef424 AS uv
-FROM ghcr.io/berriai/litellm:v1.102.1@sha256:87f34979b9f8cb274fac90ca8a4fdda07d8480de22755562a26adeb95ce20d02 AS runtime-files
+FROM ghcr.io/berriai/litellm:v1.103.0@sha256:bd089afdcd35b894b14a93f9743cdc8b591f82da1a38dd43a010a7b0c9de5fd7 AS runtime-files
 # Vendor 1.102.0 predates these compatible fixes. Remove the Python overrides
 # when a supported vendor image contains them; dependency consistency gates it.
 # The supplied routing/callback does not use the legacy Langfuse v2 SDK. Its
@@ -11,7 +11,9 @@ FROM ghcr.io/berriai/litellm:v1.102.1@sha256:87f34979b9f8cb274fac90ca8a4fdda07d8
 # constraints prevent a supported websockets release. The entrypoint rejects
 # other providers before startup; see docker/gateway/README.md.
 # The Anthropic routes also exclude optional PostgreSQL clients and the
-# Bedrock real-time dependency tree, including its native awscrt library.
+# Bedrock real-time dependency tree, including its native awscrt library,
+# plus the Vertex speech SDK. LiteLLM never enables HTTP/2, so its optional
+# h2 stack is unused.
 # The vendor pins OS package revisions in world. Release those revision locks
 # so the signed distribution repository can supply security fixes.
 # Pin reviewed released builds before upgrading: apk sorts development
@@ -44,7 +46,7 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
         langfuse prisma nodeenv backoff google-genai google-cloud-aiplatform \
         psycopg psycopg-binary aws-sdk-bedrock-runtime aws-sdk-signers \
         smithy-aws-core smithy-aws-event-stream smithy-core smithy-http \
-        smithy-json awscrt ijson \
+        smithy-json awscrt ijson google-cloud-speech h2 hpack hyperframe \
     && uv pip check --python /app/.venv/bin/python
 # Tokenizers' Rust Hub download caller retains its API in Hub 2. Keep the
 # compatibility declaration explicit, hash guarded, and tested at that caller.
@@ -73,7 +75,7 @@ LABEL org.opencontainers.image.revision=$SEDIMENT_SOURCE_REVISION \
 COPY --from=runtime-files / /
 WORKDIR /app
 USER 65532:65532
-LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson" \
+LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson,google-cloud-speech,h2,hpack,hyperframe" \
     io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; CPython CVE-2026-82049 backport b8f23e307097552eaea2604383a12ab280520d0d; docker/gateway/patch_tarfile.py; Tokenizers 0.23.1 tested Hub 2.0.0 dependency declaration; docker/gateway/patch_tokenizers.py" \
     io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.3,tokenizers=0.23.1,huggingface-hub=2.0.0,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,mcp=1.30.0,gunicorn=26.2.0,polars=1.44.2,cryptography=50.0.1,numpy=2.5.3"
 ENV PATH="/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin" \

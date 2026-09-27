@@ -386,6 +386,28 @@ def test_gateway_compression_uses_reviewed_released_zlib() -> None:
     assert result.returncode == 0
 
 
+def test_gateway_prisma_classifiers_answer_without_prisma() -> None:
+    # patch_proxy.py returns each classifier's no-Prisma answer by its type.
+    result = docker(
+        "run",
+        "--rm",
+        *RESTRICTED_RUNTIME,
+        "--network=none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        "from litellm.proxy.db.exception_handler import PrismaDBExceptionHandler; "
+        "from litellm.proxy.db.db_spend_update_writer import "
+        "_daily_spend_commit_failure_is_requeue_safe; "
+        "error=ValueError('not a database error'); "
+        "assert PrismaDBExceptionHandler.is_prisma_error(error) is False; "
+        "assert PrismaDBExceptionHandler.postgres_sqlstate(error) is None; "
+        "assert _daily_spend_commit_failure_is_requeue_safe(error) is True",
+    )
+    assert result.returncode == 0
+
+
 def test_gateway_tls_uses_reviewed_openssl_packages() -> None:
     catalog = json.loads((ROOT / "security/maintenance.json").read_text())
     reviewed = {
@@ -552,7 +574,8 @@ assert importlib.util.find_spec('prisma') is None
 assert importlib.util.find_spec('backoff') is None
 for package in ('psycopg','psycopg_binary','aws_sdk_bedrock_runtime','aws_sdk_signers',
                 'smithy_aws_core','smithy_aws_event_stream','smithy_core',
-                'smithy_http','smithy_json','awscrt','ijson'):
+                'smithy_http','smithy_json','awscrt','ijson',
+                'google.cloud.speech','h2','hpack','hyperframe'):
     assert importlib.util.find_spec(package) is None, package
 assert not os.path.exists('/opt/prisma')
 import shutil

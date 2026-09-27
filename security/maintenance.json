@@ -4066,41 +4066,44 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed LiteLLM 1.102.1 on 2026-09-23 against the official release, unwithdrawn PyPI metadata, immutable release source, and both resolved gateway inventories. The release retains enterprise 0.1.67 and proxy-extras 0.4.97. The official image index binds both architectures to release commit d09bbae1c6df463e425558f60d460437193635da. The guarded vendor patch matches the reviewed source; native ARM64 runtime and capture checks pass. The retained image predicates and 17 SAML caller hashes remain unchanged. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/d09bbae1c6df463e425558f60d460437193635da/pyproject.toml",
+      "basis": "Reviewed LiteLLM 1.103.0 on 2026-09-27 against the unwithdrawn PyPI release, immutable release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d, and the resolved ARM64 gateway inventory. The release pins enterprise 0.1.69 and proxy-extras 0.4.100. Both architectures in the official image index carry the release commit as their revision label. All four guarded vendor sources changed. The patch still removes the same 11 PrismaClient retry decorators and rewrites the one master-key database error. db/exception_handler.py adds one Prisma import site, the postgres_sqlstate lookup; without Prisma it returns None, not False, so its only caller keeps classifying failures. The release newly bundles google-cloud-speech, h2, hpack, and hyperframe; the gateway removes them as unused. Native ARM64 runtime and capture checks pass. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
-      "source_updated_at": "2026-09-20T12:23:58Z",
+      "source_updated_at": "2026-09-27T07:50:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
         "1.102.0",
-        "1.102.1"
+        "1.102.1",
+        "1.103.0"
       ]
     },
     "pypi/litellm-enterprise": {
-      "basis": "Reviewed on 2026-09-20 as part of stable LiteLLM 1.102.0. The release metadata explicitly pairs the proxy with enterprise 0.1.67 and proxy-extras 0.4.97; all three releases are unwithdrawn and support the measured Python 3.13 runtime. The signed official image index binds both architectures to the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/pyproject.toml",
+      "basis": "Reviewed on 2026-09-27 as part of stable LiteLLM 1.103.0. Release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d pins the proxy to enterprise 0.1.69 and proxy-extras 0.4.100; all three releases are unwithdrawn and support the measured Python 3.13 runtime. Both architectures in the official image index carry the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
-      "source_updated_at": "2026-09-20T12:23:58Z",
+      "source_updated_at": "2026-09-27T07:50:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "0.1.67"
+        "0.1.67",
+        "0.1.69"
       ]
     },
     "pypi/litellm-proxy-extras": {
-      "basis": "Reviewed on 2026-09-20 as part of stable LiteLLM 1.102.0. The release metadata explicitly pairs the proxy with enterprise 0.1.67 and proxy-extras 0.4.97; all three releases are unwithdrawn and support the measured Python 3.13 runtime. The signed official image index binds both architectures to the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/pyproject.toml",
+      "basis": "Reviewed on 2026-09-27 as part of stable LiteLLM 1.103.0. Release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d pins the proxy to enterprise 0.1.69 and proxy-extras 0.4.100; all three releases are unwithdrawn and support the measured Python 3.13 runtime. Both architectures in the official image index carry the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
-      "source_updated_at": "2026-09-20T12:23:58Z",
+      "source_updated_at": "2026-09-27T07:50:16Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "0.4.97"
+        "0.4.97",
+        "0.4.100"
       ]
     },
     "pypi/llm-sandbox": {
@@ -4191,6 +4194,22 @@
       ],
       "versions": [
         "1.30.0"
+      ]
+    },
+    "pypi/mcp-types": {
+      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.2.0 is its newest release. LiteLLM 1.103.0's MCP server imports its handshake protocol versions.",
+      "evidence": "https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/HEAD/SECURITY.md",
+      "provider": "Upstream project",
+      "source": "https://github.com/modelcontextprotocol/python-sdk",
+      "source_updated_at": "2026-09-25T09:25:15Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "support_window": "latest_major_line",
+      "supported_major_lines": [
+        "2"
+      ],
+      "versions": [
+        "2.2.0"
       ]
     },
     "pypi/mdurl": {
