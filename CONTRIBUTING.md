@@ -15,7 +15,7 @@ documents first.
 
 For package installation and local capture verification, follow the
 [Quickstart](docs/quickstart.md). For team enrollment, use
-[Run a Cursor and Codex pilot](docs/operate/run-pilot.md). For contributor
+[Enroll your team](docs/operate/run-pilot.md). For contributor
 setup and checks, use [Contributor environment and checks](#contributor-environment-and-checks). The
 [documentation site](https://docs.sediment.so) covers capture, deployment,
 Derivations, and exports.
@@ -188,9 +188,9 @@ above: `.git/hooks` is shared by every worktree.
 ## Review and merging
 
 Every PR gets a maintainer review; merging requires maintainer approval.
-Approved pull requests merge through the merge queue, which reruns the
-required checks against the latest `main`, so you don't need to update your
-branch before merging. Maintainers manage labels, milestones, and issue closure under the
+Approved pull requests squash-merge once their required checks pass. The
+checks don't require your branch to include the latest `main`. Maintainers
+manage labels, milestones, and issue closure under the
 [issue tracker rules](docs/agents/issue-tracker.md). Architectural decisions
 belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
@@ -610,10 +610,10 @@ collect evidence, then review or remove the disposition. Manual and release
 runs still enforce the final scanner gate.
 
 Pull requests and merge groups build and scan artifacts only when they change a
-scan input that `scripts/ci_preflight.py` lists. Pushes to `main`, a daily run,
-manual runs, and releases always scan. The
-[security drift workflow](.github/workflows/security-drift.yml) opens or updates
-one `security` issue when a run on `main` fails.
+scan input that `scripts/ci_preflight.py` lists. Markdown files are never scan
+inputs. Pushes to `main`, a daily run, manual runs, and releases always scan.
+The [security drift workflow](.github/workflows/security-drift.yml) opens or
+updates one `security` issue when a run on `main` fails.
 
 Draft pull requests wait until review readiness. The
 [prose validation path](docs/onboarding.md#your-first-pull-request) doesn't produce
@@ -721,6 +721,69 @@ contemporary. This rehearsal doesn't reproduce months of changing repository
 history. The local fixture uses development mode and file-based mirrors. For
 deployment verification, repeat representative workloads under the deployment's
 security settings and total resource limits.
+
+### Profile reports and Derivations
+
+Measure memory and disk use for broad reports, canonical Derivations, and
+training exports against a restored copy of real inputs. Restore a backup into
+a separate PostgreSQL instance, copy its mirrors, and stop ingest and mirror
+updates during comparisons. Record the Sediment version, schema revision, Fact
+counts, quarantine revision, mirror revisions, and for reports the exact cohort
+and `as_of`.
+
+Record each budget before starting: memory ceiling and swap, concurrent
+requests and workers, the largest content row, Session, and training group,
+private staging and output capacity, and command deadlines. Measure one
+workload at a time first. A passing serial run doesn't qualify concurrent
+workers.
+
+| Encoded population | Default byte limit |
+| --- | --- |
+| One FactStore content row | 64 MiB |
+| Complete Session input and output | 256 MiB, excluding raw audit payloads |
+| Materialized report or Attribution output | 256 MiB |
+| One bundle record | 512 MiB |
+| One private record store | 8 GiB |
+| Explicit bundle materialization | 64 MiB |
+| Complete SFT, DPO, or diff-SFT projection group | 128 MiB |
+| Consumer-profile inputs and outputs | 64 MiB each |
+
+These limits don't bound Python memory peaks. The call and repository identity
+populations have separate 50,000-row caps. If a check refuses the full
+workload, record a failed capacity gate. Don't substitute a smaller cohort or
+treat the refusal as an eligibility skip.
+
+Sample throughout the command, including decoding, validation, and publication.
+Use a fresh container for each serial run so that an earlier peak doesn't carry
+over:
+
+| Measurement | Linux source |
+| --- | --- |
+| Process RSS and high-water mark | `/proc/<pid>/status`: `VmRSS`, `VmHWM` |
+| Container usage and peak | `/sys/fs/cgroup/memory.current`, `memory.peak` |
+| Anonymous memory and file cache | `/sys/fs/cgroup/memory.stat` |
+| Memory-limit events | `/sys/fs/cgroup/memory.events` |
+| Staging and output space | Free-space and quota tools for the staging mount |
+
+Count every concurrently live private staging directory. In a container whose
+`/tmp` is memory-backed, set `TMPDIR` to a private disk-backed directory. Keep
+logs to stage names, counts, durations, sizes, hashes, and sanitized error
+categories.
+
+To check determinism, run the same report twice with the same cohort and
+`as_of`, and an unscoped `sediment derive` twice in fresh processes. Compare
+all seven bundle file sizes and SHA-256 hashes. From one bundle, run every
+export objective and compare each with its direct export. Include real
+fixtures that produce positive rows, cross-Session DPO pairs, and fragmented
+Rollouts; an empty export verifies only its execution path.
+
+For `GET /query/commit/{sha}`, pair an identity-qualified and an unqualified
+request at a fixed `as_of`, and include a missing commit and a capped non-head
+commit. Record latency, worker memory, PostgreSQL buffers, returned rows, and
+Git subprocess counts, then repeat under concurrent query load.
+[ADR 0020](docs/adr/0020-bounded-derivation-execution.md) and
+[ADR 0024](docs/adr/0024-targeted-commit-investigations.md) define the
+boundaries that a change must preserve.
 
 ### Measure agent evidence retrieval
 
@@ -1020,7 +1083,7 @@ For operator access and packet preparation, follow
 
 Use a small task with an explicit goal, constraints, and final verification
 command. This procedure targets pi `0.86.1` with Node.js 24 and the existing
-[pi gateway setup](docs/capture/agent-integrations.md#configure-inference-call-capture-for-pi). Its commands follow
+[pi gateway setup](docs/capture/agents/pi.md#configure-inference-call-capture). Its commands follow
 the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v0.86.1/packages/coding-agent/README.md).
 A live run requires your approved model endpoint.
 
@@ -1167,6 +1230,6 @@ published format; they don't run a hosted upload or training job.
 
 ## Rehearse single-host HTTPS deployment
 
-Use the [Compose runbook](docker/README.md) to build and qualify PostgreSQL,
+Use the [Compose runbook](docs/operate/rehearse-compose.md) to build and qualify PostgreSQL,
 the API, the gateway, and the HTTPS proxy together. The operator docs use the
 published CLI. Container rehearsal requires the source and its build tools.

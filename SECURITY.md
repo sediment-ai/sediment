@@ -48,7 +48,7 @@ proposals run daily. GitHub dependency alerts and security update proposals
 supplement the repository's open-source checks; paid scanning features aren't
 a prerequisite.
 
-See [Check release and deployment security](docs/operate/security.md) for
+See [Secure a deployment](docs/operate/security.md) for
 reproduction, evidence review, and deployment responsibilities.
 
 ## Scope

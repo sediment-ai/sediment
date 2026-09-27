@@ -1,7 +1,7 @@
 # Mermaid diagrams — authoring and cleanup
 
 How to author, clean up, and verify a Mermaid diagram anywhere under
-`docs/` or in `README.md` (Claude Code: `/beautiful-mermaid`). The rules
+`docs/` or in `README.md` (skill: `.skills/beautiful-mermaid/SKILL.md`). The rules
 exist because the published site renders the marked Architecture diagram
 with [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid)
 1.1.3 at sync time, and every other block with Mintlify's default

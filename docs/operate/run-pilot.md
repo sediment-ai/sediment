@@ -1,186 +1,189 @@
-# Run a Cursor, pi, and Codex pilot
+# Enroll your team
 
-Prepare a shared deployment, enroll developers, and verify capture before
-expanding the pilot. For a one-machine evaluation, use the
-[Quickstart](../quickstart.md).
+Use this page to connect developers' machines and repositories to a shared
+Sediment deployment, and to verify that each agent's work arrives. Start with a
+deployment from [Deploy Sediment on EC2](deploy-ec2.md) or
+[Deploy Sediment on your own host](deploy.md) that passes its HTTPS health
+check.
 
-For pi, use the [pi integration guide](../capture/agent-integrations.md#pi),
-including its release and runtime requirements.
+Before enrollment, agree with participants which repositories and agents
+Sediment captures. [Privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+lists what each capture path records.
 
-## Prepare the deployment
+## Create a capture token for each developer
 
-1. Follow [Deploy Sediment](deploy.md) to start the shared server with HTTPS.
-2. Configure [push and continuous integration (CI) capture](../capture/managed-capture.md#configure-push-and-ci-capture),
-   including mirror access to private repositories.
-3. Agree the repositories, developers, pilot window, and
-   [capture scope](../capture/agent-integrations.md#compare-integrations).
+Each developer machine gets its own named capture token. A capture token can
+send data but can't read it.
 
-Codex telemetry can contain patch code even when transcript capture is disabled.
-Transcripts add applied and observed text; gateway capture adds model inputs and
-outputs.
+1. Stop Sediment.
+2. For each machine, generate a token:
 
-Agree the [privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
-before enrollment.
+   ```bash
+   openssl rand -hex 32
+   ```
 
-Give each developer the API URL, the approved release version, a named
-ingest-only token through your credential channel, and their developer
-identifier. The approved release version is the `version` that the
-deployment's `/health` endpoint reports. Keep operator credentials
-with the people who verify and report on capture.
+3. In a private editor, add one `SEDIMENT_INGEST_TOKENS` line to
+   `~/.sediment/server/server.env`. Its value is a JSON object that maps each
+   machine's name to its token:
 
-## Install Sediment
+   ```text
+   SEDIMENT_INGEST_TOKENS={"alice-laptop":"<token>","bob-laptop":"<token>"}
+   ```
 
-On each macOS or Linux developer machine, make sure Git and `curl` are on PATH.
-Replace the version placeholder with the approved release version:
+   The names `operator`, `legacy`, and `retrieval` are reserved. Keep the file
+   mode at `0600`.
 
-```bash
-curl -fsSL https://sediment.so/install.sh | \
-  sh -s -- --capture-only --version '<approved release version>'
-```
+4. Start Sediment.
+5. Send each developer only their own token through a private channel. Keep
+   `SEDIMENT_OPERATOR_TOKEN` and the rest of `server.env` to yourself.
 
-The installer installs that version of the published `sediment-cli` package
-from PyPI without changing host packages. If it prints a PATH instruction, run
-that instruction before continuing. Require the approved version:
+To add a developer later, repeat these steps, and add their entry to the
+existing `SEDIMENT_INGEST_TOKENS` object.
 
-```bash
-sediment --version
-```
+## Connect your repositories
 
-Install and authenticate each participating agent through its normal setup.
-Start and close it once before enrollment so its configuration directory exists.
+1. Create the [GitHub webhooks](../capture/managed-capture.md#configure-push-and-ci-capture)
+   for Pushes, CI, pull requests, and repository changes.
+2. For private repositories, give the server
+   [read-only mirror credentials](../capture/managed-capture.md#configure-repository-mirrors).
 
-## Enroll each developer
+## Install Sediment on each machine
 
-If the developer doesn't use Codex, omit `--codex-profile sediment-pilot`.
+Each developer runs these steps on a macOS or Linux machine with Git and `curl`
+on `PATH`.
 
-Replace these values with the deployment URL, developer identifier, and local
-repository path:
+1. Install the version that your deployment runs. `/health` reports it:
 
-```bash
-PILOT_API_URL='https://sediment-api.example.com'
-PILOT_USER_ID='alice'
-PILOT_REPO='/absolute/path/to/pilot-repo'
+   ```bash
+   curl -fsSL https://sediment.so/install.sh | \
+     sh -s -- --capture-only --version '<deployment version>'
+   ```
 
-sediment login "$PILOT_API_URL" --capture
-sediment install --user-id "$PILOT_USER_ID" \
-  --codex-profile sediment-pilot "$PILOT_REPO"
-. "$HOME/.sediment/env.sh"
-sediment doctor "$PILOT_REPO"
-```
+   If the installer prints a `PATH` instruction, run it. Then check that
+   `sediment --version` prints the same version.
 
-`login --capture` prompts for the ingest-only token. Review the installation
-summary: Sediment configures detected agents, including Claude Code. Resolve
-every `FAIL` from `doctor` before continuing.
+2. Install and sign in to each agent through its normal setup. Start and close
+   it once so that its configuration directory exists.
+3. Enroll the machine. Replace the deployment URL, developer identifier, and
+   repository path:
 
-If participants approve additional capture, follow the relevant setup:
+   ```bash
+   API_URL='https://sediment.example.com'
+   USER_ID='alice'
+   REPO='/absolute/path/to/repo'
+
+   sediment login "$API_URL" --capture
+   sediment install --user-id "$USER_ID" --codex-profile sediment "$REPO"
+   . "$HOME/.sediment/env.sh"
+   sediment doctor "$REPO"
+   ```
+
+   `login --capture` prompts for the developer's capture token. `install`
+   configures every agent that it detects. If the developer doesn't use Codex,
+   omit `--codex-profile sediment`. Resolve every `FAIL` from `doctor`.
+
+Optional capture needs separate consent and setup:
 
 | Capture | Setup |
 | --- | --- |
 | Edit observations | [Opt in to transcript capture](../capture/local-capture.md#opt-in-to-transcript-capture) |
-| Model inputs and outputs | [Configure inference-call capture](../capture/managed-capture.md#configure-inference-call-capture); keep each developer's model unchanged |
-| Buffered delivery through outages | [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages); requires approved local payload storage and a supervised replay worker |
+| Model inputs and outputs | [Configure inference-call capture](../capture/managed-capture.md#configure-inference-call-capture) |
+| Delivery through server outages | [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages) |
 
 ## Verify capture
 
-On the machine running these checks, log in with a separate operator token:
+A `/health` response and organization-wide Fact counts don't prove capture.
+Check one real Session for each agent that the team uses.
 
-```bash
-sediment login "$PILOT_API_URL"
-git -C "$PILOT_REPO" switch -c sediment-pilot-check
-```
+1. On an enrolled machine, also sign in with the operator token, and create a
+   scratch branch:
 
-Repeat the following check for each participating agent, committing one agent's
-file before testing the next:
+   ```bash
+   sediment login "$API_URL"
+   git -C "$REPO" switch -c sediment-check
+   ```
 
-1. Load `. "$HOME/.sediment/env.sh"` and start the agent:
+2. Load `. "$HOME/.sediment/env.sh"`, and start the agent from that shell:
 
    | Agent | Start |
    | --- | --- |
-   | Cursor desktop | Run `cursor "$PILOT_REPO"`. Managed hooks read the capture environment for each successful Agent `Write`. With `install --no-env`, fully quit Cursor first and launch it from this shell. |
-   | pi | Run `cd "$PILOT_REPO"` and `pi` from this shell. |
-   | Codex CLI | Run `codex --profile sediment-pilot -C "$PILOT_REPO"`. Use `/hooks` to review and trust the Sediment hooks. |
+   | Claude Code | Run `cd "$REPO" && claude`. |
+   | Codex CLI | Run `codex --profile sediment -C "$REPO"`. Use `/hooks` to review and trust the Sediment hooks. |
+   | Cursor desktop | Run `cursor "$REPO"`. |
+   | pi | Run `cd "$REPO" && pi`. |
 
-2. Ask the agent to create a harmless file. Use Cursor Agent rather than Tab,
-   pi's `write` tool, or a single-file patch in Codex. End the Session so any enabled transcript
-   capture can run.
-3. Review and commit only that file, then inspect the commit note:
-
-   ```bash
-   git -C "$PILOT_REPO" add -- '<created-file>'
-   git -C "$PILOT_REPO" commit -m 'test: verify agent capture'
-   git -C "$PILOT_REPO" notes --ref=refs/notes/sediment show HEAD
-   ```
-
-4. Copy the `session_id` from the note entry for that agent. Replace the
-   placeholders, using `cursor`, `pi`, or `codex` for the agent, and run:
+3. Ask the agent to create a small file, and end the Session. Use Cursor
+   Agent rather than Tab, pi's `write` tool, and a single-file patch in Codex.
+4. Commit only that file, and read the commit's Session note:
 
    ```bash
-   sediment doctor "$PILOT_REPO" --agent '<agent>' \
-     --session-id '<Session identifier from the note>'
+   git -C "$REPO" add -- '<created-file>'
+   git -C "$REPO" commit -m 'test: verify agent capture'
+   git -C "$REPO" notes --ref=refs/notes/sediment show HEAD
    ```
 
-Require `ok` for the commit Session note and Developer decision. For enabled
-transcript or gateway capture, add `--transcripts` or `--inference-calls`.
-Cursor supports neither flag.
+5. Copy the `session_id` from the note, and check that Session on the server.
+   Set `--agent` to `codex`, `cursor`, or `pi`:
 
-Allow telemetry to flush before investigating missing evidence. Use the
-[agent guides](../capture/agent-integrations.md) to resolve failures.
-Organization-wide Fact counts don't replace this Session check.
+   ```bash
+   sediment doctor "$REPO" --agent '<agent>' --session-id '<session_id>'
+   ```
+
+   Each check reports `ok`. If you enabled transcript or gateway capture, add
+   `--transcripts` or `--inference-calls`. Cursor supports neither flag.
+
+   For Claude Code, `doctor --agent` isn't available. Run `sediment facts`
+   before and after the Session, and check that `developer_decisions` grew.
+
+Repeat steps 2–5 for each agent, and commit each agent's file before you test
+the next. Let telemetry flush before you investigate a failure. To fix one, see
+the agent's page in [Agent integrations](../capture/agent-integrations.md).
 
 ## Verify forge delivery
 
-Push the verification branch and check the deployment:
+Push the scratch branch, and check that the server linked the commit to its
+Session:
 
 ```bash
-git -C "$PILOT_REPO" push --set-upstream origin HEAD
-git -C "$PILOT_REPO" ls-remote origin refs/notes/sediment
-sediment commit "$(git -C "$PILOT_REPO" rev-parse HEAD)"
+git -C "$REPO" push --set-upstream origin HEAD
+git -C "$REPO" ls-remote origin refs/notes/sediment
+sediment commit "$(git -C "$REPO" rev-parse HEAD)"
 ```
 
-Require the remote notes ref, the server's Session-to-commit relationship, and
-the expected CI outcome after the workflow finishes. Before interpreting merge
-retention, verify a real pull-request merge and its signed webhook delivery.
+The remote has `refs/notes/sediment`, and `sediment commit` lists the Session.
+After the CI workflow finishes, the commit also shows its CI outcome. Merge
+retention needs a real pull-request merge, so verify one before you read that
+report.
 
-## Use the pilot evidence
+## Know what each agent captures
 
-Use [Measure agent work](measure-agent-work.md) for reports. Keep denominators,
-coverage, and skip counts with each result:
+Agents supply different evidence, so compare them with care:
 
 - Cursor supplies neither Inference calls nor Edit observations.
-- Cursor implicit accepts and automatic Codex approvals aren't human-explicit
-  accepted work.
-- Session-end retention needs Edit observations. Merge retention also needs Git
-  and pull-request evidence.
-- Model comparisons need matched scope and coverage. Missing evidence isn't a
-  negative outcome.
+- Cursor and pi accepts, and automatic Codex approvals, are implicit. Reports
+  don't count them as human-explicit accepts.
+- Session-end retention needs Edit observations. Merge retention also needs
+  pull-request webhooks.
+- Missing evidence isn't a negative outcome.
 
-Before expanding the pilot, complete the applicable checks in
-[Validate a deployment](validate-deployment.md).
+[Compare integrations](../capture/agent-integrations.md#compare-integrations)
+lists each agent's signals.
 
-## Update or end enrollment
+Next, [measure agent work](measure-agent-work.md).
 
-If you enabled buffering, stop the replay worker before an upgrade, credential
-or destination change, or uninstall.
+## Remove a developer
 
-Follow [sender buffer operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
-to drain retained payloads to their original destination. Restart the worker
-after reenrollment, or disable it when ending enrollment.
+1. If the machine runs a sender replay worker, drain and stop it with
+   [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages).
+2. On the machine, remove capture from each repository:
 
-Before upgrading, end active Sessions, record `sediment --version`, and back up
-the deployment. Upgrade the deployment before capture clients. Rerun the curl
-installer with the new approved release version, repeat enrollment with the same
-identifier and approved options, and repeat the capture checks.
+   ```bash
+   sediment uninstall "$REPO"
+   ```
 
-After rotating an ingest token, repeat `sediment login --capture` and
-`sediment install`. Restart the agents; Codex's generated profile contains the
-token and must be refreshed.
+   To remove the machine-wide agent hooks too, follow
+   [Uninstall capture](../capture/local-capture.md#uninstall-capture).
 
-To remove repository capture:
+3. On the server, [revoke the token](maintain.md#rotate-credentials).
 
-```bash
-sediment uninstall "$PILOT_REPO"
-```
-
-Follow [Uninstall capture](../capture/local-capture.md#uninstall-capture) when
-removing machine-wide hooks. Uninstalling leaves stored Facts and historical
-commit notes intact.
+Stored Facts and existing commit notes remain.

@@ -1,8 +1,7 @@
 # Quickstart
 
 Run a local server and verify synthetic capture in a scratch repository.
-For a shared deployment, start at
-[Deploy the API](operate/deploy.md#2-deploy-the-api).
+For a shared deployment, follow [Deploy Sediment on EC2](operate/deploy-ec2.md).
 
 ## 0. Check the prerequisites
 
@@ -55,7 +54,7 @@ curl -sf http://127.0.0.1:8000/health
 ```
 
 ```text
-{"status":"ok","version":"0.2.0"}
+{"status":"ok","version":"0.3.0"}
 ```
 
 If the health check fails, read the error in the server terminal. PostgreSQL
@@ -97,8 +96,8 @@ mkdir "$HOME/sediment-quickstart" &&
 ```
 
 `install` adds repository git hooks, user-level hooks for detected agents, and
-an environment file. For pi, check the
-[release and runtime requirements](capture/agent-integrations.md#pi).
+an environment file. For pi, first meet the requirements in
+[Capture pi work](capture/agents/pi.md#before-you-begin).
 
 Verify:
 
@@ -169,6 +168,6 @@ rm -rf ~/.sediment/server
 
 - [Configure your agent](capture/agent-integrations.md) to capture real work.
   Follow its install, environment, restart, and Session verification steps.
-- [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.
-  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers the
-  shared database connection, credentials, and persistent storage.
+- [Deploy Sediment on EC2](operate/deploy-ec2.md) to run it for a team. If you
+  already run PostgreSQL and HTTPS, [deploy on your own host](operate/deploy.md)
+  instead. Then [enroll your team](operate/run-pilot.md).

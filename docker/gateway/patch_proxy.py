@@ -11,19 +11,19 @@ from pathlib import Path
 # Any upstream source change needs a fresh review of the removed code paths.
 SOURCES = {
     "proxy_server.py": (
-        "8e3a49e253c6ae0a8fc3bb5ceb0c6d69395a9fe8b87575e3ad051d8bf05dbbe7",
+        "05798d3f7ce1a6bc63e3670426a8544771ee0bd734708e2e947da24c43c83db8",
         0,
     ),
     "utils.py": (
-        "eb990a71d0c12cb7d8115de0daf39c662915134cf0ca35cc79b4e48552437cf2",
+        "677f33b4b1c67e1dba0e91cfd400feacd6e12e81bf8ca65d865b90d1421b732a",
         11,
     ),
     "db/exception_handler.py": (
-        "16036ddb46573dfa04746c2a21a844c9d04ac18a81e40f436a3000d84a66c2be",
-        8,
+        "329f721d58e101b7195a2554d81a02cb77962c14fbc1e2869c4435b1ea2c6e36",
+        9,
     ),
     "auth/user_api_key_auth.py": (
-        "5d294cc1818ccb9451f9a1a39ecf0a402fdfd265800e14c2348a00ec20832fd5",
+        "e0f27addeafaddaca17ee4f5dec599c13c23770ae3af3f1b4035db92c0deaa9d",
         1,
     ),
 }
@@ -53,8 +53,15 @@ def patch_proxy(root: Path) -> None:
             )
             continue
         if name == "db/exception_handler.py":
-            # Every selected import is inside a Boolean Prisma-error predicate.
-            # Without Prisma, no exception can be an instance of its error types.
+            # Every selected import is inside a Prisma-error classifier. Without
+            # Prisma, no exception can be an instance of its error types, so a
+            # Boolean predicate answers False and the SQLSTATE lookup None.
+            fallbacks = {"bool": b"False", "str | None": b"None"}
+            functions = [
+                node
+                for node in ast.walk(ast.parse(source))
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            ]
             lines = source.splitlines(keepends=True)
             selected = [
                 index
@@ -68,10 +75,23 @@ def patch_proxy(root: Path) -> None:
             if len(selected) != SOURCES[name][1]:
                 raise ValueError(f"Unexpected LiteLLM patch sites: {name}")
             for index in selected:
+                function = max(
+                    (
+                        node
+                        for node in functions
+                        if node.lineno <= index + 1 <= node.end_lineno
+                    ),
+                    key=lambda node: node.lineno,
+                )
+                returns = function.returns and ast.unparse(function.returns)
+                if returns not in fallbacks:
+                    raise ValueError(f"Unexpected LiteLLM patch sites: {name}")
                 lines[index] = (
                     b"        try:\n    "
                     + lines[index]
-                    + b"        except ModuleNotFoundError:\n            return False\n"
+                    + b"        except ModuleNotFoundError:\n            return "
+                    + fallbacks[returns]
+                    + b"\n"
                 )
             updated = b"".join(lines)
             ast.parse(updated)

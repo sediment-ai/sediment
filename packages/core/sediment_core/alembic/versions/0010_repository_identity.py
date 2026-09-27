@@ -13,7 +13,7 @@ run cannot use). On a deployment with substantial `ci_outcomes`,
 `pull_request_revisions` history, this revision's roughly 90 statements
 across those five tables can hold each table's write path for longer than a
 schema-only change would. Run it in a maintenance window on a history-heavy
-deployment; see "Upgrade the deployment" in `docs/operate/deploy.md`.
+deployment; see "Upgrade Sediment" in `docs/operate/maintain.md`.
 """
 
 from alembic import op

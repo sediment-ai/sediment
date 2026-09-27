@@ -5,12 +5,11 @@ continuous integration (CI) results. Each answer depends on what your
 [Agent integrations](../capture/agent-integrations.md) capture.
 Missing evidence stays unknown; it isn't rejection or failure.
 
-A Cursor, pi, and Codex pilot has uneven capture coverage. Cursor supplies
-decision metadata and commit Attribution. Codex native decisions can also
-contain patch/tool arguments. pi and Codex offer separately opted-in Edit
-observations and gateway calls. The
-[Pilot evidence contract](../operate/run-pilot.md#use-the-pilot-evidence)
-maps these populations to the seven questions.
+Agents supply uneven capture coverage. Cursor supplies decision metadata and
+commit Attribution. Codex native decisions can also contain patch and tool
+arguments. pi and Codex offer separately opted-in Edit observations and gateway
+calls. [Know what each agent captures](../operate/run-pilot.md#know-what-each-agent-captures)
+maps these populations to the reports.
 
 Run report commands on your Sediment host with `SEDIMENT_ORG_ID`,
 `SEDIMENT_DATABASE_URL`, and `SEDIMENT_MIRROR_PATH` set in your shell.
@@ -42,7 +41,7 @@ separate Session progression measurement.
 sediment report lifecycle --json
 ```
 
-[Measure accepted-work lifecycle](../operate/lifecycle-report.md).
+[Find where accepted work stops](../operate/measure-agent-work.md#find-where-accepted-work-stops).
 
 ## How much code survived?
 
@@ -57,7 +56,7 @@ For review and merge retention:
 sediment report merge-retention
 ```
 
-[Measure retention through pull-request merge](../operate/measure-agent-work.md#measure-retention-through-pull-request-merge).
+[Measure retention through merge](../operate/measure-agent-work.md#measure-retention-through-merge).
 
 ## Where does work get rejected or changed?
 
@@ -70,7 +69,7 @@ rework score. External changes don't establish human authorship.
 sediment report lifecycle --json
 ```
 
-[Read the panels](../operate/lifecycle-report.md#read-the-panels).
+[Find where accepted work stops](../operate/measure-agent-work.md#find-where-accepted-work-stops).
 
 ## What work is linked to a CI failure?
 
@@ -94,7 +93,7 @@ Sediment captures token usage and duration when the gateway supplies them.
 You can use these in your own analysis with the prices that applied at the
 time. Sediment has no cost-report command and doesn't infer discounts.
 
-[Record a model price policy](../operate/measure-agent-work.md#record-a-model-price-policy).
+To record prices for that analysis, use the [PriceManifest](../reference/schema.md#pricemanifest) format.
 
 ## Can I reproduce an analysis?
 
@@ -102,4 +101,4 @@ Preserving the report, its scope, policy, and inputs lets you repeat the analysi
 with matching software. Inputs include the Facts, repository data, and any
 external price or experiment records. No single command replays a report.
 
-[Preserve an operational result](../operate/measure-agent-work.md#preserve-an-operational-result).
+[Keep a result reproducible](../operate/measure-agent-work.md#keep-a-result-reproducible).

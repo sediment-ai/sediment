@@ -20,11 +20,12 @@ Run it against a fresh stack before real capture starts (reset:
 ``docker compose --profile gateway --profile operator down --volumes``);
 on a stack holding real facts, quarantine
 instead — the completion by session id, the rest per fact id from the PASS
-lines below (docs/operate/deploy.md §8.3). Re-runs are expected to report
+lines below (docs/operate/rehearse-compose.md, "Quarantine and wholesale
+deletion"). Re-runs are expected to report
 ``stored: false``: the redelivery collapsed on a UNIQUE index, which is the
 dedup contract working, not a failure. The OTLP door's ``{}`` success shape
 hides per-record results by design — confirm decisions landed with the
-fact counts in docs/operate/deploy.md §5.
+fact counts in docs/operate/rehearse-compose.md.
 """
 
 from __future__ import annotations
@@ -206,7 +207,7 @@ def main() -> int:
         return 1
     logger.info(
         "all doors green — next: verify fact counts with sediment facts "
-        "in docs/operate/deploy.md §5"
+        "in docs/operate/rehearse-compose.md"
     )
     return 0
 

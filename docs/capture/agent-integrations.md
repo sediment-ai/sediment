@@ -1,229 +1,56 @@
 # Agent integrations
 
-Choose the evidence you need, then follow the matching agent guide. For team
-enrollment, use the [pilot guide](../operate/run-pilot.md).
+Use this page to choose an agent integration, and then follow that agent's
+guide. Every guide assumes the machine setup in
+[Configure local capture](local-capture.md). To enroll a whole team, follow
+[Enroll your team](../operate/run-pilot.md).
 
 ## Compare integrations
 
-| Agent | Developer decisions | Commit Attribution | Edit observations |
-| --- | --- | --- | --- |
-| [Claude Code](#claude-code) | Accept / reject | Yes | Opt-in |
-| [Codex](#codex) | Accept / reject | Yes | Opt-in: single-file patches |
-| [Cursor](#cursor) | Implicit accepts for successful Agent writes | Yes | No extractor |
-| [pi](#pi) (check release requirement) | Implicit accepts | Yes | Opt-in |
-| [Copilot Chat](#github-copilot-chat) | Accept / reject / retention | No installer hook | No extractor |
+| Agent | Developer decisions | Commit Attribution | Inference calls | Edit observations |
+| --- | --- | --- | --- | --- |
+| [Claude Code](agents/claude-code.md) | Accept and reject | Yes | Optional, through a gateway | Optional |
+| [Codex](agents/codex.md) | Accept and reject | Yes | Optional, through a gateway | Optional, single-file patches |
+| [Cursor](agents/cursor.md) | Implicit accepts for successful Agent writes | Yes | No | No |
+| [pi](agents/pi.md) | Implicit accepts | Yes | Optional, through a gateway | Optional |
+| [Copilot Chat](#github-copilot-chat) | Accept, reject, and retention | No | No integration | No |
 
-Cursor Tab edits write commit Attribution without a Developer decision because
-Cursor doesn't supply a per-call identifier for that event.
+A Developer decision can record a human choice or an automatic result, and
+Sediment keeps that distinction in `explicit`. Each agent reports decisions in
+a different unit, so decision counts aren't comparable across agents.
+[Developer decisions by agent harness](../explanation/how-capture-works.md#developer-decisions-by-agent-harness)
+defines each agent's events and missing signals.
 
 Edit observations pair the text that an agent applied with the file's content
-at Session end. They support an Edit retention score; they aren't full Session
-transcripts. Claude Code also supports external line counts, Rejected edits,
-and Retry linkages through its opt-in transcript hooks. Codex and pi don't
-capture those three signals.
+at Session end. Claude Code transcript capture also records external line
+counts, Rejected edits, and Retry linkages. The other agents don't.
 
-Copilot's retention events carry a vendor-provided grade on a Developer
-decision. They aren't transcript-derived Edit observations.
-
-A Developer decision can reflect a human choice or an automatic result.
-Sediment preserves that distinction in `explicit`. Decision units differ
-across agents, so counts aren't comparable counts of human approvals.
-[Developer decisions by agent harness](../explanation/how-capture-works.md#developer-decisions-by-agent-harness)
-defines the event mapping and missing-signal limits.
-
-## Claude Code
-
-Use [Capture Claude Code work](agents/claude-code.md) for telemetry, gateway
-routing, transcript capture, and verification.
-
-## Codex
-
-Use [Capture Codex work](agents/codex.md) for hooks, telemetry profiles, gateway
-routing, and single-file Edit observations. Native decisions can retain patch
-arguments even when transcript capture is disabled.
-
-## Cursor
-
-Use [Capture Cursor work](agents/cursor.md) for local desktop hooks and
-verification. Cursor has no supported Inference-call or Edit observation capture.
-
-## pi
-
-Select a [published release](https://github.com/sediment-ai/sediment/releases)
-whose release notes include the bundled pi extension. Release 0.2.0 doesn't
-include it. This procedure requires that packaged extension.
-
-Install Node 24 and pi 0.84.1 through pi's package distribution:
-
-```bash
-npm install --global @earendil-works/pi-coding-agent@0.84.1
-node --version
-pi --version
-```
-
-Start pi once to create `~/.pi/agent`, authenticate your model, then close pi.
-The Sediment package supplies its extension without additional npm dependencies.
-Connect the CLI and register the extension:
-
-```bash
-sediment login https://sediment-api.example.com --capture
-sediment install --user-id alice /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-Replace `alice` with your developer identifier. The generated environment sets
-`SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` for decision delivery.
-Restart pi from that environment. Attribution remains independent of telemetry.
-If the extension is missing or unregistered, `sediment doctor` reports `FAIL`.
-After moving the CLI, rerun `sediment install` and remove stale extension paths
-from `~/.pi/agent/settings.json`.
-
-If you approve sending applied text and observed file text, opt in:
-
-```bash
-sediment install --user-id alice --transcripts /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-This writes `SEDIMENT_PI_TRANSCRIPTS=1` and enables extraction at
-`session_shutdown`. An unset variable or any other value disables pi content
-capture. An ordinary reinstall preserves a generated opt-in. With `--no-env`,
-set the endpoint, token, and `SEDIMENT_PI_TRANSCRIPTS=1` manually in the pi
-environment. An existing endpoint-only installation must explicitly opt in to
-continue Edit observations.
-
-A successful `edit` or `write` produces an implicit accept. Stock pi exposes
-no explicit human approval gesture, so Sediment doesn't label these events as
-human approvals. The extractor omits failed edits and doesn't emit Rejected
-edits or Retry linkages.
-
-Keep transcripts at their original paths. pi resolves relative edits from the
-transcript's absolute working directory; invalid directories count as
-`execution_directory_invalid`. Unsupported path forms count as `unsupported_path`.
-
-For a fork, keep its complete version 3 parent transcript in the same physical
-directory. The extractor reads one regular, non-symlinked parent of at most
-64 MiB and excludes inherited messages. Missing, unreadable, oversized, or
-inconsistent parents count as `parent_source_unverified`; snapshots remain for
-recovery. Sediment doesn't read further ancestors or infer ownership from time.
-
-If content capture is enabled and a one-task host keeps pi alive, set
-`SEDIMENT_EXTRACT_ON_SETTLE=1` so extraction runs at `agent_settled`. Leave the
-variable unset for an interactive Session. Repeated settling would preserve an
-early file state under first-write-wins deduplication.
-
-After pi edits a file and the Session ends, commit the change. Copy the actual
-Session identifier from its note and verify that Session:
-
-```bash
-git notes --ref=refs/notes/sediment show HEAD
-sediment doctor /path/to/repo --agent pi --session-id '<Session identifier>'
-```
-
-Add `--transcripts` when you opted in to content capture. Add `--inference-calls`
-only for a Session routed through a gateway. [Configure inference-call capture
-for pi](#configure-inference-call-capture-for-pi) provides the provider settings.
-[Configure local capture](local-capture.md)
-defines the shared endpoint, git hook, and transcript privacy behavior.
-
-To enable agent-requested evidence from one previous Session, configure the
-independent `SEDIMENT_RETRIEVAL_ENDPOINT` and `SEDIMENT_RETRIEVAL_TOKEN` pair
-in an isolated agent environment. This registers `sediment_retrieve_context`
-without changing capture settings. The [continuation guide](../operate/resume-with-evidence.md#enable-agent-requested-retrieval)
-defines source authorization and response limits. Retrieval never falls back to
-your ingest token or operator login.
-
-### Configure inference-call capture for pi
-
-Configure the gateway to serve the developer's existing model before routing
-traffic. Follow [Configure inference-call capture](managed-capture.md#configure-inference-call-capture)
-for the capture callback.
-
-For pi using an Anthropic-compatible route, merge this provider into
-`~/.pi/agent/models.json`. Preserve existing providers. Replace the URL and
-model placeholder with the deployment values:
-
-```json
-{
-  "providers": {
-    "sediment": {
-      "baseUrl": "https://sediment-llm.example.com",
-      "api": "anthropic-messages",
-      "apiKey": "$SEDIMENT_GATEWAY_KEY",
-      "models": [{"id": "<existing Anthropic model ID>"}]
-    }
-  }
-}
-```
-
-Load `SEDIMENT_GATEWAY_KEY` from the team's credential mechanism into the pi
-environment. `apiKey` uses `$SEDIMENT_GATEWAY_KEY` literally in the JSON file so
-pi resolves the variable.
-
-If pi's custom-model defaults differ, copy input capabilities, reasoning
-settings, context, and output limits from the existing model definition.
-Omitted price fields aren't evidence of zero cost.
-
-The shim defaults to provider `sediment` and API `anthropic-messages`. If you
-use another registered provider or API, set `SEDIMENT_PROVIDER_ID` and
-`SEDIMENT_PROVIDER_API` to match it.
-
-Open `/model` to reload the model file, then select the matching model. To start
-a separate Session, replace the repository path and model ID:
-
-```bash
-cd /path/to/repo
-pi --provider sediment --model '<existing Anthropic model ID>'
-```
-
-After a routed Session, repeat the pi edit and commit check with
-`--inference-calls`. Require `ok` for the Session Inference call. A successful
-model response alone doesn't verify capture.
+Codex decision telemetry can include patch text even when transcript capture is
+off. [Privacy boundaries and ceilings](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+lists what each capture path sends.
 
 ## GitHub Copilot Chat
 
-Sediment translates Copilot Chat's `copilot_chat.edit.feedback`,
-`copilot_chat.inline.done`, and `copilot_chat.edit.survival` log events. This
-integration covers Copilot Chat telemetry; it doesn't establish Copilot CLI
-support.
+Sediment reads three Copilot Chat log events: `copilot_chat.edit.feedback`,
+`copilot_chat.inline.done`, and `copilot_chat.edit.survival`. It doesn't cover
+Copilot CLI.
 
-Configure the client or a collector to deliver those events as authenticated
-OpenTelemetry Protocol (OTLP) HTTP/JSON logs to Sediment's
-[`POST /v1/logs`](../reference/api.md#post-v1logs) endpoint. Consult
-[Copilot's OpenTelemetry configuration](https://code.visualstudio.com/docs/agents/guides/monitoring-agents)
-for client settings. Generic traces alone don't supply the decision events
-that Sediment consumes.
+`sediment install` doesn't configure Copilot Chat. Configure the client, or a
+collector, to send those events as authenticated OpenTelemetry Protocol (OTLP)
+HTTP/JSON logs to [`POST /v1/logs`](../reference/api.md#post-v1logs). See
+[Copilot's OpenTelemetry configuration](https://code.visualstudio.com/docs/agents/guides/monitoring-agents).
+Traces alone don't carry the decision events.
 
-After telemetry flushes, run `sediment facts` and confirm that
-`developer_decisions` grows. `sediment install` doesn't configure Copilot Chat
-or install a Copilot Attribution hook. Sediment has no Copilot transcript
-extractor.
-
-## Capture model inputs and outcomes
-
-An agent integration alone doesn't create Inference-call Facts.
-[Configure inference-call capture](managed-capture.md#configure-inference-call-capture)
-records calls through a supported gateway. The gateway must carry the real
-Session identifier so Sediment can join the call to the agent's Facts.
-
-For pushed commits and continuous integration (CI) outcomes, follow
-[Configure push and CI capture](managed-capture.md#configure-push-and-ci-capture).
-
-Transcript extraction sends selected edit text and Session-end file content.
-Gateway capture includes model inputs and outputs.
-[Privacy boundaries and ceilings](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
-lists the payload details.
+After telemetry flushes, check that `developer_decisions` grows in
+`sediment facts`.
 
 ## Integrate another agent
 
-Sediment doesn't have a built-in integration for Gemini CLI, OpenCode, or
-Factory.
-
-A compatible gateway can capture inference calls when its client carries
-Session identity. Developer decisions, commit notes, and Edit observations
+Sediment has no built-in integration for Gemini CLI, OpenCode, or Factory. A
+compatible gateway can capture their inference calls when the client carries a
+Session identifier. Developer decisions, commit notes, and Edit observations
 need an agent integration.
 
 To build one, start with [What a harness client sends](../agents/capture-clients.md)
-and the [pi extension](../../shims/pi/README.md). A supported agent needs
-registration in Sediment's `AgentHarness` enum and the appropriate hooks or shim.
-The server skips unregistered agent values.
+and the [pi extension](../../shims/pi/README.md). The agent also needs an entry
+in Sediment's `AgentHarness` enum. The server skips unregistered agents.

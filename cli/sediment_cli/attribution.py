@@ -55,8 +55,7 @@ Stdlib only, no daemon. Nine subcommands:
                      + ``notes.rewriteRef`` (local config) + the agent
                      telemetry env files generated from the ``sediment
                      login`` config (``--no-env`` skips; ``--user-id``
-                     stamps per-developer attribution; ``--gateway-url``/
-                     ``--gateway-key`` add the completions routing);
+                     stamps per-developer attribution);
                      ``--transcripts`` opts in to the SessionEnd transcript
                      extractor and its PreToolUse snapshot hook
                      (sediment_transcript.py — ships edit text pairs, a
@@ -2852,8 +2851,6 @@ def _env_pairs(
     url: str,
     token: str,
     user_id: str | None,
-    gateway_url: str | None,
-    gateway_key: str | None,
 ) -> list[tuple[str, str]]:
     """The §5.1 block, generated. The exporter appends /v1/logs itself, so
     the endpoint is the bare server URL."""
@@ -2875,11 +2872,6 @@ def _env_pairs(
         _warn("capture helper unavailable; dedicated hook delivery is disabled")
     if user_id:
         pairs.append(("OTEL_RESOURCE_ATTRIBUTES", f"user.id={user_id}"))
-    if gateway_url:
-        pairs.append(("ANTHROPIC_BASE_URL", gateway_url))
-    if gateway_key:
-        pairs.append(("ANTHROPIC_AUTH_TOKEN", gateway_key))
-        pairs.append(("SEDIMENT_GATEWAY_KEY", gateway_key))
     return pairs
 
 
@@ -2956,19 +2948,14 @@ def _unwire_env() -> list[str]:
     return removed
 
 
-def cmd_install_env(
-    user_id: str | None,
-    gateway_url: str | None,
-    gateway_key: str | None,
-    transcripts: bool = False,
-) -> str:
+def cmd_install_env(user_id: str | None, transcripts: bool = False) -> str:
     """Wire the agent telemetry env from the login config; the install
     summary string says what happened."""
     cfg = _cli_config(capture=True)
     if cfg is None:
         return f"skipped (capture credential is absent; {_CAPTURE_LOGIN})"
     url, token = cfg
-    pairs = _env_pairs(url, token, user_id, gateway_url, gateway_key)
+    pairs = _env_pairs(url, token, user_id)
     try:
         previous = _sh_env_file().read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
@@ -3461,8 +3448,6 @@ def cmd_install(
     transcripts: bool = False,
     env: bool = True,
     user_id: str | None = None,
-    gateway_url: str | None = None,
-    gateway_key: str | None = None,
     codex_profile: str | None = None,
 ) -> int:
     repo_path = Path(repo).resolve()
@@ -3511,7 +3496,7 @@ def cmd_install(
         # same flag pair: --no-agents implies no env wiring.
         if env:
             try:
-                detail = cmd_install_env(user_id, gateway_url, gateway_key, transcripts)
+                detail = cmd_install_env(user_id, transcripts)
             except ValueError as exc:
                 _error(str(exc))
                 return 1
@@ -3855,17 +3840,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="write a Codex telemetry profile with resolved login credentials (0600); preserve its model and unrelated settings",
     )
     p_install.add_argument(
-        "--gateway-url",
-        default=None,
-        help="also wire ANTHROPIC_BASE_URL to this LLM gateway",
-    )
-    p_install.add_argument(
-        "--gateway-key",
-        default=None,
-        help="also wire ANTHROPIC_AUTH_TOKEN and SEDIMENT_GATEWAY_KEY "
-        "(the key agents present to the gateway)",
-    )
-    p_install.add_argument(
         "--fleet",
         action="store_true",
         help="emit the machine-wide MDM bundle instead of a per-repo install",
@@ -3954,15 +3928,13 @@ def main(argv: list[str] | None = None) -> int:
             or args.transcripts
             or args.no_env
             or args.user_id is not None
-            or args.gateway_url is not None
-            or args.gateway_key is not None
             or args.codex_profile is not None
         )
         if args.fleet:
             if per_user_flags:
                 _error(
                     "REPO, --no-agents, --transcripts, --codex-profile, and the env "
-                    "flags (--no-env/--user-id/--gateway-*) do not apply "
+                    "flags (--no-env/--user-id) do not apply "
                     "to --fleet"
                 )
                 return 2
@@ -3983,8 +3955,6 @@ def main(argv: list[str] | None = None) -> int:
             transcripts=args.transcripts,
             env=not args.no_env,
             user_id=args.user_id,
-            gateway_url=args.gateway_url,
-            gateway_key=args.gateway_key,
             codex_profile=args.codex_profile,
         )
     if args.command == "uninstall":

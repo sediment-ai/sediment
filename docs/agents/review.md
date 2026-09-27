@@ -1,7 +1,7 @@
 # Review closeout — what blocks a merge
 
 How to run and consume an adversarial review of a behavior-changing PR
-before it merges (Claude Code: `/review-closeout`). [Scope governor](#scope-governor)
+before it merges (skill: `.skills/review-closeout/SKILL.md`). [Scope governor](#scope-governor)
 is the rule set that keeps review-triggered fixes from growing the PR past
 its baseline. Merging always requires a maintainer's approval regardless of
 any clean review.

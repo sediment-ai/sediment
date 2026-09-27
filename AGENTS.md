@@ -90,7 +90,7 @@ guide](https://developers.google.com/style) governs every word an agent
 writes here — chat replies, PR descriptions, issue comments, commit bodies,
 and every page under `docs/`. `docs/agents/writing-style.md` pins the rules
 drafts break by default and this repo's overrides; read it before writing a
-`docs/` page, PR description, or issue comment (Claude Code: `/google-style`).
+`docs/` page, PR description, or issue comment; use `.skills/google-style/SKILL.md`.
 
 The short list, which holds in every reply:
 
@@ -173,11 +173,11 @@ on an orphan. Report a routed file that does not exist as a bug.
 
 | Topic | Read |
 |---|---|
-| Deploy, secure, enroll a team, verify | `docs/operate/deploy.md`; `docs/operate/security.md`; `docs/operate/run-pilot.md`; `docs/operate/validate-deployment.md` |
-| Network exposure; quarantine and incident response | [Network exposure](docs/operate/deploy.md#84-network-exposure); [Quarantine and wholesale deletion](docs/operate/deploy.md#83-quarantine-and-wholesale-deletion) |
-| Run, scope, profile, and recompute Derivations | `docs/operate/run-derivations.md`; `docs/operate/profile-derivations.md`; `docs/adr/0020-bounded-derivation-execution.md` |
-| Measure agent work; merge retention and the lifecycle report | `docs/operate/measure-agent-work.md`; `docs/operate/lifecycle-report.md` |
-| Review release verification | `docs/operate/rehearse-release.md` |
+| Deploy on EC2 or your own host, then enroll a team | `docs/operate/deploy-ec2.md`; `docs/operate/deploy.md`; `docs/operate/run-pilot.md` |
+| Upgrade, back up, rotate credentials, quarantine, tear down; stored data, network exposure, release checks | `docs/operate/maintain.md`; `docs/operate/security.md` |
+| Run, scope, and recompute Derivations; profile them | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
+| Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
+| Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
 | Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026 |
 | Synthetic scenarios | `sim/README.md` |
 
@@ -186,7 +186,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Topic | Read |
 |---|---|
 | One developer machine: git hooks, agent hooks, transcripts, sender replay | `docs/capture/local-capture.md` |
-| Choose an agent integration | `docs/capture/agent-integrations.md`; `docs/capture/agents/claude-code.md`; `docs/capture/agents/codex.md`; `docs/capture/agents/cursor.md` |
+| Choose an agent integration | `docs/capture/agent-integrations.md`; `docs/capture/agents/claude-code.md`; `docs/capture/agents/codex.md`; `docs/capture/agents/cursor.md`; `docs/capture/agents/pi.md` |
 | Gateways, webhooks, mirrors, fleet distribution | `docs/capture/managed-capture.md` |
 
 **Exports** (`docs/exports/`)
@@ -247,22 +247,20 @@ deployment (`SEDIMENT_ORG_ID`), never to the request. Response shapes:
 
 ## Agent skills
 
-Start with `docs/onboarding.md` and `CONTRIBUTING.md`. Claim an issue before
-starting; PRs say `Closes #<n>`.
+Repository skills live in `.skills/`. Every harness reads the matching
+`SKILL.md` before its task; resolve repository paths from the checkout root.
+Use this index directly when the harness doesn't discover `.skills/` itself.
 
-- **Issue tracker.** GitHub issues in `sediment-ai/sediment` (`gh` CLI).
-  Labels, lifecycle, and external-PR triage: `docs/agents/issue-tracker.md`.
-- **Doc sync.** Before opening or updating a PR, follow
-  `docs/agents/doc-sync.md` (Claude Code: `/doc-sync`). CI enforces the
-  mechanical half with `scripts/check_docs.py`. Page modes (tutorial,
-  how-to, reference, explanation) live in `docs/agents/doc-style.md`; read it
-  and `docs/agents/writing-style.md` before adding a page.
-- **Review closeout.** Behavior-changing PRs get an adversarial review before
-  merge: `docs/agents/review.md` (Claude Code: `/review-closeout`). Merging
-  always requires a maintainer's approval.
-- **Mermaid diagrams.** Read `docs/agents/mermaid-diagrams.md` (Claude Code:
-  `/beautiful-mermaid`) before editing any ` ```mermaid ` block under
-  `docs/` or in `README.md`.
-- **Domain docs.** Single context: `CONTEXT.md` holds the domain terms and
-  `docs/adr/` the architectural decisions. Put new ones there. See
-  `docs/agents/domain.md`.
+| Task | Skill | Maintained procedure |
+|---|---|---|
+| Prepare and publish a release | [.skills/sediment-release/SKILL.md](.skills/sediment-release/SKILL.md) | `CONTRIBUTING.md` |
+| Sync docs before opening or updating a PR | [.skills/doc-sync/SKILL.md](.skills/doc-sync/SKILL.md) | `docs/agents/doc-sync.md` |
+| Review a behavior-changing PR before merge | [.skills/review-closeout/SKILL.md](.skills/review-closeout/SKILL.md) | `docs/agents/review.md` |
+| Write or edit prose | [.skills/google-style/SKILL.md](.skills/google-style/SKILL.md) | `docs/agents/writing-style.md`; `docs/agents/doc-style.md` |
+| Edit or verify a Mermaid diagram | [.skills/beautiful-mermaid/SKILL.md](.skills/beautiful-mermaid/SKILL.md) | `docs/agents/mermaid-diagrams.md` |
+
+Start with `docs/onboarding.md` and `CONTRIBUTING.md`. Claim an issue before
+starting; PRs say `Closes #<n>`. GitHub issues live in `sediment-ai/sediment`;
+follow `docs/agents/issue-tracker.md`. Merging requires a maintainer's approval.
+Put domain terms in `CONTEXT.md` and architectural decisions in `docs/adr/`;
+follow `docs/agents/domain.md`.

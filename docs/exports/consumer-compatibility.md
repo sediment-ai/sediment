@@ -30,7 +30,7 @@ If a limit is exceeded, the complete export fails before publication. Sediment
 preserves the destination and removes its private staging. Capacity failures
 don't become eligibility skips or smaller successful datasets. For a larger
 export, use canonical rows without `--profile` and qualify downstream conversion
-separately. The [profiling guide](../operate/profile-derivations.md) explains
+separately. The [profiling procedure](../../CONTRIBUTING.md#profile-reports-and-derivations) explains
 resource measurement and qualification boundaries.
 
 ## Install the matching optional environment
@@ -43,7 +43,7 @@ published Sediment release with the versions listed in the
 ```bash
 uv venv --python 3.12 "$HOME/.local/share/sediment-consumer"
 uv pip install --python "$HOME/.local/share/sediment-consumer/bin/python" \
-  'sediment-cli==0.2.0' 'datasets==5.0.1' 'trl==1.13.0' \
+  'sediment-cli==0.3.0' 'datasets==5.0.1' 'trl==1.13.0' \
   'transformers==5.17.0' 'torch==2.14.0'
 export PATH="$HOME/.local/share/sediment-consumer/bin:$PATH"
 ```

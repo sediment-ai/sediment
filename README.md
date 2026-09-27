@@ -7,7 +7,7 @@
 </p>
 
 [![Continuous integration](https://github.com/sediment-ai/sediment/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sediment-ai/sediment/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/sediment-cli)](https://pypi.org/project/sediment-cli/)
+[![PyPI](https://img.shields.io/pypi/v/sediment-cli?release=0.3.0)](https://pypi.org/project/sediment-cli/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](CONTRIBUTING.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Follow @sedimentai on X](https://img.shields.io/badge/Follow-%40sedimentai-000000?logo=x&logoColor=white)](https://x.com/sedimentai)
@@ -48,8 +48,9 @@ Follow the
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
 
-For a shared pilot, [deploy Sediment](docs/operate/deploy.md) on EC2 or an existing host.
-Follow the [pilot guide](docs/operate/run-pilot.md) to enroll developers and verify capture.
+To run Sediment for a team, [deploy it on EC2](docs/operate/deploy-ec2.md), or
+[on your own host](docs/operate/deploy.md) if you already run PostgreSQL and
+HTTPS. Then [enroll your team](docs/operate/run-pilot.md).
 
 ## Architecture
 

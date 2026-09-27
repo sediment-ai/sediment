@@ -44,7 +44,7 @@ your last commit.
 | New skip reason or changed vocabulary | The playbook's skip-vocabulary list |
 | New/renamed/deleted `docs/*.md` | AGENTS.md router row (no-orphan rule — route the maintained page); for a page under `capture`, `explanation`, `exports`, or `operate`, update `docs/published-pages.json` |
 | New `*Policy` or settings class | [Policy](../../CONTEXT.md#policy-policy-policy_version), the playbook, and the env-var surface list in `docs/agents/api-and-operations.md` |
-| New CLI subcommand, flag, or script | `docs/agents/api-and-operations.md`, then regenerate the reference: `uv run python scripts/gen_cli_docs.py` (CI runs `--check`). Claude Code users: also the allowlist in `.claude/settings.json` if the command is safe to run unattended |
+| New CLI subcommand, flag, or script | `docs/agents/api-and-operations.md`, then regenerate the reference: `uv run python scripts/gen_cli_docs.py` (CI runs `--check`) |
 | New/changed HTTP route, auth, or response shape | [Service invariants](api-and-operations.md#service-invariants-appsapi), then regenerate spec and reference: `uv run python scripts/dump_openapi.py && uv run python scripts/gen_api_docs.py` (CI runs `--check` on both). A new route also needs an auth-map entry in `scripts/dump_openapi.py` and a contract entry in `scripts/gen_api_docs.py` — both fail the run until it has one |
 | New/changed field on a Fact model, derived artifact, or training row | Regenerate the schemas, catalog, and schema reference: `uv run python scripts/gen_schema_docs.py` (CI runs `--check`). A new field needs a description in `scripts/gen_schema_docs.py`'s `COMMON` or `FIELDS` — the run fails until it has one |
 | Renamed/moved symbol a doc cites | Step 3's repo-wide `git grep` over `*.md` |

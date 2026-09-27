@@ -1480,9 +1480,7 @@ def cursor_managed_install(tmp_path, monkeypatch, cursor_decision_endpoint):
     monkeypatch.setattr(mod, "_sh_env_file", lambda: environment)
     monkeypatch.setattr(mod, "_fish_env_file", lambda: tmp_path / "capture.fish")
     mod._write_env_files(
-        mod._env_pairs(
-            cursor_decision_endpoint, "cursor-token", "developer", None, None
-        )
+        mod._env_pairs(cursor_decision_endpoint, "cursor-token", "developer")
     )
     # A GUI process has neither the endpoint nor the credential from this file.
     monkeypatch.delenv("SEDIMENT_INGEST_TOKEN", raising=False)
@@ -2962,7 +2960,7 @@ def test_env_wiring_writes_0600_files_with_the_runbook_block(
     mod = _load_module()
     monkeypatch.setenv("HOME", str(tmp_path))
     _login_config(tmp_path)
-    summary = mod.cmd_install_env("developer", None, None)
+    summary = mod.cmd_install_env("developer")
     assert "restart running agent sessions" in summary
     sh = tmp_path / ".sediment" / "env.sh"
     fish = tmp_path / ".config" / "fish" / "conf.d" / "sediment.fish"
@@ -2974,28 +2972,9 @@ def test_env_wiring_writes_0600_files_with_the_runbook_block(
     assert "'Authorization=Bearer tok-405'" in body
     assert "export SEDIMENT_INGEST_TOKEN=tok-405" in body
     assert "export OTEL_RESOURCE_ATTRIBUTES=user.id=developer" in body
-    assert "ANTHROPIC_BASE_URL" not in body  # no gateway flags given
+    assert "ANTHROPIC" not in body  # gateway routing is operator-distributed
     assert "set -gx OTEL_LOGS_EXPORTER otlp" in fish.read_text()
     assert "set -gx SEDIMENT_INGEST_TOKEN tok-405" in fish.read_text()
-
-
-def test_env_wiring_gives_both_harnesses_the_gateway_key(tmp_path, monkeypatch) -> None:
-    mod = _load_module()
-    monkeypatch.setenv("HOME", str(tmp_path))
-    _login_config(tmp_path)
-
-    mod.cmd_install_env(
-        None,
-        "https://gateway.example.com",
-        "gateway-key-405",
-    )
-
-    sh = (tmp_path / ".sediment" / "env.sh").read_text()
-    fish = (tmp_path / ".config" / "fish" / "conf.d" / "sediment.fish").read_text()
-    assert "export ANTHROPIC_AUTH_TOKEN=gateway-key-405" in sh
-    assert "export SEDIMENT_GATEWAY_KEY=gateway-key-405" in sh
-    assert "set -gx ANTHROPIC_AUTH_TOKEN gateway-key-405" in fish
-    assert "set -gx SEDIMENT_GATEWAY_KEY gateway-key-405" in fish
 
 
 def test_env_wiring_profile_block_is_idempotent(tmp_path, monkeypatch) -> None:
@@ -3004,8 +2983,8 @@ def test_env_wiring_profile_block_is_idempotent(tmp_path, monkeypatch) -> None:
     _login_config(tmp_path)
     profile = tmp_path / ".zprofile"
     profile.write_text("# mine\n")
-    mod.cmd_install_env(None, None, None)
-    mod.cmd_install_env(None, None, None)
+    mod.cmd_install_env(None)
+    mod.cmd_install_env(None)
     content = profile.read_text()
     assert content.count(mod.ENV_BLOCK_BEGIN) == 1
     assert content.startswith("# mine\n")
@@ -3014,7 +2993,7 @@ def test_env_wiring_profile_block_is_idempotent(tmp_path, monkeypatch) -> None:
 def test_env_wiring_skips_when_not_logged_in(tmp_path, monkeypatch) -> None:
     mod = _load_module()
     monkeypatch.setenv("HOME", str(tmp_path))
-    summary = mod.cmd_install_env(None, None, None)
+    summary = mod.cmd_install_env(None)
     assert "capture credential is absent" in summary
     assert not (tmp_path / ".sediment" / "env.sh").exists()
 
@@ -3025,7 +3004,7 @@ def test_unwire_env_removes_files_and_blocks(tmp_path, monkeypatch) -> None:
     _login_config(tmp_path)
     profile = tmp_path / ".profile"
     profile.write_text("keep me\n")
-    mod.cmd_install_env(None, None, None)
+    mod.cmd_install_env(None)
     removed = mod._unwire_env()
     assert len(removed) == 3  # env.sh, fish file, one profile block
     assert profile.read_text() == "keep me\n"

@@ -2,8 +2,55 @@
 
 ## Unreleased
 
+### Capture
+
+- Restructure the Capture docs. Capture pi work moves out of Agent
+  integrations into its own page, like the other agents. Agent integrations
+  becomes a comparison page that also shows Inference-call support. To opt in
+  to transcript capture, rerun `sediment install` with `--transcripts`; the
+  generated environment already holds the endpoint and token. Configure local
+  capture, Roll out managed capture, and the agent guides drop repeated steps,
+  and managed capture puts the GitHub webhooks first.
+
+### Command line
+
+- Remove `sediment install --gateway-url` and `--gateway-key`. The operator
+  distributes gateway routing and client credentials through managed settings
+  or MDM; developers no longer receive a gateway key. Reinstalling drops
+  `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
+  the generated environment files. See
+  [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+
 ### Deployment
 
+- Restructure the Operate docs into one path: deploy on EC2 or on your own
+  host, enroll your team, then measure agent work. Deploy Sediment becomes
+  Deploy Sediment on your own host. Enroll your team replaces the Cursor, pi,
+  and Codex pilot, creates capture tokens, and covers Claude Code. Maintain a
+  deployment collects upgrades, backups, credential rotation, quarantine,
+  troubleshooting, and teardown. Secure a deployment collects stored data,
+  credential authority, network exposure, and release checks. Retrieval setup
+  lives only in Continue a task with captured evidence, and Measure agent work
+  absorbs the lifecycle report. Remove Validate a deployment and Review release
+  verification. Move Profile reports and Derivations to CONTRIBUTING.md as a
+  maintainer procedure.
+
+### Contributor checks
+
+- Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
+  comparison's exact version check and task-selection tests with the lockfile.
+- Centralize repository agent skills in `.skills/`, including release preparation
+  and publication. Route every skill from `AGENTS.md` and remove the repository
+  Claude Code settings so agents can read the same procedures across harnesses.
+  Require verification of the README PyPI badge during release closeout.
+
+## 0.3.0 — 2026-09-27
+
+### Deployment
+
+- Move the contributor Compose runbook from `docker/README.md` to
+  [Rehearse the single-host Compose deployment](docs/operate/rehearse-compose.md)
+  and publish it with the operator docs.
 - Install EC2 deployments from a published Sediment package version, with the
   published PostgreSQL and Traefik images. Remove the source checkout and local
   image builds from the operator procedure. Document systemd startup,
@@ -11,8 +58,9 @@
 - Stop a failed command block in Deploy Sediment, the Quickstart, or the
   Compose rehearsal without closing your terminal. The blocks chain their
   commands instead of calling `exit 1`.
-- Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
-  installation procedure.
+- Publish the EC2 and Traefik setup as its own page, Deploy Sediment on EC2
+  with Traefik. Deploy Sediment keeps the existing-host installation and the
+  enrollment, upgrade, and data-handling procedures that both pages share.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
   the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
   provider access, and configure one hostname with automatic certificate renewal.
@@ -25,15 +73,24 @@
 
 ### Command line
 
-- Show the compact signal-red Sediment logo with `sediment --version` on
-  supported interactive terminals, followed by the version number without a
-  name or website footer. Preserve version-only output for pipes,
+- Keep concurrent enqueues to the transport buffer on macOS from declining
+  with `storage_unavailable`. On APFS, racing opens that create the shared
+  enqueue lock could fail. Callers that allow a direct fallback then sent the
+  payload without buffering it. Enqueue creates the lock exclusively and opens
+  the existing file when another publisher creates it first.
+- Show the compact Sediment logo with `sediment --version` on supported
+  interactive terminals, in the terminal's own text color, followed by the
+  version number without a name or website footer. Preserve version-only output for pipes,
   `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
+- Read a missing `--mirror-path` without creating it. Reports and exports treat
+  every mirror there as absent instead of writing lock files under that path,
+  or failing when the path can't be created.
 
 ### Contributor checks
 
-- Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
-  comparison's exact version check and task-selection tests with the lockfile.
+- Skip the artifact scans for pull requests that change only Markdown under
+  `docker/` or `security/`, such as the gateway README. No image or scanner
+  verdict depends on Markdown.
 - Route agents through `AGENTS.md` alone. Claude Code reads it directly, so
   remove `CLAUDE.md` and the `SessionStart` hook that repeated it, and stop
   requiring `CLAUDE.md` in the docs check. Prune the router and correct its
@@ -52,7 +109,7 @@
   input changes; `main`, a daily run, and releases always scan, and a failure on
   `main` opens or updates one tracking issue.
 - Run the required workflows on merge-queue groups.
-- Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.6. Keep the
+- Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.9. Keep the
   TruffleHog action, executable, and complete-tree scanner image pins aligned.
 
 ### Installation
@@ -74,6 +131,12 @@
 - Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
   gateway's reviewed OpenSSL and supporting packages so rolling repository
   updates don't introduce an OpenSSL configuration-file conflict.
+- Update the supplied gateway to LiteLLM 1.103.0, the release that the
+  latest-stable security gate requires. The guarded vendor patch covers the
+  Prisma SQLSTATE lookup that 1.103.0 adds and returns `None` from it when
+  Prisma is absent. Remove the Vertex speech SDK that this release adds, which
+  the gateway doesn't use. Drop the MCP 1.30.0 override: the vendor image ships
+  the MCP 2.2.0 release that LiteLLM 1.103.0 requires.
 
 - Wait for API health in Docker deployment instructions. Support separate
   Compose project image tags and loopback ports for local pilot rehearsals.

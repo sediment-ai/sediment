@@ -690,28 +690,42 @@ class MirrorManager:
                 raise ValueError("nested mirror snapshot cannot add repository locks")
             yield self
             return
+        # A read never creates the base directory. Without one no mirror
+        # exists to hold stable, so the snapshot takes no locks and reports
+        # every mirror absent until it ends — a first clone that starts
+        # mid-read is never seen half-built.
+        base_present = self.base.is_dir()
         with ExitStack() as stack:
-            for name in names:
-                stack.enter_context(_locked(self._lock_file(name)))
-            self._read_snapshot_state.held = (os.getpid(), frozenset(names))
+            if base_present:
+                for name in names:
+                    stack.enter_context(_locked(self._lock_file(name)))
+            self._read_snapshot_state.held = (
+                os.getpid(),
+                frozenset(names),
+                base_present,
+            )
             try:
                 yield self
             finally:
                 del self._read_snapshot_state.held
+
+    def _snapshot_lacks_base(self) -> bool:
+        held = getattr(self._read_snapshot_state, "held", None)
+        return held is not None and held[0] == os.getpid() and not held[2]
 
     def open(self, org_id: str, repo: str) -> RepoMirror | None:
         """Legacy-only accessor: the existing mirror for (org, repo), or None
         when the repo was never mirrored. Never fetches — derivations must
         not touch the network."""
         path = self._mirror_path(org_id, repo)
-        if not (path / "HEAD").exists():
+        if self._snapshot_lacks_base() or not (path / "HEAD").exists():
             return None
         return RepoMirror(path)
 
     def open_repository(self, key: RepositoryKey) -> RepoMirror | None:
         """Open one exact repository lifetime without fetching or inferring it."""
         path = self._repository_path(key)
-        if not (path / "HEAD").exists():
+        if self._snapshot_lacks_base() or not (path / "HEAD").exists():
             return None
         return RepoMirror(path)
 

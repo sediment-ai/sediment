@@ -1,0 +1,3 @@
+interface:
+  display_name: "Sediment Release"
+  short_description: "Prepare, validate, and publish Sediment releases"

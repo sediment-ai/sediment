@@ -1,46 +1,39 @@
 # Run derivations
 
-Use `sediment derive` to create a reviewed, immutable bundle of Attributed
-completions and Rollouts before you export training rows. The command derives
-the deployment's configured organization. It doesn't accept an organization
-selection flag.
+Use `sediment derive` to build a reviewed, immutable bundle of Attributed
+completions and Rollouts, and then export training rows from that bundle.
+[How Derivation works](../explanation/how-derivation-works.md) explains the
+snapshot, policy, and bundle contracts.
 
-## Prerequisites
+Run the commands from the operator shell.
+[Set up an operator shell](deploy-ec2.md#set-up-an-operator-shell) shows it
+for EC2, and [the same section](deploy.md#set-up-an-operator-shell) for your
+own host. `sediment derive` reads PostgreSQL and the Git mirrors, and derives
+the organization in `SEDIMENT_ORG_ID`.
 
-Configure the deployment organization, operator database connection, and mirror
-root. Don't reuse the API's restricted runtime credential:
+## Build a bundle
 
-```bash
-export SEDIMENT_ORG_ID=acme-corp
-export SEDIMENT_DATABASE_URL='postgresql+psycopg://sediment_operator@database.example/sediment'
-export SEDIMENT_MIRROR_PATH=/data/mirrors
-```
-
-Store the real database URL in a protected environment file or secret manager.
-The example omits a password. The command needs read access to the PostgreSQL
-Fact store and mirrors. Missing mirrors don't stop the run. Sediment records
-them under `skipped` and may produce fewer Attributions.
-
-## Create a complete organization bundle
-
-Choose a destination that doesn't exist, then run the Derivation:
+Choose a destination that doesn't exist, and run:
 
 ```bash
 sediment derive --out /data/derived/2026-08-19
 ```
 
-If you omit `--users`, the command includes every user in
-`SEDIMENT_ORG_ID`. An empty organization is valid. It produces a manifest and
-six zero-byte JSONL files.
+Sediment derives every artifact from one read-only database snapshot, so
+concurrent capture can't mix states within the bundle. The command prints
+artifact counts, the `skipped`, `fragmented`, and `excluded` counts, the policy
+digest, and the bundle's `as_of` time.
 
-The command prints artifact counts, referenced-inference-call count, `skipped`,
-`fragmented`, `excluded`, the complete policy digest, and the Fact-derived `as_of` time.
-It derives every artifact through one read-only `REPEATABLE READ` snapshot, so
-concurrent ingest can't mix Fact states within the bundle.
+The bundle holds `manifest.json` and six JSONL files. The directory has mode
+`0700`, and each file has mode `0600`. Sediment never overwrites a bundle, so
+each run needs an unused destination.
+
+Missing mirrors don't stop the run. Sediment counts them under `skipped`, and
+the bundle can hold fewer Attributions.
 
 ## Select a cohort
 
-Pass user IDs once, separated by spaces:
+To limit the bundle to some users and a time window, run:
 
 ```bash
 sediment derive \
@@ -50,18 +43,15 @@ sediment derive \
   --until 2026-09-01T00:00:00Z
 ```
 
-`--since` is inclusive, and `--until` is exclusive. Both flags require a
-timezone-aware RFC 3339 timestamp and select by inference-call observation
-time.
-
-Sediment keeps a complete Rollout when at least one of its inference calls
-falls inside the time interval. If a user allowlist is present, every
-inference-call user in the Rollout must be allowed. Sediment excludes and
-counts a mixed-user Rollout.
+`--since` is inclusive and `--until` is exclusive. Both need a timezone, and
+both select by Inference call observation time. Sediment keeps a whole Rollout
+when any of its Inference calls falls in the window. It excludes and counts a
+Rollout that mixes allowed and other users.
 
 ## Set Derivation policy
 
-Create a strict TOML file with only the fields that you want to override:
+To change a default, write a TOML file with only the fields that you want to
+override. These values are the defaults:
 
 ```toml
 schema_version = 1
@@ -90,192 +80,102 @@ sediment derive \
   --out /data/derived/policy-a
 ```
 
-The loader rejects unknown sections, unknown fields, unsupported schema
-versions, and out-of-bounds values. Omitted values use code defaults. The
-manifest expands every value and records the SHA-256 digest of the resolved
-policy.
+The loader rejects unknown fields, unsupported versions, and out-of-range
+values. The manifest records every resolved value and the policy's SHA-256
+digest.
 
-The manifest records the bundle schema, policy versions, and resolved policy
-digest. These identifiers are separate from Evidence recipe versions and the
-database revision. Without `--policy`, Sediment uses the defaults shown in the
-TOML example.
+`eval_fraction` assigns about that share of Sessions to evaluation, by a hash
+of the Session identifier. Set it to `0.0` to write no split. The split keeps
+each Session on one side, but the same repository, prompt, or task can appear
+on both sides. If your evaluation needs unseen repositories or tasks, assign
+them in your own versioned benchmark manifest before training.
 
-## Check the holdout boundary
+## Inspect the bundle
 
-The `[split]` section implements one Session-grained train/eval split.
-`eval_fraction = 0.1` assigns about 10% of Sessions to evaluation by hashing
-their identifiers. The assignment is deterministic and independent of ingest
-order.
-
-If you intend to disable split files, set the fraction to `0.0`.
-
-Use this split to keep the rows from one developer-agent workflow together.
-The split doesn't keep a repository, exact prompt, or external task identifier
-on one side when that identity appears in several Sessions.
-
-If your evaluation claim requires an unseen repository, prompt, or task, make
-that assignment in a versioned benchmark manifest before training. Audit the
-export against that manifest.
-
-The policy doesn't support a `split.mode` field. Task-keyed isolation requires
-a separate benchmark manifest.
-
-## Inspect sample rows
-
-Standard output contains only the summary. To print the first `N` Attributed
-completions and Rollouts after a successful write, add `--sample N`:
+To print the first `N` Attributed completions and Rollouts after the write,
+add `--sample N`:
 
 ```bash
 sediment derive --out /data/derived/review --sample 2
 ```
 
-Samples can contain prompts, responses, decisions, and CI outcomes. Treat the
-terminal output as sensitive.
+Samples can contain prompts, responses, and decisions, so treat the terminal
+output as sensitive.
 
-CI outcome order in a bundle is stable evidence order, not semantic attempt
-order. Exports recompute `CIResolution` from provider `run_id` and
-`run_attempt`. Before training, inspect the `conflicting_run_identity` and
-`ambiguous_workflow_verdicts` counts. A suspected-flake verdict can remain
-`passed` or `failed` while carrying reliability 0.0.
+Before you train, check these counts:
 
-For a complete review, inspect `manifest.json` and the six JSONL files. The
-directory mode is `0700`; every file mode is `0600`. Bundle version 4 declares
-`record_encoding: "sediment-record-json-v1"`. Decode each line's `record_json`
-string to inspect the canonical record. Use the bundle reader when exporting;
-it validates the envelope, metadata, and canonical relationships.
+- `skipped`: each closed reason says why an input didn't qualify. For example,
+  `unmatched_decision_call_id` means that a Developer decision names no
+  captured Inference call. A narrow cohort appears under `excluded`, not
+  `skipped`.
+- `fragmented`: each Turn stays in a Segment. Read `prior_output_absent`,
+  `input_history_changed`, and `prior_output_not_replayed` before you treat
+  separate Segments as one trajectory.
+- `conflicting_run_identity` and `ambiguous_workflow_verdicts`: CI outcomes that
+  exports can't resolve to one verdict.
 
-Keep `inference_call_identities.jsonl`, `repository_identities.jsonl`, and
-`repository_renames.jsonl` intact when selecting artifacts. Each file declares
-a complete organization population through `as_of`, including evidence outside
-the cohort. Each has an independent 50,000-row limit, which can refuse a small
-cohort in a large organization. Validate with `validate_derived_bundle` before projecting an
-in-memory bundle. Versions 1–3 require recomputation. Validation proves the
-bundle's internal relationships. It can't prove that an external producer
-supplied a complete or truthful Fact population.
+Each JSONL line wraps a canonical record in a `record_json` string. Use the
+bundle reader, which validates the whole bundle, rather than parsing lines
+yourself. Validation proves the bundle's internal relationships. It can't prove
+that an external producer supplied a complete or truthful Fact population.
 
-If the writer stops before reporting success, check the destination. If it
-exists, use `open_derived_bundle` to validate the complete artifact; another
-write refuses to overwrite it. If it is absent, retry with an unused
-destination. `SIGKILL` before the final directory rename can leave a private
-staging directory named `.<destination>.<suffix>`. Remove only the staging
-directory owned by that writer after confirming its process has ended.
-Process-interruption checks cover the rename boundary, not power-loss recovery.
+## Export from the bundle
 
-## Export a reviewed bundle
-
-Use the same bundle for each supported projection:
+Project the same bundle into each objective that you need:
 
 ```bash
 sediment export dpo --from /data/derived/review --out /data/export/dpo
 sediment export sft --from /data/derived/review --out /data/export/sft
-sediment export diff-sft --from /data/derived/review --out /data/export/diff-sft
-sediment export rlvr \
-  --target sediment \
-  --from /data/derived/review \
-  --out /data/export/rlvr
 ```
 
-Direct preference optimization (DPO) defaults to `dpo_human`. Supervised
-fine-tuning (SFT) and diff-shaped SFT (diff-SFT) default to `sft_curated`.
-Select outcome-derived evidence explicitly:
+Every export validates the bundle first and stops on invalid content. It never
+falls back to live Facts. [Choose a training export](../exports/training-exports.md)
+lists each objective, its Evidence recipes, and which ones also need mirrors.
 
-```bash
-sediment export dpo --recipe dpo_outcome \
-  --from /data/derived/review --out /data/export/dpo-outcome
-sediment export sft --recipe sft_verified \
-  --from /data/derived/review --out /data/export/sft-verified
-sediment export diff-sft --recipe sft_verified \
-  --from /data/derived/review --out /data/export/diff-sft-verified
-```
+## Compare two policies
 
-DPO and SFT read only the bundle. Diff-SFT and reinforcement learning from
-verifiable rewards (RLVR) targets `sediment` and `swe-bench` also require mirrors.
-The `nemo-gym` target can project a bundle without a mirror. Every command validates the
-bundle before projection and stops on invalid content; it doesn't substitute
-live Facts.
-
-[Recovery](../exports/recovery.md) reads CI Facts and mirrors directly and
-doesn't accept `--from`.
-
-## Recompute a bundle
-
-Sediment never overwrites a bundle directory. Choose a distinct destination
-for each run:
+Build each policy into its own destination:
 
 ```bash
 sediment derive --policy policy-a.toml --out /data/derived/policy-a
 sediment derive --policy policy-b.toml --out /data/derived/policy-b
 ```
 
-Compare `policy_digest`, scope, `as_of`, mirror revisions, counts, `skipped`,
-`fragmented`, and `excluded` before you compare rows. If you need the same destination name,
-move or delete the old build artifact explicitly, then rerun the command.
+Compare `policy_digest`, scope, `as_of`, and the `skipped`, `fragmented`, and
+`excluded` counts before you compare rows.
 
-## Diagnose failures
+## Troubleshoot
 
-If visible organization-wide Inference call identities through `as_of` exceed
-50,000, `sediment derive` exits 1 with
-`error: Inference call identity population exceeds 50000`. Direct training
-exports that build a bundle use the same limit. Importing an oversized bundle
-for `export --from` fails with `error: identity population exceeds row limit`.
-A narrower cohort doesn't reduce this required identity population.
+| Error | Action |
+| --- | --- |
+| `destination already exists` | Choose an unused path. There is no overwrite flag. |
+| `--since must be timezone-aware` | Add `Z` or a UTC offset. |
+| `unknown derivation policy field` | Remove the field. |
+| `SEDIMENT_MIRROR_PATH is not set` | Set it in the operator shell. |
+| `unsupported bundle_schema_version 1` | Rebuild the bundle into an unused destination. |
+| `Inference call identity population exceeds 50000` | See the following paragraph. |
 
-Record the failed command, its scope and `as_of`, and the error. Pause affected
-Derivations and exports, and request a supported capacity change from the
-maintainer. Don't trim identity files,
-quarantine valid Facts, or divide one organization into artificial tenants to
-bypass the completeness check.
+A bundle carries the organization's complete call and repository identity
+populations, each capped at 50,000 rows, even for a small cohort. A narrower
+cohort doesn't help. Don't trim identity files, quarantine valid Facts, or
+split the organization to get under the cap.
+[Open an issue](https://github.com/sediment-ai/sediment/issues) with the
+failed command and its `as_of`.
 
-- `unsupported bundle_schema_version 1`: recompute from Facts with `sediment
-  derive` into a distinct directory. Sediment does not rewrite the old bundle.
-- `destination already exists`: choose a different path. There is no overwrite
-  flag.
-- `--since must be timezone-aware`: include `Z` or a numeric UTC offset.
-- `unknown derivation policy field`: remove the field or use a supported
-  policy schema.
-- `SEDIMENT_MIRROR_PATH is not set`: configure the deployment's mirror root.
-- A non-empty `skipped` map: before exporting, inspect its closed reasons. A
-  narrow cohort should appear under `excluded`, not `skipped`.
-  Decision-attachment reasons under `attributed_completion` and `rollout`
-  distinguish a missing call identifier (`missing_decision_call_id`), an
-  identifier with no matching Inference call (`unmatched_decision_call_id`),
-  and an identifier that resolves to several calls
-  (`ambiguous_decision_call_id`). Scope mismatches use
-  `decision_org_mismatch` or `decision_session_mismatch`.
-  `rollout.attribution_note_unreadable` identifies a listed Attribution note
-  that couldn't be read or decoded.
-- A non-empty `fragmented` map: every Turn remains in a Segment. Inspect
-  `prior_output_absent`, `input_history_changed`, and `prior_output_not_replayed`
-  before treating separate Segments as one continuous trajectory.
+If `sediment derive` stops before it reports success, check the destination.
+If the destination exists, it holds a complete bundle. If it doesn't, rerun
+into an unused path. A process that ends abruptly can leave a private staging
+directory named `.<destination>.<suffix>` beside the destination. Remove it
+after the process has ended.
 
-[How Derivation works](../explanation/how-derivation-works.md) explains the
-snapshot, full-organization Derivation, policy, and bundle contracts.
+In a container where `/tmp` is memory-backed, set `TMPDIR` to a private
+disk-backed directory before a large run. The Compose `operator` service
+already does.
 
-## Use bounded bundle readers
+## Use the bundle from Python
 
-Use `build_derived_bundle_context` to derive a private file-backed bundle, or
-`open_derived_bundle` to validate and consume one from disk. Use either API
-within a context manager. Keep that context open through projection and
-publication. Access after context exit fails. `build_derived_bundle` and
-`read_derived_bundle` explicitly materialize a bundle with a default 64 MiB
-encoded payload limit. The CLI uses the bounded contexts.
-
-`BundleLimits` defaults to 512 MiB per encoded record and 8 GiB per private
-staging store. Overlapping stores consume separate budgets. These byte limits
-do not guarantee a fixed Python memory peak. An oversized record or stage raises
-`BundleCapacityError`; it does not truncate the artifact.
-
-The Compose `operator` service stages in the disk-backed `sediment-staging`
-volume through `TMPDIR`. In any other deployment that mounts `/tmp` as
-memory-backed storage, choose a private disk-backed `temporary_parent` or set
-`TMPDIR` before opening a large bundle. Memory-backed staging also counts
-against the container memory limit. Provision filesystem capacity independently
-of container memory. The context removes its private snapshot on normal exit
-and handled failure. A terminated or killed process leaves its stage behind;
-the next staging command in the same directory removes every stage whose owner
-no longer holds its lock and logs `abandoned_private_stage_removed`. An
-interrupted bundle publication directory beside `--out` is a complete private
-bundle, not a payload stage. Sediment leaves it for you to inspect or remove.
-
-For repeatable memory and storage measurements, follow
-[Profile reports and Derivations](profile-derivations.md).
+`build_derived_bundle_context` derives a file-backed bundle, and
+`open_derived_bundle` validates and opens one from disk. Use both as context
+managers, and keep the context open until you finish reading. For a small
+bundle, `build_derived_bundle` and `read_derived_bundle` load it into memory,
+up to 64 MiB of encoded payload.

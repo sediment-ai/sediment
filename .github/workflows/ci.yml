@@ -49,7 +49,7 @@ jobs:
       - name: Scan complete pull-request tree for secrets
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
         env:
-          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.6@sha256:cc1a591e83fec7bf56f64c15beaaa5d8e3d179a4165a03a087d07165296ef7df
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.9@sha256:52e67fef4d054ecff5c2ce4b4ae376626d1ef54aa0898b53cac19c25e92e14db
         run: |
           scan_root="${RUNNER_TEMP}/sediment-secret-scan"
           mkdir "$scan_root"
@@ -199,22 +199,23 @@ jobs:
       # unreachable-verifier half means a runner egress flake reads as a
       # finding — measured, not theoretical. Treat a lone `unknown` whose text
       # is a verification error as infra, and re-run.
-      # Dependabot bumps the action SHA below; the `version` input is a
-      # separate pin it does not track. Bump the action, version, and
-      # complete-tree image tag and digest together.
+      # Dependabot bumps the action SHA and its version comment below; the
+      # `version` input and the complete-tree image tag and digest are separate
+      # pins it does not track. Bump all three together; the contributor
+      # contract test fails until they agree.
       # Lob is excluded (twice-measured false-positive class):
       # its detector matches any `test_<35-36 word chars>` token near a
       # "lob" substring ("blob", "global"), i.e. ordinary pytest function
       # names, and its verifier "verifies" them. This repo will never hold
       # a real Lob (postal mail API) credential; re-include if one is ever
       # actually adopted.
-      - uses: trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a # v3.97.6
+      - uses: trufflesecurity/trufflehog@4dd8831c5f12599465d4d45c3c447b4018a34c85 # v3.97.9
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
           base: ${{ steps.secret-range.outputs.base || github.event.merge_group.base_sha || '' }}
           head: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && github.sha || '' }}
-          version: "3.97.6"
+          version: "3.97.9"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database
         if: always() && steps.scope.outputs.full == 'true'
