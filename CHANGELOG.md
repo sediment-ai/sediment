@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Contributor checks
+
+- Centralize repository agent skills in `.skills/`, including release preparation
+  and publication. Route every skill from `AGENTS.md` and remove the repository
+  Claude Code settings so agents can read the same procedures across harnesses.
+
 ## 0.3.0 — 2026-09-27
 
 ### Deployment

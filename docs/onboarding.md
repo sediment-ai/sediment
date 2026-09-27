@@ -8,7 +8,7 @@ locally, and how to contribute your first pull request.
 | Read | Why |
 |---|---|
 | 1. [`README.md`](../README.md) | The evidence store and its uses: evaluate agent work, reuse context, and build training datasets |
-| 2. [`AGENTS.md`](../AGENTS.md) | The router: non-negotiable rules, package map, topical docs. Claude Code and Codex load it automatically |
+| 2. [`AGENTS.md`](../AGENTS.md) | The router: non-negotiable rules, package map, topical docs, and shared agent skills. Read it before repository work. |
 | 3. [`CONTEXT.md`](../CONTEXT.md) | The domain vocabulary: Facts, Derivations, Attributed completions, and Rollouts. Use its terms exactly. |
 | 4. [`docs/adr/`](adr/) | The binding decisions: 0001–0005 core, 0006 open-core boundary, 0007 client-side transcript parsing, 0008 structured inference calls, 0009 canonical Attribution, [0010 canonical continuous integration outcomes](adr/0010-canonical-ci-outcome-facts.md), [0011 training-objective evidence](adr/0011-training-objectives-own-evidence-interpretation.md), [0012 PostgreSQL-only storage](adr/0012-postgresql-fact-store.md), [0013 Git-note observation Facts](adr/0013-git-note-observation-facts.md), [0014 factual outcomes and training evidence](adr/0014-factual-outcomes-and-training-evidence.md), [0015 lossless representation and bundle v2](adr/0015-lossless-values-and-bundle-v2.md), [0016 bundle derivation consistency](adr/0016-bundle-derivation-consistency.md), [0017 bounded sender transport storage](adr/0017-sender-transport-replay.md), [0018 credential authorities](adr/0018-static-credential-authorities.md), [0019 repository identity](adr/0019-repository-identity-and-renames.md), and [0023 indexed call identifiers](adr/0023-indexed-call-identifiers.md) |
 | 5. The playbook for your area | AGENTS.md's package map (`Read first` column) routes you into [`docs/agents/`](agents/) |
@@ -17,6 +17,10 @@ locally, and how to contribute your first pull request.
 Current status lives in `CHANGELOG.md` and the GitHub milestones. On a
 deployment, the operator front door is the `sediment` CLI —
 [`docs/agents/api-and-operations.md`](agents/api-and-operations.md).
+
+Shared agent skills live in `.skills/`. Read the matching skill from
+[Agent skills](../AGENTS.md#agent-skills) before its task. If your harness
+doesn't load `AGENTS.md`, open it explicitly at the start of the task.
 
 ## Local setup
 
@@ -58,12 +62,12 @@ to identify further savings before changing test parallelism.
 2. **Small pull requests against `main`**, `Closes #<n>` in the description, CI
    green.
 3. **Docs update in the same pull request** that changes behavior — follow
-   [`docs/agents/doc-sync.md`](agents/doc-sync.md) (Claude Code:
-   `/doc-sync`) before opening or updating the pull request.
+   [`docs/agents/doc-sync.md`](agents/doc-sync.md) through
+   `.skills/doc-sync/SKILL.md` before opening or updating the pull request.
 4. **Fill the pull request template's architecture check honestly.**
 5. Behavior-changing pull requests get an adversarial review before merge —
-   [`docs/agents/review.md`](agents/review.md) (Claude Code:
-   `/review-closeout`). Merging always requires a maintainer's approval.
+   [`docs/agents/review.md`](agents/review.md) through
+   `.skills/review-closeout/SKILL.md`. Merging requires a maintainer's approval.
 
 ## Working agreements
 

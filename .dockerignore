@@ -14,3 +14,4 @@ sediment_data/
 exports/
 .env
 .claude/
+.skills/
