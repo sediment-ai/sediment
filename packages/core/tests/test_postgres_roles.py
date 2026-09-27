@@ -20,6 +20,10 @@ from sediment_core.postgres_migrations import upgrade_database
 from sediment_core.postgres_schema import metadata
 
 ROLES = ("sediment_migrator", "sediment_runtime", "sediment_operator")
+# The role contract needs these cluster-wide roles absent, and any real
+# `sediment server` test provisions them. CI runs `cluster_roles` alone before
+# every other pass.
+pytestmark = pytest.mark.cluster_roles
 PASSWORDS = dict(
     zip(ROLES, ("migration-'special@secret", "runtime-secret", "operator-secret"))
 )

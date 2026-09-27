@@ -18,6 +18,10 @@ from pathlib import Path
 
 import pytest
 
+# Installed rehearsals enforce wall-clock deadlines that parallel test load
+# breaks, so CI runs `serial` tests alone after the parallel pass.
+pytestmark = pytest.mark.serial
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LICENSE_TEXT = (REPO_ROOT / "LICENSE").read_text(encoding="utf-8")
 MEMBER_PROJECTS = (

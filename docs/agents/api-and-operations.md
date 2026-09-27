@@ -148,7 +148,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   the way you would review an ACL.
 - `add_spdx.py` ROOTS covers `packages`, `apps`, `scripts`, `sim`, and
   `litellm`. CI runs `--check` over all of them.
-- `check_docs.py` gates doc freshness (`docs/agents/doc-sync.md`); `ci_preflight.py` selects conservative prose and shim checks and rejects stale source reviews before automatic artifact builds (`docs/onboarding.md`, `docs/operate/security.md`). Its `shims` command defaults to testing when the PR diff is unavailable; the stable workflow result rejects incomplete selected work.
+- `check_docs.py` gates doc freshness (`docs/agents/doc-sync.md`); `ci_preflight.py` selects conservative prose, shim, and artifact-scan checks and rejects source reviews whose image build input digest (`security_image_assurance.py review-digest`) is stale before automatic artifact builds (`docs/onboarding.md`, `docs/operate/security.md`). Its `shims` command defaults to testing when the PR diff is unavailable; the stable workflow result rejects incomplete selected work.
 - `release_rehearsal.py` verifies source, actions, wheels, and installed commands
   outside the checkout. `scratch_database` overrides the administrative database selector; `_run_installed_worker` owns bounded process-group cleanup. The caller's database receives no corpus or migration. Every stage must reconcile before success; [Release rehearsal and publication](../../CONTRIBUTING.md#release-rehearsal-and-publication) states the corpus and runtime limits.
 - `dump_openapi.py` regenerates `openapi.yaml` and injects the auth schemes. `gen_api_docs.py` renders `docs/reference/api.md` from that spec plus its own
