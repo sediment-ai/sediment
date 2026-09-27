@@ -269,6 +269,10 @@ The installer configures the agents that it finds on the machine:
 
 Supported edits mark the Session in the repository's Git directory.
 
+If pi is present, `doctor` reports `FAIL` when the extension is missing or
+unregistered. After upgrading or moving the CLI, rerun `sediment install`
+and remove any stale extension path from pi settings.
+
 ### Git hooks
 
 The installer adds three marked blocks to the repository's hook directory:

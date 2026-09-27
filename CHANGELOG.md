@@ -19,6 +19,10 @@
 
 ### Installation
 
+- Ship the MIT-licensed pi extension in the CLI wheel and source distribution.
+  `sediment install` registers it without a checkout or npm dependencies.
+  With pi present, `doctor` fails when the extension is missing or unregistered.
+  `sediment uninstall --agents` removes the registration.
 - Load managed capture settings inside Cursor hooks so desktop Agent writes
   don't depend on inherited shell variables. Preserve process-owned settings
   with `install --no-env`. Doctor checks the managed file; capture failures
