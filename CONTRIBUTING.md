@@ -610,10 +610,10 @@ collect evidence, then review or remove the disposition. Manual and release
 runs still enforce the final scanner gate.
 
 Pull requests and merge groups build and scan artifacts only when they change a
-scan input that `scripts/ci_preflight.py` lists. Pushes to `main`, a daily run,
-manual runs, and releases always scan. The
-[security drift workflow](.github/workflows/security-drift.yml) opens or updates
-one `security` issue when a run on `main` fails.
+scan input that `scripts/ci_preflight.py` lists. Markdown files are never scan
+inputs. Pushes to `main`, a daily run, manual runs, and releases always scan.
+The [security drift workflow](.github/workflows/security-drift.yml) opens or
+updates one `security` issue when a run on `main` fails.
 
 Draft pull requests wait until review readiness. The
 [prose validation path](docs/onboarding.md#your-first-pull-request) doesn't produce

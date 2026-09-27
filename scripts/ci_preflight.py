@@ -76,10 +76,15 @@ def requires_shim_validation(root: Path, event: str, base: str) -> bool:
 def requires_artifact_scans(root: Path, event: str, base: str) -> bool:
     """Skip artifact scans only for a readable PR diff outside the scan inputs."""
     names = _changed_paths(root, event, base)
+    # Markdown never enters an image or the scanner's verdict; review_digest
+    # skips it for the same reason.
     return names is None or any(
-        name in SCAN_FILES
-        or name.startswith(SCAN_PREFIXES)
-        or name.rsplit("/", 1)[-1] == "pyproject.toml"
+        not name.endswith(".md")
+        and (
+            name in SCAN_FILES
+            or name.startswith(SCAN_PREFIXES)
+            or name.rsplit("/", 1)[-1] == "pyproject.toml"
+        )
         for name in names
     )
 
