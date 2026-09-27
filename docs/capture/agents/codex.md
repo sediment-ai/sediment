@@ -20,12 +20,10 @@ limits.
 
 ## Before you begin
 
-You need the Sediment CLI, an endpoint and ingest-only token, a git repository, and
-Codex CLI installed. The profile procedure covers Codex 0.153.4; Codex Desktop
-selecting that profile isn't verified. In this guide, `<Codex home>` means the
-directory named by `CODEX_HOME`, or `~/.codex` when `CODEX_HOME` is unset.
-
-For deployment and shared setup, see [Configure local capture](../local-capture.md).
+Install the CLI and get a capture token with
+[Configure local capture](../local-capture.md). This guide covers Codex CLI
+0.153.4; Codex Desktop isn't verified. `<Codex home>` means `CODEX_HOME`, or
+`~/.codex` when it's unset.
 
 ## Install capture
 
@@ -42,9 +40,8 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    ```
 
    Replace `alice` with your developer identifier. The installer adds hooks to
-   `<Codex home>/hooks.json`. It also installs the repository git hooks and
-   writes the shared telemetry environment. The `sediment` Codex profile keeps
-   your model and other settings and adds native telemetry.
+   `<Codex home>/hooks.json`, and creates a `sediment` Codex profile that adds
+   telemetry to your existing model and settings.
 
 3. Load the environment, then start Codex with the telemetry profile:
 
@@ -53,61 +50,44 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    codex --profile sediment -C /path/to/repo
    ```
 
-4. Run `/hooks`.
-
-5. Review and trust the Sediment hooks. If an installation changes their
-   definitions, review and trust them again.
+4. Run `/hooks`, and trust the Sediment hooks. Trust them again whenever an
+   installation changes them.
 
 ## Configure Developer decisions
 
-The installer writes a managed `[otel]` table to
-`<Codex home>/sediment.config.toml`. It resolves the endpoint and ingest-only token
-from `sediment login --capture` and restricts the file to mode `0600`. It sets
-`log_user_prompt=false` to disable native user-prompt logging. It preserves
-the profile's model, provider, comments, and unrelated settings.
+The installer writes an `[otel]` table to `<Codex home>/sediment.config.toml`,
+with mode `0600`. Codex sends header values literally, so the file holds your
+capture token itself. Keep it private. The table sets `log_user_prompt=false`,
+and the installer keeps the profile's model, provider, and other settings.
 
-Native decision telemetry can include patch text or other tool arguments in a
-Developer decision's `raw` payload. This content can arrive without a transcript
-hook. `log_user_prompt=false` doesn't remove it, and `--transcripts` controls
-separate Edit observations rather than all code-text capture. Agree this payload
-with participants before enabling the profile.
+Decision telemetry can include patch text and other tool arguments, even
+without transcript capture. `log_user_prompt=false` doesn't remove them. Agree
+on this with participants before you enable the profile.
 
-If you rotate the capture token, refresh the profile before starting another
-Session:
+After you rotate the capture token, rerun the install command with the same
+flags to refresh the profile.
 
-```bash
-sediment install --user-id alice --codex-profile sediment /path/to/repo
-```
+If the profile already has an `[otel]` table that Sediment didn't write, choose
+another profile name, or remove that table. Generic `OTEL_EXPORTER_OTLP_*`
+variables don't configure Codex.
 
-If you need only a profile refresh, add `--no-env`; update other agents' token
-environments through their existing owner.
-
-If the profile already has an unmanaged `[otel]` table, use another profile name
-or remove that table yourself. The installer refuses malformed or conflicting
-content. Profile names start with a letter or digit and contain at most 64
-letters, digits, underscores, or hyphens.
-
-Codex requires the `[otel]` table. Generic `OTEL_EXPORTER_OTLP_*` variables
-alone don't configure its exporter. Codex 0.153.4 sends header values literally;
-`${SEDIMENT_INGEST_TOKEN}` in TOML doesn't resolve the token. The generated
-profile contains the resolved secret, so keep that file private.
-
-Sediment recognizes native `apply_patch` decisions and `exec_command`
-decisions whose command starts with an `apply_patch` heredoc. It excludes
-approvals for other shell commands. An interactive rejection can emit no
-decision event.
+Sediment records decisions for native `apply_patch` calls and for
+`exec_command` calls that start with an `apply_patch` heredoc. It ignores other
+shell commands.
 
 ## Configure inference-call capture
 
-If your operator routes Codex through a gateway, the operator distributes the
-`sediment` provider, the `gateway` profile, and its credential.
-[Distribute gateway routing](../managed-capture.md#distribute-gateway-routing)
-defines them. You don't need a gateway credential of your own.
+If your deployment routes Codex through a gateway, your operator distributes
+the `sediment` provider, the `gateway` profile, and its credential, as described
+in [Distribute gateway routing](../managed-capture.md#distribute-gateway-routing).
+You don't need a gateway credential.
 
-1. Add native telemetry to the gateway profile:
+1. Add native telemetry to the gateway profile. Pass your usual flags, not
+   `--no-env`, which would also switch Cursor's hooks to read the process
+   environment:
 
    ```bash
-   sediment install --codex-profile gateway --no-env /path/to/repo
+   sediment install --user-id alice --codex-profile gateway /path/to/repo
    ```
 
 2. Start Codex with the gateway profile:
@@ -116,99 +96,67 @@ defines them. You don't need a gateway credential of your own.
    codex --profile gateway -C /path/to/repo
    ```
 
-The gateway profile disables `image_generation` because the LiteLLM bridge
-rejects that tool. Codex carries Session identity in `x-codex-turn-metadata`;
-this route doesn't carry a user identifier.
+Codex carries its Session identifier in `x-codex-turn-metadata`. This route
+doesn't carry a user identifier.
 
 ## Configure Edit observations
 
-Transcript capture sends applied patch text and Session-end file content. It
-is a different privacy class from commit Attribution, so the installer leaves
-it off unless you opt in.
+Transcript capture sends applied patch text and the file's content at Session
+end, so it's off until you opt in. Rerun the installer with `--transcripts`
+added to your usual flags, and restart Codex:
 
-1. Persist the transcript endpoint and token in the environment that starts
-   Codex:
+```bash
+sediment install --user-id alice --codex-profile sediment --transcripts /path/to/repo
+. "$HOME/.sediment/env.sh"
+```
 
-   ```bash
-   export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
-   export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
-   ```
-
-2. Install the Codex `SessionEnd` extractor:
-
-   ```bash
-   sediment install --transcripts --no-env /path/to/repo
-   ```
-
-   The extractor requires a completed single-file patch with Session and tool-call
-   identity. It supports native patch events and supported `apply_patch` shell
-   calls. Multi-file patches can produce Developer decisions but no Edit
-   observation. An unreadable file yields no observation; a confirmed missing
-   file yields an empty observed value.
-
-3. Restart Codex after you install the hook.
-
+The `SessionEnd` extractor needs a completed single-file patch. A multi-file
+patch still produces Developer decisions, but no Edit observation.
 [Opt in to transcript capture](../local-capture.md#opt-in-to-transcript-capture)
-defines the shared endpoint safety rules and payload limits.
+covers the `--no-env` case.
 
 ## Verify capture
 
-Remote checks require a separate [operator login](../local-capture.md#verify-capture).
+Remote checks need a separate [operator login](../local-capture.md#verify-capture).
 
-1. Check the agent and repository configuration:
+1. Check the configuration:
 
    ```bash
    sediment doctor --fetch /path/to/repo
    ```
 
-2. Ask Codex to apply a patch.
-
-3. Commit the change.
-
-4. Inspect the Session note from inside the repository:
+2. Ask Codex to apply a single-file patch, end the Session, and commit the
+   change.
+3. Read the commit's Session note:
 
    ```bash
    git notes --ref=refs/notes/sediment show HEAD
    ```
 
-5. After telemetry flushes, verify the Session. Use the Session identifier from
-   the note:
+4. After telemetry flushes, check that Session on the server:
 
    ```bash
-   sediment doctor /path/to/repo --agent codex --session-id '<Session identifier>'
+   sediment doctor /path/to/repo --agent codex --session-id '<session_id>'
    ```
 
-The command requires a Codex Developer decision in that Session and its Codex
-Session entry in the local `HEAD` note. If you opted in to transcript capture,
-end the Session and add `--transcripts` to require an Edit observation. If you
-configured a gateway, add `--inference-calls` to require an Inference call in
-that Session. Missing, omitted, or unreadable evidence fails verification.
-Without these verification flags, `doctor` checks configuration and transport
-readiness; it doesn't prove that a Session delivered evidence.
+   The check needs a Codex Developer decision in that Session and its entry in
+   the note. With transcript capture, add `--transcripts`. For a
+   gateway-routed Session, add `--inference-calls`.
 
 ## Limits and troubleshooting
 
-- Interactive rejections can emit no Developer decision.
-- A pathless native patch, rejection, missing result, or cross-batch result
-  can produce one pathless Developer decision Fact.
-- A shell-tool decision without its in-batch result produces no Fact because
-  the decision alone doesn't prove an edit.
-- Single-file shell Update patches retain the first hunk with or without `@@`,
-  including move and end-of-file markers.
-- Multi-file patches have no Edit observations. Rejected edits, Retry
-  linkages, and external line counts aren't supported.
-- A native `FileChange` with absent or mismatched Session identity, an absent
-  tool-call identifier or timestamp, or an unproved result produces no Edit
-  observation. The extractor logs the reason and continues with other edits.
-- Transcript capture omits raw conversations, prompts, shell commands, shell
-  output, and the environment. Inference-call capture includes model inputs
-  and outputs.
-- `sediment uninstall --agents` removes hooks, shared environment files, and
-  managed telemetry blocks from every `*.config.toml` in the active Codex home.
-  It preserves unrelated settings and deletes profiles that become empty.
-  If it reports a skipped profile, inspect the file and remove only the managed
-  block before restarting Codex. That profile can retain its credential and
-  continue sending telemetry until you resolve it.
+- An interactive rejection can emit no Developer decision.
+- A decision without a file path, such as a rejection or a result in a later
+  batch, produces one Developer decision with an empty path. A shell-tool
+  decision without its result produces none.
+- Multi-file patches have no Edit observations. Codex doesn't support Rejected
+  edits, Retry linkages, or external line counts.
+- A patch event without a matching Session, tool-call identifier, timestamp, or
+  confirmed result produces no Edit observation. The extractor logs why.
+- Transcript capture omits conversations, prompts, shell commands, and shell
+  output. Inference-call capture includes model inputs and outputs.
+- To remove the telemetry profile, see
+  [Uninstall capture](../local-capture.md#uninstall-capture).
 - If `doctor --fetch` reports a notes-ref failure, follow
   [Repair a notes ref](../local-capture.md#repair-a-notes-ref).
 

@@ -13,8 +13,7 @@ exports/
 !docs/exports/
 .env
 .DS_Store
-.claude/settings.local.*
-.claude/worktrees/
+.claude/
 
 # Deployment-local compose overrides (mirror credentials etc.) — never in PRs
 compose.override.yml
@@ -29,4 +28,3 @@ litellm/config.local.yaml
 !.env.example
 .agents/
 skills-lock.json
-.claude/skills/asd-ste100
