@@ -25,6 +25,11 @@
 
 ### Command line
 
+- Keep concurrent enqueues to the transport buffer on macOS from declining
+  with `storage_unavailable`. On APFS, racing opens that create the shared
+  enqueue lock could fail. Callers that allow a direct fallback then sent the
+  payload without buffering it. Enqueue creates the lock exclusively and opens
+  the existing file when another publisher creates it first.
 - Show the compact signal-red Sediment logo with `sediment --version` on
   supported interactive terminals, followed by the version number without a
   name or website footer. Preserve version-only output for pipes,
