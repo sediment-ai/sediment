@@ -24,6 +24,13 @@ If you omit the optional gateway, exclude it from your deployed inventory. Keep
 its release evidence with the other supplied artifacts. If you use your own
 gateway or database, inventory and assess that software separately.
 
+Compose pins the pilot's Traefik image by digest. The release scanner checks
+the API, PostgreSQL, and gateway images, but doesn't check Traefik. Before
+deploying, review the proxy's dependencies, vulnerabilities, and support status
+separately. Compose tests check runtime behavior; they don't replace these
+security checks. [Issue 124](https://github.com/sediment-ai/sediment/issues/124)
+tracks adding the proxy to the release checks.
+
 ## Confine agent retrieval access
 
 If you enable context retrieval, bind its credential to one source Session or

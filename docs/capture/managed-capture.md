@@ -83,6 +83,14 @@ Fact. It is a successful acknowledgment. The
 [API reference](../reference/api.md) defines supported events and repository
 identity fields.
 
+If delivery fails after a DNS change, verify the hostname's public A record and
+HTTPS certificate. Check **Recent Deliveries** in the repository's webhook
+settings for GitHub's result; a request from your machine doesn't verify
+GitHub's connection. After connectivity recovers, [redeliver the failed
+events](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/redelivering-webhooks).
+GitHub doesn't automatically redeliver failed deliveries. Keep certificate and
+webhook signature verification enabled during recovery.
+
 For another continuous integration (CI) system, send normalized results to
 [`POST /ingest/ci`](../reference/api.md#post-ingestci) with an ingest token.
 Follow its required fields and identity rules. Only `passed` and `failed`

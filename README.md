@@ -48,7 +48,8 @@ Follow the
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
 
-[Deploy a shared server](docs/operate/deploy.md).
+For a shared pilot, [install the published server package](docs/operate/deploy.md).
+Follow the [pilot guide](docs/operate/run-pilot.md) to enroll developers and verify capture.
 
 ## Architecture
 

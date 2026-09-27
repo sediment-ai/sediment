@@ -144,6 +144,20 @@ jobs:
       # fixed deployment identities for its installed server.
       - run: uv run pytest -q --durations=30
         if: steps.scope.outputs.full == 'true'
+      - name: Exercise the complete pilot Compose deployment
+        if: steps.scope.outputs.full == 'true'
+        env:
+          SEDIMENT_TEST_COMPOSE: "1"
+          SEDIMENT_TEST_API_IMAGE: sediment-ci-api
+          SEDIMENT_TEST_POSTGRES_IMAGE: sediment-ci-postgres
+          SEDIMENT_TEST_GATEWAY_IMAGE: sediment-ci-gateway
+          SEDIMENT_TEST_PROXY_IMAGE: sediment-ci-proxy
+        run: |
+          set -euo pipefail
+          docker build -t sediment-ci-api .
+          docker build -f docker/gateway/Dockerfile -t sediment-ci-gateway .
+          docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
+          uv run pytest -q scripts/tests/test_pilot_compose.py
       # Build and inspect all twelve distribution artifacts, then install and
       # exercise the six wheels without publishing.
       - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"

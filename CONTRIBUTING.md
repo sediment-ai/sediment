@@ -1146,3 +1146,9 @@ Those two installations qualify the loader/parser imports. They don't install
 or qualify every upstream server, telemetry integration, or training runtime.
 Fireworks format profiles require no optional package. They validate the
 published format; they don't run a hosted upload or training job.
+
+## Rehearse single-host HTTPS deployment
+
+Use the [Compose runbook](docker/README.md) to build and qualify PostgreSQL,
+the API, the gateway, and the HTTPS proxy together. The operator docs use the
+published CLI. Container rehearsal requires the source and its build tools.

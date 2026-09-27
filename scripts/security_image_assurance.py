@@ -291,6 +291,8 @@ def render_deployment(root: Path = ROOT) -> dict:
         "SEDIMENT_CAPTURE_DIR": "",
         "ANTHROPIC_API_KEY": "assurance-provider-secret",
         "LITELLM_MASTER_KEY": "sk-assurance-gateway-key",
+        "SEDIMENT_DOMAIN": "sediment.example.com",
+        "SEDIMENT_ACME_EMAIL": "ops@example.com",
     }
     environment = {
         key: value
@@ -374,11 +376,13 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             "api",
             "operator",
             "gateway",
+            "proxy",
         } or not all(isinstance(s, dict) for s in services.values()):
             return failed
         pg, migration, api, operator, gateway = (
             services[n] for n in ("postgres", "migrate", "api", "operator", "gateway")
         )
+        proxy = services["proxy"]
         networks = config["networks"]
         isolated = (
             set(pg.get("networks", {})) == {"database"}
@@ -386,6 +390,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             and not networks["database"].get("external")
             and not pg.get("ports")
             and "database" not in gateway.get("networks", {})
+            and set(proxy.get("networks", {})) == {"edge"}
             and all(
                 "database" in services[n].get("networks", {})
                 for n in ("api", "migrate", "operator")
@@ -454,7 +459,25 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             and all(token not in str(s) for n, s in services.items() if n != "api")
             and str(api_env.get("SEDIMENT_DEV_MODE")).lower() == "false"
         )
+        # The public proxy needs routing inputs, never application credentials.
+        separated = separated and all(
+            not secret or secret not in str(proxy)
+            for secret in (
+                *ingest.values(),
+                api_env.get("SEDIMENT_API_BEARER_TOKEN"),
+                api_env.get("SEDIMENT_GITHUB_WEBHOOK_SECRET"),
+                api_env.get("SEDIMENT_RETRIEVAL_TOKEN"),
+                gateway_env.get("ANTHROPIC_API_KEY"),
+                gateway_env.get("LITELLM_MASTER_KEY"),
+            )
+        )
         bind_paths = {
+            "proxy": {
+                (
+                    str((root / "docker/proxy/routes.yml").resolve()),
+                    "/etc/traefik/routes.yml",
+                )
+            },
             "postgres": {
                 (str((root / "docker/postgres/pg_hba.conf").resolve()), HBA_TARGET)
             },
@@ -479,6 +502,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                 ("sediment-staging", "/data/staging"),
             },
             "gateway": {("sediment-delivery", "/data/delivery")},
+            "proxy": {("sediment-certificates", "/data")},
         }
         mounts = not any(
             any(
