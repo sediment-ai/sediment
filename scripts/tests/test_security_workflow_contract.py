@@ -98,3 +98,41 @@ def test_scanned_gateway_images_run_the_runtime_regressions():
         for i, step in enumerate(steps)
         if step.get("name") == "Build and scan the exact final image"
     )
+
+
+def test_required_workflows_report_on_merge_groups():
+    import yaml
+
+    for name in (
+        "ci.yml",
+        "security.yml",
+        "shims.yml",
+        "consumer-compatibility.yml",
+        "pr-title.yml",
+    ):
+        workflow = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+        assert "merge_group" in workflow.get("on", workflow.get(True)), name
+
+
+def test_drift_reports_only_trusted_main_failures_with_an_issue_token():
+    import yaml
+
+    drift = yaml.safe_load((ROOT / ".github/workflows/security-drift.yml").read_text())
+    events = drift.get("on", drift.get(True))
+    assert events == {
+        "workflow_run": {"workflows": ["security"], "types": ["completed"]}
+    }
+    assert drift["permissions"] == {"issues": "write"}
+    report = drift["jobs"]["report"]
+    for condition in (
+        "github.event.workflow_run.conclusion == 'failure'",
+        "github.event.workflow_run.head_branch == 'main'",
+        "github.event.workflow_run.event == 'push'",
+        "github.event.workflow_run.event == 'schedule'",
+    ):
+        assert condition in report["if"]
+    assert "pull_request" not in report["if"]
+    # No checkout: the write token never runs repository code.
+    assert all("uses" not in step for step in report["steps"])
+    security = (ROOT / ".github/workflows/security.yml").read_text()
+    assert "issues: write" not in security

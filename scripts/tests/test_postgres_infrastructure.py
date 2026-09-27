@@ -41,15 +41,20 @@ def test_ci_uses_postgres_and_upgrades_before_tests() -> None:
     )
     driver_index = next(i for i, command in enumerate(commands) if "libpq5" in command)
     migration_index = commands.index("uv run sediment db upgrade")
-    test_index = commands.index("uv run pytest -q --durations=30")
-    assert start_index < migration_index < test_index
+    roles_index = commands.index("uv run pytest -q -m cluster_roles --durations=10")
+    test_index = commands.index(
+        'uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30'
+    )
+    serial_index = commands.index("uv run pytest -q -m serial --durations=10")
+    # The role contract needs a cluster that no real server has provisioned.
+    assert start_index < migration_index < roles_index < test_index < serial_index
     assert driver_index < migration_index
     rehearsal_index = next(
         i
         for i, command in enumerate(commands)
         if "scripts/release_rehearsal.py" in command
     )
-    assert test_index < rehearsal_index
+    assert serial_index < rehearsal_index
     assert test_job["env"]["SEDIMENT_TEST_DATABASE_URL"].endswith(
         "@localhost:5432/postgres"
     )
