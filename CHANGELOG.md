@@ -29,11 +29,11 @@
   supported interactive terminals, followed by the version number without a
   name or website footer. Preserve version-only output for pipes,
   `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
-- Keep concurrent `sediment delivery enqueue` calls on macOS from declining
+- Keep concurrent enqueues to the transport buffer on macOS from declining
   with `storage_unavailable`. On APFS, racing opens that create the shared
-  enqueue lock could fail and send the payload to the best-effort direct
-  fallback. Enqueue creates the lock exclusively and opens the existing file
-  when another publisher creates it first.
+  enqueue lock could fail. Callers that allow a direct fallback then sent the
+  payload without buffering it. Enqueue creates the lock exclusively and opens
+  the existing file when another publisher creates it first.
 
 ### Contributor checks
 
