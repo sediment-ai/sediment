@@ -57,11 +57,11 @@ To revoke a developer, remove their entry from `SEDIMENT_INGEST_TOKENS`.
 
 ## Back up and restore
 
-A backup covers the PostgreSQL database and `~/.sediment/server`, which holds
-credentials and Git mirrors. A copy of a live PostgreSQL data directory isn't a
-consistent backup. Use `pg_dump`.
+A backup has two parts: a `pg_dump` of the database, and a copy of the
+files that hold Sediment's credentials, configuration, and Git mirrors. A copy
+of a live PostgreSQL data directory isn't a consistent backup.
 
-On EC2, stream an encrypted dump with [age](https://github.com/FiloSottile/age):
+On EC2, encrypt both parts with [age](https://github.com/FiloSottile/age):
 
 1. On a separate machine, generate an age identity. Keep its private key off
    the server.
@@ -74,20 +74,37 @@ On EC2, stream an encrypted dump with [age](https://github.com/FiloSottile/age):
      set -euo pipefail
      umask 077
      install -d -m 700 "$HOME/sediment-backups"
-     backup="$HOME/sediment-backups/sediment-$(date -u +%Y%m%dT%H%M%SZ).dump.age"
+     stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+     dump="$HOME/sediment-backups/sediment-$stamp.dump.age"
+     files="$HOME/sediment-backups/sediment-$stamp.files.tar.age"
      set -o noclobber
      docker compose exec -T postgres sh -ec \
        'PGPASSWORD="$POSTGRES_PASSWORD" exec pg_dump -U sediment -d sediment --format=custom' \
-       | age --recipient "${BACKUP_RECIPIENT:?Set the recovery public recipient}" > "$backup"
-     test -s "$backup"
-     ls -l "$backup"
+       | age --recipient "${BACKUP_RECIPIENT:?Set the recovery public recipient}" > "$dump"
+     tar -C "$HOME" --exclude=sediment-deploy/certificates \
+       -cf - .sediment/server sediment-deploy \
+       | age --recipient "$BACKUP_RECIPIENT" > "$files"
+     test -s "$dump" && test -s "$files"
+     ls -l "$dump" "$files"
    )
    ```
 
-4. Copy the encrypted file off the server. If the command fails, delete the
-   partial file.
+   The files archive holds `~/.sediment/server` and `~/sediment-deploy`.
+   Traefik obtains a new certificate on its own, so the archive skips
+   `certificates/`.
 
-On other hosts, use your database's backup procedure.
+4. Copy both encrypted files off the server. If the command fails, delete the
+   partial files.
+
+On other hosts, use your database's backup procedure, and back up
+`~/.sediment/server` and the server's private environment with it.
+
+To rebuild on a new host, extract the files archive into the operator
+account's home directory, and restore the dump into the empty database with the
+`pg_restore` options in the following restore test. Then start Sediment, and
+point your hostname at the new host. Sediment reuses the same tokens, role
+passwords, and webhook secret, so developers and webhooks don't need to enroll
+again.
 
 Test a restore before you enroll your team, and after each upgrade that
 changes the schema:
