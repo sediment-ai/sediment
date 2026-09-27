@@ -35,6 +35,14 @@ FIXTURES = ROOT / "tests/fixtures/bounded_selection"
 EVALUATION = FIXTURES / "evaluation"
 SELECTOR_PATH = ROOT / "bounded_evidence_selection.py"
 SCHEMA_VERSION = 1
+# Version 2 adds an optional fixed reasoning effort for reasoning coding models
+# (gpt-oss): the legacy profile disables reasoning, so the server default
+# applied unrecorded. The protocol binds the value and the gate enforces it.
+PROTOCOL_VERSION = 2
+REASONING_EFFORTS = ("low", "medium", "high")
+# Set once from --reasoning-effort, like legacy.MODEL; None keeps the legacy
+# profile (reasoning off, no reasoning_effort parameter).
+REASONING_EFFORT: str | None = None
 ARMS = ("K", "J1")
 PROFILES = ("missing", "redundant", "correction")
 SETS = {
@@ -113,14 +121,23 @@ def generation_contract() -> dict:
         "compaction": False,
         "automatic_retries": False,
         "native_retrieval_tools": False,
+        "reasoning_effort": REASONING_EFFORT,
+        "reasoning_output": (
+            "reasoning tokens count toward max_tokens and output usage"
+            if REASONING_EFFORT
+            else None
+        ),
     }
 
 
-def generation_settings(value: dict, model: str) -> dict:
+def generation_settings(
+    value: dict, model: str, reasoning_effort: str | None = None
+) -> dict:
     """Validate one coding request against the frozen generation contract."""
     temperature, max_tokens = value.get("temperature"), value.get("max_tokens")
     if (
         value.get("model") != model
+        or value.get("reasoning_effort") != reasoning_effort
         or type(temperature) not in (int, float)
         or temperature != 0
         or value.get("stream") is not True
@@ -131,6 +148,7 @@ def generation_settings(value: dict, model: str) -> dict:
     return {
         "temperature": temperature,
         "max_tokens": max_tokens,
+        "reasoning_effort": value.get("reasoning_effort"),
         "seed": value.get("seed"),
         "parameters": sorted(k for k in value if k not in {"messages", "tools"}),
     }
@@ -154,6 +172,7 @@ def protocol_identity(config: dict, task_set: str, transport_label: str) -> dict
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "protocol_version": PROTOCOL_VERSION,
         "experiment": "bounded-jev-selection-phase-1",
         "set": task_set,
         "runtime_identity_sha256": legacy.digest(runtime_path.read_bytes()),
@@ -247,7 +266,9 @@ class BoundedGateHandler(legacy.GateHandler):
             record["session_id"] = session
             record["request_bytes"] = len(request)
             record["tool_schema_bytes"] = len(legacy.encoded(value.get("tools", [])))
-            record["sampling"] = generation_settings(value, config["model"])
+            record["sampling"] = generation_settings(
+                value, config["model"], config.get("reasoning_effort")
+            )
             state.count_bytes(len(request))
             legacy.write_bytes(state.records / f"{identifier}.request.json", request)
             headers = {
@@ -344,6 +365,8 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
     gate_dir = legacy.private_directory(records / "gate")
     token = secrets.token_urlsafe(32)
     legacy.prepare_home(home, config, token, "A")
+    if REASONING_EFFORT:
+        enable_reasoning(home / "config/models.json")
     legacy.write_json(
         records / "gate-config.json",
         {
@@ -351,6 +374,7 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             "gateway_token": config["gateway_token"],
             "model": config["model"],
             "agent_token": token,
+            "reasoning_effort": REASONING_EFFORT,
         },
     )
     args = [
@@ -364,6 +388,10 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
         gate_name,
         "--label",
         "sediment.owner=bounded-selection",
+        # Linux Docker doesn't define host.docker.internal; the gateway URL
+        # names it, so map it to the host's bridge gateway explicitly.
+        "--add-host",
+        "host.docker.internal:host-gateway",
         "--read-only",
         "--cap-drop",
         "ALL",
@@ -415,6 +443,8 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             "--label",
             "sediment.owner=bounded-selection",
         ]
+        if REASONING_EFFORT:
+            agent[agent.index("--thinking") + 1] = REASONING_EFFORT
         with legacy.RpcProcess(agent, records) as rpc:
             yield rpc
     finally:
@@ -430,6 +460,16 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             legacy.write_json(records / "gate-health.json", health)
         finally:
             remove_containers([agent_name, gate_name])
+
+
+def enable_reasoning(path: Path) -> None:
+    """Let pinned pi send the contract's reasoning_effort for this model."""
+    models = json.loads(path.read_bytes())
+    for model in models["providers"]["sediment"]["models"]:
+        model["reasoning"] = True
+        model["compat"]["supportsReasoningEffort"] = True
+    path.unlink()
+    legacy.write_json(path, models)
 
 
 def remove_containers(names: list[str]) -> None:
@@ -1582,6 +1622,11 @@ def main() -> int:
         default=legacy.MODEL,
         help="coding model identifier (default: the earlier pinned model)",
     )
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=REASONING_EFFORTS,
+        help="fixed reasoning_effort for a reasoning coding model (both arms)",
+    )
     parser.add_argument("--jev-proxy", help="explicit loopback HTTP proxy for JEV")
     parser.add_argument("--jev-ca-bundle", help="CA bundle for the JEV TLS peer")
     args = parser.parse_args()
@@ -1622,6 +1667,8 @@ def main() -> int:
             raise legacy.EvaluationError("config_and_runtime_identity_required")
         # An explicit, recorded choice; the protocol binds it for both arms.
         legacy.MODEL = args.coding_model
+        global REASONING_EFFORT
+        REASONING_EFFORT = args.reasoning_effort
         config = legacy.load_config(args.config)
         config["runtime_identity_path"] = args.runtime_identity
         protocol = protocol_identity(config, args.set, label)

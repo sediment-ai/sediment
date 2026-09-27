@@ -140,6 +140,13 @@ Compaction, automatic retries, and native retrieval tools stay disabled. The
 limits are 12 coding calls, a 16,384-token context window, and 900 seconds for
 selection plus coding.
 
+Protocol version 2 adds an optional fixed reasoning effort for a reasoning
+coding model, such as gpt-oss. The legacy profile disables reasoning, so the
+provider's default effort applied without a record. With `--reasoning-effort`,
+pi sends `reasoning_effort` on every request, the gate rejects any other value,
+and the protocol records it. Reasoning tokens count toward `max_tokens` and
+toward output usage. Without the option, requests carry no reasoning effort.
+
 ### Freeze and execution
 
 `protocol_identity` binds the runner, selector, earlier keyword selector,

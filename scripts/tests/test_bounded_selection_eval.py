@@ -784,3 +784,43 @@ def test_jev_check_counts_its_probe_and_verifies_the_answering_model(
     assert run.jev_check("key", tmp_path, None, ledger)["status"] == (
         "probe_limit_reached"
     )
+
+
+@pytest.mark.parametrize(
+    "effort,sent,valid",
+    [
+        (None, None, True),
+        ("low", "low", True),
+        (None, "low", False),
+        ("low", None, False),
+        ("low", "high", False),
+    ],
+)
+def test_generation_contract_binds_the_reasoning_effort(effort, sent, valid):
+    run = module()
+    value = {"model": "m", "temperature": 0, "max_tokens": 2048, "stream": True}
+    if sent is not None:
+        value["reasoning_effort"] = sent
+    if valid:
+        settings = run.generation_settings(value, "m", effort)
+        assert settings["reasoning_effort"] == sent
+    else:
+        with pytest.raises(legacy.EvaluationError, match="settings_mismatch"):
+            run.generation_settings(value, "m", effort)
+
+
+def test_reasoning_profile_enables_pi_reasoning_effort(tmp_path, monkeypatch):
+    run = module()
+    home = tmp_path / "home"
+    legacy.prepare_home(home, {}, "token", "A")
+    run.enable_reasoning(home / "config/models.json")
+    models = json.loads((home / "config/models.json").read_bytes())
+    (model,) = models["providers"]["sediment"]["models"]
+    assert model["reasoning"] is True
+    assert model["compat"]["supportsReasoningEffort"] is True
+    assert model["maxTokens"] == 2048 and model["contextWindow"] == 16384
+    monkeypatch.setattr(run, "REASONING_EFFORT", "low")
+    contract = run.generation_contract()
+    assert contract["reasoning_effort"] == "low"
+    monkeypatch.setattr(run, "REASONING_EFFORT", None)
+    assert run.generation_contract()["reasoning_effort"] is None

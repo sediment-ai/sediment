@@ -309,7 +309,8 @@ defines the policy, fixtures, and acceptance targets.
 
 If you choose a coding model other than the pinned Ministral model, pass
 `--coding-model` to every command and report the result as a separate
-experiment. To check the selector against a real API and PostgreSQL without
+experiment. For a reasoning model, also pass the same `--reasoning-effort` to
+every command; choose it on the development set before any held-out run. To check the selector against a real API and PostgreSQL without
 a model, run `uv run python scripts/bounded_selection_acceptance.py
 --database-url <administrative URL>`. Its JEV stand-in returns controlled
 answers, so it proves wiring, not model judgment.
