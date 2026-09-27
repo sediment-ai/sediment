@@ -1,115 +1,285 @@
 # Deploy Sediment
 
-Deploy PostgreSQL, Sediment, LiteLLM, and Traefik HTTPS on one Amazon Elastic
-Compute Cloud (EC2) instance. Follow [Deploy on EC2 with Traefik](#deploy-on-ec2-with-traefik)
-for that complete stack.
+Install a published Sediment version on one Amazon Elastic Compute Cloud (EC2)
+instance with PostgreSQL and Traefik HTTPS. Follow
+[Deploy on EC2 with Traefik](#deploy-on-ec2-with-traefik) for that setup.
 
 If you manage PostgreSQL and HTTPS separately, follow
 [Install the published package](#install-the-published-package).
-For a one-machine evaluation with managed PostgreSQL, use the
-[Quickstart](../quickstart.md).
+For a one-machine evaluation, use the [Quickstart](../quickstart.md).
 
 ## Deploy on EC2 with Traefik
 
-Use this path for one EC2 instance and one public hostname. The setup generates
-Sediment credentials and configures the service connections. You supply the
-hostname, a certificate contact email, and an Anthropic API key. The bundled
-gateway supports Anthropic models.
+Use this procedure for one Ubuntu instance and one public hostname. Install
+Sediment from PyPI and pull the published PostgreSQL and Traefik images. You
+select a Sediment release version; no Sediment checkout or image build is needed.
+The API runs as your non-root account under systemd. Docker Compose runs the
+database and proxy.
 
-Before deploying, review [which components the release scanner checks](security.md#review-the-supplied-evidence).
+This setup captures agent and Git activity. If you also need a model gateway,
+follow [Connect a gateway](#connect-a-gateway). The Python release doesn't
+include a deployable LiteLLM gateway.
 
-1. Launch a maintained Ubuntu 24.04 instance with at least 4 vCPUs and 8 GB of
-   memory. Use encrypted persistent storage with room for image builds, Facts,
-   mirrors, and backups. Configure the storage and backup controls in
-   [Privacy and data handling](../../docker/README.md#8-privacy-and-data-handling).
-2. Install Git, Python 3.12, [Docker Engine and its Compose plugin](https://docs.docker.com/engine/install/ubuntu/).
+### Prepare the instance
+
+1. Launch Ubuntu 24.04 on a 64-bit Intel/AMD or Arm instance with at least
+   4 vCPUs and 8 GB of memory. Use encrypted persistent storage for the database,
+   credentials, mirrors, and backups. Use a dedicated non-root operator account
+   with `sudo` access. Run the following commands from that account's SSH session.
+2. Install `curl`, OpenSSL, and [Docker Engine with its Compose plugin](https://docs.docker.com/engine/install/ubuntu/).
    Complete Docker's [non-root access setup](https://docs.docker.com/engine/install/linux-postinstall/)
-   for the operator account, then sign in again. Verify `docker info` and
-   `docker compose version`. Docker access gives this account root-level control
-   of the host.
+   and sign in again. Verify `docker info` and `docker compose version`.
+   Docker access gives this account root-level control of the host.
 3. Associate an [Elastic IP address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html).
-   Create one DNS A record, such as `sediment.example.com`, pointing to that
-   address. If you publish an AAAA record, IPv6 must also reach the host.
+   Point your hostname's DNS A record at that address. If you publish an AAAA
+   record, IPv6 must also reach the host.
 4. Allow inbound TCP ports 80 and 443 in the instance security group and host
-   firewall. Restrict SSH to the operator's address. Don't open ports 5432,
-   8000, or 4000. Keep port 80 available for certificate renewal.
-5. Clone the repository and check out the commit you want to deploy. Replace
-   the commit placeholder with its full hash and the example hostname with yours:
+   firewall. Restrict SSH to the operator's address. Keep port 5432 and 8000
+   private. Certificate renewal requires inbound port 80 and outbound
+   certificate-authority access.
 
-   ```bash
-   SEDIMENT_REVISION='<full commit hash>'
-   git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
-   cd sediment || exit 1
-   git checkout --detach "$SEDIMENT_REVISION" || exit 1
-   test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
-   chmod go-w .
-   python3 scripts/create_deploy_env.py --domain sediment.example.com
-   ```
+### Install a Sediment version
 
-   Enter the certificate contact email and provider key at the prompts. The
-   provider-key prompt hides input. The generator creates `.env` with mode 0600
-   and refuses to overwrite it. It generates distinct internal credentials,
-   records the commit and source fingerprint, and sets `COMPOSE_PROFILES=https`.
-   You don't need uv or Sediment packages on the host.
-   The directory permission command removes shared write access; Ubuntu can
-   otherwise create the checkout with group write permission, which setup rejects.
-6. Start the complete deployment:
+Select a [published release](https://github.com/sediment-ai/sediment/releases)
+and review its [security evidence](security.md). This example installs 0.2.0.
+Run the installer as the operator account:
 
-   ```bash
-   docker compose up -d --build --wait
-   docker compose ps -a
-   ```
+```bash
+SEDIMENT_VERSION=0.2.0
+SEDIMENT_INSTALLER="$(mktemp)" || exit 1
+curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
+UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \
+  sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
+rm "$SEDIMENT_INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+sediment --version
+```
 
-   PostgreSQL, the API, LiteLLM, and the proxy report `healthy`. The one-shot
-   migration service exits with code 0. If startup fails, inspect
-   `docker compose logs --tail 100 postgres migrate api gateway proxy`.
-7. Verify the public certificate and both routes:
+Require the selected version. `UV_NO_BUILD=1` makes installation fail if a
+required wheel is unavailable. The installer installs Python 3.12 and the host
+libraries through package managers.
 
-   ```bash
-   curl -fsS https://sediment.example.com/health
-   curl -fsS https://sediment.example.com/llm/health/liveliness
-   ```
+### Configure PostgreSQL and Traefik
 
-   The API returns `status: "ok"` and the tested build's version. The gateway
-   liveness request succeeds. Don't bypass certificate verification. Container health
-   doesn't prove that DNS resolves or that certificate issuance succeeds.
-   If the proxy starts before public DNS resolves, correct DNS, then run
-   `docker compose restart proxy` to retry certificate issuance. Repeat both
-   public checks after the restart.
+Create a private deployment directory. These commands refuse to reuse an
+existing directory. Replace the hostname, certificate contact email, and
+organization before running them:
 
-Give developers `https://sediment.example.com` as the Sediment endpoint and
-`https://sediment.example.com/llm` as the gateway base URL.
-To generate named capture credentials during setup, add `--ingest-client NAME`
-once per developer machine. The gateway uses the
-private `.env` value `LITELLM_MASTER_KEY` for client authentication. The provider
-key stays on the server. Follow [Configure capture](../../docker/README.md#4-configure-capture) for
-client enrollment, Session identity, and forge webhooks. A liveness check alone
-doesn't verify provider access or stored Inference calls.
+```bash
+umask 077
+mkdir -m 700 "$HOME/sediment-deploy" || exit 1
+cd "$HOME/sediment-deploy" || exit 1
+POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+cat > .env <<EOF_ENV
+POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+SEDIMENT_DOMAIN=sediment.example.com
+SEDIMENT_ACME_EMAIL=operator@example.com
+EOF_ENV
+cat > server.env <<EOF_SERVER
+SEDIMENT_ORG_ID=acme
+SEDIMENT_BOOTSTRAP_DATABASE_URL=postgresql+psycopg://sediment:$POSTGRES_PASSWORD@127.0.0.1:5432/sediment
+SEDIMENT_ALLOWED_CLONE_HOSTS=["github.com"]
+SEDIMENT_DEV_MODE=false
+EOF_SERVER
+unset POSTGRES_PASSWORD
+sudo install -d -m 700 -o root -g root certificates
+```
 
-Traefik obtains and renews the certificate, redirects HTTP to HTTPS, and removes
-`/llm` before forwarding gateway requests. The `sediment-certificates` volume
-preserves certificate state across restarts. The proxy runs without root,
-capabilities, Docker-socket access, or application credentials. Each router
-limits requests from a direct peer to an average of 100 per second with a burst
-of 200; excess requests return 429. Clients behind one outbound address share
-that allowance. Client-supplied forwarded-address headers don't select it.
+Keep `.env`, `server.env`, and `certificates/` private. Don't source these files
+or share them with developers.
 
-To stop and start this deployment, run `docker compose down` and
-`docker compose up -d --wait`. Preserve `.env` and the volumes. Follow
-[Upgrade the deployment](../../docker/README.md#6-upgrade-the-deployment) when source or credentials
-change. Certificate renewal requires outbound certificate-authority access and
-inbound port 80 even after initial setup.
+Save the following as `compose.yaml` in that directory:
 
-For container administration and API-only Compose setups, use the
-[Compose runbook](../../docker/README.md). A cloud load balancer doesn't remove
-this single instance's availability limit.
+```yaml
+name: sediment-deployment
+services:
+  postgres:
+    image: postgres:17.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sediment
+      POSTGRES_USER: sediment
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    mem_limit: 1g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U sediment -d sediment]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  proxy:
+    image: traefik:v3.7.13
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    pids_limit: 64
+    environment:
+      SEDIMENT_DOMAIN: "${SEDIMENT_DOMAIN:?Set SEDIMENT_DOMAIN in .env}"
+      TRAEFIK_GLOBAL_CHECKNEWVERSION: "false"
+      TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: :80
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: websecure
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: :443
+      TRAEFIK_PROVIDERS_FILE_FILENAME: /etc/traefik/routes.yml
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: "${SEDIMENT_ACME_EMAIL:?Set SEDIMENT_ACME_EMAIL in .env}"
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE: /certificates/acme.json
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT: web
+    volumes:
+      - ./routes.yml:/etc/traefik/routes.yml:ro
+      - ./certificates:/certificates
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+volumes:
+  postgres-data:
+```
+
+On Linux, host networking lets Traefik reach the API on loopback. The upstream
+proxy runs as container root with only the capability to bind ports 80 and 443.
+It writes certificates to the root-owned private directory. It receives no
+Docker socket, database password, or Sediment credentials.
+Review and maintain these [PostgreSQL](https://hub.docker.com/_/postgres) and
+[Traefik](https://doc.traefik.io/traefik/) releases separately from the Sediment
+package. Sediment's image scan reports describe its contributor images, not
+these upstream images.
+
+Save the following as `routes.yml` beside `compose.yaml`:
+
+```yaml
+http:
+  routers:
+    sediment:
+      rule: 'Host(`{{ env "SEDIMENT_DOMAIN" }}`)'
+      entryPoints: [websecure]
+      middlewares: [request-limit]
+      service: sediment
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    request-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+  services:
+    sediment:
+      loadBalancer:
+        servers:
+          - url: http://127.0.0.1:8000
+```
+
+Allow the proxy to read its non-secret routing configuration, then start the
+database:
+
+```bash
+chmod 644 routes.yml
+docker compose pull
+docker compose up -d --wait postgres
+```
+
+Require PostgreSQL to report `healthy`. If it fails, inspect
+`docker compose logs --tail 100 postgres` before continuing.
+
+### Run the installed package as a service
+
+Create `~/.config/systemd/user/` with `mkdir -p ~/.config/systemd/user`.
+Save this unit as `~/.config/systemd/user/sediment.service`:
+
+```ini
+[Unit]
+Description=Sediment API
+
+[Service]
+ExecStart=%h/.local/bin/sediment server --host 127.0.0.1 --port 8000
+EnvironmentFile=%h/sediment-deploy/server.env
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+UMask=0077
+NoNewPrivileges=yes
+MemoryMax=2G
+TasksMax=256
+
+[Install]
+WantedBy=default.target
+```
+
+Enable startup at boot and after logout, then start Sediment:
+
+```bash
+sudo loginctl enable-linger "$USER"
+systemctl --user daemon-reload
+systemctl --user enable --now sediment.service
+systemctl --user status sediment.service
+curl -fsS http://127.0.0.1:8000/health
+```
+
+Require `status: "ok"` and your selected Sediment version. Startup provisions
+separate database roles and applies migrations. The API receives only runtime
+database authority. Generated API credentials and database-role passwords live
+in `~/.sediment/server/server.env`; mirrors live in `~/.sediment/server/mirror`.
+Keep both directories on persistent storage. If startup fails, inspect
+`journalctl --user -u sediment.service -n 100 --no-pager`.
+
+### Enable and verify HTTPS
+
+From `~/sediment-deploy`, start Traefik:
+
+```bash
+docker compose up -d proxy
+docker compose logs --tail 100 proxy
+curl -fsS https://sediment.example.com/health
+```
+
+Require `status: "ok"` and the installed version. Don't bypass certificate
+verification. Traefik obtains and renews the certificate and redirects HTTP to
+HTTPS. If issuance fails, check public DNS, ports 80 and 443, and the proxy log.
+After correcting DNS, run `docker compose restart proxy` and repeat the public
+health check. Preserve `certificates/acme.json` across restarts.
+
+The request limit uses the direct peer's address, with an average of 100 requests
+per second and a burst of 200. Clients behind one outbound address share that
+allowance. Give developers `https://sediment.example.com` as the endpoint.
+[Enroll named capture clients](#enroll-named-capture-clients), then follow
+[Configure capture](#4-configure-capture) and [Verify the deployment](#5-verify-the-deployment).
+Use `systemctl --user restart sediment.service` after credential changes.
+A health check doesn't prove capture or provider access.
+
+### Operate and upgrade this installation
+
+- Stop or restart the API with `systemctl --user stop sediment.service` or
+  `systemctl --user restart sediment.service`. PostgreSQL runs independently.
+- From `~/sediment-deploy`, use `docker compose stop` and `docker compose up -d`
+  to stop and start the database and proxy. Stop the API before the database.
+- Before an upgrade, follow [Back up and restore](#back-up-and-restore). Retain
+  the `postgres-data` volume, `~/sediment-deploy`, and `~/.sediment/server`.
+  Never add `--volumes` to `docker compose down` unless you intend to delete
+  the database.
+- To upgrade Sediment, follow [Upgrade the deployment](#6-upgrade-the-deployment)
+  with the target package version. Stop and restart `sediment.service` around
+  installation. Upgrade PostgreSQL and Traefik separately using their release
+  instructions; don't change the PostgreSQL major version on an existing volume.
+
+A single instance remains a single point of failure. Set storage quotas,
+monitor service restarts, and test encrypted backup restoration before enrollment.
 
 ## Install the published package
 
 Use this procedure to install the API on a shared host with an existing
 PostgreSQL instance and HTTPS endpoint. These commands manage the package
-installation. Use the [Compose runbook](../../docker/README.md) to operate the
-EC2 stack.
+installation. For the complete EC2 procedure, follow
+[Deploy on EC2 with Traefik](#deploy-on-ec2-with-traefik).
 
 ### 1. Prerequisites
 
@@ -131,8 +301,11 @@ Install the approved [published release](https://github.com/sediment-ai/sediment
 as the account that runs Sediment. Replace the version with the release you selected:
 
 ```bash
-curl -fsSL https://sediment.so/install.sh | \
-  sh -s -- --version '<approved release version>'
+SEDIMENT_VERSION=0.2.0
+SEDIMENT_INSTALLER="$(mktemp)" || exit 1
+curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
+UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
+rm "$SEDIMENT_INSTALLER"
 ```
 
 If the installer prints a PATH instruction, apply it. Verify the version:
@@ -302,8 +475,11 @@ capture Sessions and stop the API through its supervisor.
 Install the selected published version as the same server account:
 
 ```bash
-curl -fsSL https://sediment.so/install.sh | \
-  sh -s -- --version '<target release version>'
+SEDIMENT_VERSION='<target release version>'
+SEDIMENT_INSTALLER="$(mktemp)" || exit 1
+curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
+UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
+rm "$SEDIMENT_INSTALLER"
 ```
 
 Preserve the server data directory and credentials. Restart through the

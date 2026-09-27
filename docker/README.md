@@ -9,8 +9,9 @@ repository's source and Docker build tools. For package installation, use
 
 Follow [Deploy on EC2 with Traefik](../docs/operate/deploy.md#deploy-on-ec2-with-traefik)
 for instance setup, DNS, credentials, startup, and public HTTPS verification.
-That procedure is published on the Deploy Sediment page. The remaining sections
-cover container administration and API-only Compose setups.
+That procedure installs the published Python package with upstream PostgreSQL
+and Traefik images. It does not use this source-build rehearsal. The remaining
+sections are for contributors qualifying the repository containers.
 
 ## 1. Prerequisites
 
