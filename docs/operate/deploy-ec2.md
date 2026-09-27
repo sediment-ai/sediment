@@ -37,6 +37,7 @@ If you already run PostgreSQL and HTTPS, follow
 ## Install Sediment
 
 1. Select a [published release](https://github.com/sediment-ai/sediment/releases).
+   Optional: check it with [Verify a release](security.md#verify-a-release).
 2. As the operator account, run the installer. This example installs version
    0.3.0:
 

@@ -26,7 +26,8 @@ You need the following:
 
 As the account that runs Sediment, install a
 [published release](https://github.com/sediment-ai/sediment/releases). Replace
-the example version with the release that you want:
+the example version with the release that you want. Optional: check the
+release first with [Verify a release](security.md#verify-a-release).
 
 ```bash
 SEDIMENT_VERSION=0.3.0

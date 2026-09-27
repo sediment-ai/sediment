@@ -192,7 +192,7 @@ loopback hosts.
 ### Configure private mirrors
 
 Before mounting private Git credentials, review the image and Git configuration
-requirements in [Check release and deployment security](security.md).
+requirements in [Secure a deployment](security.md).
 The supplied release evidence doesn't cover custom credential mounts.
 Then mount a deployment-local `.netrc` through `docker-compose.override.yml`:
 
@@ -281,7 +281,8 @@ identity parsing changes.
 ## Verify the deployment
 
 For remote clients, check the public health endpoint. For Docker Desktop
-evaluation, use the loopback health check from section 2:
+evaluation, use the loopback health check from
+[Start the API and database](#start-the-api-and-database):
 
 ```bash
 curl -sf https://sediment-api.example.com/health

@@ -50,9 +50,11 @@ can read them.
 | API to Git hosts | Mirror fetches from the hosts in `SEDIMENT_ALLOWED_CLONE_HOSTS` |
 | Gateway to API | Capture requests with a capture token |
 
-`GET /health` needs no credential and returns no captured content. Every other
-route needs a capture token, an operator token, a retrieval token, or a valid
-webhook signature. Keep PostgreSQL off the public network.
+`GET /health` and the API schema pages (`/docs`, `/redoc`, and
+`/openapi.json`) need no credential and return no captured content. To turn
+off the schema pages, set `SEDIMENT_ENABLE_DOCS=false`. Every other route
+needs a capture token, an operator token, a retrieval token, or a valid webhook
+signature. Keep PostgreSQL off the public network.
 
 Each entry in `SEDIMENT_ALLOWED_CLONE_HOSTS` is a host that Sediment trusts to
 fetch from. An explicit entry can permit a private address.

@@ -58,8 +58,8 @@ add one part's counts to another's.
 | `accepted_work` | Inference calls with a human-explicit accept, through commit, pull request, and CI |
 | `edit_retention` | Edit observations and their final Fate |
 | `merge_durability` | Attributed files through the final pull-request head and the merged commit |
-| `session_attrition` | Accepted Sessions, split into committed and Attribution unavailable |
-| `rework` | Explicit rejects, Retry linkages, modified or deleted edits, external line changes, and CI failures, each as a separate component |
+| `session_attrition` | Accepted Sessions by status. Without a commit observation, a Session stays `attribution_unavailable`, so `abandoned` and `in_flight` stay zero. |
+| `rework` | Explicit rejects, Retry linkages, modified or deleted edits, external line changes, abandoned Sessions, and failed CI resolutions, each as a separate component |
 
 Read these qualifications before you draw a conclusion:
 

@@ -19,6 +19,7 @@ for your own host.
 Upgrade the server before developer machines.
 
 1. Read the release's entry in the [changelog](../../CHANGELOG.md).
+   Optional: check the release with [Verify a release](security.md#verify-a-release).
 2. [Back up the database](#back-up-and-restore). If the release changes the
    schema, test the restore, and time the migration on the restored copy.
    Index builds can block reads and writes, so schedule a maintenance window
@@ -94,7 +95,8 @@ On EC2, encrypt both parts with [age](https://github.com/FiloSottile/age):
    `certificates/`.
 
 4. Copy both encrypted files off the server. If the command fails, delete the
-   partial files.
+   partial files and rerun it. `tar` fails when a mirror changes while it
+   reads it.
 
 On other hosts, use your database's backup procedure, and back up
 `~/.sediment/server` and the server's private environment with it.
@@ -106,7 +108,7 @@ point your hostname at the new host. Sediment reuses the same tokens, role
 passwords, and webhook secret, so developers and webhooks don't need to enroll
 again.
 
-Test a restore before you enroll your team, and after each upgrade that
+Test a restore before you rely on the data, and after each upgrade that
 changes the schema:
 
 1. Create a separate, empty database. Don't touch the original.
