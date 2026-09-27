@@ -384,33 +384,37 @@
       ]
     },
     "apk/ncurses": {
-      "basis": "Reviewed on 2026-09-20 against both architecture distribution artifacts and signed Wolfi indexes. The embedded build recipes select upstream ncurses snapshot v6_6_20260919 at commit f0246f42887e78c07792f6000ba1ab61ee2cd5b0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-6.6.20260919-r0.apk",
+      "basis": "Reviewed on 2026-09-27 against both architecture distribution artifacts and signed Wolfi indexes. Package control checksums match the signed indexes, and payload SHA256 hashes match their control records. Embedded recipes select upstream ncurses snapshot v6_6_20260926 at commit 41553966d3ac468f9fff0b63f98841aefb0cb04e. Retain the 2026-09-20 review of 6.6.20260919-r0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-6.6.20260926-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/ncurses.yaml",
       "source_package": "ncurses",
       "source_versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ]
     },
     "apk/ncurses-terminfo-base": {
-      "basis": "Reviewed on 2026-09-20 against both architecture distribution artifacts and signed Wolfi indexes. The embedded build recipes select upstream ncurses snapshot v6_6_20260919 at commit f0246f42887e78c07792f6000ba1ab61ee2cd5b0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-terminfo-base-6.6.20260919-r0.apk",
+      "basis": "Reviewed on 2026-09-27 against both architecture distribution artifacts and signed Wolfi indexes. Package control checksums match the signed indexes, and payload SHA256 hashes match their control records. Embedded recipes select upstream ncurses snapshot v6_6_20260926 at commit 41553966d3ac468f9fff0b63f98841aefb0cb04e. Retain the 2026-09-20 review of 6.6.20260919-r0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-terminfo-base-6.6.20260926-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/ncurses.yaml",
       "source_package": "ncurses",
       "source_versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ]
     },
     "apk/openssl": {
