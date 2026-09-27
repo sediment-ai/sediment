@@ -65,11 +65,20 @@ override a rejected environment approval.
    If promised by the release, verify bundled pi resources without registering
    the extension in the user's harness.
 5. [Verify the README badge](#verify-the-readme-badge). The badge is part of
-   release completion even when its Markdown doesn't need an edit.
+   release completion, including its post-publication Markdown update.
 6. Report the release URL and actual checks. Stop only task-owned temporary
    services. Retain logs and the worktree when useful for investigation.
 
 ## Verify the README badge
+
+After stable publication succeeds, update the README image URL's `release`
+query parameter to the published version, for example
+`https://img.shields.io/pypi/v/sediment-cli?release=0.3.0`. Merge that Markdown
+change through the repository's pull-request process. The parameter gives
+browsers and GitHub a distinct image URL; Shields still reads the version from
+PyPI. Checking the previous image URL from one client doesn't refresh copies
+cached by other readers. Don't advance the parameter before publication or
+replace the dynamic endpoint with a static version label.
 
 Read the PyPI badge's image URL and link from `README.md`. Compare
 `https://pypi.org/pypi/sediment-cli/json` with the actual badge response from

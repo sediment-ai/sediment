@@ -68,9 +68,10 @@ files before following examples.
    link and required action.
 5. Follow [Publication and recovery](references/publication.md) to verify all
    six PyPI projects, GitHub asset hashes, an isolated public installation, and
-   the README's displayed PyPI badge. Update an incorrect badge and verify its
-   rendered version before reporting completion. Report the release link and
-   actual checks. A waiting or failed attempt remains incomplete.
+   the README's displayed PyPI badge. After stable publication, update the
+   badge's `release=VERSION` query parameter and verify GitHub's rendered
+   version before reporting completion. Report the release link and actual
+   checks. A waiting or failed attempt remains incomplete.
 
 ## Record observations
 
