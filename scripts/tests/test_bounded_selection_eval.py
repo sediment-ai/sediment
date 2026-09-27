@@ -748,3 +748,39 @@ def test_harness_failure_after_launch_still_validates_workspace(tmp_path, monkey
     )
     assert row["status"] == "gate_start_failed" and row["instrument_failure"] is True
     assert validated == ["event-rollup"] and row["behavior_pass"] is True
+
+
+def test_jev_check_counts_its_probe_and_verifies_the_answering_model(
+    tmp_path, monkeypatch
+):
+    run = module()
+    import bounded_evidence_selection as selector
+
+    monkeypatch.setattr(
+        selector,
+        "list_models",
+        lambda key, records, transport=None: {
+            "available": False,
+            "models": ["jev-latest", "jev-preview"],
+        },
+    )
+    monkeypatch.setattr(
+        selector,
+        "probe",
+        lambda catalog, query, key, records, transport=None: {
+            "status": "passed",
+            "metrics": {
+                "usage": {"input_tokens": 9, "output_tokens": 1},
+                "selection": {"candidates": [], "qualifying": [], "scores": {}},
+            },
+        },
+    )
+    ledger = tmp_path / "ledger.json"
+    result = run.jev_check("key", tmp_path, None, ledger)
+    assert result["status"] == "passed" and result["model_verified"] is True
+    assert result["pinned_listed"] is False
+    assert len(json.loads(ledger.read_bytes())) == 1
+    ledger.write_text(json.dumps([{}] * run.DEVELOPMENT_PROBE_LIMIT))
+    assert run.jev_check("key", tmp_path, None, ledger)["status"] == (
+        "probe_limit_reached"
+    )

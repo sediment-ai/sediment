@@ -238,15 +238,19 @@ defines the policy, fixtures, and acceptance targets.
    outbound HTTPS requires a local proxy, pass `--jev-proxy` with its loopback
    address and `--jev-ca-bundle` with its CA bundle. The runner ignores ambient
    proxy variables.
-3. Optional: check the JEV route and the pinned model:
+3. Optional: check the JEV route and the pinned model. The model list shows
+   aliases only, so the check verifies the model that answers a synthetic
+   development probe. That probe counts toward the development probe limit:
 
    ```bash
    uv run python scripts/bounded_selection_eval.py jev-check \
+     --ledger /absolute/private/probe-ledger.json \
      --output /absolute/private/jev-check
    ```
 
 4. Optional: run the development probes. The ledger caps live probes at 12
-   across every invocation. Probes use the development family only:
+   across every invocation, including `jev-check` and `preflight`. Probes use
+   the development family only:
 
    ```bash
    uv run python scripts/bounded_selection_eval.py dev-probe \
@@ -260,6 +264,7 @@ defines the policy, fixtures, and acceptance targets.
    uv run python scripts/bounded_selection_eval.py preflight \
      --config /absolute/private/evaluation.json \
      --runtime-identity /absolute/private/runtime-identity.json \
+     --ledger /absolute/private/probe-ledger.json \
      --output /absolute/private/bounded-preflight
    ```
 

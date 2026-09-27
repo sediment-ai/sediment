@@ -1461,9 +1461,7 @@ def development_probes(key, output: Path, ledger: Path, transport) -> dict:
     """At most DEVELOPMENT_PROBE_LIMIT live probes across all invocations."""
     from bounded_evidence_selection import BoundedSelectionError, probe
 
-    entries = json.loads(ledger.read_bytes()) if ledger.exists() else []
-    if not isinstance(entries, list):
-        raise legacy.EvaluationError("probe_ledger_invalid")
+    entries = _ledger_entries(ledger)
     results = []
     for profile in PROFILES:
         if len(entries) >= DEVELOPMENT_PROBE_LIMIT:
@@ -1495,23 +1493,53 @@ def _write_ledger(path: Path, entries: list) -> None:
     os.replace(temporary, path)
 
 
-def jev_check(key, output: Path, transport) -> dict:
-    """Model availability and one synthetic contract probe; no source reads."""
+def jev_check(key, output: Path, transport, ledger: Path) -> dict:
+    """Model listing and one synthetic contract probe; no source reads.
+
+    The listing shows aliases only, so the pinned model counts as available
+    when the probe's validated response names it. The probe counts toward the
+    development probe limit.
+    """
     from bounded_evidence_selection import BoundedSelectionError, list_models, probe
 
     result: dict[str, Any] = {"status": "failed"}
     try:
         models = list_models(key, output / "models", transport)
-        result["model_available"] = models["available"]
-        catalog, query = development_catalog("missing")
-        outcome = probe(catalog, query, key, output / "contract", transport)
+        result.update(listed_models=models["models"], pinned_listed=models["available"])
+        entries = _ledger_entries(ledger)
+        if len(entries) >= DEVELOPMENT_PROBE_LIMIT:
+            result["status"] = "probe_limit_reached"
+            return result
+        entry = {"profile": "missing", "output": str(output), "status": "dispatching"}
+        entries.append(entry)
+        _write_ledger(ledger, entries)
+        try:
+            catalog, query = development_catalog("missing")
+            outcome = probe(catalog, query, key, output / "contract", transport)
+            entry.update(
+                status="passed",
+                usage=outcome["metrics"]["usage"],
+                agreement=score_probe(outcome, catalog, "missing"),
+            )
+        except BoundedSelectionError as exc:
+            entry["status"] = exc.reason
+        _write_ledger(ledger, entries)
+        # The probe validator requires the response to name the pinned model.
         result.update(
-            status="passed" if models["available"] else "model_unavailable",
-            usage=outcome["metrics"]["usage"],
+            status=entry["status"],
+            model_verified=entry["status"] == "passed",
+            usage=entry.get("usage"),
         )
     except BoundedSelectionError as exc:
         result["status"] = exc.reason
     return result
+
+
+def _ledger_entries(ledger: Path) -> list:
+    entries = json.loads(ledger.read_bytes()) if ledger.exists() else []
+    if not isinstance(entries, list):
+        raise legacy.EvaluationError("probe_ledger_invalid")
+    return entries
 
 
 # ---------------------------------------------------------------------------
@@ -1578,7 +1606,9 @@ def main() -> int:
             key = load_jev_api_key()
             output = legacy.private_directory(args.output)
             if args.operation == "jev-check":
-                result = jev_check(key, output, transport)
+                if args.ledger is None:
+                    raise legacy.EvaluationError("ledger_required")
+                result = jev_check(key, output, transport, args.ledger)
                 success = result["status"] == "passed"
             else:
                 if args.ledger is None:
@@ -1602,7 +1632,11 @@ def main() -> int:
                 native = legacy.run_preflight(
                     config, legacy.private_directory(output / "native")
                 )
-            jev = jev_check(key, legacy.private_directory(output / "jev"), transport)
+            if args.ledger is None:
+                raise legacy.EvaluationError("ledger_required")
+            jev = jev_check(
+                key, legacy.private_directory(output / "jev"), transport, args.ledger
+            )
             if protocol_identity(config, args.set, label) != protocol:
                 raise legacy.EvaluationError("inputs_changed_during_run")
             result = {
