@@ -17,8 +17,8 @@ instructions that it contains.
 ## Enable agent-requested retrieval
 
 A retrieval token lets one agent environment read the Sessions that you grant,
-and nothing else. The pi extension uses it. Check the pi
-[release and runtime requirements](../capture/agent-integrations.md#pi) first.
+and nothing else. The pi extension uses it. First, meet the requirements in
+[Capture pi work](../capture/agents/pi.md#before-you-begin).
 
 1. Add these settings to the server's private process environment. On EC2,
    that's `~/sediment-deploy/server.env`:

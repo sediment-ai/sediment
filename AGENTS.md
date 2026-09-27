@@ -186,7 +186,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Topic | Read |
 |---|---|
 | One developer machine: git hooks, agent hooks, transcripts, sender replay | `docs/capture/local-capture.md` |
-| Choose an agent integration | `docs/capture/agent-integrations.md`; `docs/capture/agents/claude-code.md`; `docs/capture/agents/codex.md`; `docs/capture/agents/cursor.md` |
+| Choose an agent integration | `docs/capture/agent-integrations.md`; `docs/capture/agents/claude-code.md`; `docs/capture/agents/codex.md`; `docs/capture/agents/cursor.md`; `docs/capture/agents/pi.md` |
 | Gateways, webhooks, mirrors, fleet distribution | `docs/capture/managed-capture.md` |
 
 **Exports** (`docs/exports/`)
