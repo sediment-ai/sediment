@@ -64,8 +64,37 @@ override a rejected environment approval.
    Verify all six installed versions, `sediment --version`, and command help.
    If promised by the release, verify bundled pi resources without registering
    the extension in the user's harness.
-5. Report the release URL and actual checks. Stop only task-owned temporary
+5. [Verify the README badge](#verify-the-readme-badge). The badge is part of
+   release completion even when its Markdown doesn't need an edit.
+6. Report the release URL and actual checks. Stop only task-owned temporary
    services. Retain logs and the worktree when useful for investigation.
+
+## Verify the README badge
+
+Read the PyPI badge's image URL and link from `README.md`. Compare
+`https://pypi.org/pypi/sediment-cli/json` with the actual badge response from
+`curl --fail --silent --show-error "$BADGE_URL"`. Read the SVG's `aria-label`
+or `<title>`; a successful HTTP response alone doesn't verify the version.
+For a stable release, both must report the published version. For a prerelease,
+the default badge may continue to show the latest stable version; verify the
+intended behavior before changing it.
+
+Check the badge that GitHub displays, too. Fetch the rendered README with
+`gh api -H 'Accept: application/vnd.github.html+json' repos/sediment-ai/sediment/readme`.
+Find its PyPI image, fetch the returned `camo.githubusercontent.com` URL with
+curl, and compare its displayed version with the source badge.
+
+If the badge points to the wrong package or hard-codes an old version, update
+`README.md` through the repository's pull-request process. Preserve the dynamic
+[Shields PyPI badge](https://shields.io/badges/py-pi-version); don't replace it
+with a static label that can disagree with PyPI. If Shields is stale, retry
+after its advertised cache lifetime. If Shields is correct but GitHub remains
+stale, follow [GitHub's image-cache troubleshooting](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-anonymized-urls#an-image-that-changed-recently-is-not-updating).
+Use `curl -X PURGE "$CAMO_URL"` only when the documented troubleshooting
+doesn't resolve that stale image, then fetch it again. Record the versions
+observed from PyPI, Shields, and GitHub in the execution record. If a badge
+doesn't show the expected version, report the remaining verification gap
+instead of claiming completion.
 
 ## Recover interruption
 

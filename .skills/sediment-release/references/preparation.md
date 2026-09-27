@@ -15,6 +15,7 @@ versions. Put logs and artifacts outside the checkout.
 | CLI help golden | Run `uv run pytest -q cli/tests/test_cli_help.py --update-goldens`; inspect the diff. |
 | `CHANGELOG.md` | Insert `## VERSION — YYYY-MM-DD` after an empty `## Unreleased`. Preserve release entries. |
 | Operator docs | Update installation pins and health examples. Remove release caveats only when the source satisfies them. |
+| `README.md` PyPI badge | Keep the dynamic `https://img.shields.io/pypi/v/sediment-cli` image linked to `https://pypi.org/project/sediment-cli/`. Correct stale static badges or incorrect package links. Verify the displayed version after publication as described in [Publication and recovery](publication.md#verify-the-readme-badge). |
 | `security/maintenance.json` | Append the version to six `pypi/sediment-*` entries. Preserve historical versions and expiry. |
 
 Search tracked files for the old version. CDEvents protocol values, historical

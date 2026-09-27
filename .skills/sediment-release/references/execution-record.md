@@ -55,5 +55,9 @@
   The installed pi extension included its entry point, library, manifest,
   license, and README. The check didn't register it in a user's harness.
 - The release operator retained the machine-readable publication verification.
+- README badge verification on 2026-09-27 confirmed PyPI's latest version is
+  `0.3.0`; both the Shields source SVG and GitHub's cached README image report
+  `pypi: v0.3.0`. The dynamic image and its PyPI project link were correct, so
+  no README edit or cache purge was needed.
 - The owned local PostgreSQL cluster stopped after local checks. The original
   checkout and its uncommitted changes were preserved.

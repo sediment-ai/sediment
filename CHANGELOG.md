@@ -7,6 +7,7 @@
 - Centralize repository agent skills in `.skills/`, including release preparation
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
+  Require verification of the README PyPI badge during release closeout.
 
 ### Deployment
 

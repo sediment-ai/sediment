@@ -67,9 +67,10 @@ files before following examples.
    and permitted, approve that exact deployment; otherwise provide its run
    link and required action.
 5. Follow [Publication and recovery](references/publication.md) to verify all
-   six PyPI projects, GitHub asset hashes, and an isolated public installation.
-   Report the release link and actual checks. A waiting or failed attempt
-   remains incomplete.
+   six PyPI projects, GitHub asset hashes, an isolated public installation, and
+   the README's displayed PyPI badge. Update an incorrect badge and verify its
+   rendered version before reporting completion. Report the release link and
+   actual checks. A waiting or failed attempt remains incomplete.
 
 ## Record observations
 
