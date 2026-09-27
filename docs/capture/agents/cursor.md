@@ -60,7 +60,8 @@ desktop app and its `cursor` launcher. Start and close Cursor once so that
    ```
 
    The hooks read `~/.sediment/env.sh` directly, so you don't need to load it or
-   restart Cursor. After you upgrade Sediment, rerun `sediment install`.
+   restart Cursor. After you upgrade Sediment, rerun the install command with the
+same flags.
 
 ## Configure Developer decisions
 

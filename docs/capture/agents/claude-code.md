@@ -90,8 +90,9 @@ gateway route.
 ## Configure Edit observations
 
 Transcript capture sends applied edit text and the file's content at Session
-end, so it's off until you opt in. Rerun the installer with `--transcripts` and
-your other flags, and restart Claude Code:
+end, so it's off until you opt in. Rerun the installer with `--transcripts`
+added to your usual flags, and restart Claude Code. If you use the gateway,
+keep `--gateway-url` and `--gateway-key` in the command:
 
 ```bash
 sediment install --user-id alice --transcripts /path/to/repo

@@ -57,8 +57,8 @@ pi.
    ```
 
 If the extension is missing or unregistered, `sediment doctor` reports `FAIL`.
-After you move the CLI, rerun `sediment install` and remove the stale extension
-path from `~/.pi/agent/settings.json`.
+After you move the CLI, rerun the install command with the same flags, and
+remove the stale extension path from `~/.pi/agent/settings.json`.
 
 ## Configure Edit observations
 

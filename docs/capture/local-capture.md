@@ -64,8 +64,12 @@ sediment install --user-id '<developer>' /path/to/repo
 The installer adds git hooks to the repository and hooks to each agent that it
 finds. It writes the capture endpoint, token, and developer identifier to
 `~/.sediment/env.sh` and a fish equivalent, and loads them from your shell
-profiles. Rerun it after you install another agent; it updates only
-Sediment's own entries.
+profiles. Rerun it after you install another agent, or for another repository.
+
+Each run rewrites `env.sh` from the flags that you pass, so always pass the same
+`--user-id`, and the gateway flags if you use a gateway. Otherwise the rerun
+drops them. The installer changes only Sediment's own entries in agent
+configuration.
 
 Start each agent from a shell that loaded `env.sh`. Fully quit a running
 desktop agent first, because it keeps its old environment. Cursor is the
@@ -75,8 +79,10 @@ The hooks call the CLI by its absolute path. If you move or reinstall the CLI,
 rerun `sediment install`.
 
 If another system manages the agents' environment, pass `--no-env`, and set
-`SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` there yourself. The
-[CLI reference](../reference/cli.md#sediment-install) lists every flag.
+`SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` there yourself. With
+`--no-env`, Cursor's hooks also read Cursor's process environment instead of
+`env.sh`. The [CLI reference](../reference/cli.md#sediment-install) lists every
+flag.
 
 ## Opt in to transcript capture
 
@@ -86,8 +92,7 @@ external line counts, Rejected edits, and Retry linkages. Review
 [Privacy boundaries and ceilings](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
 before you opt in.
 
-Rerun the installer with `--transcripts`. Repeat the other flags from your
-first install, because a rerun rewrites `env.sh` from the flags that you pass:
+Rerun the installer with your usual flags plus `--transcripts`:
 
 ```bash
 sediment install --user-id '<developer>' --transcripts /path/to/repo
@@ -103,8 +108,8 @@ agent's environment, and `SEDIMENT_PI_TRANSCRIPTS=1` for pi.
 
 ## Route inference calls through a gateway
 
-If the deployment runs a model gateway, add its URL and your client key to the
-installer flags. As with transcripts, repeat your other flags:
+If the deployment runs a model gateway, rerun the installer with its URL and
+your client key added to your usual flags:
 
 ```bash
 sediment install --user-id '<developer>' \
@@ -214,8 +219,8 @@ restart the agents. An older CLI can erase a newer one's markers.
 
 ### Install hooks in an existing clone
 
-A clone that the installer never saw has no git hooks. Run `sediment install`
-for it, or use the fleet
+A clone that the installer never saw has no git hooks. Run the install command
+with your usual flags for it, or use the fleet
 [owner allowlist](managed-capture.md#set-the-owner-allowlist).
 
 ### Recover transcript pairs
@@ -235,9 +240,11 @@ the retention score. Rerunning is safe; the database keeps one copy of each Fact
 
 Without a buffer, an event that a client can't deliver during a server outage
 can be lost. To keep payloads on disk and replay them, set
-`SEDIMENT_DELIVERY_DIR` to a directory on persistent storage, in both the
-sender's and the replay worker's environment. The sender creates it with mode
-`0700` and refuses a directory that another user owns or can write. The buffer
+`SEDIMENT_DELIVERY_DIR` to an absolute path on persistent storage, in both the
+sender's and the replay worker's environment. Let the sender create the
+directory, with mode `0700`. It refuses a symlink, a directory that another
+user owns, or a mode other than `0700`, and falls back to a direct send. The
+buffer
 can hold unredacted prompts, code, or credentials, so use it only with
 participants' approval, and on an encrypted volume if you need encryption at
 rest.
@@ -247,7 +254,8 @@ callback. It doesn't cover Cursor hooks, native Codex telemetry, or forge
 webhooks.
 
 1. Run the replay worker under your process supervisor, as the same user and
-   with the same environment as the sender:
+   with the same environment as the sender. Skip this step for the LiteLLM
+   callback, which runs its own worker:
 
    ```bash
    sediment delivery replay --watch

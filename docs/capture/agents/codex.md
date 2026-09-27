@@ -100,10 +100,12 @@ model, configure Codex to use it. Set up the model on the gateway first.
    image_generation = false
    ```
 
-3. Add native telemetry to the gateway profile:
+3. Add native telemetry to the gateway profile. Pass your usual flags, not
+   `--no-env`, which would also switch Cursor's hooks to read the process
+   environment:
 
    ```bash
-   sediment install --codex-profile gateway --no-env /path/to/repo
+   sediment install --user-id alice --codex-profile gateway /path/to/repo
    ```
 
 4. Start Codex with the gateway key:
@@ -121,8 +123,8 @@ sets up the gateway side.
 ## Configure Edit observations
 
 Transcript capture sends applied patch text and the file's content at Session
-end, so it's off until you opt in. Rerun the installer with `--transcripts` and
-your other flags, and restart Codex:
+end, so it's off until you opt in. Rerun the installer with `--transcripts`
+added to your usual flags, and restart Codex:
 
 ```bash
 sediment install --user-id alice --codex-profile sediment --transcripts /path/to/repo
