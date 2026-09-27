@@ -77,7 +77,14 @@ def test_vendor_source_drift_is_rejected_without_edit(tmp_path: Path) -> None:
     patcher = runpy.run_path(str(script))
     proxy = tmp_path / "proxy"
     proxy.mkdir()
-    for name in ["proxy_server.py", "utils.py"]:
+    (proxy / "db").mkdir()
+    (proxy / "auth").mkdir()
+    for name in [
+        "proxy_server.py",
+        "utils.py",
+        "db/exception_handler.py",
+        "auth/user_api_key_auth.py",
+    ]:
         (proxy / name).write_text("# upstream changed\n")
     with pytest.raises(ValueError, match="source"):
         patcher["patch_proxy"](proxy)

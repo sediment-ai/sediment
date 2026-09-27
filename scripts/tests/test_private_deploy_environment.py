@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -83,7 +84,7 @@ def test_shared_writable_parent_is_rejected(tmp_path):
     creator = module()
     tmp_path.chmod(0o777)
     try:
-        with pytest.raises(PermissionError):
+        with pytest.raises(PermissionError, match="chmod go-w"):
             creator.create_environment(tmp_path / ".env")
         assert not (tmp_path / ".env").exists()
     finally:
@@ -160,3 +161,109 @@ def test_invalid_client_names_leave_no_environment_file(tmp_path, clients):
     with pytest.raises(ValueError, match="client"):
         module().create_environment(path, ingest_clients=clients)
     assert not path.exists()
+
+
+def test_pilot_environment_selects_complete_stack_and_records_source(tmp_path):
+    path = tmp_path / ".env"
+    module().create_environment(
+        path,
+        domain="sediment.example.com",
+        email="pilot+ops@example.com",
+        provider_key="sk-ant-test-only-12345678901234567890",
+        ingest_clients=("alice-laptop",),
+    )
+    values = dotenv_values(path)
+    assert set(json.loads(values["SEDIMENT_INGEST_TOKENS"])) == {
+        "gateway",
+        "alice-laptop",
+    }
+    assert values["COMPOSE_PROFILES"] == "https"
+    assert values["SEDIMENT_DOMAIN"] == "sediment.example.com"
+    assert values["SEDIMENT_ACME_EMAIL"] == "pilot+ops@example.com"
+    assert values["ANTHROPIC_API_KEY"] == "sk-ant-test-only-12345678901234567890"
+    assert len(values["SEDIMENT_SOURCE_REVISION"]) == 40
+    assert len(values["SEDIMENT_SOURCE_DIGEST"]) == 64
+    assert values["SEDIMENT_DELIVERY_DIR"] == ""
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize(
+    "domain",
+    [
+        "localhost",
+        "127.0.0.1",
+        "https://sediment.example.com",
+        "sediment.example.com/path",
+        "*.example.com",
+        "bad_name.example.com",
+        "-bad.example.com",
+        "example.com:443",
+        "example.com\nOTHER=value",
+        "{{env}}.example.com",
+        "example.local",
+        "a" * 64 + ".com",
+    ],
+)
+def test_pilot_rejects_invalid_domain_without_creating_file(tmp_path, domain):
+    path = tmp_path / ".env"
+    with pytest.raises(ValueError, match="hostname"):
+        module().create_environment(
+            path,
+            domain=domain,
+            email="ops@example.com",
+            provider_key="sk-ant-test-only-12345678901234567890",
+        )
+    assert not path.exists()
+
+
+@pytest.mark.parametrize(
+    ("email", "provider_key"),
+    [
+        ("", "sk-ant-test-only-12345678901234567890"),
+        ("ops@example.com\nOTHER=value", "sk-ant-test-only-12345678901234567890"),
+        ("ops@example.com", ""),
+        ("ops@example.com", "secret\nOTHER=value"),
+        ("ops@example.com", "sk-ant-${EXPANDED}-12345678901234567890"),
+    ],
+)
+def test_pilot_rejects_invalid_inputs_without_exposing_them(
+    tmp_path, email, provider_key
+):
+    with pytest.raises(ValueError) as exc:
+        module().create_environment(
+            tmp_path / ".env",
+            domain="sediment.example.com",
+            email=email,
+            provider_key=provider_key,
+        )
+    assert "OTHER=value" not in str(exc.value)
+    if provider_key:
+        assert provider_key not in str(exc.value)
+    assert not (tmp_path / ".env").exists()
+
+
+def test_pilot_noninteractive_setup_does_not_echo_a_secret(tmp_path):
+    secret = "sk-ant-noninteractive-12345678901234567890"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/create_deploy_env.py"),
+            "--domain",
+            "sediment.example.com",
+            "--output",
+            str(tmp_path / ".env"),
+        ],
+        input="",
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "ANTHROPIC_API_KEY": secret,
+            "SEDIMENT_ACME_EMAIL": "ops@example.com",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    assert secret not in result.stdout + result.stderr
+    assert "https://sediment.example.com/health" in result.stdout
+    assert "docker compose --env-file " in result.stdout
+    assert " up -d --build --wait" in result.stdout

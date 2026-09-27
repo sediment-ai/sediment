@@ -1,12 +1,11 @@
-# Run a Cursor and Codex pilot
+# Run a Cursor, pi, and Codex pilot
 
 Prepare a shared deployment, enroll developers, and verify capture before
 expanding the pilot. For a one-machine evaluation, use the
 [Quickstart](../quickstart.md).
 
-This guide doesn't cover pi. The published package doesn't include the pi
-extension, so pi capture requires a Sediment source checkout. The
-[pi integration guide](../capture/agent-integrations.md#pi) describes that setup.
+For pi, use the [pi integration guide](../capture/agent-integrations.md#pi),
+including its release and runtime requirements.
 
 ## Prepare the deployment
 
@@ -97,11 +96,12 @@ file before testing the next:
 
    | Agent | Start |
    | --- | --- |
-   | Cursor desktop | Fully quit Cursor, then run `cursor "$PILOT_REPO"` from this shell. |
+   | Cursor desktop | Run `cursor "$PILOT_REPO"`. Managed hooks read the capture environment for each successful Agent `Write`. With `install --no-env`, fully quit Cursor first and launch it from this shell. |
+   | pi | Run `cd "$PILOT_REPO"` and `pi` from this shell. |
    | Codex CLI | Run `codex --profile sediment-pilot -C "$PILOT_REPO"`. Use `/hooks` to review and trust the Sediment hooks. |
 
 2. Ask the agent to create a harmless file. Use Cursor Agent rather than Tab,
-   or a single-file patch in Codex. End the Session so any enabled transcript
+   pi's `write` tool, or a single-file patch in Codex. End the Session so any enabled transcript
    capture can run.
 3. Review and commit only that file, then inspect the commit note:
 
@@ -112,7 +112,7 @@ file before testing the next:
    ```
 
 4. Copy the `session_id` from the note entry for that agent. Replace the
-   placeholders, using `cursor` or `codex` for the agent, and run:
+   placeholders, using `cursor`, `pi`, or `codex` for the agent, and run:
 
    ```bash
    sediment doctor "$PILOT_REPO" --agent '<agent>' \

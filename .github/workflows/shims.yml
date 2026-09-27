@@ -10,6 +10,8 @@ on:
     branches: [main]
     paths:
       - "shims/**"
+      - "cli/hatch_build.py"
+      - "cli/sediment_cli/attribution.py"
       - "cli/sediment_cli/delivery.py"
       - "cli/sediment_cli/cli.py"
       - "cli/pyproject.toml"

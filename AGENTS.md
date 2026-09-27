@@ -177,7 +177,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Network exposure; quarantine and incident response | [Network exposure](docs/operate/deploy.md#84-network-exposure); [Quarantine and wholesale deletion](docs/operate/deploy.md#83-quarantine-and-wholesale-deletion) |
 | Run, scope, profile, and recompute Derivations | `docs/operate/run-derivations.md`; `docs/operate/profile-derivations.md`; `docs/adr/0020-bounded-derivation-execution.md` |
 | Measure agent work; merge retention and the lifecycle report | `docs/operate/measure-agent-work.md`; `docs/operate/lifecycle-report.md` |
-| Rehearse a release | `docs/operate/rehearse-release.md` |
+| Review release verification | `docs/operate/rehearse-release.md` |
 | Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026 |
 | Synthetic scenarios | `sim/README.md` |
 
