@@ -427,6 +427,7 @@ def test_shim_gate_rejects_failed_or_missing_selected_work(
         ("security/dispositions.json", True),
         ("scripts/security_scan.py", True),
         ("scripts/ci_preflight.py", True),
+        ("scripts/tests/test_container_images.py", True),
         (".github/workflows/security.yml", True),
         ("packages/core/sediment_core/store.py", False),
         ("apps/api/sediment_api/main.py", False),

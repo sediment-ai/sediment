@@ -38,6 +38,8 @@ SCAN_FILES = {
     "docker-compose.yml",
     ".github/workflows/security.yml",
     "scripts/ci_preflight.py",
+    # The gateway runtime regressions run only inside the image scan job.
+    "scripts/tests/test_container_images.py",
 }
 SCAN_PREFIXES = ("docker/", "security/", "scripts/security_", "shims/pi/package")
 

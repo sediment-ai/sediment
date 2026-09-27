@@ -188,7 +188,9 @@ above: `.git/hooks` is shared by every worktree.
 ## Review and merging
 
 Every PR gets a maintainer review; merging requires maintainer approval.
-Maintainers manage labels, milestones, and issue closure under the
+Approved pull requests merge through the merge queue, which reruns the
+required checks against the latest `main`, so you don't need to update your
+branch before merging. Maintainers manage labels, milestones, and issue closure under the
 [issue tracker rules](docs/agents/issue-tracker.md). Architectural decisions
 belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
