@@ -136,6 +136,23 @@ def test_read_snapshot_blocks_mutation_for_every_requested_repository(
         thread.join(timeout=1)
 
 
+def test_read_snapshot_over_missing_base_creates_nothing_and_stays_absent(
+    tmp_path: Path, fixture_remote: dict, fixture_push: Push
+) -> None:
+    base = tmp_path / "mirrors"
+    manager = MirrorManager(str(base))
+    org, repo = fixture_push.org_id, fixture_push.repo
+
+    with manager.read_snapshot(org, [repo]) as snapshot:
+        assert not base.exists()
+        # A first clone during the read holds no lock against it, so the
+        # snapshot keeps its entry view: absent.
+        manager.ensure(fixture_push)
+        assert snapshot.open(org, repo) is None
+
+    assert manager.open(org, repo) is not None
+
+
 def test_refresh_snapshot_keeps_fetched_notes_stable_until_observation_finishes(
     tmp_path: Path, fixture_remote: dict, fixture_push: Push
 ) -> None:

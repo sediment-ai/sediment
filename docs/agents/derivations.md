@@ -137,7 +137,7 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
   DNS-resolving internal-host check. The router injects it from API settings.
   This package never reads it.
 - `read_repository_snapshot` locks qualified keys in deterministic order.
-  Nested reads reuse a subset of the outer snapshot's locks; adding keys fails.
+  Nested reads reuse a subset of the outer snapshot's locks; adding keys fails. Over a missing base it takes no locks, creates nothing, and reads every mirror absent.
   Lifecycle and merge reports hold one snapshot across their Derivations.
   `list_mirrored_repositories` and `remove_repository` use that same namespace.
   Slug-based `open`, `rename`, `remove`, and enumeration are legacy-only wrappers;
