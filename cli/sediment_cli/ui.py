@@ -7,9 +7,10 @@ under ``NO_COLOR`` or ``TERM=dumb`` — piped output, tests, and CI read
 exactly the bytes they read before this module existed. Truecolor when
 ``COLORTERM`` advertises it, 256-color approximations otherwise.
 
-The version banner uses the signal-red knot mark. Other output retains
-the sandstone palette: phosphor means success, iron oxide means failure,
-and bleached is for headings. All colors are flat.
+The version banner prints the knot mark in the terminal's own text color,
+black and white like sediment.so. Other output retains the sandstone
+palette: phosphor means success, iron oxide means failure, and bleached is
+for headings. All colors are flat.
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ from typing import TextIO
 
 # name -> (truecolor RGB, 256-color fallback), from the brand kit.
 _PALETTE = {
-    "signal": ((241, 61, 79), 203),  # --sed-signal · knot mark
     "sandstone": ((196, 147, 90), 173),  # --sds-sandstone · primary accent
     "phosphor": ((95, 216, 149), 78),  # positive / success
     "iron-oxide": ((184, 73, 43), 130),  # negative / errors
@@ -87,7 +87,7 @@ def version_banner(version: str) -> str | None:
         _LOGO.encode(getattr(sys.stdout, "encoding", None) or "ascii")
     except (UnicodeEncodeError, LookupError):
         return None
-    return f"\n{style(_LOGO, 'signal')}\n\n  {style(version, 'bold')}\n\n"
+    return f"\n{_LOGO}\n\n  {style(version, 'bold')}\n\n"
 
 
 def glyph(char: str, name: str, stream: TextIO | None = None) -> str:
