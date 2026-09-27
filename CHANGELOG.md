@@ -4,6 +4,9 @@
 
 ### Deployment
 
+- Move the contributor Compose runbook from `docker/README.md` to
+  [Rehearse the single-host Compose deployment](docs/operate/rehearse-compose.md)
+  and publish it with the operator docs.
 - Install EC2 deployments from a published Sediment package version, with the
   published PostgreSQL and Traefik images. Remove the source checkout and local
   image builds from the operator procedure. Document systemd startup,

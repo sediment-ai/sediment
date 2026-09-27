@@ -3,12 +3,12 @@
 Use this contributor runbook to build and qualify the checked-in containers,
 including PostgreSQL, the API, LiteLLM, and Traefik. These commands require the
 repository's source and Docker build tools. For package installation, use
-[Install the published package](../docs/operate/deploy.md#install-the-published-package).
+[Install the published package](deploy.md#install-the-published-package).
 
 ## Deploy a pilot on EC2
 
 For instance setup, DNS, credentials, startup, and public HTTPS verification,
-follow [Deploy on EC2 with Traefik](../docs/operate/deploy.md#deploy-on-ec2-with-traefik).
+follow [Deploy on EC2 with Traefik](deploy.md#deploy-on-ec2-with-traefik).
 That procedure installs the published Python package with the upstream
 PostgreSQL and Traefik images. It doesn't use this source-build rehearsal. The
 remaining sections are for contributors who qualify the repository containers.
@@ -38,7 +38,7 @@ and optional gateway to loopback. Your ingress is the only off-host path.
 
 ## 2. Deploy the API
 
-Before building, review [release security evidence](../docs/operate/security.md). On the
+Before building, review [release security evidence](security.md). On the
 deployment host, check out the commit you want to deploy:
 
 ```bash
@@ -89,7 +89,7 @@ The generator never prints secrets. To add a client after installation, follow
 ### Configure PostgreSQL
 
 Keep the four generated database passwords in `.env`. The supplied
-[`docker-compose.yml`](../docker-compose.yml) uses them as follows:
+[`docker-compose.yml`](../../docker-compose.yml) uses them as follows:
 
 | Setting | Database role | Used by |
 | --- | --- | --- |
@@ -190,7 +190,7 @@ loopback hosts.
 ## 4. Configure capture
 
 1. For private repositories, [configure read-only mirror credentials](#configure-private-mirrors).
-2. [Configure GitHub webhooks](../docs/capture/managed-capture.md#configure-push-and-ci-capture)
+2. [Configure GitHub webhooks](../capture/managed-capture.md#configure-push-and-ci-capture)
    for Pushes, pull requests, repository changes, and continuous integration (CI)
    outcomes.
 3. Optional: [Enable bundled LiteLLM](#enable-bundled-litellm) or
@@ -200,7 +200,7 @@ loopback hosts.
 ### Configure private mirrors
 
 Before mounting private Git credentials, review the image and Git configuration
-requirements in [Check release and deployment security](../docs/operate/security.md).
+requirements in [Check release and deployment security](security.md).
 The supplied release evidence doesn't cover custom credential mounts.
 Then mount a deployment-local `.netrc` through `docker-compose.override.yml`:
 
@@ -224,7 +224,7 @@ enrollment, push a test commit with a Session note. In
 `docker compose logs --since 10m api`, require
 `session_commit_observations_captured` with a nonzero stored or duplicate count
 for that repository. Verify the commit with the
-[forge check](../docs/operate/run-pilot.md#verify-forge-delivery); a Push Fact alone
+[forge check](run-pilot.md#verify-forge-delivery); a Push Fact alone
 doesn't verify private Git access.
 
 ### Connect an existing LiteLLM gateway
@@ -268,7 +268,7 @@ The callback starts a replay worker for its process lifetime. Without this
 setting, it reports `best_effort` and attempts direct delivery.
 Unsafe, unavailable, or busy buffer storage also triggers one direct attempt
 with a `best_effort` diagnostic. Repair the volume to restore durable recovery.
-See [Preserve prepared payloads through outages](../docs/capture/local-capture.md#preserve-prepared-payloads-through-outages)
+See [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
 for limits, permissions, and recovery commands.
 
 If you collect raw fixtures for integration debugging, set `SEDIMENT_CAPTURE_DIR`
@@ -316,7 +316,7 @@ docker compose --profile operator run --rm operator sediment db status
 Require `at_head`. Before enrollment, [create and restore a backup](#back-up-and-restore).
 Record the revision, image identities, health result, database status, and
 backup restore result. Then complete the
-[pilot handoff](../docs/operate/run-pilot.md#prepare-the-deployment). Health and empty Fact counts
+[pilot handoff](run-pilot.md#prepare-the-deployment). Health and empty Fact counts
 don't verify live capture; use the pilot's Session and forge checks for that.
 
 Operator commands connect through the separate operator database role and don't
@@ -329,7 +329,7 @@ Keep `.env` and omit `--volumes` to retain credentials and Facts.
 If you need the bundled Anthropic gateway, add `ANTHROPIC_API_KEY` to `.env`.
 Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
 supports `claude-*` routing; other providers require a separate gateway
-configuration. See the [gateway boundary](gateway/README.md).
+configuration. See the [gateway boundary](../../docker/gateway/README.md).
 
 If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
@@ -357,7 +357,7 @@ A capture failure doesn't retract a successful model response.
 
 If the volume is unsafe, unavailable, or busy, the callback attempts direct
 delivery and logs the reason.
-See [Preserve prepared payloads through outages](../docs/capture/local-capture.md#preserve-prepared-payloads-through-outages)
+See [Preserve prepared payloads through outages](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
 for privacy, retention, capacity, and recovery limits. Upgrade the API before
 the callback: a server without the capture envelope returns 422, which blocks
 buffered entries until you upgrade and retry them.
@@ -382,7 +382,7 @@ docker compose --profile gateway up -d --no-deps gateway
 If the gateway exits, inspect `docker compose logs gateway`.
 
 Use [Configure inference-call
-capture](../docs/capture/managed-capture.md#configure-inference-call-capture) to
+capture](../capture/managed-capture.md#configure-inference-call-capture) to
 route clients and verify both the model request path and the capture path.
 
 ### Enable agent-requested retrieval
@@ -402,13 +402,13 @@ invalid, including in development mode. Compose passes these settings only to
 the API.
 
 The grant includes future Facts and doesn't establish repository ownership.
-Follow [Continue a task with captured evidence](../docs/operate/resume-with-evidence.md) for
+Follow [Continue a task with captured evidence](resume-with-evidence.md) for
 agent configuration and source limits. Before upgrading an old deployment,
 rename any ingest client named `retrieval`; its secret doesn't become a read token.
 
 ## 6. Upgrade the deployment
 
-Before upgrading, read `CHANGELOG.md`, review [release security evidence](../docs/operate/security.md),
+Before upgrading, read `CHANGELOG.md`, review [release security evidence](security.md),
 back up the database, and test restoration. Measure migration time on a restored
 copy. Constraint validation and index builds can block table reads and writes;
 schedule a maintenance window for large datasets.
@@ -500,7 +500,7 @@ and decodes one output row at a time; memory depends on the largest output and
 its identifiers. Measure duration and disk growth on a restored database before
 scheduling the maintenance window. Restart only the matching API build after
 provisioning succeeds. Stale writers that omit the physical alias count fail
-instead of creating unindexed Facts. See [Indexed call identifiers](../docs/adr/0023-indexed-call-identifiers.md).
+instead of creating unindexed Facts. See [Indexed call identifiers](../adr/0023-indexed-call-identifiers.md).
 
 ## 7. Operating cadence
 
@@ -514,7 +514,7 @@ docker compose --profile operator run --rm operator sediment report model
 
 Apply security fixes within your deployment's update deadlines. Track the
 support end date in `security-support.json` and the review expiries in the
-[release evidence](../docs/operate/security.md).
+[release evidence](security.md).
 
 ### Back up and restore
 
@@ -579,7 +579,7 @@ pushed Git history. Attribution notes contain Session identifiers and timestamps
 Basic redaction replaces recognized credentials before Fact storage. It isn't
 comprehensive secret detection and doesn't rewrite existing Facts. Quarantine
 Facts that contain credentials. Review the
-[per-source privacy boundaries](../docs/explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+[per-source privacy boundaries](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
 before enabling capture.
 
 ### 8.2 Where data lives
@@ -635,7 +635,7 @@ file and Session's external-change diagnostics from comparisons. Record the
 organization, harness, Session, file, and quarantine revision. Aggregates that
 include them can understate totals without a partial-coverage flag; recomputation
 doesn't repair missing windows. Retain quarantine until its original reason is
-resolved. See [External edit windows](../docs/explanation/how-capture-works.md#external-edit-windows).
+resolved. See [External edit windows](../explanation/how-capture-works.md#external-edit-windows).
 
 To delete the deployment data, remove its Compose volumes. **This deletes Facts,
 mirrors, exports, staging, and buffered deliveries. You cannot undo it.** Save
@@ -667,7 +667,7 @@ Capture requires an ingest token or webhook signature. Reports and operator
 queries require an operator token. Optional context routes accept retrieval or
 operator credentials within the configured Session grant. Exact context evidence
 reads can include reasoning and parts omitted by keyword selection. See
-[Continue a task with captured evidence](../docs/operate/resume-with-evidence.md).
+[Continue a task with captured evidence](resume-with-evidence.md).
 `GET /health` is unauthenticated and returns no captured content. Request bodies
 have size limits.
 
@@ -696,7 +696,7 @@ without queueing. Read and mirror deadlines are 30 and 120 seconds. Memory
 limits are 2 GiB for the API, 1 GiB for PostgreSQL, and 2 GiB for the gateway.
 Reserve capacity for operator and migration jobs.
 
-Review [the disposition register](../security/dispositions.json) before a
+Review [the disposition register](../../security/dispositions.json) before a
 deployment. Database isolation and resource limits reduce exposure
 to unresolved native parser vulnerabilities; they don't remove vulnerable code
 or protect stored Facts after database-process compromise. A custom network,
@@ -742,14 +742,14 @@ an internal gateway alone doesn't keep that content inside the perimeter.
   `docker compose logs gateway api`. A callback authentication or ingest
   failure doesn't retract the successful model response.
 
-Capture-path failures belong in [Configure local capture](../docs/capture/local-capture.md#repair-or-recover-capture)
-or [Roll out managed capture](../docs/capture/managed-capture.md#verify-the-rollout).
+Capture-path failures belong in [Configure local capture](../capture/local-capture.md#repair-or-recover-capture)
+or [Roll out managed capture](../capture/managed-capture.md#verify-the-rollout).
 
 ## 10. Teardown
 
-1. Use [Uninstall capture](../docs/capture/local-capture.md#uninstall-capture) on
+1. Use [Uninstall capture](../capture/local-capture.md#uninstall-capture) on
    developer machines that received a local install.
-2. Follow [Remove managed capture](../docs/capture/managed-capture.md#remove-managed-capture)
+2. Follow [Remove managed capture](../capture/managed-capture.md#remove-managed-capture)
    to remove fleet hooks, gateway callbacks, telemetry, and forge webhooks.
 3. If you need the dataset, create and extract the backup from
    [Operating cadence](#7-operating-cadence).
