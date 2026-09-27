@@ -1,7 +1,7 @@
 # Quickstart
 
 Run a local server and verify synthetic capture in a scratch repository.
-For a shared deployment, start at [Deploy Sediment](operate/deploy.md).
+For a shared deployment, follow [Deploy Sediment on EC2](operate/deploy-ec2.md).
 
 ## 0. Check the prerequisites
 
@@ -168,6 +168,6 @@ rm -rf ~/.sediment/server
 
 - [Configure your agent](capture/agent-integrations.md) to capture real work.
   Follow its install, environment, restart, and Session verification steps.
-- [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.
-  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers the
-  shared database connection, credentials, and persistent storage.
+- [Deploy Sediment on EC2](operate/deploy-ec2.md) to run it for a team. If you
+  already run PostgreSQL and HTTPS, [deploy on your own host](operate/deploy.md)
+  instead. Then [enroll your team](operate/run-pilot.md).

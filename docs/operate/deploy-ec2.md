@@ -1,17 +1,13 @@
-# Deploy Sediment on EC2 with Traefik
+# Deploy Sediment on EC2
 
 Use this page to run Sediment for a team on one Amazon Elastic Compute Cloud
-(EC2) instance with one public hostname. You install a published Sediment
-version from the Python Package Index (PyPI) and pull the published PostgreSQL
-and Traefik images. You don't need a Sediment checkout or an image build.
+(EC2) instance with one public hostname. The Sediment API runs under systemd
+from the published package. Docker Compose runs PostgreSQL and the Traefik
+proxy, which serves HTTPS. You don't need a Sediment checkout or an image
+build.
 
-The API runs under systemd as your non-root operator account. Docker Compose
-runs PostgreSQL and the Traefik proxy. Traefik serves HTTPS for the hostname.
-
-This setup captures agent and Git activity. The published package doesn't
-include a deployable LiteLLM gateway. If you also need a model gateway, follow
-[Connect a gateway](deploy.md#connect-a-gateway). If you already run PostgreSQL
-and HTTPS, follow [Deploy Sediment](deploy.md) instead.
+If you already run PostgreSQL and HTTPS, follow
+[Deploy Sediment on your own host](deploy.md) instead.
 
 ## Prepare the instance
 
@@ -38,12 +34,10 @@ and HTTPS, follow [Deploy Sediment](deploy.md) instead.
    - Restrict SSH to the operator's IP address.
    - Keep ports 5432 and 8000 private.
 
-## Install a Sediment version
+## Install Sediment
 
 1. Select a [published release](https://github.com/sediment-ai/sediment/releases).
-2. Review the release's evidence with
-   [Check release and deployment security](security.md).
-3. As the operator account, run the installer. This example installs version
+2. As the operator account, run the installer. This example installs version
    0.2.0:
 
    ```bash
@@ -57,11 +51,11 @@ and HTTPS, follow [Deploy Sediment](deploy.md) instead.
      sediment --version
    ```
 
-   Confirm that the output shows the version that you selected.
+   The output shows the version that you selected.
 
-If a required wheel is unavailable, `UV_NO_BUILD=1` makes the installation fail
-instead of building from source. The installer also installs Python 3.12 and
-the host libraries through package managers.
+The installer also installs Python 3.12 and the host libraries.
+`UV_NO_BUILD=1` makes the installation fail instead of building a missing wheel
+from source.
 
 ## Configure PostgreSQL and Traefik
 
@@ -181,19 +175,14 @@ the host libraries through package managers.
    docker compose up -d --wait postgres
    ```
 
-   Confirm that PostgreSQL reports `healthy`. If it doesn't, inspect
+   PostgreSQL reports `healthy`. If it doesn't, inspect
    `docker compose logs --tail 100 postgres` before you continue.
 
-On Linux, host networking lets Traefik reach the API on loopback. The Traefik
-container runs as root with only the capability to bind ports 80 and 443. It
-writes certificates to the root-owned private `certificates/` directory. It
-gets no Docker socket, database password, or Sediment credential.
-
-Sediment's image scan reports cover its contributor images, not these upstream
-images. Track PostgreSQL and Traefik releases separately from the Sediment
-package. For release details, see the
-[postgres official image](https://hub.docker.com/_/postgres) and the
-[Traefik Proxy documentation](https://doc.traefik.io/traefik/).
+Host networking lets Traefik reach the API on loopback. The Traefik container
+runs as root with only the capability to bind ports 80 and 443. It gets no
+Docker socket, database password, or Sediment credential. Sediment's release
+scans don't cover the upstream PostgreSQL and Traefik images, so track their
+releases yourself.
 
 ## Run Sediment as a service
 
@@ -231,15 +220,14 @@ package. For release details, see the
    curl -fsS http://127.0.0.1:8000/health
    ```
 
-   Confirm that the health response shows `status: "ok"` and the version that
-   you selected. If startup fails, inspect
+   The health response shows `"status":"ok"` and the version that you
+   selected. If startup fails, inspect
    `journalctl --user -u sediment.service -n 100 --no-pager`.
 
-Startup provisions separate database roles and applies migrations. The API
-receives only runtime database authority. `~/.sediment/server/server.env` holds
-the generated API credentials and database-role passwords.
-`~/.sediment/server/mirror` holds the mirrors. Keep `~/.sediment/server` on
-persistent storage.
+On start, Sediment creates separate database roles and applies migrations. The
+API runs with the runtime role only. Sediment writes its generated API tokens
+and database-role passwords to `~/.sediment/server/server.env`, and its Git
+mirrors to `~/.sediment/server/mirror`.
 
 ## Enable and verify HTTPS
 
@@ -251,61 +239,81 @@ persistent storage.
   curl -fsS https://sediment.example.com/health
   ```
 
-  Confirm that the health response shows `status: "ok"` and the installed
-  version. Don't bypass certificate verification.
+  The health response matches the local check. Don't bypass certificate
+  verification.
 
-Traefik obtains and renews the certificate. It also redirects HTTP to HTTPS. If
+Traefik obtains and renews the certificate and redirects HTTP to HTTPS. If
 certificate issuance fails, check public DNS, ports 80 and 443, and the proxy
 log. After you correct DNS, run `docker compose restart proxy` and repeat the
-public health check. Preserve `certificates/acme.json` across restarts.
+public health check.
 
-The request limit applies to each direct peer address: an average of 100
-requests per second, with bursts of 200. Clients behind one outbound address
-share that limit.
+The request limit applies to each client address: an average of 100 requests
+per second, with bursts of 200. Clients behind one outbound address share that
+limit.
 
-## Enroll your team
+## Set up an operator shell
 
-A single instance is a single point of failure. Before you enroll developers,
-set storage quotas, monitor service restarts, and test a restore with
-[Back up and restore](deploy.md#back-up-and-restore).
+Reports, Derivations, exports, and quarantine commands read PostgreSQL
+directly through the `sediment_operator` role.
 
-Where the following procedures tell you to stop, restart, or inspect Sediment
-through its supervisor, use the `sediment.service` commands in
-[Operate and upgrade this installation](#operate-and-upgrade-this-installation).
+1. In your SSH session, set the following variables. Set `SEDIMENT_ORG_ID` to
+   the value in `~/sediment-deploy/server.env`:
 
-1. [Enroll named capture clients](deploy.md#enroll-named-capture-clients).
-2. Give developers `https://sediment.example.com` as the endpoint.
-3. [Configure capture](deploy.md#4-configure-capture).
-4. [Verify the deployment](deploy.md#5-verify-the-deployment). A health check
-   doesn't prove capture or provider access.
+   ```bash
+   export SEDIMENT_ORG_ID=acme
+   export SEDIMENT_MIRROR_PATH="$HOME/.sediment/server/mirror"
+   OPERATOR_PASSWORD="$(sed -n 's/^SEDIMENT_OPERATOR_PASSWORD=//p' ~/.sediment/server/server.env)"
+   export SEDIMENT_DATABASE_URL="postgresql+psycopg://sediment_operator:$OPERATOR_PASSWORD@127.0.0.1:5432/sediment"
+   unset OPERATOR_PASSWORD
+   ```
 
-## Operate and upgrade this installation
+2. Check the schema:
+
+   ```bash
+   sediment db status
+   ```
+
+   The output shows `at_head`.
+
+3. Sign in to the API with the operator token:
+
+   ```bash
+   sediment login http://127.0.0.1:8000
+   sediment facts
+   ```
+
+   On loopback, `sediment login` reads the operator token from
+   `~/.sediment/server/server.env`. `sediment facts` prints zero counts until
+   the first capture arrives.
+
+## Manage the services
+
+Where another page tells you to stop, start, restart, or inspect Sediment, use
+these commands:
 
 | Task | Command |
 | --- | --- |
 | Stop the API | `systemctl --user stop sediment.service` |
+| Start the API | `systemctl --user start sediment.service` |
 | Restart the API | `systemctl --user restart sediment.service` |
 | Inspect the API log | `journalctl --user -u sediment.service -n 100 --no-pager` |
 | Stop the database and proxy | `docker compose stop`, from `~/sediment-deploy` |
 | Start the database and proxy | `docker compose up -d`, from `~/sediment-deploy` |
 
-PostgreSQL runs independently of the API. Stop the API before you stop the
-database.
+Stop the API before you stop the database.
 
 **Warning:** `docker compose down --volumes` permanently deletes the database.
-Use `--volumes` only when you intend to delete it.
 
-- Before an upgrade, follow [Back up and restore](deploy.md#back-up-and-restore).
-  Retain the `postgres-data` volume, `~/sediment-deploy`, and
-  `~/.sediment/server`.
-- To upgrade Sediment, follow
-  [Upgrade the deployment](deploy.md#6-upgrade-the-deployment). For its install
-  step, run the installer command from
-  [Install a Sediment version](#install-a-sediment-version) with the target
-  version. That command installs to `~/.local/bin`, where `sediment.service`
-  runs the package.
-- To upgrade PostgreSQL or Traefik, follow its own release instructions. Don't
-  change the PostgreSQL major version on an existing volume.
+To upgrade Sediment, follow
+[Maintain a deployment](maintain.md#upgrade-sediment), and rerun the installer
+command from [Install Sediment](#install-sediment) with the target version. To
+upgrade PostgreSQL or Traefik, follow its own release notes. Don't change the
+PostgreSQL major version on an existing volume.
 
-For monitoring, data handling, troubleshooting, and teardown, see
-[Deploy Sediment](deploy.md).
+## Next steps
+
+1. [Enroll your team](run-pilot.md) with `https://sediment.example.com` as the
+   endpoint.
+2. A single instance is a single point of failure. Before you rely on the
+   data, set up [backups](maintain.md#back-up-and-restore) of the
+   `postgres-data` volume, `~/sediment-deploy`, and `~/.sediment/server`.

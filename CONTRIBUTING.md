@@ -15,7 +15,7 @@ documents first.
 
 For package installation and local capture verification, follow the
 [Quickstart](docs/quickstart.md). For team enrollment, use
-[Run a Cursor and Codex pilot](docs/operate/run-pilot.md). For contributor
+[Enroll your team](docs/operate/run-pilot.md). For contributor
 setup and checks, use [Contributor environment and checks](#contributor-environment-and-checks). The
 [documentation site](https://docs.sediment.so) covers capture, deployment,
 Derivations, and exports.
@@ -721,6 +721,69 @@ contemporary. This rehearsal doesn't reproduce months of changing repository
 history. The local fixture uses development mode and file-based mirrors. For
 deployment verification, repeat representative workloads under the deployment's
 security settings and total resource limits.
+
+### Profile reports and Derivations
+
+Measure memory and disk use for broad reports, canonical Derivations, and
+training exports against a restored copy of real inputs. Restore a backup into
+a separate PostgreSQL instance, copy its mirrors, and stop ingest and mirror
+updates during comparisons. Record the Sediment version, schema revision, Fact
+counts, quarantine revision, mirror revisions, and for reports the exact cohort
+and `as_of`.
+
+Record each budget before starting: memory ceiling and swap, concurrent
+requests and workers, the largest content row, Session, and training group,
+private staging and output capacity, and command deadlines. Measure one
+workload at a time first. A passing serial run doesn't qualify concurrent
+workers.
+
+| Encoded population | Default byte limit |
+| --- | --- |
+| One FactStore content row | 64 MiB |
+| Complete Session input and output | 256 MiB, excluding raw audit payloads |
+| Materialized report or Attribution output | 256 MiB |
+| One bundle record | 512 MiB |
+| One private record store | 8 GiB |
+| Explicit bundle materialization | 64 MiB |
+| Complete SFT, DPO, or diff-SFT projection group | 128 MiB |
+| Consumer-profile inputs and outputs | 64 MiB each |
+
+These limits don't bound Python memory peaks. The call and repository identity
+populations have separate 50,000-row caps. If a check refuses the full
+workload, record a failed capacity gate. Don't substitute a smaller cohort or
+treat the refusal as an eligibility skip.
+
+Sample throughout the command, including decoding, validation, and publication.
+Use a fresh container for each serial run so that an earlier peak doesn't carry
+over:
+
+| Measurement | Linux source |
+| --- | --- |
+| Process RSS and high-water mark | `/proc/<pid>/status`: `VmRSS`, `VmHWM` |
+| Container usage and peak | `/sys/fs/cgroup/memory.current`, `memory.peak` |
+| Anonymous memory and file cache | `/sys/fs/cgroup/memory.stat` |
+| Memory-limit events | `/sys/fs/cgroup/memory.events` |
+| Staging and output space | Free-space and quota tools for the staging mount |
+
+Count every concurrently live private staging directory. In a container whose
+`/tmp` is memory-backed, set `TMPDIR` to a private disk-backed directory. Keep
+logs to stage names, counts, durations, sizes, hashes, and sanitized error
+categories.
+
+To check determinism, run the same report twice with the same cohort and
+`as_of`, and an unscoped `sediment derive` twice in fresh processes. Compare
+all seven bundle file sizes and SHA-256 hashes. From one bundle, run every
+export objective and compare each with its direct export. Include real
+fixtures that produce positive rows, cross-Session DPO pairs, and fragmented
+Rollouts; an empty export verifies only its execution path.
+
+For `GET /query/commit/{sha}`, pair an identity-qualified and an unqualified
+request at a fixed `as_of`, and include a missing commit and a capped non-head
+commit. Record latency, worker memory, PostgreSQL buffers, returned rows, and
+Git subprocess counts, then repeat under concurrent query load.
+[ADR 0020](docs/adr/0020-bounded-derivation-execution.md) and
+[ADR 0024](docs/adr/0024-targeted-commit-investigations.md) define the
+boundaries that a change must preserve.
 
 ### Measure agent evidence retrieval
 

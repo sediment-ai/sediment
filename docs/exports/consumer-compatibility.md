@@ -30,7 +30,7 @@ If a limit is exceeded, the complete export fails before publication. Sediment
 preserves the destination and removes its private staging. Capacity failures
 don't become eligibility skips or smaller successful datasets. For a larger
 export, use canonical rows without `--profile` and qualify downstream conversion
-separately. The [profiling guide](../operate/profile-derivations.md) explains
+separately. The [profiling procedure](../../CONTRIBUTING.md#profile-reports-and-derivations) explains
 resource measurement and qualification boundaries.
 
 ## Install the matching optional environment

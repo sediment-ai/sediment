@@ -321,7 +321,7 @@ lifecycle, and dataset diagnostic reports. It doesn't change the surviving
 observation's text-based retention score or Fate category. These external counts
 don't supply training labels or Rewards. Missing windows aren't reconstructed
 from quarantined content. The
-[quarantine procedure](../operate/deploy.md#83-quarantine-and-wholesale-deletion)
+[quarantine procedure](../operate/maintain.md#quarantine-captured-data)
 explains how to exclude affected diagnostics from interpretation.
 
 ## Delivery guarantees

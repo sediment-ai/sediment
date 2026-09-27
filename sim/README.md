@@ -68,7 +68,7 @@ to inspect repeated-text estimates and known population and retrieval limits
 without creating a database. The generator permits up to 300,000 calls so that
 the target and explicit runtime-refusal cases can be exercised; production
 limits retain their separate contracts.
-Follow [Profile reports and Derivations](../docs/operate/profile-derivations.md#rehearse-capture-alongside-batch-work)
+Follow [Rehearse capture alongside batch work](../CONTRIBUTING.md#rehearse-capture-alongside-batch-work)
 for database ownership, commands, profile fields, and measurement limits.
 
 `capacity_push_probe.py` adds one commit and note to the seeded repository. It

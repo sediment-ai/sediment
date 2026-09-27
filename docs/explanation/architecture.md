@@ -132,8 +132,8 @@ without mutating or deleting the Fact.
 Sediment has no phone-home path. During installation, the installer and managed
 local PostgreSQL setup can download packages, host libraries, and PostgreSQL
 binaries. Operation without public network access requires dependencies prepared
-inside the perimeter. See the [deployment
-guide](../operate/deploy.md#84-network-exposure) for runtime network exposure.
+inside the perimeter. See [Limit network exposure](../operate/security.md#limit-network-exposure)
+for runtime network exposure.
 
 During operation, optional repository mirrors connect to configured Git remotes.
 Internal forges, gateways, and CI systems can keep capture and mirror traffic
