@@ -1132,6 +1132,53 @@ def test_concurrent_publishers_preserve_every_complete_record(delivery, tmp_path
                 process.communicate(timeout=3)
 
 
+def test_racing_publishers_all_open_a_fresh_enqueue_lock(delivery, tmp_path):
+    # Publishers block on stdin, so each round releases all of them at once
+    # into a fresh directory to race on creating the same enqueue lock.
+    code = """
+import json, sys
+from sediment_cli import delivery as d
+for line in sys.stdin:
+    directory, request = json.loads(line)
+    result = d.enqueue(d.request_from_dict(request), directory)
+    print(result.status, result.reason, flush=True)
+"""
+    publishers = [
+        subprocess.Popen(
+            [sys.executable, "-c", code],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        for _ in range(8)
+    ]
+    try:
+        for round_ in range(25):
+            queue = tmp_path / str(round_)
+            lines = [
+                json.dumps(
+                    [
+                        str(queue),
+                        delivery.prepare_request(
+                            "otlp", "http://localhost:9", b"x"
+                        ).as_dict(),
+                    ]
+                )
+                + "\n"
+                for _ in publishers
+            ]
+            for process, line in zip(publishers, lines):
+                process.stdin.write(line)
+                process.stdin.flush()
+            results = [process.stdout.readline() for process in publishers]
+            assert results == ["queued buffered\n"] * 8, f"round {round_}"
+            assert delivery.status(queue)["pending"] == 8
+    finally:
+        for process in publishers:
+            process.kill()
+            process.communicate(timeout=3)
+
+
 @pytest.mark.parametrize(
     "url", ["http://api:8000", "http://remote.example", "http://10.0.0.1:8000"]
 )

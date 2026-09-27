@@ -642,8 +642,20 @@ class _Queue:
 
     @contextmanager
     def lock(self, name: str, *, wait: bool = True, create: bool = True):
-        flags = os.O_RDWR | os.O_NOFOLLOW | (os.O_CREAT if create else 0)
-        fd = os.open(name, flags, 0o600, dir_fd=self.fd)
+        flags = os.O_RDWR | os.O_NOFOLLOW
+        fd = -1
+        if create:
+            # Racing plain O_CREAT opens of one name can fail with ENOENT on
+            # APFS; exclusive creation, then opening the winner's file, does not.
+            # Lock files are never removed, so the second open cannot miss.
+            try:
+                fd = os.open(
+                    name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=self.fd
+                )
+            except FileExistsError:
+                pass
+        if fd == -1:
+            fd = os.open(name, flags, dir_fd=self.fd)
         try:
             self._check(os.fstat(fd))
             deadline = time.monotonic() + 1
