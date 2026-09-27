@@ -37,6 +37,8 @@
 
 ### Contributor checks
 
+- Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
+  comparison's exact version check and task-selection tests with the lockfile.
 - Centralize repository agent skills in `.skills/`, including release preparation
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
