@@ -11,8 +11,9 @@
 - Stop a failed command block in Deploy Sediment, the Quickstart, or the
   Compose rehearsal without closing your terminal. The blocks chain their
   commands instead of calling `exit 1`.
-- Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
-  installation procedure.
+- Publish the EC2 and Traefik setup as its own page, Deploy Sediment on EC2
+  with Traefik. Deploy Sediment keeps the existing-host installation and the
+  enrollment, upgrade, and data-handling procedures that both pages share.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
   the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
   provider access, and configure one hostname with automatic certificate renewal.
