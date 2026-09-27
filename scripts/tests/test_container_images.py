@@ -293,7 +293,8 @@ exporter.shutdown()
 assert FastAPIInstrumentor().instrumentation_dependencies()
 # LiteLLM 1.103.0 requires MCP 2 for its proxy and httpx[http2] at its base.
 import httpx
-import litellm.proxy._experimental.mcp_server.server
+from litellm.proxy._experimental.mcp_server import server as mcp_server
+assert mcp_server.MCP_AVAILABLE
 httpx.Client(http2=True).close()
 print('protocol consumers interoperate')
 """,
