@@ -4,10 +4,10 @@
 
 ### Deployment
 
-- Install EC2 deployments by Sediment package version with published PostgreSQL
-  and Traefik images. Remove source checkouts and local image builds from the
-  operator procedure; document systemd startup, persistence, and package upgrades.
-
+- Install EC2 deployments from a published Sediment package version, with the
+  published PostgreSQL and Traefik images. Remove the source checkout and local
+  image builds from the operator procedure. Document systemd startup,
+  persistent data, and package upgrades.
 - Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
   installation procedure.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,

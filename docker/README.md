@@ -7,11 +7,11 @@ repository's source and Docker build tools. For package installation, use
 
 ## Deploy a pilot on EC2
 
-Follow [Deploy on EC2 with Traefik](../docs/operate/deploy.md#deploy-on-ec2-with-traefik)
-for instance setup, DNS, credentials, startup, and public HTTPS verification.
-That procedure installs the published Python package with upstream PostgreSQL
-and Traefik images. It does not use this source-build rehearsal. The remaining
-sections are for contributors qualifying the repository containers.
+For instance setup, DNS, credentials, startup, and public HTTPS verification,
+follow [Deploy on EC2 with Traefik](../docs/operate/deploy.md#deploy-on-ec2-with-traefik).
+That procedure installs the published Python package with the upstream
+PostgreSQL and Traefik images. It doesn't use this source-build rehearsal. The
+remaining sections are for contributors who qualify the repository containers.
 
 ## 1. Prerequisites
 
