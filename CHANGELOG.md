@@ -4,6 +4,8 @@
 
 ### Deployment
 
+- Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
+  installation procedure.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
   the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
   provider access, and configure one hostname with automatic certificate renewal.
