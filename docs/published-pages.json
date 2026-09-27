@@ -81,6 +81,12 @@
       "description": "Capture Cursor commit Attribution and implicit accepts from local desktop work."
     },
     {
+      "source": "docs/capture/agents/pi.md",
+      "destination": "agents/pi",
+      "title": "Capture pi work",
+      "description": "Capture pi implicit accepts, Attribution, inference calls, and optional edit evidence."
+    },
+    {
       "source": "docs/capture/local-capture.md",
       "destination": "capture/local-capture",
       "title": "Local capture",
@@ -90,7 +96,7 @@
       "source": "docs/capture/managed-capture.md",
       "destination": "capture/managed-capture",
       "title": "Managed capture",
-      "description": "Connect gateways, forges, private repositories, and a managed developer fleet."
+      "description": "Connect GitHub webhooks, private repository mirrors, a model gateway, and a managed developer fleet."
     },
     {
       "source": "docs/explanation/how-capture-works.md",

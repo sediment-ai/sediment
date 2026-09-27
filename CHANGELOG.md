@@ -2,12 +2,15 @@
 
 ## Unreleased
 
-### Contributor checks
+### Capture
 
-- Centralize repository agent skills in `.skills/`, including release preparation
-  and publication. Route every skill from `AGENTS.md` and remove the repository
-  Claude Code settings so agents can read the same procedures across harnesses.
-  Require verification of the README PyPI badge during release closeout.
+- Restructure the Capture docs. Capture pi work moves out of Agent
+  integrations into its own page, like the other agents. Agent integrations
+  becomes a comparison page that also shows Inference-call support. To opt in
+  to transcript capture, rerun `sediment install` with `--transcripts`; the
+  generated environment already holds the endpoint and token. Configure local
+  capture, Roll out managed capture, and the agent guides drop repeated steps,
+  and managed capture puts the GitHub webhooks first.
 
 ### Deployment
 
@@ -22,6 +25,13 @@
   absorbs the lifecycle report. Remove Validate a deployment and Review release
   verification. Move Profile reports and Derivations to CONTRIBUTING.md as a
   maintainer procedure.
+
+### Contributor checks
+
+- Centralize repository agent skills in `.skills/`, including release preparation
+  and publication. Route every skill from `AGENTS.md` and remove the repository
+  Claude Code settings so agents can read the same procedures across harnesses.
+  Require verification of the README PyPI badge during release closeout.
 
 ## 0.3.0 — 2026-09-27
 
