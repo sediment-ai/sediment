@@ -8,11 +8,8 @@ per-subdomain glossaries.
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root — the ubiquitous language.
-- **`docs/adr/`** — binding architecture (0001–0005 core, 0006 the open-core
-  boundary, 0007 client-side transcript parsing, 0008 structured inference
-  calls, 0009–0016 Attribution, evidence, storage, outcome and bundle contracts,
-  0017 bounded sender transport storage, 0018 credential authorities, and 0019 repository identity).
-  Read the ones touching your area.
+- **`docs/adr/`** — binding architecture, one file per decision. Read the
+  ones touching your area.
 
 If a glossary term or ADR you expect doesn't exist, **proceed silently** —
 `/domain-modeling` creates them lazily when terms or decisions actually resolve.
@@ -22,7 +19,7 @@ at a **missing file** is a bug to report, never something to skip silently.
 ## File structure
 
 Source layout: [Where the code lives](../../CONTRIBUTING.md#where-the-code-lives). The `docs/`
-subtree splits by reader need — `docs/adr/` (binding decisions 0001–0019),
+subtree splits by reader need — `docs/adr/` (binding decisions),
 `docs/explanation/` (concepts), `docs/operate/`, `docs/capture/`,
 `docs/exports/` (how-tos), `docs/reference/` (generated), and
 `docs/agents/` (these playbooks). Which mode a new page is: `docs/agents/doc-style.md`.
