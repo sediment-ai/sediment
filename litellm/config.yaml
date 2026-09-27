@@ -2,7 +2,7 @@
 # Set its credentials in .env, then run:
 # docker compose --profile gateway up -d --build
 # Compose mounts this file at /app/config.yaml and starts LiteLLM with it.
-# See docs/operate/deploy.md#enable-bundled-litellm for setup and verification.
+# See docker/README.md#enable-bundled-litellm for setup and verification.
 # If you operate an existing gateway, see docs/capture/managed-capture.md
 # for callback configuration instead.
 

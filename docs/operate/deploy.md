@@ -58,13 +58,13 @@ include a deployable LiteLLM gateway. If you also need a model gateway, follow
 
    ```bash
    SEDIMENT_VERSION=0.2.0
-   SEDIMENT_INSTALLER="$(mktemp)" || exit 1
-   curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
-   UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \
-     sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
-   rm "$SEDIMENT_INSTALLER"
-   export PATH="$HOME/.local/bin:$PATH"
-   sediment --version
+   SEDIMENT_INSTALLER="$(mktemp)" &&
+     curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
+     UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \
+       sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" &&
+     rm "$SEDIMENT_INSTALLER" &&
+     export PATH="$HOME/.local/bin:$PATH" &&
+     sediment --version
    ```
 
    Confirm that the output shows the version that you selected.
@@ -81,8 +81,7 @@ the host libraries through package managers.
 
    ```bash
    umask 077
-   mkdir -m 700 "$HOME/sediment-deploy" || exit 1
-   cd "$HOME/sediment-deploy" || exit 1
+   if mkdir -m 700 "$HOME/sediment-deploy" && cd "$HOME/sediment-deploy"; then
    POSTGRES_PASSWORD="$(openssl rand -hex 32)"
    cat > .env <<EOF_ENV
    POSTGRES_PASSWORD=$POSTGRES_PASSWORD
@@ -97,6 +96,7 @@ the host libraries through package managers.
    EOF_SERVER
    unset POSTGRES_PASSWORD
    sudo install -d -m 700 -o root -g root certificates
+   fi
    ```
 
    Keep `.env`, `server.env`, and `certificates/` private. Don't source these
@@ -338,10 +338,10 @@ the example version with the release that you selected:
 
 ```bash
 SEDIMENT_VERSION=0.2.0
-SEDIMENT_INSTALLER="$(mktemp)" || exit 1
-curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
-UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
-rm "$SEDIMENT_INSTALLER"
+SEDIMENT_INSTALLER="$(mktemp)" &&
+  curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
+  UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" &&
+  rm "$SEDIMENT_INSTALLER"
 ```
 
 If the installer prints an instruction to update `PATH`, follow it. Then check
@@ -547,10 +547,10 @@ Upgrade the API before capture clients and gateway integrations.
 
    ```bash
    SEDIMENT_VERSION='<target release version>'
-   SEDIMENT_INSTALLER="$(mktemp)" || exit 1
-   curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" || exit 1
-   UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" || exit 1
-   rm "$SEDIMENT_INSTALLER"
+   SEDIMENT_INSTALLER="$(mktemp)" &&
+     curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
+     UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" &&
+     rm "$SEDIMENT_INSTALLER"
    ```
 
    Preserve the server data directory and credentials.

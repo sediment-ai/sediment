@@ -8,6 +8,9 @@
   published PostgreSQL and Traefik images. Remove the source checkout and local
   image builds from the operator procedure. Document systemd startup,
   persistent data, and package upgrades.
+- Stop a failed command block in Deploy Sediment, the Quickstart, or the
+  Compose rehearsal without closing your terminal. The blocks chain their
+  commands instead of calling `exit 1`.
 - Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
   installation procedure.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,

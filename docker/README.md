@@ -43,10 +43,10 @@ deployment host, check out the commit you want to deploy:
 
 ```bash
 SEDIMENT_REVISION='<full commit hash>'
-git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
-cd sediment || exit 1
-git checkout --detach "$SEDIMENT_REVISION" || exit 1
-test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
+git clone https://github.com/sediment-ai/sediment.git sediment &&
+  cd sediment &&
+  git checkout --detach "$SEDIMENT_REVISION" &&
+  test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
 ```
 
 Run the remaining host commands from this directory. If another Sediment stack
@@ -429,11 +429,11 @@ prepare its replacement before running Compose against the updated checkout:
 
    ```bash
    SEDIMENT_REVISION='<full commit hash to deploy>'
-   git fetch --tags origin || exit 1
-   git checkout --detach "$SEDIMENT_REVISION" || exit 1
-   test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
-   chmod 600 .env
-   uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py --output .env.next
+   git fetch --tags origin &&
+     git checkout --detach "$SEDIMENT_REVISION" &&
+     test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
+     chmod 600 .env &&
+     uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py --output .env.next
    ```
 
 3. In a private editor, copy the existing `POSTGRES_PASSWORD`, `SEDIMENT_ORG_ID`,
