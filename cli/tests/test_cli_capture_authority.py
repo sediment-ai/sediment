@@ -101,7 +101,7 @@ def test_install_refuses_unproven_or_operator_capture_credentials(
     configured_home(tmp_path, monkeypatch, entry)
     monkeypatch.setenv("SEDIMENT_SESSION_TOKEN", OPERATOR)
     with pytest.raises(ValueError, match="login.*--capture"):
-        attribution.cmd_install_env(None, None, None)
+        attribution.cmd_install_env(None)
     with pytest.raises(ValueError, match="login.*--capture"):
         attribution._install_codex_profile("capture")
     assert not (tmp_path / ".sediment/env.sh").exists()
@@ -119,7 +119,7 @@ def test_install_uses_only_proven_ingest_in_shell_fish_and_codex(tmp_path, monke
         },
     )
     monkeypatch.setenv("SEDIMENT_SESSION_TOKEN", OPERATOR)
-    attribution.cmd_install_env(None, None, None)
+    attribution.cmd_install_env(None)
     codex = attribution._install_codex_profile("capture")
     for path in (
         tmp_path / ".sediment/env.sh",
@@ -160,11 +160,11 @@ def test_explicit_capture_override_requires_live_ingest_authority(
     monkeypatch.setenv("SEDIMENT_INGEST_TOKEN", "explicit-ingest")
     try:
         if authority == "ingest":
-            attribution.cmd_install_env(None, None, None)
+            attribution.cmd_install_env(None)
             assert "explicit-ingest" in (tmp_path / ".sediment/env.sh").read_text()
         else:
             with pytest.raises(ValueError, match="ingest authority"):
-                attribution.cmd_install_env(None, None, None)
+                attribution.cmd_install_env(None)
             assert not (tmp_path / ".sediment/env.sh").exists()
     finally:
         server.shutdown()

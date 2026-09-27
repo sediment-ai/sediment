@@ -67,9 +67,8 @@ finds. It writes the capture endpoint, token, and developer identifier to
 profiles. Rerun it after you install another agent, or for another repository.
 
 Each run rewrites `env.sh` from the flags that you pass, so always pass the same
-`--user-id`, and the gateway flags if you use a gateway. Otherwise the rerun
-drops them. The installer changes only Sediment's own entries in agent
-configuration.
+`--user-id`. Otherwise the rerun drops it. The installer changes only
+Sediment's own entries in agent configuration.
 
 Start each agent from a shell that loaded `env.sh`. Fully quit a running
 desktop agent first, because it keeps its old environment. Cursor is the
@@ -108,22 +107,11 @@ agent's environment, and `SEDIMENT_PI_TRANSCRIPTS=1` for pi.
 
 ## Route inference calls through a gateway
 
-If the deployment runs a model gateway, rerun the installer with its URL and
-your client key added to your usual flags:
-
-```bash
-sediment install --user-id '<developer>' \
-  --gateway-url https://sediment-llm.example.com \
-  --gateway-key "$SEDIMENT_GATEWAY_KEY" \
-  /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
-`SEDIMENT_GATEWAY_KEY` for the agents. The model provider's key stays on the
-gateway. Each agent guide covers its own client setup, and
-[Configure inference-call capture](managed-capture.md#configure-inference-call-capture)
-covers the gateway.
+If your deployment captures Inference calls, your operator routes agents through
+its gateway and distributes the gateway URL and client credential, as described
+in [Distribute gateway routing](managed-capture.md#distribute-gateway-routing).
+`sediment install` doesn't configure gateway routing, and you don't need a
+gateway credential.
 
 ## Verify capture
 

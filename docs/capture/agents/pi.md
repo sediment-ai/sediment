@@ -89,42 +89,17 @@ messages, and counts an unusable parent as `parent_source_unverified`.
 
 ## Configure inference-call capture
 
-Set up the gateway to serve your existing model first, with
-[Configure inference-call capture](../managed-capture.md#configure-inference-call-capture).
-Then configure pi:
+If your deployment routes pi through a gateway, your operator distributes the
+`sediment` provider and its credential, as described in
+[Distribute gateway routing](../managed-capture.md#distribute-gateway-routing).
+You don't need a gateway credential. Start pi with the provider:
 
-1. Merge this provider into `~/.pi/agent/models.json`. Keep your existing
-   providers, and replace the URL and model ID:
+```bash
+pi --provider sediment --model '<existing Anthropic model ID>'
+```
 
-   ```json
-   {
-     "providers": {
-       "sediment": {
-         "baseUrl": "https://sediment-llm.example.com",
-         "api": "anthropic-messages",
-         "apiKey": "$SEDIMENT_GATEWAY_KEY",
-         "models": [{"id": "<existing Anthropic model ID>"}]
-       }
-     }
-   }
-   ```
-
-   Keep `$SEDIMENT_GATEWAY_KEY` literally in the file; pi resolves it from the
-   environment. Copy the model's capabilities, context, and output limits from
-   its existing definition.
-
-2. Load `SEDIMENT_GATEWAY_KEY` into the pi environment from your team's
-   credential store.
-3. Start pi with the provider:
-
-   ```bash
-   pi --provider sediment --model '<existing Anthropic model ID>'
-   ```
-
-   In a running Session, open `/model` to reload the file and select the model.
-
-If you register a different provider name or API, set `SEDIMENT_PROVIDER_ID` and
-`SEDIMENT_PROVIDER_API` to match it.
+In a running Session, open `/model` to reload the provider file and select the
+model.
 
 ## Verify capture
 

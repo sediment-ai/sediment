@@ -13,7 +13,7 @@ paths that participants approve:
 | --- | --- | --- |
 | [GitHub webhooks](#configure-push-and-ci-capture) | Pushes, pull request revisions and merges, repository renames, and CI outcomes | Repository administrator access |
 | [Repository mirrors](#configure-repository-mirrors) | Commit Attribution, with the developers' git hooks | Read-only credentials for private repositories |
-| [Gateway callback](#configure-inference-call-capture) | Inference calls | A gateway, its provider credentials, and a capture token |
+| [Gateway callback](#configure-inference-call-capture) | Inference calls | A gateway, its provider credentials, a capture token, and a way to distribute client routing |
 | [Fleet distribution](#distribute-decision-telemetry) | Developer decisions and commit Attribution on many machines | Mobile device management (MDM), and Python 3.12 on each macOS or Linux machine |
 
 ## Configure push and CI capture
@@ -84,15 +84,104 @@ For each gateway:
    fail the model call.
 3. Make sure the client carries the real Session identifier. The server skips
    calls without one and logs `gateway_ingest_skipped_no_session`.
-4. Route each agent through the gateway with its guide:
-   [Claude Code](agents/claude-code.md#configure-inference-call-capture),
-   [Codex](agents/codex.md#configure-inference-call-capture), or
-   [pi](agents/pi.md#configure-inference-call-capture).
+4. Route each agent through the gateway, as described in
+   [Distribute gateway routing](#distribute-gateway-routing).
 
 A successful model response doesn't prove capture. Check a real Session, as
 described in [Verify the rollout](#verify-the-rollout).
 [Gateway request and capture paths](../explanation/how-capture-works.md#gateway-request-and-capture-paths)
 explains how the two paths fail independently.
+
+## Distribute gateway routing
+
+A gateway records only the model calls that an agent sends to it. Each agent
+needs the gateway URL and a client credential in the environment that starts
+it. Distribute both through configuration that you manage, such as MDM or an
+agent service. `sediment install` doesn't configure gateway routing, and
+developers don't request a gateway credential.
+
+Give each machine a client credential that the gateway accepts and that can't
+administer the gateway. The bundled LiteLLM gateway accepts only
+`LITELLM_MASTER_KEY`, its administrative key, and can't issue per-developer
+keys. Keep that key on machines that you control.
+
+Routed calls use the gateway's provider key. While a gateway credential is
+active, Claude Code doesn't use the developer's claude.ai subscription.
+
+### Claude Code
+
+Merge the gateway route into the Claude Code managed settings file, and keep
+its other keys. The file is
+`/Library/Application Support/ClaudeCode/managed-settings.json` on macOS and
+`/etc/claude-code/managed-settings.json` on Linux:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://sediment-llm.example.com"
+  },
+  "apiKeyHelper": "<credential helper command>"
+}
+```
+
+`apiKeyHelper` names a command that prints the client credential. Claude Code
+sends its output in the `Authorization` and `x-api-key` headers, and reruns the
+command after five minutes by default. The Claude desktop app reads gateway
+routing from its own configuration, not from this file.
+
+### Codex
+
+Codex needs a gateway with a Responses API route for the developer's model. The
+bundled gateway serves only `claude-*` models. Distribute these files:
+
+1. A provider in `<Codex home>/config.toml`:
+
+   ```toml
+   [model_providers.sediment]
+   name = "Sediment gateway"
+   base_url = "https://sediment-llm.example.com/v1"
+   env_key = "SEDIMENT_GATEWAY_KEY"
+   wire_api = "responses"
+   ```
+
+2. A `gateway` profile in `<Codex home>/gateway.config.toml` that selects the
+   provider and disables the image tool, which the LiteLLM bridge rejects:
+
+   ```toml
+   model_provider = "sediment"
+
+   [features]
+   image_generation = false
+   ```
+
+3. `SEDIMENT_GATEWAY_KEY` in the environment that starts Codex.
+
+[Capture Codex work](agents/codex.md#configure-inference-call-capture) adds
+telemetry to the profile.
+
+### pi
+
+Merge this provider into `~/.pi/agent/models.json`, and keep the existing
+providers. Replace the URL and model ID, and copy the model's capabilities,
+context, and output limits from its existing definition:
+
+```json
+{
+  "providers": {
+    "sediment": {
+      "baseUrl": "https://sediment-llm.example.com",
+      "api": "anthropic-messages",
+      "apiKey": "$SEDIMENT_GATEWAY_KEY",
+      "models": [{"id": "<existing Anthropic model ID>"}]
+    }
+  }
+}
+```
+
+Set `SEDIMENT_GATEWAY_KEY` in the environment that starts pi. Keep
+`$SEDIMENT_GATEWAY_KEY` literally in the file; pi resolves it from the
+environment. If you register a different provider name or API, also set
+`SEDIMENT_PROVIDER_ID` and `SEDIMENT_PROVIDER_API` to match it.
 
 ## Distribute decision telemetry
 
@@ -227,9 +316,10 @@ profile doesn't reinstall something that you already removed:
    fleet prefix until nothing references it.
 2. Delete the four GitHub webhooks. For another CI system, remove its
    `POST /ingest/ci` call and its capture token.
-3. Remove each gateway's Sediment callback and capture token. Remove the
-   gateway variables and Codex profiles from client machines, and restart the
-   agents.
+3. Remove each gateway's Sediment callback and capture token. From client
+   machines, remove the gateway routing that you distributed: the Claude Code
+   `ANTHROPIC_BASE_URL` and `apiKeyHelper` settings, the Codex provider and
+   profile, the pi provider, and `SEDIMENT_GATEWAY_KEY`. Restart the agents.
 4. [Revoke the retired capture tokens](../operate/maintain.md#rotate-credentials).
    Never reuse a retired token for another client.
 5. Remove the distributed OpenTelemetry and pi variables from shell profiles,

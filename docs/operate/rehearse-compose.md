@@ -323,6 +323,9 @@ If you need the bundled Anthropic gateway, add `ANTHROPIC_API_KEY` to `.env`.
 Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
 supports `claude-*` routing; other providers require a separate gateway
 configuration. See the [gateway boundary](../../docker/gateway/README.md).
+Agents authenticate with `LITELLM_MASTER_KEY`, which also administers the
+gateway. [Distribute gateway routing](../capture/managed-capture.md#distribute-gateway-routing)
+defines how agents reach it.
 
 If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the

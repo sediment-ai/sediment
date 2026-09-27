@@ -431,7 +431,7 @@ Options:
 ## sediment install
 
 ```text
-sediment install [-h] [--no-agents] [--transcripts] [--no-env] [--user-id USER_ID] [--codex-profile NAME] [--gateway-url GATEWAY_URL] [--gateway-key GATEWAY_KEY] [--fleet] [--out DIR] [--apply] [--prefix PREFIX] [repo]
+sediment install [-h] [--no-agents] [--transcripts] [--no-env] [--user-id USER_ID] [--codex-profile NAME] [--fleet] [--out DIR] [--apply] [--prefix PREFIX] [repo]
 ```
 
 Arguments:
@@ -449,8 +449,6 @@ Options:
 | `--no-env` | skip writing the agent telemetry env files and let Cursor hooks inherit capture settings from their process; by default install generates them from the `sediment login` config |
 | `--user-id` | stamp OTEL_RESOURCE_ATTRIBUTES=user.id=<value> into the env files (per-developer attribution) |
 | `--codex-profile` | write a Codex telemetry profile with resolved login credentials (0600); preserve its model and unrelated settings |
-| `--gateway-url` | also wire ANTHROPIC_BASE_URL to this LLM gateway |
-| `--gateway-key` | also wire ANTHROPIC_AUTH_TOKEN and SEDIMENT_GATEWAY_KEY (the key agents present to the gateway) |
 | `--fleet` | emit the machine-wide MDM bundle instead of a per-repo install |
 | `--out` | fleet: emit the bundle to DIR (default: ./sediment-fleet) |
 | `--apply` | fleet: provision this machine directly — bundle into --prefix, system gitconfig, Claude Code managed settings (needs privileges) |

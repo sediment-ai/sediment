@@ -64,35 +64,21 @@ configuration or a hook has `explicit=false`.
 
 ## Configure inference-call capture
 
-If your deployment runs a model gateway, rerun the installer with its URL and
-your client key:
+If your deployment routes Claude Code through a gateway, your operator sets the
+gateway URL and credential in Claude Code's managed settings, as described in
+[Distribute gateway routing](../managed-capture.md#distribute-gateway-routing).
+You don't need a gateway credential, and `sediment install` doesn't change the
+route.
 
-```bash
-sediment install \
-  --gateway-url https://sediment-llm.example.com \
-  --gateway-key "$SEDIMENT_GATEWAY_KEY" \
-  --user-id alice \
-  /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-[Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-sets up the gateway side.
-
-Claude Code prefers a saved subscription sign-in over `ANTHROPIC_AUTH_TOKEN`.
-To use the gateway, run `claude logout` once, and restart Claude Code from the
-configured shell.
-
-The Claude desktop app pins its bundled CLI to `api.anthropic.com`. Desktop
-Sessions can export Developer decisions through OTLP, but they can't use this
-gateway route.
+While the gateway credential is active, Claude Code doesn't use your claude.ai
+subscription. The Claude desktop app reads gateway routing from its own
+configuration and ignores these managed settings.
 
 ## Configure Edit observations
 
 Transcript capture sends applied edit text and the file's content at Session
 end, so it's off until you opt in. Rerun the installer with `--transcripts`
-added to your usual flags, and restart Claude Code. If you use the gateway,
-keep `--gateway-url` and `--gateway-key` in the command:
+added to your usual flags, and restart Claude Code:
 
 ```bash
 sediment install --user-id alice --transcripts /path/to/repo

@@ -12,6 +12,15 @@
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
 
+### Command line
+
+- Remove `sediment install --gateway-url` and `--gateway-key`. The operator
+  distributes gateway routing and client credentials through managed settings
+  or MDM; developers no longer receive a gateway key. Reinstalling drops
+  `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
+  the generated environment files. See
+  [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+
 ### Deployment
 
 - Restructure the Operate docs into one path: deploy on EC2 or on your own

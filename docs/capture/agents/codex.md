@@ -77,30 +77,12 @@ shell commands.
 
 ## Configure inference-call capture
 
-If your deployment runs a gateway with a Responses API route for your Codex
-model, configure Codex to use it. Set up the model on the gateway first.
+If your deployment routes Codex through a gateway, your operator distributes
+the `sediment` provider, the `gateway` profile, and its credential, as described
+in [Distribute gateway routing](../managed-capture.md#distribute-gateway-routing).
+You don't need a gateway credential.
 
-1. Add a provider to `<Codex home>/config.toml`:
-
-   ```toml
-   [model_providers.sediment]
-   name = "Sediment gateway"
-   base_url = "https://sediment-llm.example.com/v1"
-   env_key = "SEDIMENT_GATEWAY_KEY"
-   wire_api = "responses"
-   ```
-
-2. In `<Codex home>/gateway.config.toml`, select the provider and disable the
-   unsupported image tool. Preserve other settings in that profile:
-
-   ```toml
-   model_provider = "sediment"
-
-   [features]
-   image_generation = false
-   ```
-
-3. Add native telemetry to the gateway profile. Pass your usual flags, not
+1. Add native telemetry to the gateway profile. Pass your usual flags, not
    `--no-env`, which would also switch Cursor's hooks to read the process
    environment:
 
@@ -108,17 +90,14 @@ model, configure Codex to use it. Set up the model on the gateway first.
    sediment install --user-id alice --codex-profile gateway /path/to/repo
    ```
 
-4. Start Codex with the gateway key:
+2. Start Codex with the gateway profile:
 
    ```bash
-   SEDIMENT_GATEWAY_KEY='<gateway client key>' \
    codex --profile gateway -C /path/to/repo
    ```
 
 Codex carries its Session identifier in `x-codex-turn-metadata`. This route
 doesn't carry a user identifier.
-[Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-sets up the gateway side.
 
 ## Configure Edit observations
 
