@@ -44,10 +44,10 @@ and HTTPS, follow [Deploy Sediment](deploy.md) instead.
 2. Review the release's evidence with
    [Check release and deployment security](security.md).
 3. As the operator account, run the installer. This example installs version
-   0.2.0:
+   0.3.0:
 
    ```bash
-   SEDIMENT_VERSION=0.2.0
+   SEDIMENT_VERSION=0.3.0
    SEDIMENT_INSTALLER="$(mktemp)" &&
      curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
      UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \

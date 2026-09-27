@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-27
+
 ### Deployment
 
 - Move the contributor Compose runbook from `docker/README.md` to

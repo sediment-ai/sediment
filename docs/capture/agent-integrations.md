@@ -49,9 +49,9 @@ verification. Cursor has no supported Inference-call or Edit observation capture
 
 ## pi
 
-Select a [published release](https://github.com/sediment-ai/sediment/releases)
-whose release notes include the bundled pi extension. Release 0.2.0 doesn't
-include it. This procedure requires that packaged extension.
+Install Sediment 0.3.0 or later from the
+[published releases](https://github.com/sediment-ai/sediment/releases).
+These releases include the bundled pi extension that this procedure requires.
 
 Install Node 24 and pi 0.84.1 through pi's package distribution:
 
