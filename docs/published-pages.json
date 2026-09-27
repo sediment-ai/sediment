@@ -24,7 +24,12 @@
     {
       "source": "docs/operate/deploy.md",
       "destination": "operate/deploy",
-      "description": "Install a published Sediment version on EC2 with PostgreSQL and Traefik HTTPS, or use an existing host."
+      "description": "Install a published Sediment version on a host with your own PostgreSQL and HTTPS, then enroll, verify, upgrade, and operate it."
+    },
+    {
+      "source": "docs/operate/deploy-ec2.md",
+      "destination": "operate/deploy-ec2",
+      "description": "Install a published Sediment version on one EC2 instance with PostgreSQL and Traefik HTTPS."
     },
     {
       "source": "docs/operate/security.md",
