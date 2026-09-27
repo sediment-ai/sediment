@@ -24,7 +24,7 @@
     {
       "source": "docs/operate/deploy.md",
       "destination": "operate/deploy",
-      "description": "Install the published package, connect PostgreSQL, and expose the API through HTTPS."
+      "description": "Deploy the complete stack on one EC2 instance with Traefik HTTPS, or install the package on an existing host."
     },
     {
       "source": "docs/operate/security.md",

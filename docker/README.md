@@ -3,101 +3,14 @@
 Use this contributor runbook to build and qualify the checked-in containers,
 including PostgreSQL, the API, LiteLLM, and Traefik. These commands require the
 repository's source and Docker build tools. For package installation, use
-[Deploy Sediment](../docs/operate/deploy.md).
+[Install the published package](../docs/operate/deploy.md#install-the-published-package).
 
 ## Deploy a pilot on EC2
 
-Use this path for one EC2 instance and one public hostname. The setup generates
-Sediment credentials and configures the service connections. You supply the
-hostname, a certificate contact email, and an Anthropic API key. The bundled
-gateway supports Anthropic models.
-
-Before deploying, review [which components the release scanner checks](../docs/operate/security.md#review-the-supplied-evidence).
-
-1. Launch a maintained Ubuntu 24.04 instance with at least 4 vCPUs and 8 GB of
-   memory. Use encrypted persistent storage with room for image builds, Facts,
-   mirrors, and backups. Configure the storage and backup controls in
-   [Privacy and data handling](#8-privacy-and-data-handling).
-2. Install Git, Python 3.12, [Docker Engine and its Compose plugin](https://docs.docker.com/engine/install/ubuntu/).
-   Complete Docker's [non-root access setup](https://docs.docker.com/engine/install/linux-postinstall/)
-   for the operator account, then sign in again. Verify `docker info` and
-   `docker compose version`. Docker access gives this account root-level control
-   of the host.
-3. Associate an [Elastic IP address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html).
-   Create one DNS A record, such as `sediment.example.com`, pointing to that
-   address. If you publish an AAAA record, IPv6 must also reach the host.
-4. Allow inbound TCP ports 80 and 443 in the instance security group and host
-   firewall. Restrict SSH to the operator's address. Don't open ports 5432,
-   8000, or 4000. Keep port 80 available for certificate renewal.
-5. Clone the repository and check out the commit you want to deploy. Replace
-   the commit placeholder with its full hash and the example hostname with yours:
-
-   ```bash
-   SEDIMENT_REVISION='<full commit hash>'
-   git clone https://github.com/sediment-ai/sediment.git sediment || exit 1
-   cd sediment || exit 1
-   git checkout --detach "$SEDIMENT_REVISION" || exit 1
-   test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" || exit 1
-   chmod go-w .
-   python3 scripts/create_deploy_env.py --domain sediment.example.com
-   ```
-
-   Enter the certificate contact email and provider key at the prompts. The
-   provider-key prompt hides input. The generator creates `.env` with mode 0600
-   and refuses to overwrite it. It generates distinct internal credentials,
-   records the commit and source fingerprint, and sets `COMPOSE_PROFILES=https`.
-   You don't need uv or Sediment packages on the host.
-   The directory permission command removes shared write access; Ubuntu can
-   otherwise create the checkout with group write permission, which setup rejects.
-6. Start the complete deployment:
-
-   ```bash
-   docker compose up -d --build --wait
-   docker compose ps -a
-   ```
-
-   PostgreSQL, the API, LiteLLM, and the proxy report `healthy`. The one-shot
-   migration service exits with code 0. If startup fails, inspect
-   `docker compose logs --tail 100 postgres migrate api gateway proxy`.
-7. Verify the public certificate and both routes:
-
-   ```bash
-   curl -fsS https://sediment.example.com/health
-   curl -fsS https://sediment.example.com/llm/health/liveliness
-   ```
-
-   The API returns `status: "ok"` and the tested build's version. The gateway
-   liveness request succeeds. Don't bypass certificate verification. Container health
-   doesn't prove that DNS resolves or that certificate issuance succeeds.
-   If the proxy starts before public DNS resolves, correct DNS, then run
-   `docker compose restart proxy` to retry certificate issuance. Repeat both
-   public checks after the restart.
-
-Give developers `https://sediment.example.com` as the Sediment endpoint and
-`https://sediment.example.com/llm` as the gateway base URL.
-To generate named capture credentials during setup, add `--ingest-client NAME`
-once per developer machine. The gateway uses the
-private `.env` value `LITELLM_MASTER_KEY` for client authentication. The provider
-key stays on the server. Follow [Configure capture](#4-configure-capture) for
-client enrollment, Session identity, and forge webhooks. A liveness check alone
-doesn't verify provider access or stored Inference calls.
-
-Traefik obtains and renews the certificate, redirects HTTP to HTTPS, and removes
-`/llm` before forwarding gateway requests. The `sediment-certificates` volume
-preserves certificate state across restarts. The proxy runs without root,
-capabilities, Docker-socket access, or application credentials. Each router
-limits requests from a direct peer to an average of 100 per second with a burst
-of 200; excess requests return 429. Clients behind one outbound address share
-that allowance. Client-supplied forwarded-address headers don't select it.
-
-To stop and start this deployment, run `docker compose down` and
-`docker compose up -d --wait`. Preserve `.env` and the volumes. Follow
-[Upgrade the deployment](#6-upgrade-the-deployment) when source or credentials
-change. Certificate renewal requires outbound certificate-authority access and
-inbound port 80 even after initial setup.
-
-If you run an existing ingress or only need the API, use the remaining sections.
-A cloud load balancer doesn't remove this single instance's availability limit.
+Follow [Deploy on EC2 with Traefik](../docs/operate/deploy.md#deploy-on-ec2-with-traefik)
+for instance setup, DNS, credentials, startup, and public HTTPS verification.
+That procedure is published on the Deploy Sediment page. The remaining sections
+cover container administration and API-only Compose setups.
 
 ## 1. Prerequisites
 
