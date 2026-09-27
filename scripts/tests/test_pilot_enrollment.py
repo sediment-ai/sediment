@@ -17,7 +17,7 @@ import pytest
 from sediment_cli import attribution
 
 
-RELEASE_GUIDE = Path(__file__).parents[2] / "docs/operate/rehearse-release.md"
+RELEASE_GUIDE = Path(__file__).parents[2] / "CONTRIBUTING.md"
 
 
 def _guide_shell_block(containing: str, path: Path) -> str:

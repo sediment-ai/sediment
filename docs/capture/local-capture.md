@@ -41,8 +41,8 @@ Verify the installed version:
 sediment --version
 ```
 
-For pi, complete the [pi integration setup](agent-integrations.md#pi)
-separately. The PyPI package doesn't include the pi extension.
+For pi, check the [release and runtime requirements](agent-integrations.md#pi)
+before enrollment.
 
 ## Connect the CLI
 
@@ -78,9 +78,8 @@ Run the installer once for each repository that you want to capture:
 sediment install --user-id '<developer>' /path/to/repo
 ```
 
-Keep the installed CLI at its original path; hooks reference its absolute path.
-For source installs, keep the checkout and Python environment in place.
-Reinstall after moving them.
+Keep the installed CLI environment at its original path while its hooks are
+active. Hooks reference its absolute path; reinstall them after moving the CLI.
 
 Reinstallation updates Sediment's marked entries and preserves unrelated
 configuration. The installer refuses malformed agent JSON files.
@@ -232,10 +231,11 @@ After a supported edit-tool call, `developer_decisions` grows. If you enabled
 transcript capture, `edit_observations`, `rejected_edits`, and
 `retry_linkages` can grow after the Session ends.
 
-For Cursor, Codex, or pi, verify the actual Session from its local commit note:
+For Cursor, Codex, or pi, verify the actual Session from its local commit note.
+Set `--agent` to the agent you used:
 
 ```bash
-sediment doctor /path/to/repo --agent pi --session-id '<Session identifier>'
+sediment doctor /path/to/repo --agent codex --session-id '<Session identifier>'
 ```
 
 Choose the matching harness. The command requires its Developer decision in
@@ -258,11 +258,9 @@ The installer configures the agents that it finds on the machine:
 | [Claude Code](agents/claude-code.md) | A `PostToolUse` entry in `~/.claude/settings.json` |
 | [Codex](agents/codex.md) | A hook entry in `~/.codex/hooks.json` |
 | [Cursor](agents/cursor.md) | Native `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
-| pi | The extension under `shims/pi/`, when you run the installer from a checkout |
+| [pi](agent-integrations.md#pi) | The bundled extension, registered in `~/.pi/agent/settings.json`; check the pi release requirement |
 
-Supported edits mark the Session in the repository's Git directory. For pi,
-run the installer from a source checkout: the installed CLI package doesn't
-contain `shims/pi/`. See [pi setup](agent-integrations.md#pi).
+Supported edits mark the Session in the repository's Git directory.
 
 ### Git hooks
 
@@ -324,12 +322,10 @@ sediment repair-notes origin
 Unlike the pre-push hook, this command returns a failure when reconciliation
 doesn't complete.
 
-### Reinstall after moving a checkout
+### Reinstall after changing the CLI location
 
-Hooks installed from a checkout contain that checkout's absolute path. If you
-move or delete it, run `sediment install` again from the current location.
-
-For a package installation, reinstall capture if the CLI executable moves.
+Hooks reference the installed CLI. If you move or replace its environment,
+rerun `sediment install /path/to/repo` and verify with `sediment doctor`.
 
 ### Install hooks in an existing clone
 
@@ -398,8 +394,8 @@ sediment delivery status
 
 Each replay handles at most 32 entries. If blocked entries remain, correct their
 reported failure and repeat. Restart the supervised worker to resume automatic
-delivery. For the embedded gateway, use the container procedure in
-[Enable bundled LiteLLM](../operate/deploy.md#enable-bundled-litellm).
+delivery. For an independently operated gateway, follow its integration's
+delivery recovery procedure.
 
 | Limit | Value |
 | --- | --- |
@@ -457,10 +453,6 @@ printf '{"session_id":"%s","transcript_path":"%s"}' "$SID" "$FILE" \
   | sediment transcript --agent pi
 ```
 
-In a source checkout, `python3 scripts/sediment_transcript.py` remains a
-standard-library-only compatibility entry point for all parsers and the
-`snapshot` subcommand.
-
 The extractor reads files as they exist when recovery runs. Later edits can
 therefore lower the measured edit retention score. Re-running is safe because
 the database deduplicates each Session and call ID.
@@ -479,15 +471,9 @@ Remove the repository integration and user-level agent entries:
 sediment uninstall /path/to/repo --agents
 ```
 
-If you installed the pi extension from a Sediment checkout, run the command
-from that same checkout so the CLI can match its absolute path:
-
-```bash
-uv run sediment uninstall /path/to/repo --agents
-```
-
-If that checkout moved or no longer exists, remove its absolute `shims/pi`
-entry from `~/.pi/agent/settings.json`.
+For pi, use the CLI installation that registered the extension. If that
+installation moved or no longer exists, remove its stale extension entry from
+`~/.pi/agent/settings.json`.
 
 If you persisted transcript or pi settings manually, remove
 `SEDIMENT_OTLP_ENDPOINT`, `SEDIMENT_INGEST_TOKEN`, `SEDIMENT_PI_TRANSCRIPTS`, and

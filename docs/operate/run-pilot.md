@@ -4,9 +4,8 @@ Prepare a shared deployment, enroll developers, and verify capture before
 expanding the pilot. For a one-machine evaluation, use the
 [Quickstart](../quickstart.md).
 
-This guide doesn't cover pi. The published package doesn't include the pi
-extension, so pi capture requires a Sediment source checkout. The
-[pi integration guide](../capture/agent-integrations.md#pi) describes that setup.
+For pi, use the [pi integration guide](../capture/agent-integrations.md#pi),
+including its release and runtime requirements.
 
 ## Prepare the deployment
 
