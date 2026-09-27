@@ -5496,6 +5496,14 @@
         "review_horizon": "2026-10-12",
         "source": "https://github.com/BerriAI/litellm",
         "support_kind": "rolling_window"
+      },
+      "1.103": {
+        "basis": "Require the latest stable OSS release conservatively, matching the upstream production recommendation. The catalog does not assume a paid support agreement. The review horizon is not a vendor EOL date.",
+        "evidence": "https://docs.litellm.ai/docs/proxy/release_cycle",
+        "minimum": "1.103.0",
+        "review_horizon": "2026-10-12",
+        "source": "https://github.com/BerriAI/litellm",
+        "support_kind": "rolling_window"
       }
     },
     "node": {
