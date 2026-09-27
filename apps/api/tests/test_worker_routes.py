@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import sys
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import threading
 
 import pytest
@@ -114,49 +114,72 @@ def test_mirror_free_space_reserve_declines_after_storing_push(
 
 
 def test_overloaded_read_workers_leave_health_and_authenticated_ingest_responsive(
-    client, monkeypatch
+    client, monkeypatch, tmp_path
 ):
-    from sediment_api import workers
+    from sediment_api.config import settings
+    from test_evidence_workers import _barrier_command
+    from test_gateway_capture_receipt import _body, _post
     from test_push_mirror import _post_push, _push_payload
+    from test_worker_processes import _exists, _file
 
-    monkeypatch.setattr(
-        workers,
-        "_WORKER_COMMAND",
-        (sys.executable, "-c", "import time; time.sleep(60)"),
-    )
+    _barrier_command(monkeypatch, tmp_path)
     supervisor = client.app.state.workers
-
-    def start():
-        return [
-            asyncio.create_task(supervisor.run("commit", {"sha": "a" * 40}))
-            for _ in range(2)
-        ]
-
-    tasks = client.portal.call(start)
-    try:
-        assert client.get("/health").status_code == 200
-        response = _post_push(
-            client,
-            _push_payload("https://github.com/owner/repo.git", "b" * 40, repo=""),
-        )
-        assert response.status_code == 200
-        assert response.json()["stored"] is True
-        for _ in range(8):
-            assert (
-                client.get(
-                    "/query/session/absent",
-                    headers={"Authorization": "Bearer test-operator-token-3a7e-2f6c"},
-                ).status_code
-                == 503
+    auth = {"Authorization": "Bearer test-operator-token-3a7e-2f6c"}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        reads = [
+            pool.submit(
+                client.get,
+                "/query/evidence",
+                params={"session_id": name},
+                headers=auth,
             )
-        assert len(supervisor._query_tasks) == 2
-    finally:
-
-        async def finish():
-            await supervisor.close()
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-        client.portal.call(finish)
+            for name in ("a", "b")
+        ]
+        try:
+            pids = [
+                int(client.portal.call(_file, tmp_path / name / "started"))
+                for name in ("a", "b")
+            ]
+            assert all(_exists(pid) for pid in pids)
+            assert all(not read.done() for read in reads)
+            assert len(supervisor._query_tasks) == 2
+            assert client.get("/health").status_code == 200
+            body = _body(keyed=True)
+            captured = _post(client, body)
+            assert captured.status_code == 200
+            assert captured.json()["stored"] is True
+            [call] = client.app.state.fact_store.read_inference_calls(settings.org_id)
+            assert call.inference_call_id == captured.json()["fact_id"]
+            assert call.session_id == body["session_id"]
+            assert call.model_call_id == body["payload"]["litellm_call_id"]
+            assert _post(client, body).json() == {
+                "fact_id": captured.json()["fact_id"],
+                "stored": False,
+            }
+            response = _post_push(
+                client,
+                _push_payload("https://github.com/owner/repo.git", "b" * 40, repo=""),
+            )
+            assert response.status_code == 200
+            assert response.json()["stored"] is True
+            for _ in range(8):
+                response = client.get("/query/session/absent", headers=auth)
+                assert response.status_code == 503
+                assert response.json() == {"detail": "work capacity exceeded"}
+            assert all(not read.done() for read in reads)
+            assert all(_exists(pid) for pid in pids)
+            assert len(supervisor._query_tasks) == 2
+        finally:
+            for name in ("a", "b"):
+                directory = tmp_path / name
+                directory.mkdir(exist_ok=True)
+                (directory / "release").touch()
+        for read in reads:
+            response = read.result(timeout=5)
+            assert response.status_code == 200
+            assert response.headers["cache-control"] == "no-store"
+    assert all(not _exists(pid) for pid in pids)
+    assert not supervisor._query_tasks
 
 
 def test_repository_rename_receipt_does_not_wait_for_mirror_lock(

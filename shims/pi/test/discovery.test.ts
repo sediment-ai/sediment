@@ -21,6 +21,34 @@ function invoke(name: string, args: unknown, signal?: AbortSignal) {
 const discover = (args: unknown = { query: "shipment replay constraint" }, signal?: AbortSignal) => invoke("sediment_discover_context", args, signal);
 const selected = (args: unknown = { query: "shipment replay constraint", session_id: "uncommitted-session" }) => invoke("sediment_retrieve_context", args);
 
+test("granted native tools accept streaming scan coverage and reject overflow", async () => {
+  const previous = globalThis.fetch;
+  try {
+    for (const scanned of [10_100, 16_384, 16_385]) {
+      const found = discoveryBody();
+      found.coverage.visible_inference_calls = 100;
+      found.coverage.scanned_parts = scanned;
+      found.coverage.matched_parts = scanned;
+      found.skipped.unmatched_part = 0;
+      found.items[0]!.matched_parts = scanned;
+      const chosen = selectedBody();
+      chosen.coverage.visible_inference_calls = 100;
+      chosen.coverage.scanned_parts = scanned;
+      chosen.skipped.repeated_content = scanned - 1;
+      globalThis.fetch = async (url) => new Response(exact(String(url).endsWith("/discover") ? found : chosen), {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (scanned > 16_384) {
+        await assert.rejects(discover(), /reason=invalid_response$/);
+        await assert.rejects(selected(), /reason=invalid_response$/);
+      } else {
+        assert.deepEqual((await discover()).content, [{ type: "text", text: exact(found) }]);
+        assert.deepEqual((await selected()).content, [{ type: "text", text: exact(chosen) }]);
+      }
+    }
+  } finally { globalThis.fetch = previous; }
+});
+
 test("discovery opt-in changes native schemas while false and absent keep singleton schema", () => {
   for (const mode of [undefined, "false"]) {
     const found = tools(mode, { SEDIMENT_RETRIEVAL_DISCOVERY: mode });

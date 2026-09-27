@@ -155,7 +155,7 @@ def test_active_contributor_surfaces_use_current_vocabulary_and_checks() -> None
         "npm run typecheck",
         "npm test",
     ):
-        assert command in onboarding
+        assert command in _read("CONTRIBUTING.md")
     assert "Python 3.12" in onboarding
     assert "Node 24" in onboarding
     assert "TruffleHog" in onboarding
@@ -237,12 +237,13 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     )
     assert tree_scan["if"] == (
         "github.event_name == 'pull_request' || "
+        "github.event_name == 'merge_group' || "
         "github.event_name == 'workflow_dispatch'"
     )
     assert "git archive HEAD" in tree_scan["run"]
     assert "filesystem /scan" in tree_scan["run"]
     assert re.fullmatch(
-        r"ghcr\.io/trufflesecurity/trufflehog:3\.97\.5@sha256:[0-9a-f]{64}",
+        r"ghcr\.io/trufflesecurity/trufflehog:3\.97\.6@sha256:[0-9a-f]{64}",
         tree_scan["env"]["TRUFFLEHOG_IMAGE"],
     )
     dependency_install = next(
@@ -253,8 +254,8 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     assert steps.index(tree_scan) < dependency_install
     assert any(
         step.get("uses")
-        == "trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6"
-        and step["with"]["version"] == "3.97.5"
+        == "trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a"
+        and step["with"]["version"] == "3.97.6"
         for step in steps
     )
 
@@ -269,9 +270,14 @@ def test_manual_secret_scan_resolves_only_proposed_history(tmp_path, proposal) -
     assert resolve["env"]["DEFAULT_BRANCH"] == (
         "${{ github.event.repository.default_branch }}"
     )
-    assert history["with"]["base"] == "${{ steps.secret-range.outputs.base || '' }}"
+    # The action has no merge_group range; unbounded, it scans all history.
+    assert history["with"]["base"] == (
+        "${{ steps.secret-range.outputs.base || "
+        "github.event.merge_group.base_sha || '' }}"
+    )
     assert history["with"]["head"] == (
-        "${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}"
+        "${{ (github.event_name == 'workflow_dispatch' || "
+        "github.event_name == 'merge_group') && github.sha || '' }}"
     )
     assert history["if"] == (
         "github.event_name != 'workflow_dispatch' || "

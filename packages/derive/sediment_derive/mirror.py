@@ -37,7 +37,7 @@ from enum import StrEnum
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
 
-from sediment_core import FactTable, ForgeProvider, Push, normalize_org_id
+from sediment_core import CommitSha, FactTable, ForgeProvider, Push, normalize_org_id
 
 from .repository_identity import (
     IdentifiedRepositoryKey,
@@ -406,6 +406,35 @@ class RepoMirror:
         # Clamp: a 0/negative cap (config typo) must still keep the head —
         # never silently attribute a stray subset or nothing.
         return list(reversed(revs)) or [push.after_sha]
+
+    def heads_precede_commit(
+        self, commit_sha: CommitSha, heads: Iterable[CommitSha]
+    ) -> bool:
+        """Prove every head in a caller-bounded batch strictly precedes a commit.
+
+        Unknown ancestry returns False so callers retain exact range checks.
+        """
+        heads = tuple(dict.fromkeys(heads))
+        if not heads:
+            return True
+        try:
+            remaining = _git(
+                self.path,
+                "rev-list",
+                "--max-count=1",
+                "--end-of-options",
+                *heads,
+                # Exclude all target parents and their ancestors, not the target.
+                # Any output disproves the batch proof; empty output proves it.
+                f"^{commit_sha}^@",
+            )
+        except MirrorError:
+            logger.warning(
+                "commit_owner_prefilter_unavailable",
+                extra={"commit_sha": commit_sha, "head_count": len(heads)},
+            )
+            return False
+        return not remaining.strip()
 
     def commit_exists(self, commit_sha: str) -> bool:
         """Whether ``commit_sha`` resolves to a commit object in this mirror.

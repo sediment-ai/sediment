@@ -1,8 +1,7 @@
 # Export DPO pairs
 
-For a specific downstream release, select a versioned consumer profile.
-[Export for a consumer](consumer-compatibility.md) documents installation,
-configuration, exact commands, and the limits of each support claim.
+For a supported downstream release, select a versioned
+[consumer profile](consumer-compatibility.md).
 
 Run the default direct preference optimization (DPO) export:
 
@@ -103,35 +102,24 @@ Example DPO row:
 }
 ```
 
-The DPO JSON object has no other top-level fields.
 `metadata.label_confidence` is the weaker member's Confidence.
 `metadata.confidence_margin` is chosen Confidence minus rejected Confidence,
 bounded to [−1, 1].
 
 ## Interpret skipped inputs
 
-The DPO export reports every skipped input under this closed vocabulary:
-
-- `inference_call_not_found`
-- `promptless`
-- `model_absent`
-- `no_label_source`
-- `unreliable_ci_resolution`
-- `bucket_capped`
-- `identical_responses`
-- `non_finite_number`
-- `unrepresentable_unicode`
-- `completionless`
-- `empty_message`
-- `non_string_tool_result`
-- `unresolved_tool_call`
-- `duplicate_tool_call_id`
-- `conflicting_run_identity`
-- `ambiguous_workflow_verdicts`
-- `unsupported_completion_role`
-- `unsupported_message_role`
-- `unsupported_role_part`
-- `unrepresentable_part_order`
+Review `skipped` before training. The DPO export reports every skipped input
+under this closed vocabulary: `conflicting_run_identity`,
+`ambiguous_workflow_verdicts`, `repository_identity_absent`,
+`repository_identity_conflict`, `repository_identity_unresolved`,
+`repository_mirror_identity_unresolved`, `repository_source_absent`,
+`non_finite_number`, `unrepresentable_unicode`, `completionless`,
+`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
+`unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `inference_call_not_found`, `promptless`,
+`model_absent`, `no_label_source`, `unreliable_ci_resolution`, `bucket_capped`,
+and `identical_responses`.
 
 `identical_responses` counts evaluated pairs; `bucket_capped` counts buckets.
 Don't add these different units to estimate lost pairs. Existing representation

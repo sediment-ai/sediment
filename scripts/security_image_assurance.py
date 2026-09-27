@@ -25,6 +25,9 @@ SOURCE_FILES = (
     ".env.example",
     "docker-compose.yml",
 )
+# Retained dispositions bind to the image build inputs, not application source.
+REVIEW_DIRS = ("docker",)
+REVIEW_FILES = ("Dockerfile", "uv.lock", ".env.example", "docker-compose.yml")
 EXCLUDED = {
     "tests",
     "test",
@@ -209,10 +212,24 @@ def gzip_write_api_unreachable(image_id: str) -> bool:
 
 def source_digest(root: Path = ROOT) -> str:
     """Hash deployed source paths, content, and executable bits in stable order."""
-    paths = {root / name for name in SOURCE_FILES}
+    return _tree_digest(root, SOURCE_FILES, SOURCE_DIRS)
+
+
+def review_digest(root: Path = ROOT) -> str:
+    """Hash the image build inputs that retained dispositions were reviewed against.
+
+    Application source is excluded: a Python change cannot alter the installed
+    native packages, and every scan measures the required predicates on the
+    built image. Image provenance labels keep using ``source_digest``.
+    """
+    return _tree_digest(root, REVIEW_FILES, REVIEW_DIRS)
+
+
+def _tree_digest(root: Path, files: tuple[str, ...], dirs: tuple[str, ...]) -> str:
+    paths = {root / name for name in files}
     if not all(path.is_file() for path in paths):
         raise AssuranceFailure("required production source input is missing")
-    for name in SOURCE_DIRS:
+    for name in dirs:
         directory = root / name
         if directory.is_symlink() or not directory.is_dir():
             raise AssuranceFailure("required production source directory is missing")
@@ -291,6 +308,8 @@ def render_deployment(root: Path = ROOT) -> dict:
         "SEDIMENT_CAPTURE_DIR": "",
         "ANTHROPIC_API_KEY": "assurance-provider-secret",
         "LITELLM_MASTER_KEY": "sk-assurance-gateway-key",
+        "SEDIMENT_DOMAIN": "sediment.example.com",
+        "SEDIMENT_ACME_EMAIL": "ops@example.com",
     }
     environment = {
         key: value
@@ -374,11 +393,13 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             "api",
             "operator",
             "gateway",
+            "proxy",
         } or not all(isinstance(s, dict) for s in services.values()):
             return failed
         pg, migration, api, operator, gateway = (
             services[n] for n in ("postgres", "migrate", "api", "operator", "gateway")
         )
+        proxy = services["proxy"]
         networks = config["networks"]
         isolated = (
             set(pg.get("networks", {})) == {"database"}
@@ -386,6 +407,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             and not networks["database"].get("external")
             and not pg.get("ports")
             and "database" not in gateway.get("networks", {})
+            and set(proxy.get("networks", {})) == {"edge"}
             and all(
                 "database" in services[n].get("networks", {})
                 for n in ("api", "migrate", "operator")
@@ -454,7 +476,25 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             and all(token not in str(s) for n, s in services.items() if n != "api")
             and str(api_env.get("SEDIMENT_DEV_MODE")).lower() == "false"
         )
+        # The public proxy needs routing inputs, never application credentials.
+        separated = separated and all(
+            not secret or secret not in str(proxy)
+            for secret in (
+                *ingest.values(),
+                api_env.get("SEDIMENT_API_BEARER_TOKEN"),
+                api_env.get("SEDIMENT_GITHUB_WEBHOOK_SECRET"),
+                api_env.get("SEDIMENT_RETRIEVAL_TOKEN"),
+                gateway_env.get("ANTHROPIC_API_KEY"),
+                gateway_env.get("LITELLM_MASTER_KEY"),
+            )
+        )
         bind_paths = {
+            "proxy": {
+                (
+                    str((root / "docker/proxy/routes.yml").resolve()),
+                    "/etc/traefik/routes.yml",
+                )
+            },
             "postgres": {
                 (str((root / "docker/postgres/pg_hba.conf").resolve()), HBA_TARGET)
             },
@@ -479,6 +519,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                 ("sediment-staging", "/data/staging"),
             },
             "gateway": {("sediment-delivery", "/data/delivery")},
+            "proxy": {("sediment-certificates", "/data")},
         }
         mounts = not any(
             any(
@@ -622,6 +663,25 @@ for path in sorted(files):
         digest = hashlib.file_digest(source, "sha256").hexdigest()
     result[path.relative_to(root).as_posix()] = digest
 print(json.dumps(result, sort_keys=True))
+"""
+
+GATEWAY_TARFILE_PROBE = r"""
+import hashlib
+import json
+import tarfile
+from pathlib import Path
+
+path = Path(tarfile.__file__)
+if path != Path('/usr/lib/python3.13/tarfile.py') or any(
+    parent.is_symlink() for parent in (path, *path.parents)
+):
+    raise RuntimeError('unexpected gateway tarfile source path')
+digest = hashlib.sha256(path.read_bytes()).hexdigest()
+print(json.dumps({
+    'path': str(path),
+    'sha256': digest,
+    'bytecode_present': any((path.parent / '__pycache__').glob('tarfile.*.pyc')),
+}))
 """
 
 
@@ -876,6 +936,7 @@ def collect_assurance(
         "architecture": architecture,
         "image_id": image_id,
         "source_digest": source_digest(root),
+        "review_digest": review_digest(root),
         "predicates": predicates,
         "image": observed,
         "postgres": postgres,
@@ -883,6 +944,22 @@ def collect_assurance(
     }
     if artifact == "gateway":
         record["gateway_caller_files"] = probe_gateway_callers(image_id)
+        tarfile = _container_probe(
+            image_id, "python -B - <<'PY'\n" + GATEWAY_TARFILE_PROBE + "\nPY"
+        )
+        if (
+            set(tarfile) != {"path", "sha256", "bytecode_present"}
+            or tarfile.get("path") != "/usr/lib/python3.13/tarfile.py"
+            or not re.fullmatch(r"[a-f0-9]{64}", str(tarfile.get("sha256")))
+            or type(tarfile.get("bytecode_present")) is not bool
+        ):
+            raise AssuranceFailure("gateway tarfile patch evidence is incomplete")
+        record["gateway_tarfile"] = tarfile
+        predicates["tarfile_hardlink_fix"] = (
+            tarfile["sha256"]
+            == "9600de643ae7efed27009ee6c86aee60cebe335c0e732797c06db74dc719cefd"
+            and not tarfile["bytecode_present"]
+        )
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{artifact}-{architecture}.assurance.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n"
@@ -894,6 +971,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("source-digest", help="print the deployed production source digest")
+    sub.add_parser(
+        "review-digest", help="print the image build input digest dispositions bind to"
+    )
     collect = sub.add_parser(
         "collect", help="measure an exact image and checked-in deployment"
     )
@@ -905,6 +985,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "source-digest":
             print(source_digest())
+        elif args.command == "review-digest":
+            print(review_digest())
         else:
             collect_assurance(args.image_id, args.artifact, args.architecture, args.out)
     except AssuranceFailure as error:

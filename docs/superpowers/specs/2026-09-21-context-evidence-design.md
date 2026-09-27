@@ -224,6 +224,9 @@ not create another service or unbounded queue. Evidence traffic alone cannot
 occupy both query/report slots. Busy or timed-out workers retain HTTP 503 behavior.
 This reserves admission capacity, not a database or latency guarantee.
 
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original reservation. See the [concurrency specification](2026-09-22-shared-evidence-admission-design.md).
+
 ### Live reads and visibility
 
 Scope checks, Quarantine, preflight, content selection, and response construction
@@ -360,7 +363,8 @@ Required acceptance cases:
   bytes, response bytes, and body size. Include oversized model and identity fields
   in metadata-only reads. Inspect actual SQL to prove preflight before transfer
   and omission of `raw`, user identifiers, and unselected source columns.
-- Evidence admission cannot consume both query/report slots. Saturation, deadline,
+- Under the original admission rule, evidence cannot consume both query/report
+  slots; the amendment linked earlier replaces this assertion. Saturation, deadline,
   cancellation, representation refusal, and corrupt stored content release worker
   and database resources without exposing content in logs.
 - CLI tests cover malformed selections and responses, unsupported versions,

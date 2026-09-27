@@ -23,9 +23,7 @@ produce pathless or no Facts.
 You need the Sediment CLI, an endpoint and ingest-only token, a git repository, and
 Claude Code installed under `~/.claude`.
 
-If you need an endpoint, complete the [Quickstart](../../quickstart.md). For
-endpoint rules, credential storage, installer behavior, and repository git
-hooks, read [Configure local capture](../local-capture.md).
+For deployment and shared setup, see [Configure local capture](../local-capture.md).
 
 ## Install capture
 
@@ -48,7 +46,14 @@ hooks, read [Configure local capture](../local-capture.md).
    If `~/.claude` doesn't exist, the installer skips the Claude Code hook.
    Install or start Claude Code, then run `sediment install` again.
 
-3. Restart Claude Code from a shell that loads the installed environment.
+3. End active Claude Code Sessions, then load the environment and start Claude
+   Code in the enrolled repository:
+
+   ```bash
+   . "$HOME/.sediment/env.sh"
+   cd /path/to/repo
+   claude
+   ```
 
 ## Configure Developer decisions
 
@@ -77,6 +82,7 @@ sediment install \
   --gateway-key "$SEDIMENT_GATEWAY_KEY" \
   --user-id alice \
   /path/to/repo
+. "$HOME/.sediment/env.sh"
 ```
 
 The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
@@ -103,7 +109,7 @@ off unless you opt in.
 
    ```bash
    export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
-   export SEDIMENT_INGEST_TOKEN=<ingest-only token>
+   export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
    ```
 
 2. Install the `SessionEnd` extractor and `PreToolUse` snapshot hook:
@@ -123,9 +129,7 @@ defines the shared endpoint safety rules and payload limits.
 
 ## Verify capture
 
-Remote Fact and Session checks require a separate
-[operator login](../local-capture.md#verify-capture). Capture enrollment alone
-cannot authorize these reads.
+Remote checks require a separate [operator login](../local-capture.md#verify-capture).
 
 1. Check the agent and repository configuration:
 

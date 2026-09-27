@@ -89,6 +89,37 @@ def test_source_digest_excludes_docs_tests_and_generated_caches(tmp_path):
         module.source_digest(root)
 
 
+def test_review_digest_tracks_image_build_inputs_but_not_application_source(tmp_path):
+    module = assurance()
+    root = source_tree(tmp_path)
+    original = module.review_digest(root)
+    for name in (
+        "packages/core/store.py",
+        "apps/api/main.py",
+        "cli/client.py",
+        "litellm/callback.py",
+        "shims/pi/index.ts",
+        "pyproject.toml",
+    ):
+        (root / name).write_text("changed application source")
+    (root / "docker/postgres/README.md").write_text("image documentation")
+    assert module.review_digest(root) == original
+    for name in (
+        "Dockerfile",
+        "uv.lock",
+        ".env.example",
+        "docker-compose.yml",
+        "docker/postgres/Dockerfile",
+    ):
+        path = root / name
+        path.write_text("changed build input")
+        assert module.review_digest(root) != original, name
+        path.write_text(name)
+    assert module.review_digest(root) == original
+    (root / "docker/postgres/entrypoint.sh").write_text("new build input")
+    assert module.review_digest(root) != original
+
+
 def test_source_digest_rejects_external_source_links(tmp_path):
     module = assurance()
     root = source_tree(tmp_path / "root")
@@ -115,7 +146,7 @@ def deployment(root):
     }
     services = {
         name: copy.deepcopy(runtime)
-        for name in ("postgres", "migrate", "api", "operator", "gateway")
+        for name in ("postgres", "migrate", "api", "operator", "gateway", "proxy")
     }
     services["postgres"].update(
         cap_add=["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETUID", "SETGID"],
@@ -159,18 +190,42 @@ def deployment(root):
             "SEDIMENT_API_BEARER_TOKEN": "gateway-token",
             "SEDIMENT_INGEST_URL": "http://api:8000",
             "SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN": "http://api:8000",
+            "ANTHROPIC_API_KEY": "provider-key",
+            "LITELLM_MASTER_KEY": "master-key",
         },
+    )
+    services["proxy"].update(
+        networks={"edge": {}},
+        environment={"SEDIMENT_DOMAIN": "sediment.example.com"},
+        volumes=[
+            {
+                "type": "bind",
+                "source": str(root / "docker/proxy/routes.yml"),
+                "target": "/etc/traefik/routes.yml",
+                "read_only": True,
+            },
+            {"type": "volume", "source": "sediment-certificates", "target": "/data"},
+        ],
     )
     return {
         "services": services,
         "networks": {"database": {"internal": True}, "edge": {}},
-        "volumes": {},
+        "volumes": {"sediment-certificates": {}},
     }
 
 
 def test_deployment_controls_accept_only_the_scoped_posture(tmp_path):
     predicates = assurance().deployment_predicates(deployment(tmp_path), tmp_path)
     assert predicates and all(predicates.values()), predicates
+
+
+@pytest.mark.parametrize("secret", ["gateway-token", "provider-key", "master-key"])
+def test_proxy_cannot_receive_application_credentials(tmp_path, secret):
+    config = deployment(tmp_path)
+    config["services"]["proxy"]["environment"]["LEAK"] = secret
+    assert not assurance().deployment_predicates(config, tmp_path)[
+        "database_credentials_separated"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -187,6 +242,16 @@ def test_deployment_controls_accept_only_the_scoped_posture(tmp_path):
         (
             lambda c: c["services"]["gateway"]["networks"].update(database={}),
             "database_isolated",
+        ),
+        (
+            lambda c: c["services"]["proxy"]["networks"].update(database={}),
+            "database_isolated",
+        ),
+        (
+            lambda c: c["services"]["proxy"]["volumes"][0].update(
+                source="/var/run/docker.sock", target="/var/run/docker.sock"
+            ),
+            "no_host_data_mounts",
         ),
         (
             lambda c: c["services"]["api"]["environment"].update(
@@ -622,7 +687,11 @@ def test_gateway_probe_rejects_a_mutable_image_reference(monkeypatch):
 
 
 @pytest.mark.parametrize("artifact", ["gateway", "api"])
-def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, artifact):
+@pytest.mark.parametrize("patched", [False, True])
+@pytest.mark.parametrize("bytecode_present", [False, True])
+def test_caller_evidence_is_retained_only_for_gateway(
+    tmp_path, monkeypatch, artifact, patched, bytecode_present
+):
     module = assurance()
     root = source_tree(tmp_path / "source")
     image = "sha256:" + "a" * 64
@@ -636,6 +705,16 @@ def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, art
         return files
 
     monkeypatch.setattr(module, "probe_gateway_callers", probe)
+    tarfile = {
+        "path": "/usr/lib/python3.13/tarfile.py",
+        "sha256": (
+            "9600de643ae7efed27009ee6c86aee60cebe335c0e732797c06db74dc719cefd"
+            if patched
+            else "9fedddf7e814c226cb7e1ac0aa603092eda40047367ec00ad740a81484a17d01"
+        ),
+        "bytecode_present": bytecode_present,
+    }
+    monkeypatch.setattr(module, "_container_probe", lambda *args: tarfile)
     out = tmp_path / "evidence"
     result = module.collect_assurance(image, artifact, "amd64", out, root=root)
     retained = json.loads((out / f"{artifact}-amd64.assurance.json").read_text())
@@ -644,8 +723,14 @@ def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, art
     assert "gateway_caller_files" not in result["predicates"]
     if artifact == "gateway":
         assert result["gateway_caller_files"] == files
+        assert result["gateway_tarfile"] == tarfile
+        assert result["predicates"]["tarfile_hardlink_fix"] == (
+            patched and not bytecode_present
+        )
     else:
         assert "gateway_caller_files" not in result
+        assert "gateway_tarfile" not in result
+        assert "tarfile_hardlink_fix" not in result["predicates"]
 
 
 def test_real_gateway_caller_evidence():

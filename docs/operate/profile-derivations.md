@@ -10,7 +10,7 @@ Restore a backup into a separate PostgreSQL instance and copy its mirrors.
 Configure the candidate to use those copies. Keep credentials in a protected
 environment file. Do not print its contents.
 
-Record the source revision, image digest, dependency versions, schema revision,
+Record the Sediment release version, installed dependency versions, schema revision,
 visible Fact counts, quarantine revision, and mirror revisions. For reports,
 record the exact cohort and `as_of`. For Derivations, retain the policy and scope;
 the bundle derives `as_of` from its evidence.
@@ -25,7 +25,7 @@ Record each budget before starting:
 
 | Resource | What to record |
 | --- | --- |
-| Container memory | Memory ceiling and swap setting; include all worker processes |
+| Process memory | Memory ceiling and swap setting; include all worker processes |
 | Concurrency | Simultaneous report requests and worker count |
 | Work unit | Largest content row, complete Session, and complete training group |
 | Storage | Private staging allowance, output capacity, filesystem quota, and free space |
@@ -33,30 +33,24 @@ Record each budget before starting:
 
 Use one workload at a time for the first measurements. Leave host memory for
 PostgreSQL and unrelated services. A successful serial request does not qualify
-several simultaneous workers in the same container.
+several simultaneous workers under the same resource limits.
 
-FactStore checks transferred content before decoding: 64 MiB per content row,
-256 MiB per complete Session input/output population, and 256 MiB per materialized
-report or Attribution output population. Supporting identity row limits remain
-independent of these byte limits. Offline semantic validation also checks the
-256 MiB Session input/output envelope before rebuilding its complete histories;
-raw audit payloads do not count toward that envelope.
+| Encoded population | Default byte limit |
+| --- | --- |
+| One FactStore content row | 64 MiB |
+| Complete Session input/output | 256 MiB; excludes raw audit payloads |
+| Materialized report or Attribution output | 256 MiB |
+| One bundle record | 512 MiB |
+| One private record store | 8 GiB |
+| Explicit bundle materialization | 64 MiB |
+| Complete SFT, DPO, or diff-SFT projection group | 128 MiB |
 
-`BundleLimits` defaults to 512 MiB per encoded record, 8 GiB per private record
-store, and 64 MiB for explicit bundle materialization. Separate live stores have
-separate quotas. Count construction, validated input copies, training stages,
-publication staging, and completed output together when provisioning storage.
-SFT, DPO, and diff-SFT default to 128 MiB of encoded source Facts and artifact
-records per complete projection group. Git diff reads retain their existing
-mirror-owner behavior. These byte allowances do not guarantee a particular
-Python memory peak.
+These limits don't guarantee a Python memory peak. Independent identity-row caps
+also apply. Count overlapping stores, validation copies, publication staging,
+and completed output when provisioning storage.
 
-Consumer profiles use the same 64 MiB materialization allowance for their
-complete native source population, projected rows, and adapted data plus evidence.
-Settings, loader inputs, and prepared data plus evidence have separate checks
-at that allowance. The NeMo source population includes complete Inference calls;
-SWE-bench consumes Rollouts. Each profile refuses excess before publication.
-These checks also apply to file-backed bundles. See
+Consumer profiles impose separate 64 MiB checks on source populations, projected
+rows, adapted data and evidence, settings, and loader inputs. See
 [Check consumer capacity](../exports/consumer-compatibility.md#check-consumer-capacity).
 
 Qualify the exact `--profile` and its pinned optional environment separately.
@@ -207,114 +201,13 @@ isolated resources created for the profile.
 
 ## Rehearse capture alongside batch work
 
-From a source checkout, use `scripts/capacity_rehearsal.py` to test a declared
-synthetic population. Install the locked workspace dependencies and PostgreSQL
-client libraries first. Set `SEDIMENT_DATABASE_URL` through your protected
-environment to an isolated administrative database whose role can create and
-drop databases. The script creates and removes one random scratch database.
-It doesn't migrate the administrative database.
+Use a separate deployment with representative, approved data. Run normal agent
+capture while you execute the installed `sediment derive`, `sediment report`,
+and `sediment export` commands. Record latency, failures, memory, and storage.
 
-```bash
-uv sync --locked
-uv run python scripts/capacity_rehearsal.py \
-  --profile sim/profiles/capacity-smoke.json \
-  --out /data/capacity-smoke
-```
+Compare receipt counts with stored Facts and inspect every exclusion. A quiet
+workload doesn't establish peak capacity. Repeat the workload after a restart
+to verify recovery.
 
-Use an unused output path on a disk-backed filesystem. The script creates a
-private directory and retains synthetic artifacts, logs, and `report.json`.
-The `receipts/` journals retain acknowledged gateway identities, timings, and
-byte counts, including when a later gate fails. They contain no message bodies.
-The report's `failures` list retains recorded failure categories. Its `reason`
-field identifies the first recorded category, which can come from cleanup.
-After the smoke run passes, repeat with `sim/profiles/capacity-pilot.json` and a
-different output path. Exit status 0 qualifies the declared synthetic profile;
-status 1 records a failed probe, and status 2 identifies an invocation failure.
-
-Edit a copy of the profile to declare your workload. Every field is required;
-unknown fields and invalid sizes fail before database or process creation.
-
-| Dimension | Meaning |
-| --- | --- |
-| `schema_version` | Profile contract version, 1 |
-| `developers` | Synthetic developer identities represented in historical Sessions |
-| `history_weeks`, `sessions_per_week` | Historical Session population; Sessions per week is the total across developers |
-| `calls_per_session` | Calls in each complete historical Session |
-| `history_bytes`, `output_bytes` | ASCII bytes per user message and assistant response; later calls repeat all earlier turns |
-| `live_interval_ms`, `max_live_calls` | Delay between sequential live requests and maximum live population |
-| `job_timeout_seconds` | Deadline for each child job or HTTP report request |
-| `max_process_rss_mib`, `max_workspace_mib` | Post-run limits for sampled aggregate process RSS and logical workspace bytes |
-
-Read the report's measurement scope before using a passing result. The portable
-sampler includes the runner, sender, API, workers, and batch processes. It excludes
-PostgreSQL memory, container memory, and database storage. Its checks don't enforce
-memory or filesystem ceilings. Record those deployment budgets separately.
-
-The runner seeds the existing semantic scenarios, then starts a loopback HTTP
-server. Live gateway capture continues during weekly reports, an unscoped
-Derivation, and SFT and RLVR exports. Each operation must contain a completed
-capture request. The runner checks duplicate receipts, reconciles receipts with
-stored Inference calls, and requires positive training rows. It stops capture
-before comparing repeated canonical builds from fixed inputs.
-
-During the Derivation, the runner also delivers a signed Push for a fresh commit.
-It requires a matching Session-to-commit observation after the HTTP receipt and
-checks redelivery. If the observation deadline expires, inspect the synthetic
-API log for the cause. An acknowledged Push doesn't prove background completion.
-The redelivery check verifies the retained receipt and visible observation; it
-doesn't certify completion of a second background refresh. The probe doesn't
-guarantee contention on a mirror lock or exercise the full mirror queue.
-
-If a job has no completed capture request within its execution interval, the
-probe fails with `no_ingest_overlap`. That means the run lacks coexistence
-evidence; it doesn't establish a deployment capacity failure. Choose a shorter
-live interval or a larger declared workload before repeating the probe.
-
-The runner handles SIGINT and SIGTERM by stopping its owned processes and removing
-its scratch database. It records interruption as a failed run. SIGKILL and host
-failure bypass this cleanup; retain the output directory for investigation.
-
-The profiles don't convert lines of code into Inference calls. Historical gateway
-timestamps spread a population over weeks; the semantic Push and CI evidence is
-contemporary. This rehearsal doesn't reproduce months of changing repository
-history. The local fixture uses development mode and file-based mirrors. For
-deployment verification, repeat representative workloads under the deployment's
-security settings and total resource limits.
-
-## Measure agent evidence retrieval
-
-Use `scripts/agent_evidence_benchmark.py` to measure a loopback API and its
-disposable evidence workers against real PostgreSQL. Set
-`SEDIMENT_TEST_DATABASE_URL` to an owned disposable cluster. The script creates,
-migrates, and removes its own database. Sync the runtime checkout with
-`uv sync --locked --python 3.12` before running it.
-
-```bash
-uv run python scripts/agent_evidence_benchmark.py \
-  --runtime /path/to/sediment-checkout \
-  --output /data/evidence-keyword \
-  --sessions 8 --background 20000 \
-  --modes keyword --samples 30 --waves 10 --clients 1 5 10
-```
-
-Use a different unused output directory for each run. Repeat with `--sessions 1`
-and `--sessions 32` to vary the authorized source size. Hold this size fixed and
-change `--background` to measure unrelated organization history. Compare clean
-runtime revisions using the same script and arguments. Check fixture and
-successful keyword response hashes before comparing timings.
-
-Run each mode separately for comparable traffic conditions. `keyword` measures
-discovery followed by selected-Session keyword retrieval. `exact` discovers a
-preview and fetches its reference. `known` fetches a fixed known reference
-without discovery. The latter two modes require the scoped exact API. They use
-different selection semantics and do not establish equivalent context quality.
-
-Inspect `report.json` for successful latency and capacity refusals separately,
-response bytes, sampled API process-tree memory, and verified overlapping capture
-receipts. The capture probe counts HTTP 503 refusals separately from stored
-receipts and continues with a distinct event without retrying the refused event.
-Read `diagnostic.json` for startup, source, selection, encoding, and
-actual SQL plans. Diagnostic stage times are not public request latencies.
-The sampler excludes PostgreSQL and can miss brief memory peaks. Record database
-and host limits separately. A scripted chooser exercises transport; it measures
-neither decision-model quality nor inference cost.
+The [maintainer performance rehearsals](../../CONTRIBUTING.md#maintainer-performance-rehearsals)
+record the synthetic qualification procedures used during development.

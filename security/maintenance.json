@@ -69,12 +69,14 @@
       "source": "https://github.com/wolfi-dev/os/blob/main/ca-certificates.yaml",
       "source_package": "ca-certificates",
       "source_versions": [
-        "20260611-r1"
+        "20260611-r1",
+        "20260909-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "20260611-r1"
+        "20260611-r1",
+        "20260909-r0"
       ]
     },
     "apk/gdbm": {
@@ -183,7 +185,7 @@
       ]
     },
     "apk/libexpat1": {
-      "basis": "Reviewed exact Wolfi libexpat1 2.8.5-r0 packages for x86_64 and aarch64 against signed-repository index and package-control digests. The aarch64 package is https://packages.wolfi.dev/os/aarch64/libexpat1-2.8.5-r0.apk; both select upstream R_2_8_5 commit 4b3f0b06f39fb5529cead381694f8929901bc273. The package review is recorded at https://github.com/sediment-ai/sediment/pull/87#issuecomment-5784328678. Rolling distribution maintenance; no fixed upstream support date, vulnerability suppression, or reachability verdict is inferred. Issue 88 tracks the separate advisory-coverage and reachability audit.",
+      "basis": "Reviewed 2.8.5-r0 on 2026-09-23 from fresh official Wolfi package downloads for both architectures, matching the retained repository-index review. Both embedded recipes select upstream R_2_8_5 at 4b3f0b06f39fb5529cead381694f8929901bc273. The release fixes CVE-2026-93990 and retains an upstream warning about unresolved security issues. This entry records rolling distribution maintenance, not vulnerability disposition, parser reachability, or a fixed upstream support date; the existing catalog expiry remains.",
       "evidence": "https://packages.wolfi.dev/os/x86_64/libexpat1-2.8.5-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/expat.yaml",
@@ -382,33 +384,37 @@
       ]
     },
     "apk/ncurses": {
-      "basis": "Reviewed on 2026-09-20 against both architecture distribution artifacts and signed Wolfi indexes. The embedded build recipes select upstream ncurses snapshot v6_6_20260919 at commit f0246f42887e78c07792f6000ba1ab61ee2cd5b0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-6.6.20260919-r0.apk",
+      "basis": "Reviewed on 2026-09-27 against both architecture distribution artifacts and signed Wolfi indexes. Package control checksums match the signed indexes, and payload SHA256 hashes match their control records. Embedded recipes select upstream ncurses snapshot v6_6_20260926 at commit 41553966d3ac468f9fff0b63f98841aefb0cb04e. Retain the 2026-09-20 review of 6.6.20260919-r0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-6.6.20260926-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/ncurses.yaml",
       "source_package": "ncurses",
       "source_versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ]
     },
     "apk/ncurses-terminfo-base": {
-      "basis": "Reviewed on 2026-09-20 against both architecture distribution artifacts and signed Wolfi indexes. The embedded build recipes select upstream ncurses snapshot v6_6_20260919 at commit f0246f42887e78c07792f6000ba1ab61ee2cd5b0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-terminfo-base-6.6.20260919-r0.apk",
+      "basis": "Reviewed on 2026-09-27 against both architecture distribution artifacts and signed Wolfi indexes. Package control checksums match the signed indexes, and payload SHA256 hashes match their control records. Embedded recipes select upstream ncurses snapshot v6_6_20260926 at commit 41553966d3ac468f9fff0b63f98841aefb0cb04e. Retain the 2026-09-20 review of 6.6.20260919-r0. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ncurses-terminfo-base-6.6.20260926-r0.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/ncurses.yaml",
       "source_package": "ncurses",
       "source_versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "6.6.20260919-r0"
+        "6.6.20260919-r0",
+        "6.6.20260926-r0"
       ]
     },
     "apk/openssl": {
@@ -472,7 +478,7 @@
       ]
     },
     "apk/python-3.13": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
       "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
@@ -487,7 +493,7 @@
       ]
     },
     "apk/python-3.13-base": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
       "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
@@ -2302,18 +2308,20 @@
       ]
     },
     "deb/libssl3": {
-      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim.",
-      "evidence": "https://wiki.debian.org/LTS",
+      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim. Debian LTS DLA-4795-1 publishes 3.0.22-1~deb12u1 as the bookworm security update on 2026-09-25.",
+      "evidence": "https://lists.debian.org/debian-lts-announce/2026/09/msg00030.html",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/openssl/",
       "source_package": "openssl",
       "source_versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ]
     },
     "deb/libstdc++6": {
@@ -2647,18 +2655,20 @@
       ]
     },
     "deb/openssl": {
-      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim.",
-      "evidence": "https://wiki.debian.org/LTS",
+      "basis": "OpenSSL 3.0 is outside upstream support. These exact Debian 12 builds use Debian LTS security backports, with coverage through 2028-06-30 and no debian-security-support exclusion; this is not an upstream OpenSSL support claim. Debian LTS DLA-4795-1 publishes 3.0.22-1~deb12u1 as the bookworm security update on 2026-09-25.",
+      "evidence": "https://lists.debian.org/debian-lts-announce/2026/09/msg00030.html",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/openssl/",
       "source_package": "openssl",
       "source_versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.0.20-1~deb12u2"
+        "3.0.20-1~deb12u2",
+        "3.0.22-1~deb12u1"
       ]
     },
     "deb/passwd": {
@@ -3856,6 +3866,18 @@
         "1.0.9"
       ]
     },
+    "pypi/httpcore2": {
+      "basis": "Reviewed non-yanked 2.13.1 on 2026-09-26 against its PyPI metadata and the shared Pydantic HTTPX2 upstream release. It requires Python >=3.10 and satisfies the exact httpx2 2.13.1 dependency. The repository is open and active. Its inherited Pydantic security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; it does not infer a fixed upstream support date.",
+      "evidence": "https://pypi.org/project/httpcore2/2.13.1/",
+      "provider": "Upstream project",
+      "source": "https://github.com/pydantic/httpx2",
+      "source_updated_at": "2026-09-24T13:41:35Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "2.13.1"
+      ]
+    },
     "pypi/httpx": {
       "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
       "evidence": "https://pypi.org/project/httpx/",
@@ -3880,18 +3902,31 @@
         "0.4.3"
       ]
     },
+    "pypi/httpx2": {
+      "basis": "Reviewed non-yanked 2.13.1 on 2026-09-26 against its PyPI metadata and the Pydantic upstream release. It requires Python >=3.10 and pins httpcore2==2.13.1. The repository is open and active. Its inherited Pydantic security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; it does not infer a fixed upstream support date.",
+      "evidence": "https://pypi.org/project/httpx2/2.13.1/",
+      "provider": "Upstream project",
+      "source": "https://github.com/pydantic/httpx2",
+      "source_updated_at": "2026-09-24T13:41:35Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "2.13.1"
+      ]
+    },
     "pypi/huggingface-hub": {
-      "basis": "Upstream applies security fixes only to the latest release and does not promise older-release backports. The online gate must confirm the latest non-prerelease, non-yanked registry version. Reviewed 1.32.0 on 2026-09-18 against its released security policy and non-yanked PyPI metadata; the release supports the supplied Python runtimes.",
-      "evidence": "https://raw.githubusercontent.com/huggingface/huggingface_hub/8814aabc81298df547bece9e71e4e88d3e513928/SECURITY.md",
+      "basis": "Upstream applies security fixes only to the latest release and does not backport fixes to older releases. Reviewed 2.0.0 on 2026-09-26 against its release security policy and non-yanked PyPI metadata. Its declared Python >=3.10.0 requirement includes gateway Python 3.13.15. The online gate must still confirm the latest non-prerelease, non-yanked registry version. This review does not establish Tokenizers or LiteLLM compatibility; their gateway acceptance checks remain required.",
+      "evidence": "https://raw.githubusercontent.com/huggingface/huggingface_hub/97c5f5f2030c2df01b60548f7d357970a106cd7d/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/huggingface/huggingface_hub",
-      "source_updated_at": "2026-09-18T11:51:26Z",
+      "source_updated_at": "2026-09-26T03:01:56Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
         "1.31.0",
-        "1.32.0"
+        "1.32.0",
+        "2.0.0"
       ]
     },
     "pypi/humanfriendly": {
@@ -4031,8 +4066,8 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed on 2026-09-20 as part of stable LiteLLM 1.102.0. The release metadata explicitly pairs the proxy with enterprise 0.1.67 and proxy-extras 0.4.97; all three releases are unwithdrawn and support the measured Python 3.13 runtime. The signed official image index binds both architectures to the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/95293834e833b2d2979f87d1bd2a5be45db6728a/pyproject.toml",
+      "basis": "Reviewed LiteLLM 1.102.1 on 2026-09-23 against the official release, unwithdrawn PyPI metadata, immutable release source, and both resolved gateway inventories. The release retains enterprise 0.1.67 and proxy-extras 0.4.97. The official image index binds both architectures to release commit d09bbae1c6df463e425558f60d460437193635da. The guarded vendor patch matches the reviewed source; native ARM64 runtime and capture checks pass. The retained image predicates and 17 SAML caller hashes remain unchanged. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/d09bbae1c6df463e425558f60d460437193635da/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-20T12:23:58Z",
@@ -4040,7 +4075,8 @@
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "1.102.0"
+        "1.102.0",
+        "1.102.1"
       ]
     },
     "pypi/litellm-enterprise": {
@@ -4092,8 +4128,8 @@
       ]
     },
     "pypi/mako": {
-      "basis": "Reviewed the unwithdrawn Mako 1.4.3 release against https://pypi.org/project/Mako/1.4.3/ and the upstream security policy at https://raw.githubusercontent.com/sqlalchemy/mako/HEAD/.github/SECURITY.md. The exact release review is recorded at https://github.com/sediment-ai/sediment/pull/87#issuecomment-5784328678. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://github.com/sqlalchemy/mako/releases/tag/rel_1_4_3",
+      "basis": "Reviewed 1.4.3 on 2026-09-23 against the upstream release, unwithdrawn PyPI files, and release-tag security policy. The release retains the Windows TemplateLookup traversal correction in 1.4.2 and adjusts its tests. The security policy describes vulnerability reporting, not a dated support promise. This project maintenance assessment expires with the existing catalog.",
+      "evidence": "https://raw.githubusercontent.com/sqlalchemy/mako/rel_1_4_3/.github/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/mako",
       "source_updated_at": "2026-08-18T17:07:16Z",
@@ -4957,7 +4993,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-capture": {
@@ -4968,7 +5005,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-cli": {
@@ -4979,7 +5017,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-core": {
@@ -4990,7 +5029,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-derive": {
@@ -5001,7 +5041,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/sediment-export": {
@@ -5012,7 +5053,8 @@
       "status": "maintained",
       "support_kind": "first_party",
       "versions": [
-        "0.1.0"
+        "0.1.0",
+        "0.2.0"
       ]
     },
     "pypi/semantic-router": {
@@ -5113,8 +5155,8 @@
       ]
     },
     "pypi/starlette": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/starlette/",
+      "basis": "Reviewed the official Starlette 1.7.0 release at commit 2269e9a08c1edd3dfdea865710f40f84c857b623, published on 2026-09-23 and unyanked on PyPI. Its Python >=3.10, AnyIO >=4.0.0,<5, and conditional typing-extensions >=4.10.0 requirements admit the measured Python 3.12.14, AnyIO 4.15.1, and typing-extensions 4.16.0 client environment; FastAPI 0.141.1 permits Starlette >=0.46.0. The reviewed upstream security policy provides disclosure instructions without a release-specific maintenance window or end-of-support date. This project maintenance assessment requires renewal by the existing catalog expiry. Previously reviewed versions remain recorded.",
+      "evidence": "https://github.com/Kludex/starlette/blob/2269e9a08c1edd3dfdea865710f40f84c857b623/docs/release-notes.md",
       "provider": "Upstream project",
       "source": "https://github.com/Kludex/starlette",
       "source_updated_at": "2026-09-12T09:05:01Z",
@@ -5122,7 +5164,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "1.3.1",
-        "1.6.0"
+        "1.6.0",
+        "1.7.0"
       ]
     },
     "pypi/tabulate": {
@@ -5162,9 +5205,9 @@
       ]
     },
     "pypi/tokenizers": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/tokenizers/",
-      "provider": "Upstream project",
+      "basis": "Reviewed Tokenizers 0.23.1 on 2026-09-26 against its non-yanked PyPI wheels and immutable upstream source. Sediment applies a guarded downstream metadata patch declaring compatibility only with Hub 2.0.0; upstream Tokenizers retains its below-2 constraint. The compiled Tokenizers code is unchanged. Both wheel architectures share the reviewed metadata hash. Native image tests exercise the real Rust Hub download caller with revisions and credentials and local Claude token counting. The image label identifies the patch and its file-integrity record is updated. This compatibility assessment expires with the catalog.",
+      "evidence": "https://github.com/huggingface/tokenizers/blob/7f1623b90b5adfb9bc327d4c3468d2f70bbce262/bindings/python/src/tokenizer.rs",
+      "provider": "Upstream project; Sediment Hub 2 compatibility declaration",
       "source": "https://github.com/huggingface/tokenizers",
       "source_updated_at": "2026-09-11T15:58:59Z",
       "status": "maintained",
@@ -5208,6 +5251,18 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "4.67.3"
+      ]
+    },
+    "pypi/truststore": {
+      "basis": "Reviewed non-yanked 0.10.4 on 2026-09-26 against its PyPI metadata, upstream release, and security disclosure policy. It requires Python >=3.10, declares no runtime dependencies, and satisfies the httpx2 and httpcore2 truststore>=0.10 requirements. The repository is open and not archived. Its security policy defines private reporting without a release-specific support window. This maintenance assessment expires with the catalog; repository status and release age are not a release-specific support guarantee.",
+      "evidence": "https://pypi.org/project/truststore/0.10.4/",
+      "provider": "Upstream project",
+      "source": "https://github.com/sethmlarson/truststore",
+      "source_updated_at": "2025-11-28T16:40:58Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "0.10.4"
       ]
     },
     "pypi/typer": {
@@ -5273,17 +5328,18 @@
       ]
     },
     "pypi/uvicorn": {
-      "basis": "Reviewed on 2026-09-15: Uvicorn 0.51.0, 0.52.4, and 0.53.0 are unwithdrawn upstream releases. Release 0.53.0 supports Python 3.12; experimental HTTP/2 requires explicit configuration. Its default proxy trust adds IPv6 loopback. Upstream specifies vulnerability reporting but no release-specific support window; this assessment expires with the catalog.",
-      "evidence": "https://github.com/Kludex/uvicorn/releases/tag/0.53.0",
+      "basis": "Reviewed 0.54.0 on 2026-09-26 against its unyanked PyPI metadata, upstream release, and source comparison with reviewed 0.53.0. Runtime changes add optional zttp HTTP/2 response trailers and Early Hints; default HTTP/1.1 startup and package requirements remain unchanged. The scanned Python 3.12.14, FastAPI 0.141.1, Starlette 1.7.0, anyio 4.15.1, Click 8.5.0, and h11 0.16.0 versions pass an isolated lifespan, HTTP request, and shutdown probe. Previously reviewed versions remain listed. Upstream specifies vulnerability reporting without a release-specific support window; this assessment expires with the catalog.",
+      "evidence": "https://github.com/Kludex/uvicorn/releases/tag/0.54.0",
       "provider": "Upstream project",
       "source": "https://github.com/Kludex/uvicorn",
-      "source_updated_at": "2026-09-12T09:07:53Z",
+      "source_updated_at": "2026-09-26T08:27:01Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.51.0",
         "0.52.4",
-        "0.53.0"
+        "0.53.0",
+        "0.54.0"
       ]
     },
     "pypi/uvloop": {

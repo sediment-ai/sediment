@@ -6,6 +6,10 @@ Status: implementation plan
 
 Tracker: [Issue #82](https://github.com/sediment-ai/sediment/issues/82).
 
+Execution amendment: [ADR 0025](../../adr/0025-authorized-session-candidate-discovery.md#discovery-and-source-identity)
+replaces this specification's materialized keyword source limits with bounded
+streaming. Selection policy and successful version-1 responses remain unchanged.
+
 ## Outcome
 
 A fresh agent supplies task keywords and, optionally, a repository-qualified
@@ -83,6 +87,10 @@ existing one-evidence-worker admission limit within two query/report slots and
 the 30-second process deadline. Authentication precedes semantic validation.
 No error or diagnostic echoes queries, credentials, captured content, or
 arbitrary caller-supplied field names.
+
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original worker reservation. The [concurrency specification](2026-09-22-shared-evidence-admission-design.md)
+defines the replacement acceptance criteria.
 
 ### Discover candidates
 

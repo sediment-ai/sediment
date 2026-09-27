@@ -1,5 +1,10 @@
-# Self-hosted Sediment. See docs/operate/deploy.md for credentials, storage
-# quotas, backups, and the conditions attached to vulnerability dispositions.
+# Contributor Compose deployment. See docker/README.md for credentials,
+# storage, backups, and the conditions attached to vulnerability dispositions.
+# Start the API and PostgreSQL: docker compose up -d --build
+# Include LiteLLM: docker compose --profile gateway up -d --build
+# Configure its credentials in .env and routes in litellm/config.yaml first.
+# Single-host HTTPS: python3 scripts/create_deploy_env.py --domain YOUR_HOSTNAME
+# Then: docker compose up -d --build --wait
 name: sediment
 
 x-runtime: &runtime
@@ -25,7 +30,7 @@ services:
     build:
       <<: *api-build
       dockerfile: docker/postgres/Dockerfile
-    image: sediment-postgres:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-postgres:local
     # The entrypoint initializes volume ownership, then runs as postgres.
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
     mem_limit: 1g
@@ -53,7 +58,7 @@ services:
   migrate:
     <<: *runtime
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     restart: "no"
     mem_limit: 512m
     cpus: 1.0
@@ -73,7 +78,7 @@ services:
   api:
     <<: *runtime
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     mem_limit: 2g
     cpus: 2.0
     pids_limit: 256
@@ -95,7 +100,10 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    ports: [127.0.0.1:8000:8000]
+    ports:
+      - target: 8000
+        published: "${SEDIMENT_API_PORT:-8000}"
+        host_ip: 127.0.0.1
     volumes:
       - sediment-mirror:/data/mirror
     tmpfs: ["/tmp:size=256m,mode=1777"]
@@ -111,7 +119,7 @@ services:
     <<: *runtime
     profiles: [operator]
     build: *api-build
-    image: sediment-api:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-api:local
     restart: "no"
     mem_limit: 2g
     cpus: 1.0
@@ -131,16 +139,16 @@ services:
     tmpfs: ["/tmp:size=256m,mode=1777"]
     networks: [database]
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
 
   gateway:
     <<: *runtime
-    profiles: [gateway]
+    profiles: [gateway, https]
     build:
       <<: *api-build
       dockerfile: docker/gateway/Dockerfile
-    image: sediment-gateway:local
+    image: ${COMPOSE_PROJECT_NAME:-sediment}-gateway:local
     mem_limit: 2g
     cpus: 2.0
     pids_limit: 256
@@ -163,7 +171,10 @@ services:
         exec python /usr/local/bin/sediment-gateway.py "$$@"
       - sediment-gateway
     command: [--config, /app/config.yaml, --port, "4000"]
-    ports: [127.0.0.1:4000:4000]
+    ports:
+      - target: 4000
+        published: "${SEDIMENT_GATEWAY_PORT:-4000}"
+        host_ip: 127.0.0.1
     environment:
       SEDIMENT_INGEST_URL: http://api:8000
       SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN: http://api:8000
@@ -182,6 +193,61 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  proxy:
+    <<: *runtime
+    profiles: [https]
+    build:
+      <<: *api-build
+      dockerfile: docker/proxy/Dockerfile
+    image: "${COMPOSE_PROJECT_NAME:-sediment}-proxy:local"
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 64
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        : "$${SEDIMENT_DOMAIN:?Set SEDIMENT_DOMAIN in .env}"
+        : "$${TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL:?Set SEDIMENT_ACME_EMAIL in .env}"
+        exec traefik
+    environment:
+      SEDIMENT_DOMAIN: "${SEDIMENT_DOMAIN:-}"
+      TRAEFIK_GLOBAL_CHECKNEWVERSION: "false"
+      TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: :8080
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: :443
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: :8443
+      TRAEFIK_ENTRYPOINTS_HEALTH_ADDRESS: 127.0.0.1:8082
+      TRAEFIK_PING_ENTRYPOINT: health
+      TRAEFIK_PROVIDERS_FILE_FILENAME: /etc/traefik/routes.yml
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: "${SEDIMENT_ACME_EMAIL:-}"
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE: /data/acme.json
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT: web
+    ports: ["80:8080", "443:8443"]
+    volumes:
+      - ./docker/proxy/routes.yml:/etc/traefik/routes.yml:ro
+      - sediment-certificates:/data
+    tmpfs: ["/tmp:size=16m,mode=1777"]
+    networks: [edge]
+    depends_on:
+      api:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, traefik, healthcheck]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 networks:
   database:
@@ -194,3 +260,4 @@ volumes:
   sediment-export:
   sediment-staging:
   sediment-delivery:
+  sediment-certificates:

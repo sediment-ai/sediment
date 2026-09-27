@@ -24,11 +24,12 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from itertools import batched
 
 from sediment_core import (
     CommitSha,
@@ -237,33 +238,18 @@ def derive_commit_attributions(
                     repository_key=repository_read_key(key),
                 )
             ) as pushes:
-                for push in pushes:
-                    resolved = repository_context.resolve_reference(
-                        push.org_id,
-                        push.repo,
-                        repository_identity=repository_identity_of(push),
-                    )
-                    if resolved.key != key:
-                        result.skipped[resolved.reason] += 1
-                        logger.warning(
-                            "Attribution repository declined reason=%s count=1",
-                            resolved.reason,
-                        )
-                        continue
-                    if push.after_sha != commit_sha:
-                        if (
-                            push.forced
-                            or not push.before_sha.strip("0")
-                            or push.before_sha in (commit_sha, push.after_sha)
-                        ):
-                            continue
-                        if commit_sha not in mirror.list_push_commits(
-                            push, policy.max_commits_per_push
-                        ):
-                            continue
-                    # Ownership precedes candidate availability and matching.
+                owner = _find_commit_owner(
+                    pushes,
+                    mirror,
+                    commit_sha,
+                    policy.max_commits_per_push,
+                    repository_context,
+                    key,
+                    result.skipped,
+                )
+                if owner is not None:
+                    push, resolved = owner
                     owners.append((push, resolved, mirror))
-                    break
         provenance = Provenance(
             policy_version=policy.policy_version,
             quarantine_revision=snapshot.quarantine_revision(org_id),
@@ -292,6 +278,60 @@ def derive_commit_attributions(
         for reason, count in sorted(result.skipped.items()):
             logger.debug("Commit Attribution skipped reason=%s count=%d", reason, count)
         return result.attributions
+
+
+def _find_commit_owner(
+    pushes: Iterable[AttributionPush],
+    mirror: RepoMirror,
+    commit_sha: CommitSha,
+    max_commits: int,
+    context: RepositoryContext,
+    key: RepositoryKey,
+    skipped: Counter[str],
+) -> tuple[AttributionPush, RepositoryResolution] | None:
+    # ponytail: mixed/divergent batches retain per-Push checks. Subdivide batches
+    # only if measurements show branch diversity dominates owner discovery.
+    for batch in batched(pushes, 256):
+        candidates = []
+        for push in batch:
+            resolved = context.resolve_reference(
+                push.org_id,
+                push.repo,
+                repository_identity=repository_identity_of(push),
+            )
+            needs_range = (
+                resolved.key == key
+                and push.after_sha != commit_sha
+                and not push.forced
+                and bool(push.before_sha.strip("0"))
+                and push.before_sha not in (commit_sha, push.after_sha)
+            )
+            candidates.append((push, resolved, needs_range))
+            if resolved.key == key and push.after_sha == commit_sha:
+                break
+        ranges_possible = not mirror.heads_precede_commit(
+            commit_sha,
+            (push.after_sha for push, _, needs_range in candidates if needs_range),
+        )
+        # Evaluate diagnostics in source order, stopping at either kind of owner.
+        # A direct head cannot bypass an earlier non-head owner in its batch.
+        for push, resolved, needs_range in candidates:
+            if resolved.key != key:
+                skipped[resolved.reason] += 1
+                logger.warning(
+                    "Attribution repository declined reason=%s count=1",
+                    resolved.reason,
+                )
+                continue
+            if push.after_sha == commit_sha:
+                return push, resolved
+            if (
+                needs_range
+                and ranges_possible
+                and commit_sha in mirror.list_push_commits(push, max_commits)
+            ):
+                return push, resolved
+    return None
 
 
 def _attribute_owned_commit(

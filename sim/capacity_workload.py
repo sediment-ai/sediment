@@ -69,8 +69,8 @@ class CapacityProfile:
                 raise ValueError(
                     f"{name} must be an integer from {minimum} to {maximum}"
                 )
-        if self.total_calls > 100000:
-            raise ValueError("total_calls must not exceed 100000")
+        if self.total_calls > 300000:
+            raise ValueError("total_calls must not exceed 300000")
         if self.developers > self.total_sessions:
             raise ValueError("developers must not exceed total_sessions")
         turns = self.calls_per_session

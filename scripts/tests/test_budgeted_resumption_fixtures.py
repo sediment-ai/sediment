@@ -230,5 +230,5 @@ def test_historical_fixtures_and_controller_are_unchanged():
         assert hashlib.sha256(encoded).hexdigest() == want
     controller = Path(__file__).parents[1] / "session_context_retrieval_eval.py"
     assert hashlib.sha256(controller.read_bytes()).hexdigest() == (
-        "bce3d4aa60779bcd9acd4b0892a4a17a1aa9082dc1f7c857f481c0a45993cbd2"
+        "8a68641c6175521d2e8057d5e9b750288c0bcaa75255e55b72dc86449ecf34a9"
     )

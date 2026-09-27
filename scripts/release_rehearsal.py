@@ -147,6 +147,7 @@ PIPELINE_EXPECTATIONS = {
 @contextmanager
 def scratch_database(database_url: str):
     """Own exactly one random database; never migrate the administrative target."""
+    from sediment_core.postgres_engine import configure_libpq
     from sqlalchemy import create_engine
     from sqlalchemy.engine import make_url
     from sqlalchemy.pool import NullPool
@@ -156,6 +157,7 @@ def scratch_database(database_url: str):
         url = make_url(database_url)
         if url.get_backend_name() != "postgresql":
             raise ValueError("PostgreSQL required")
+        configure_libpq()
         engine = create_engine(url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
     except Exception:
         raise RuntimeError(
@@ -276,6 +278,7 @@ def exercise_installed_pipeline(
     from sqlalchemy import create_engine
     from sqlalchemy.engine import make_url
     from sediment_core import FactStore
+    from sediment_core.postgres_engine import configure_libpq
     from sediment_cli import delivery
     from sediment_capture import sign_payload
     from sediment_export import (
@@ -300,6 +303,7 @@ def exercise_installed_pipeline(
         )
 
     workspace.mkdir()
+    configure_libpq()
     env = dict(os.environ)
     org, session, outside_session = (
         "release-rehearsal",

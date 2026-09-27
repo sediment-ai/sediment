@@ -4,187 +4,62 @@ Use this guide to connect a Sediment deployment to gateways, forges, private
 repositories, and a managed developer fleet. For one developer machine, use
 [Configure local capture](local-capture.md).
 
-Before you configure capture, deploy the API behind a reachable endpoint and
-migrate its PostgreSQL schema. The API verifies the revision at startup but
-never runs migrations.
-
-[Deploy Sediment](../operate/deploy.md) covers the host,
-storage, ingress, backup, quarantine, and incident response.
+Complete [Deploy Sediment](../operate/deploy.md) before configuring capture.
 
 ## Prerequisites
 
-The paths that you enable determine what you need:
+Start with the deployed API. For each enabled path, obtain the following access:
 
-- a deployed Sediment API and a named ingest-only token for each capture client
-- the GitHub webhook secret and repository administrator access
-- control of an existing gateway, or provider credentials for bundled LiteLLM
-- read-only credentials for private repository mirrors
-- mobile device management (MDM) or equivalent access for fleet distribution
-- Python 3.12 on each managed macOS or Linux machine
+| Path | Prerequisites |
+| --- | --- |
+| GitHub webhooks | Repository administrator access and the deployment's webhook secret |
+| Private mirrors | Read-only repository credentials for the API |
+| Gateway | Its configuration, provider credentials, and a named ingest-only token |
+| Fleet hooks | Mobile device management (MDM) access and Python 3.12 on each macOS or Linux machine |
 
-Both fleet and local capture support macOS and Linux. Native Windows capture
-is unsupported because the clients require POSIX file locks and shell hooks.
-On Windows, `sediment install` refuses installation before changing
-configuration. The fleet bundle requires an absolute POSIX install prefix.
+Native Windows capture is unsupported. The installer requires POSIX file locks
+and shell hooks; it refuses Windows installation before changing configuration.
 
 ## Choose capture paths
 
-Each path records a different Fact. Enable the paths that your dataset needs.
+Enable only the evidence that participants approve:
 
-| Signal | Source | Configuration |
-|---|---|---|
-| Inference call | Gateway success callback | Gateway and API |
-| Developer decision | Agent OTLP logs or shim | Developer machines |
-| Edit observation | Session-end transcript hook | Per-user opt-in |
-| Commit Attribution | Agent markers and git notes | Developer machines and repositories |
-| Push, Pull request revision and merge, and CI outcome | Forge webhooks or CI API | Forge and API |
+| Evidence | Setup |
+| --- | --- |
+| Push, Pull request revision and merge, Repository rename, and CI outcome | [Forge webhooks](#configure-push-and-ci-capture) |
+| Commit Attribution | [Repository mirrors](#configure-repository-mirrors) and developer Git hooks |
+| Inference call | [Gateway callback](#configure-inference-call-capture) |
+| Developer decision | [Agent telemetry](#distribute-decision-telemetry) |
+| Edit observation | [Per-user transcript opt-in](local-capture.md#opt-in-to-transcript-capture) |
 
-Missing paths stay visibly absent. Sediment doesn't invent inference calls,
-Sessions, Edit observations, Pushes, Pull request revisions and merges, or CI outcomes.
+For a pilot, [enroll each developer](../operate/run-pilot.md) before attempting
+fleet distribution. Missing capture paths remain absent.
 
-These paths do not produce a complete study context manifest or cost ledger.
-An inference call preserves model, usage, duration, and provider values when
-the source supplies them.
+## Configure repository mirrors
 
-Record task identity, repository instructions, loaded skills, retrieval,
-developer time, and external prices in versioned study artifacts. Mark a field
-absent when its source does not expose it.
+The push webhook stores a Push Fact even when a mirror refresh fails. Notes
+Attribution needs the mirror, so private repositories require read-only git
+credentials on the API host.
 
-## Configure inference-call capture
+Use the server account's Git credential manager or a private `~/.netrc` file.
+Give the file mode `0600` and keep other host users from reading it:
 
-Sediment stays out of the LLM request path. A gateway sends each successful
-response to `POST /ingest/gateway` after it returns the response to the agent.
-
-### Choose a gateway path
-
-Use one of these paths:
-
-- If you operate a gateway with a registered Sediment adapter, configure its
-  success callback to send completed calls to Sediment.
-- If you don't operate a gateway, enable the bundled LiteLLM profile.
-
-The ingest envelope is gateway-neutral, but the completed-call payload isn't.
-Each gateway format needs a registered adapter that converts it into an
-`InferenceCall`. This repository registers only the LiteLLM adapter. If your
-gateway emits another format, implement and register its adapter before you
-route measured traffic through it. A provider name in the
-[`GatewayProvider` schema](../reference/schema.md#gatewayprovider) doesn't mean
-that its adapter exists.
-
-A gateway integration must:
-
-- preserve the complete model input, output, model identity, and available
-  usage and latency values;
-- carry a real Session identifier in the envelope, request metadata, or a
-  protocol-specific identity carrier;
-- authenticate to `POST /ingest/gateway` with its ingest-only token;
-- send the callback after a successful model response; and
-- log and drop capture failures instead of failing a successful model call.
-
-The [gateway API reference](../reference/api.md#post-ingestgateway) defines the
-envelope and status codes. [Gateway request and capture
-paths](../explanation/how-capture-works.md#gateway-request-and-capture-paths)
-explains how gateway configuration can affect model behavior.
-
-### Connect an existing LiteLLM gateway
-
-Copy `litellm/sediment_callback.py` and
-`cli/sediment_cli/delivery.py` next to the gateway configuration. Name the copied
-helper `sediment_delivery.py`. Both files must be importable by the proxy. Register
-the callback:
-
-```yaml
-litellm_settings:
-  callbacks: sediment_callback.handler
+```text
+machine github.com login x-access-token password <fine-grained PAT>
 ```
 
-Set the callback environment:
+Scope the personal access token (PAT) to **Contents: read-only** on the captured
+repositories. After enrollment, push a test commit with a Session note.
+In the API's supervisor logs, require
+`session_commit_observations_captured` with a nonzero stored or duplicate count
+for that repository. Verify the commit with the
+[forge check](../operate/run-pilot.md#verify-forge-delivery); a Push Fact alone
+doesn't verify private Git access.
 
-```bash
-SEDIMENT_INGEST_URL=https://sediment-api.example.com
-SEDIMENT_API_BEARER_TOKEN=<ingest-only token>
-```
-
-Register this callback secret under a named entry in the API's
-`SEDIMENT_INGEST_TOKENS` map. The callback retains its existing environment
-variable name; it must never receive `SEDIMENT_OPERATOR_TOKEN`. The API's own
-`SEDIMENT_API_BEARER_TOKEN` setting is optional ingest-only compatibility.
-Removing a named entry and restarting the API revokes that client.
-
-Use HTTPS for remote callback destinations. Loopback HTTP is accepted for
-`localhost`, `127.0.0.0/8`, and `[::1]`. The callback rejects redirects. If the
-callback and API share a trusted container network, set
-`SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN` to that one HTTP origin. The bundled Compose
-profile uses `http://api:8000`. This exception matches the scheme, hostname, and
-port exactly; it never authorizes OTLP delivery or another destination.
-
-Each HTTP attempt has a five-second timeout. The callback records a capture UUID
-and observation time once, then preserves them through delivery. It retains
-LiteLLM's provider call ID; a capture UUID never substitutes for that ID.
-Capture failures don't raise into the model request.
-
-If you authorize local storage of the prepared payload, set
-`SEDIMENT_DELIVERY_DIR` to a private directory on persistent storage. The payload
-can contain unredacted prompts, code, or credentials before server redaction.
-The callback starts a replay worker for its process lifetime. Without this
-setting, it reports `best_effort` and attempts direct delivery.
-Unsafe, unavailable, or busy buffer storage also triggers one direct attempt
-with a `best_effort` diagnostic. Repair the volume to restore durable recovery.
-See [Preserve prepared payloads through outages](local-capture.md#preserve-prepared-payloads-through-outages)
-for limits, permissions, and recovery commands.
-
-If you collect raw fixtures for integration debugging, set `SEDIMENT_CAPTURE_DIR`
-to an absolute private directory owned by the gateway user. This opt-in writes
-unredacted prompts, responses, code, and possibly credentials. The callback
-creates the directory with mode `0700` and both JSON files with mode `0600`.
-It refuses permissive paths, foreign ownership, symlinks, and hardlinks.
-An unsafe fixture destination logs `fixture_write_failed` without stopping
-valid gateway delivery. Restrict access, use encrypted storage, and delete the
-fixtures when the investigation ends. Basic redaction at the API doesn't protect
-these local raw files.
-
-Clients must identify a real Session. LiteLLM clients can use request metadata.
-Claude Code and Codex use protocol-specific `session_id` carriers that the
-server resolves.
-
-The server skips an unresolved inference call and logs
-`gateway_ingest_skipped_no_session`.
-
-Upgrade the server before the callback or client fleet when identity parsing
-changes. The server owns identity resolution. Non-string identity carriers
-contribute no identity; the server logs their invalid shape and tries the next
-source. Explicit metadata IDs can be arbitrary nonblank strings.
-
-### Enable the bundled LiteLLM gateway
-
-If the deployment doesn't have a gateway, set `ANTHROPIC_API_KEY` and
-`LITELLM_MASTER_KEY` in `.env`, then enable the compose profile:
-
-```bash
-docker compose --profile gateway up -d --build
-```
-
-The profile uses the pinned LiteLLM image and `litellm/config.yaml`. It
-authenticates clients with `LITELLM_MASTER_KEY` and maps each requested
-`claude-*` model to the matching Anthropic model. The default configuration
-doesn't enable model substitution, fallbacks, caching, guardrails, or prompt
-rewriting.
-
-Expose the loopback-bound gateway through the deployment ingress. Give client
-machines the public URL and the LiteLLM master key, not the upstream provider
-key.
-
-On each Claude Code machine, pass that URL and key to `sediment install` as
-[Configure inference-call capture for Claude Code](agents/claude-code.md#configure-inference-call-capture)
-describes.
-
-### Configure Codex for a compatible gateway
-
-Codex uses the OpenAI Responses API and needs a participating client profile.
-The gateway must serve the developer's selected model. The bundled Claude-only
-configuration doesn't serve native OpenAI model requests.
-[Configure inference-call capture for Codex](agents/codex.md#configure-inference-call-capture)
-defines the provider, profile, environment, and unsupported tool.
+Identified mirrors use stable repository IDs and survive renames. Legacy mirrors
+remain separate. If you see `repository_mirror_identity_unresolved`, inspect
+stored identities before redelivering the Push. Known competing identities block
+fetches; Git cannot detect an unobserved remote deletion or name reuse.
 
 ## Configure push and CI capture
 
@@ -198,77 +73,64 @@ For GitHub, create four webhooks on each captured repository. Use
 | `https://sediment-api.example.com/ingest/github/pull-request` | Pull requests |
 | `https://sediment-api.example.com/ingest/github/repository` | Repository changes |
 
-The pull request webhook stores a Pull request revision for `opened` and
-`synchronize`, and a Pull request merge for a merged `closed` event. The
-repository webhook stores a Repository rename Fact, including when mirrors are
-disabled. Historical Facts retain their captured repository names.
+Keep `SEDIMENT_GITHUB_HOST=github.com` for GitHub.com. Inspect recent deliveries
+in each webhook's settings: the setup ping returns `200` with a skipped reason;
+`401` means a missing or invalid signature. After enrollment, verify
+[real forge deliveries](../operate/run-pilot.md#verify-forge-delivery).
 
-Keep `SEDIMENT_GITHUB_HOST=github.com` for GitHub.com. Sediment captures the
-provider repository ID from each signed payload. A missing or invalid ID leaves
-identity absent and logs the gap; Sediment doesn't reconstruct historical IDs.
+Redelivery returns `"stored": false` when database uniqueness finds the same
+Fact. It is a successful acknowledgment. The
+[API reference](../reference/api.md) defines supported events and repository
+identity fields.
 
-GitHub's setup ping returns `200` with a skipped reason. A `401` means that the
-HMAC secret doesn't match.
+If delivery fails after a DNS change, verify the hostname's public A record and
+HTTPS certificate. Check **Recent Deliveries** in the repository's webhook
+settings for GitHub's result; a request from your machine doesn't verify
+GitHub's connection. After connectivity recovers, [redeliver the failed
+events](https://docs.github.com/en/webhooks/testing-and-troubleshooting-webhooks/redelivering-webhooks).
+GitHub doesn't automatically redeliver failed deliveries. Keep certificate and
+webhook signature verification enabled during recovery.
 
-Redeliveries are safe. Database uniqueness collapses a repeated event and the
-API returns `"stored": false` as success.
+For another continuous integration (CI) system, send normalized results to
+[`POST /ingest/ci`](../reference/api.md#post-ingestci) with an ingest token.
+Follow its required fields and identity rules. Only `passed` and `failed`
+supply verdicts; other terminal results remain neutral. The sender asserts
+provider identity; Sediment doesn't verify it with the provider.
 
-Other CI systems send a normalized result to `POST /ingest/ci` with the bearer
-token. The body requires provider, provider run id, repository, commit SHA,
-branch, and normalized result. It accepts the run attempt, workflow identity,
-exact provider result, structured error evidence, source-event metadata, and run
-URL when the sender has them.
+## Configure inference-call capture
 
-The integration declares the normalized provider from its configuration and
-maps the provider's pipeline-run identifier to `run_id`. Sediment does not infer
-either value from a URL. The sender may supply the complete
-`repository_provider`, `repository_host`, and `repository_id` triple. A partial
-triple is invalid. Identified run IDs are scoped by deployment organization, CI
-provider, and forge provider/host; repository identity must agree within a run.
-Legacy run IDs retain the deployment organization and CI provider namespace. The bearer token authenticates the
-integration, not the provider assertion; Sediment does not call the provider to
-verify these fields. The provider run id plus optional positive attempt is the
-deduplication key. The run URL is an optional location. Only `passed` and
-`failed` are verdicts.
-`error`, `timed_out`, `cancelled`, `skipped`, `neutral`, and `unknown` remain
-visible neutral evidence. The
-[API reference](../reference/api.md#post-ingestci) defines the request.
+A gateway sends each successful model response to `POST /ingest/gateway`.
+Sediment doesn't serve the model request.
 
-## Configure repository mirrors
+### Choose a gateway path
 
-The push webhook stores a Push Fact even when a mirror refresh fails. Notes
-Attribution needs the mirror, so private repositories require read-only git
-credentials on the API host.
+Use an independently operated gateway integration that implements the
+[gateway envelope](../reference/api.md#post-ingestgateway). Sediment accepts the
+LiteLLM capture payload; another provider name alone doesn't add an adapter.
 
-Before mounting private Git credentials, reassess the default image and Git
-configuration conditions in [the security procedure](../operate/security.md).
-A custom credential mount falls outside the supplied deployment assurance.
-Then mount a deployment-local `.netrc` through `compose.override.yml`:
+The published package doesn't include a deployable gateway or its logging
+callback. The capture API remains available to a separately configured client.
+Don't assume that installing the CLI routes or records model traffic.
 
-```yaml
-services:
-  api:
-    volumes:
-      - ~/.config/sediment/netrc:/home/sediment/.netrc:ro
-```
+### Configure gateway delivery
 
-Create the file with mode `0600`:
+Give the integration an ingest-only credential and the HTTPS API URL. Keep
+provider keys on the gateway. Its payload must carry the complete supported
+input and output, available usage and latency, and a real Session identifier.
 
-```text
-machine github.com login x-access-token password <fine-grained PAT>
-```
+Keep the developer's model unchanged. Configure capture failure handling so a
+failed capture request doesn't fail a successful model call. Verify an Inference
+call in the actual Session before relying on gateway reports.
 
-Scope the token to **Contents: read-only** on the captured repositories. After
-you restart the API, confirm that `mirror_refresh_failed` no longer appears for
-a test push.
+If the integration buffers payloads, agree its storage, retention, retries,
+and recovery behavior. A successful model response doesn't establish capture.
+See [Gateway request and capture paths](../explanation/how-capture-works.md#gateway-request-and-capture-paths).
 
-Identified mirrors use stable repository IDs. A rename doesn't move their
-directories or change historical observation IDs. Legacy mirrors remain separate
-and aren't promoted by name or clone URL. If capture logs
-`repository_mirror_identity_unresolved`, inspect the stored repository identities
-and requested location before redelivering the Push. A known competing identity
-blocks the fetch and preserves existing refs. Git doesn't verify provider IDs;
-an unobserved remote deletion or name reuse remains a capture limit.
+### Configure Codex for a compatible gateway
+
+Codex requires a compatible Responses API route for its chosen model.
+[Configure inference-call capture for Codex](agents/codex.md#configure-inference-call-capture)
+defines its client configuration and capture limits.
 
 ## Distribute decision telemetry
 
@@ -285,31 +147,22 @@ export OTEL_EXPORTER_OTLP_PROTOCOL=http/json
 export OTEL_EXPORTER_OTLP_ENDPOINT=https://sediment-api.example.com
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer <ingest-only token>"
 export OTEL_LOG_TOOL_DETAILS=1
-export OTEL_RESOURCE_ATTRIBUTES=user.id=<developer>
+export OTEL_RESOURCE_ATTRIBUTES='user.id=<developer>'
 ```
 
 Restart the agent after you change its environment. The exporter appends
 `/v1/logs` to the endpoint. `OTEL_LOG_TOOL_DETAILS=1` lets Sediment recover a
 file path from native edit-tool events.
 
-For Codex, enroll the generated telemetry profile from
-[Configure Developer decisions for Codex](agents/codex.md#configure-developer-decisions)
-on each machine. Its private file contains a resolved header token. Refresh the
-profile after token rotation; Codex doesn't interpolate a token variable in TOML.
+For other harnesses, use their local enrollment procedures:
 
-The pi shim uses `SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` instead.
-It isn't part of the fleet bundle.
+- [Codex telemetry](agents/codex.md#configure-developer-decisions): regenerate
+  the private profile after token rotation; its header contains a resolved token.
+- [pi](agent-integrations.md#pi): meet the release and runtime requirements,
+  then register the packaged extension on each machine.
+- [Cursor hooks](agents/cursor.md): enroll each desktop installation.
 
-Install pi from a source checkout on each machine as
-[Configure local capture](local-capture.md#install-capture)
-describes. Distribute those two variables to the pi process.
-If participants approve edit-content capture, also distribute
-`SEDIMENT_PI_TRANSCRIPTS=1`. Endpoint/token enrollment alone sends no pi edit
-content. See the [Pilot gateway procedure](../operate/run-pilot.md#add-approved-gateway-capture)
-for a model-preserving pi provider entry.
-
-The fleet bundle doesn't install Cursor user hooks. For the supported local
-desktop boundary, follow [Capture Cursor work](agents/cursor.md).
+The fleet bundle includes none of these three integrations.
 
 ## Build the fleet bundle
 
@@ -319,12 +172,11 @@ separately before you distribute it.
 Generate the MDM payload:
 
 ```bash
-sediment install --fleet
-sediment install --fleet --out DIR --prefix /opt/sediment
+sediment install --fleet --out sediment-fleet --prefix /opt/sediment
 ```
 
 The prefix is the stable absolute path where MDM installs the bundle. Hook
-files reference that path, so moving or deleting a source checkout doesn't
+files reference that path, so moving or deleting the original CLI environment doesn't
 break fleet installations.
 
 The bundle contains:
@@ -386,21 +238,10 @@ If `sudo` resets a per-user executable path, invoke the absolute CLI path. The
 command leaves an unrelated `init.templateDir` or invalid managed-settings file
 untouched and exits with a failure.
 
-For an air-gapped rollout, generate the complete bundle on a build machine with
-the prefix that the target machines use:
-
-```bash
-SEDIMENT_FLEET_PREFIX=/opt/sediment
-sediment install --fleet --out sediment-fleet --prefix "$SEDIMENT_FLEET_PREFIX"
-```
-
-Transfer `sediment-fleet/` into the air-gapped environment. Install its files
-at the same prefix and destinations listed in [Build the fleet bundle](#build-the-fleet-bundle).
-Preserve executable modes on the git hooks.
-
-Don't assemble an air-gapped bundle from `scripts/tests/fixtures/fleet/`.
-Those pinned test fixtures reference `/opt/sediment` and can't represent a
-different selected prefix.
+For an air-gapped rollout, generate the bundle on a connected build machine,
+then transfer it to the target machines at the same prefix. Preserve executable
+hook modes. Don't distribute `scripts/tests/fixtures/fleet/`; those test files
+aren't a generated installation bundle.
 
 Transcript capture isn't part of the fleet bundle. It sends edit text and file
 state, so each user opts in through
@@ -408,9 +249,8 @@ state, so each user opts in through
 
 ## Verify the rollout
 
-Before a measured run, complete this verification for every machine and agent
-harness combination. Aggregate Fact counts can hide a broken client when
-another client is healthy.
+Verify each machine and agent combination; aggregate counts can hide a broken
+client.
 
 Schedule the machine and repository health check through MDM:
 
@@ -422,20 +262,15 @@ Pass `--fetch` so the command can classify the remote notes ref. It prints one
 finding per check and exits with a failure when any installed integration is
 broken.
 
-On the API host, inspect Fact counts and capture logs:
+From an enrolled operator terminal, inspect Fact counts:
 
 ```bash
-docker compose --profile operator run --rm operator sediment facts
-docker compose logs api | grep gateway_ingest_skipped_no_session
-docker compose logs api | grep attributions_derived
+sediment facts
 ```
 
-If you enabled bundled LiteLLM, verify that its container is running before the
-test Session:
-
-```bash
-docker compose --profile gateway ps gateway
-```
+Inspect the API's supervisor logs for `gateway_ingest_skipped_no_session` and
+`attributions_derived`. Before a gateway test Session, verify that your gateway
+service is running.
 
 Run a short test Session through each gateway and agent combination. A
 successful model response proves the request path. Set
@@ -443,27 +278,19 @@ successful model response proves the request path. Set
 carried, then query that Session's captured calls:
 
 ```bash
-SEDIMENT_TEST_SESSION_ID=<real test Session id>
-SEDIMENT_TEST_TOKEN=<operator token>
+SEDIMENT_TEST_SESSION_ID='<real test Session id>'
+SEDIMENT_TEST_TOKEN='<operator token>'
 curl -sf \
   -H "Authorization: Bearer $SEDIMENT_TEST_TOKEN" \
   "https://sediment-api.example.com/v1/facts/session/$SEDIMENT_TEST_SESSION_ID/inference-calls"
 ```
 
-The `inference_calls` array must contain the test call with the expected
-gateway provider and model. This Session-scoped response proves the capture
-path without letting concurrent traffic mask a broken client. The
-[Session inference-call API](../reference/api.md#get-v1factssessionsession_idinference-calls)
-defines the returned reconciliation fields.
+Require the test call in `inference_calls` with the expected gateway provider
+and model. The [Session API reference](../reference/api.md#get-v1factssessionsession_idinference-calls)
+defines its reconciliation fields.
 
-If you enabled bundled LiteLLM, inspect its logs after the test Session:
-
-```bash
-docker compose logs --since 10m gateway
-```
-
-The logs must show the model request without an authentication, routing, or
-provider error.
+Inspect the gateway's logs after the test Session. Require the model request
+without an authentication, routing, or provider error.
 
 Verify the other enabled paths:
 
@@ -473,19 +300,14 @@ Verify the other enabled paths:
 - Pushes and CI outcomes grow after forge events
 - `attributions_derived` reports notes Attribution after mirror refresh
 
-If verification fails, start with the component that owns the failed path:
-
-- If the agent receives no model response, inspect the gateway and model
-  provider. Sediment isn't on that request path.
-- If the agent receives a response but the Session query returns no Inference
-  call, inspect the gateway callback and Sediment API logs.
-- If the API logs `gateway_ingest_skipped_no_session`, repair the client's
-  Session identity carrier. Sediment doesn't create a placeholder Session.
-- If the callback receives `401`, correct its ingest-only token.
-- If the callback receives `400`, the selected gateway provider has no
-  registered adapter.
-- If the callback receives `422`, inspect the response detail and API log for
-  an invalid envelope or a payload that the adapter couldn't normalize.
+| Failure | Action |
+| --- | --- |
+| No model response | Inspect gateway routing, authentication, and provider logs. |
+| Model response but no Inference call | Inspect the callback and API logs. |
+| `gateway_ingest_skipped_no_session` | Repair the client's Session identity carrier. |
+| Callback `401` | Correct the ingest-only token. |
+| Callback `400` | Check whether the gateway provider has a registered adapter. |
+| Callback `422` | Inspect the response and API log for an invalid envelope or payload. |
 
 [How capture works](../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
 describes the data classes and network boundaries for rollout review.
@@ -500,19 +322,10 @@ doesn't reinstall an integration that you already removed:
 2. Delete the four forge webhooks. For another CI system, remove its call to
    `POST /ingest/ci` and delete the ingest-only token from that client's secret
    store.
-3. If you connected a gateway that you operate, remove its Sediment success
-   callback and ingest-only token. For LiteLLM, remove
-   `sediment_callback.handler`, `SEDIMENT_INGEST_URL`, and
-   `SEDIMENT_API_BEARER_TOKEN`.
-4. If you enabled the bundled gateway, remove its routing variables and Codex
-   profile from client machines. Restart those agents, then remove only the
-   gateway container:
-
-   ```bash
-   docker compose --profile gateway rm --stop --force gateway
-   ```
-
-   Remove the retired client from the API's `SEDIMENT_INGEST_TOKENS` map and
+3. If you connected a gateway, remove its Sediment capture integration and
+   ingest-only token. Remove its routing variables and Codex profile from
+   client machines, then restart the affected agents.
+4. Remove the retired client from the API's `SEDIMENT_INGEST_TOKENS` map and
    restart the API. Other named clients retain their credentials. If a retired
    client used the shared legacy `SEDIMENT_API_BEARER_TOKEN`, rotate or remove
    that compatibility secret and update every client that shared it. Never
@@ -544,7 +357,7 @@ doesn't reinstall an integration that you already removed:
 
 9. On each machine that used pi or transcript capture, follow the Local capture
    [agent uninstall procedure](local-capture.md#uninstall-capture) once. Run it
-   from the checkout that installed pi, or remove a stale pi entry manually.
+   with the CLI installation that registered pi, or remove a stale entry manually.
 10. Run `sediment uninstall /path/to/repo` for every other existing clone. The
     command removes copied hook blocks and repository-level notes configuration.
 11. Remove the fleet prefix through MDM after the system and repository

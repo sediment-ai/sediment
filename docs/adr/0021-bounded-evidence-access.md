@@ -85,11 +85,18 @@ the source limit. PostgreSQL doesn't parse opaque message content to bypass it.
 
 Capacity overflow refuses the complete operation. It never produces a
 successful partial inventory or packet. Output encoding is bounded before
-publication. Evidence uses at most one of the existing two query/report worker
-slots and retains the 30-second deadline, cancellation, and process cleanup.
-This reserves admission capacity; it doesn't guarantee database throughput or
-report latency. These execution boundaries preserve
+publication. Evidence shares the two query/report worker slots and retains
+the 30-second deadline, cancellation, and process cleanup. A third read refuses
+immediately; no read waits in a queue. These execution boundaries preserve
 [ADR 0020](0020-bounded-derivation-execution.md).
+
+Amendment, 2026-09-22: [Issue #86](https://github.com/sediment-ai/sediment/issues/86)
+removes the original one-evidence-worker sublimit. Decision: use both existing
+slots before adding workers or configuration. Two evidence operations can occupy
+the pool, so reports no longer have reserved admission. Aggregate process and
+connection limits stay unchanged. This doesn't guarantee fairness, database
+throughput, or report latency. The [concurrency specification](../superpowers/specs/2026-09-22-shared-evidence-admission-design.md)
+requires paired throughput and simultaneous-worker resource measurements.
 
 Responses follow [ADR 0015](0015-lossless-values-and-bundle-v2.md): validate
 declared Python shapes, then emit ASCII-escaped strict JSON. NUL, surrogate

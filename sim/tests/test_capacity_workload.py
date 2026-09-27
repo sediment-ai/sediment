@@ -136,14 +136,14 @@ def test_profile_allows_population_above_runtime_limit_for_refusal_rehearsals(tm
         tmp_path,
         {
             **PROFILE,
-            "history_weeks": 10,
+            "history_weeks": 24,
             "sessions_per_week": 1000,
             "calls_per_session": 10,
         },
     )
-    assert profile.total_calls == 100000
+    assert profile.total_calls == 240000
     with pytest.raises(ValueError, match="total_calls"):
-        _load(tmp_path, {**PROFILE, "history_weeks": 26, "sessions_per_week": 2000})
+        _load(tmp_path, {**PROFILE, "history_weeks": 26, "sessions_per_week": 4000})
 
 
 def test_profile_caps_cumulative_history_in_each_session(tmp_path):
@@ -281,13 +281,16 @@ def test_timestamps_require_aware_datetimes(tmp_path, value):
 
 
 @pytest.mark.parametrize("name", ["capacity-smoke", "capacity-pilot"])
-def test_committed_profiles_are_explicit_and_within_default_runtime_population(name):
+def test_committed_profiles_declare_smoke_and_approved_pilot_populations(name):
     profile = _module().load_profile(SIM / "profiles" / f"{name}.json")
-    assert profile.total_calls <= 50000
     if name == "capacity-smoke":
         assert profile.total_calls == 24
     else:
-        assert 1000 <= profile.total_calls <= 2000
+        assert profile.sessions_per_week == 100
+        assert profile.calls_per_session == 100
+        assert profile.history_weeks == 24
+        assert profile.total_sessions == 2400
+        assert profile.total_calls == 240000
 
 
 def test_real_gateway_preserves_generated_history_and_replay_receipts(

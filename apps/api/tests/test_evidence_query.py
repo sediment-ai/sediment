@@ -462,7 +462,6 @@ def test_evidence_corrupt_source_returns_controlled_failure_and_releases_capacit
     assert b"private-corrupt" not in response.content
     assert "private-corrupt" not in caplog.text
     assert not client.app.state.workers._query_tasks
-    assert not client.app.state.workers._evidence_tasks
     # Inventory never decodes corrupt content and gets a fresh worker/connection.
     assert _inventory(client).status_code == 200
 

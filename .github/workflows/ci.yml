@@ -10,6 +10,8 @@ on:
   # the draft gate below skips every draft push.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  # Required checks must also report on merge-queue groups.
+  merge_group:
 
 # Least privilege, pinned in-repo rather than inherited: the org/repo default
 # is a mutable setting that no PR review would show changing. checkout is the
@@ -33,8 +35,6 @@ jobs:
     # The repository variable lets an operator point CI at a self-hosted
     # runner without a commit; unset, it falls back to GitHub-hosted.
     runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-latest' }}
-    outputs:
-      full: ${{ steps.scope.outputs.full }}
     env:
       SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
       SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
@@ -47,9 +47,9 @@ jobs:
       # from main, then appears as a direct addition in the squash commit.
       # Scan the complete proposed tree before dependencies add untracked files.
       - name: Scan complete pull-request tree for secrets
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
         env:
-          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.5@sha256:1cec88f18ca39e26e04e61fe9d886c9c4e5f2fc0ba4f2ed185cac0722bd8a076
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.6@sha256:cc1a591e83fec7bf56f64c15beaaa5d8e3d179a4165a03a087d07165296ef7df
         run: |
           scan_root="${RUNNER_TEMP}/sediment-secret-scan"
           mkdir "$scan_root"
@@ -59,16 +59,16 @@ jobs:
             "$TRUFFLEHOG_IMAGE" filesystem /scan \
             --fail --no-update --github-actions \
             --results=verified,unknown --exclude-detectors=lob
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - run: uv sync --locked
       - name: Select validation scope
         id: scope
         env:
           CI_EVENT: ${{ github.event_name }}
-          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -95,6 +95,10 @@ jobs:
         run: |
           set -euo pipefail
           docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          # ponytail: the four-worker suite peaks near 4 GB of cluster data
+          # (measured 2026-09-27); the tmpfs defaults to half the runner's
+          # memory, 8 GB hosted. A smaller self-hosted runner needs a disk
+          # volume here instead.
           docker run --detach --name sediment-ci-postgres \
             -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
@@ -107,9 +111,30 @@ jobs:
           done
           docker logs sediment-ci-postgres
           exit 1
-      - name: Install the maintained system PostgreSQL client library
+      - name: Install the maintained PostgreSQL clients and libraries
         if: steps.scope.outputs.full == 'true'
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+        run: |
+          set -euo pipefail
+          # Hosted runner images remove the PostgreSQL package source after build.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          sudo tee /etc/apt/sources.list.d/pgdg.sources > /dev/null <<EOF
+          Types: deb
+          URIs: https://apt.postgresql.org/pub/repos/apt
+          Suites: ${VERSION_CODENAME}-pgdg
+          Components: main
+          Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          EOF
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            postgresql-client-17 libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+          # Backup tests need the server's major, not the runner's default client.
+          printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
       - run: uv run sediment db upgrade
         if: steps.scope.outputs.full == 'true'
       - name: Check prose contracts
@@ -121,8 +146,31 @@ jobs:
           scripts/tests/test_postgresql_only_repository.py
       # Run role fixtures against the clean cluster before rehearsal provisions
       # fixed deployment identities for its installed server.
-      - run: uv run pytest -q --durations=30
+      # Three passes. The role contract runs first, before any real server
+      # provisions the fixed deployment roles. Four workers then match the
+      # hosted runner's four vCPUs; the conftest gives each its own databases
+      # cloned from one migrated template. Deadline-bound installed rehearsals
+      # run last, without concurrent load.
+      - run: uv run pytest -q -m cluster_roles --durations=10
         if: steps.scope.outputs.full == 'true'
+      - run: uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
+        if: steps.scope.outputs.full == 'true'
+      - run: uv run pytest -q -m serial --durations=10
+        if: steps.scope.outputs.full == 'true'
+      - name: Exercise the complete pilot Compose deployment
+        if: steps.scope.outputs.full == 'true'
+        env:
+          SEDIMENT_TEST_COMPOSE: "1"
+          SEDIMENT_TEST_API_IMAGE: sediment-ci-api
+          SEDIMENT_TEST_POSTGRES_IMAGE: sediment-ci-postgres
+          SEDIMENT_TEST_GATEWAY_IMAGE: sediment-ci-gateway
+          SEDIMENT_TEST_PROXY_IMAGE: sediment-ci-proxy
+        run: |
+          set -euo pipefail
+          docker build -t sediment-ci-api .
+          docker build -f docker/gateway/Dockerfile -t sediment-ci-gateway .
+          docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
+          uv run pytest -q scripts/tests/test_pilot_compose.py
       # Build and inspect all twelve distribution artifacts, then install and
       # exercise the six wheels without publishing.
       - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
@@ -143,6 +191,8 @@ jobs:
       # results visible. The action picks its own range from the event: PR
       # base..head, push before..after, and exits 0 when there is nothing to
       # scan — the checkout above is already unshallow, which is what it needs.
+      # It has no merge_group range, so a merge group passes its own bounds;
+      # without them the action would scan the entire history.
       # `verified,unknown` is the low-false-positive posture: a live credential
       # or a detector that could not reach its verifier fails the job; a
       # detector that actively verified the match as dead does not. The
@@ -150,26 +200,28 @@ jobs:
       # finding — measured, not theoretical. Treat a lone `unknown` whose text
       # is a verification error as infra, and re-run.
       # Dependabot bumps the action SHA below; the `version` input is a
-      # separate pin it does not track, so bump both together.
+      # separate pin it does not track. Bump the action, version, and
+      # complete-tree image tag and digest together.
       # Lob is excluded (twice-measured false-positive class):
       # its detector matches any `test_<35-36 word chars>` token near a
       # "lob" substring ("blob", "global"), i.e. ordinary pytest function
       # names, and its verifier "verifies" them. This repo will never hold
       # a real Lob (postal mail API) credential; re-include if one is ever
       # actually adopted.
-      - uses: trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6 # v3.97.5
+      - uses: trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a # v3.97.6
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
-          base: ${{ steps.secret-range.outputs.base || '' }}
-          head: ${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}
-          version: "3.97.5"
+          base: ${{ steps.secret-range.outputs.base || github.event.merge_group.base_sha || '' }}
+          head: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && github.sha || '' }}
+          version: "3.97.6"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database
         if: always() && steps.scope.outputs.full == 'true'
         run: docker rm -f sediment-ci-postgres
 
+  # Runs beside test rather than after it: waiting only to read the scope
+  # serialized the macOS legs behind the full suite. Prose-only changes also
+  # run it, which costs a few runner minutes on a non-required check.
   local-server:
-    needs: test
-    if: needs.test.outputs.full == 'true'
     uses: ./.github/workflows/local-server.yml

@@ -162,8 +162,14 @@ def generate_operational_model_report(
             limit=_SUPPORTING_FACT_LIMIT,
         )
         decision_identities = (
-            snapshot.read_inference_call_identities(
-                org_id, observed_through=scope.as_of, limit=_SUPPORTING_FACT_LIMIT
+            snapshot.read_inference_call_identity_witnesses(
+                org_id,
+                call_ids={
+                    decision.call_id
+                    for decision in decisions
+                    if decision.call_id is not None
+                },
+                observed_through=scope.as_of,
             )
             if any(decision.call_id is not None for decision in decisions)
             else []

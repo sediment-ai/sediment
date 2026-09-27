@@ -11,6 +11,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](CONTRIBUTING.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Follow @sedimentai on X](https://img.shields.io/badge/Follow-%40sedimentai-000000?logo=x&logoColor=white)](https://x.com/sedimentai)
+[![Join Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/RbPc6PFTb)
 
 [Website](https://sediment.so) |
 [Documentation](https://docs.sediment.so) |
@@ -41,14 +42,14 @@ curl -fsSL https://sediment.so/install.sh | sh
 sediment server
 ```
 
-If the installer prints a PATH instruction, run it before `sediment server`.
-
-Sediment manages a local PostgreSQL database. Follow the
+Follow the
 [Quickstart](docs/quickstart.md) to connect an agent and verify capture.
 
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
-[Deploy a shared server](docs/operate/deploy.md).
+
+For a shared pilot, [deploy Sediment](docs/operate/deploy.md) on EC2 or an existing host.
+Follow the [pilot guide](docs/operate/run-pilot.md) to enroll developers and verify capture.
 
 ## Architecture
 
@@ -56,19 +57,12 @@ pi, and Copilot Chat. Available signals vary by agent.
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Agent, gateway, and repository events flow into immutable Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
+    <img alt="Agent, gateway, and repository events flow into Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
   </picture>
 </p>
 
 [Architecture and network boundaries](docs/explanation/architecture.md) ·
 [Captured data and privacy](docs/explanation/how-capture-works.md)
-
-A pi agent can call `sediment_retrieve_context` to request keyword-selected
-captured parts from one authorized previous Session. An operator can also select
-parts with `sediment evidence inventory`, `inspect`, and `fetch`. Both paths use
-an intact workspace; Sediment doesn't restore files or infer the next task.
-Available evidence depends on the capture setup. The continuation guide defines
-the authority, limits, and controlled comparison for measuring task benefit.
 
 ## Development
 

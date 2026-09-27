@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  # Pull requests scan artifacts only when their diff touches a scan input, so
+  # a daily full run catches new advisories, package releases, and expiring
+  # reviews. security-drift.yml files each failure on main as an issue.
+  schedule:
+    - cron: "41 6 * * *"
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -25,6 +31,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     outputs:
       full: ${{ steps.scope.outputs.full }}
+      scans: ${{ steps.scope.outputs.scans }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -32,17 +39,19 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - name: Select validation scope
         id: scope
         env:
           # Reusable release validation must always scan the supplied wheels.
           CI_EVENT: ${{ inputs.wheels-artifact != '' && 'workflow_call' || github.event_name }}
-          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: |
+          uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
+          uv run --no-project python scripts/ci_preflight.py scans >> "$GITHUB_OUTPUT"
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
       # Manual runs collect evidence even when a retained review needs replacing.
@@ -80,7 +89,7 @@ jobs:
 
   client:
     needs: source
-    if: needs.source.outputs.full == 'true'
+    if: needs.source.outputs.scans == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -89,9 +98,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - name: Download exact release wheels
         if: inputs.wheels-artifact != ''
@@ -116,7 +125,7 @@ jobs:
 
   pi:
     needs: source
-    if: needs.source.outputs.full == 'true'
+    if: needs.source.outputs.scans == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -125,9 +134,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -147,7 +156,7 @@ jobs:
 
   images:
     needs: source
-    if: needs.source.outputs.full == 'true'
+    if: needs.source.outputs.scans == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -176,9 +185,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.17"
+          version: "0.12.19"
           python-version: "3.12.14"
       - name: Install checksum-pinned Trivy
         env:
@@ -229,7 +238,7 @@ jobs:
       - name: Require every selected security check
         env:
           SOURCE_RESULT: ${{ needs.source.result }}
-          FULL: ${{ needs.source.outputs.full }}
+          SCANS: ${{ needs.source.outputs.scans }}
           CLIENT_RESULT: ${{ needs.client.result }}
           PI_RESULT: ${{ needs.pi.result }}
           IMAGES_RESULT: ${{ needs.images.result }}
@@ -238,9 +247,9 @@ jobs:
             echo "Source preflight failed or did not complete."
             exit 1
           fi
-          if [[ "$FULL" == false ]]; then
-            echo "Prose-only change: artifact scans are not selected."
-          elif [[ "$FULL" == true && "$CLIENT_RESULT" == success && "$PI_RESULT" == success && "$IMAGES_RESULT" == success ]]; then
+          if [[ "$SCANS" == false ]]; then
+            echo "No scan input changed: artifact scans are not selected."
+          elif [[ "$SCANS" == true && "$CLIENT_RESULT" == success && "$PI_RESULT" == success && "$IMAGES_RESULT" == success ]]; then
             echo "Every selected security check passed."
           else
             echo "A selected security check failed or did not complete."

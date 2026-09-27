@@ -18,7 +18,16 @@ LiteLLM features, Google provider routes, and the legacy Langfuse integration
 aren't supported by this image. The standalone Sediment callback remains
 available for a separately maintained gateway.
 
-LiteLLM 1.102.0 also bundles optional PostgreSQL clients and Bedrock real-time
+The image uses Hugging Face Hub 2.0.0, which receives upstream security fixes.
+Tokenizers 0.23.1 retains its original code. A guarded metadata patch declares
+its tested compatibility with that exact Hub version and updates the wheel's
+file-integrity record. This is Sediment's compatibility declaration; upstream
+Tokenizers still declares Hub versions below 2. Image tests exercise the real
+Hub download caller with revisions and credentials, local Claude token counting,
+and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
+Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
+
+LiteLLM 1.102.1 also bundles optional PostgreSQL clients and Bedrock real-time
 packages. The image removes these unused dependencies, including the native
 `awscrt` library. It removes the bundled PgBouncer executable and its unused
 libevent dependency, and rejects `LITELLM_PGBOUNCER_*` settings before startup.
@@ -27,14 +36,31 @@ Anthropic routes retain the same provider boundary.
 The Dockerfile records pinned input images and direct dependency updates.
 Image labels record removed packages and source patches. The final software
 bill of materials records the resolved components. The guarded source patch
-removes only the unused database retry decorators and imports; it rejects an
-unexpected vendor source hash or patch site.
+removes unused database retry decorators and imports. It guards Prisma error
+predicates when Prisma is absent and returns 401 for an incorrect master key.
+Missing or invalid keys don't require a database and don't cause an import
+failure. The patch rejects an unexpected vendor source hash or patch site.
 
 The image pins both Python operating system packages to `3.13.15-r8`. This
 [Wolfi build recipe](https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml)
 uses CPython release `3.13.15`. The pins prevent `apk` from selecting a
 development snapshot that sorts after the released version. Security probes
 preserve the complete observed version and reject unreleased runtimes.
+
+The image applies CPython's
+[CVE-2026-82049 fix](https://github.com/python/cpython/commit/b8f23e307097552eaea2604383a12ab280520d0d)
+to that released runtime. The patch resolves a hard-link target before linking
+it, so archive extraction cannot relocate a symbolic link outside the destination.
+The patch requires the exact input and output file hashes and removes cached
+bytecode. Image tests exercise both extraction filters. Security evidence retains
+the patched file hash; the package inventory still reports `3.13.15-r8`.
+Remove this backport when a reviewed released package includes the fix.
+
+The image pins the OpenSSL 3.6.4-r7 packages and reviewed legacy provider.
+This avoids the OpenSSL 4 package transition's conflicting ownership of
+`/etc/ssl` configuration files. The package manager, certificate bundle, and
+libuuid also stay at the revisions in `security/maintenance.json`. Update these
+pins with their maintenance reviews and image checks.
 
 The image also pins zlib to the reviewed Wolfi `1.3.2-r7` release. The pin
 prevents a release candidate from replacing the reviewed package during
@@ -43,10 +69,16 @@ symbol check; the pin doesn't repair the library. Review an available released
 fix before changing the pin. The pypdf override uses `6.19.0`, which bounds
 alphabetical PDF page labels; an image test verifies the reader's fallback.
 
+OpenSSL, libcrypto3, and libssl3 stay on the maintenance catalog's reviewed
+`3.6.4-r7` packages. Wolfi's r8 transition adds OpenSSL 4 libraries whose
+configuration files conflict with the pinned vendor image during an upgrade.
+The explicit pins keep clean builds on the reviewed package set. Review the
+transition and refresh image evidence before advancing them.
+
 If you change these inputs or provider boundaries, run the image tests on both
 architectures and retain the resulting inventories and scans. Tests exercise
 proxy startup, streamed and non-streamed Anthropic completions, their captured
 content, standalone callback delivery, protocol
 dependency interoperability, and rejected configurations. The security workflow
 runs these gateway tests against each scanned architecture. The deployment
-runbook is [Deploy Sediment](../../docs/operate/deploy.md).
+runbook is [Rehearse the single-host Compose deployment](../README.md).

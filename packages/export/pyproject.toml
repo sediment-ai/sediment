@@ -1,13 +1,13 @@
 [project]
 name = "sediment-export"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sediment export: attributed completions, DPO/SFT projections, RLVR artifacts, local JSONL destinations"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 dependencies = [
-    "sediment-core==0.1.0",
-    "sediment-derive==0.1.0",
+    "sediment-core==0.2.0",
+    "sediment-derive==0.2.0",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",

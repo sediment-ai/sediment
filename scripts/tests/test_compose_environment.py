@@ -168,6 +168,58 @@ def _core_environment() -> dict[str, str]:
     }
 
 
+def test_parallel_deployments_keep_ports_volumes_and_image_tags_separate(tmp_path):
+    values = {
+        **_core_environment(),
+        "COMPOSE_PROJECT_NAME": "pilot-check",
+        "SEDIMENT_API_PORT": "18080",
+        "SEDIMENT_GATEWAY_PORT": "14000",
+    }
+    project = _compose_project(tmp_path, values)
+    environment = {key: value for key, value in os.environ.items() if key not in values}
+    result = _compose_config(project, environment)
+    assert result.returncode == 0, result.stderr
+    config = json.loads(result.stdout)
+    assert config["name"] == "pilot-check"
+    services = config["services"]
+    for name, port, target in (("api", "18080", 8000), ("gateway", "14000", 4000)):
+        assert services[name]["ports"] == [
+            {
+                "mode": "ingress",
+                "host_ip": "127.0.0.1",
+                "target": target,
+                "published": port,
+                "protocol": "tcp",
+            }
+        ]
+        assert "SEDIMENT_API_PORT" not in services[name]["environment"]
+        assert "SEDIMENT_GATEWAY_PORT" not in services[name]["environment"]
+    for name in ("api", "migrate", "operator"):
+        assert services[name]["image"] == "pilot-check-api:local"
+    assert services["postgres"]["image"] == "pilot-check-postgres:local"
+    assert services["gateway"]["image"] == "pilot-check-gateway:local"
+    assert all(v["name"].startswith("pilot-check_") for v in config["volumes"].values())
+
+
+def test_default_compose_keeps_existing_ports_and_image_names(tmp_path):
+    values = _core_environment()
+    project = _compose_project(tmp_path, values)
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(("COMPOSE_", "SEDIMENT_"))
+    }
+    result = _compose_config(project, environment)
+    assert result.returncode == 0, result.stderr
+    config = json.loads(result.stdout)
+    assert config["name"] == "sediment"
+    for name, port in (("api", "8000"), ("gateway", "4000")):
+        service = config["services"][name]
+        assert service["image"] == f"sediment-{name}:local"
+        assert service["ports"][0]["host_ip"] == "127.0.0.1"
+        assert service["ports"][0]["published"] == port
+
+
 def test_api_only_compose_does_not_require_gateway_keys(tmp_path) -> None:
     values = _core_environment()
     environment = os.environ.copy()
@@ -313,6 +365,8 @@ def test_compose_separates_database_network_and_scoped_credentials(tmp_path):
         in services["operator"]["environment"]["SEDIMENT_DATABASE_URL"]
     )
     assert services["migrate"]["command"] == ["sediment", "db", "provision"]
+    # A read-only operator invocation must not start credential provisioning.
+    assert set(services["operator"]["depends_on"]) == {"postgres"}
     assert (
         services["gateway"]["environment"]["SEDIMENT_API_BEARER_TOKEN"]
         == "gateway-ingest-only"
@@ -376,3 +430,47 @@ def test_compose_retrieval_pair_is_absent_by_default_and_scoped_to_api(
                     assert supplied.get(key) == value
                 else:
                     assert key not in supplied
+
+
+def test_pilot_profile_starts_gateway_and_private_proxy(tmp_path):
+    values = {
+        **_core_environment(),
+        "COMPOSE_PROFILES": "https",
+        "SEDIMENT_DOMAIN": "sediment.example.com",
+        "SEDIMENT_ACME_EMAIL": "ops@example.com",
+    }
+    project = _compose_project(tmp_path, values)
+    result = subprocess.run(
+        ["docker", "compose", "config", "--format", "json"],
+        cwd=project,
+        env={**os.environ, **values},
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    services = json.loads(result.stdout)["services"]
+    assert "proxy" in services
+    assert "gateway" in services
+    proxy = services["proxy"]
+    assert set(proxy["networks"]) == {"edge"}
+    assert proxy["depends_on"]["gateway"]["condition"] == "service_healthy"
+    assert proxy["depends_on"]["api"]["condition"] == "service_healthy"
+    assert {p["published"] for p in proxy["ports"]} == {"80", "443"}
+    assert proxy["read_only"] is True
+    assert proxy["cap_drop"] == ["ALL"]
+    assert all("docker.sock" not in str(m) for m in proxy["volumes"])
+    assert not any(
+        "TOKEN" in key or "PASSWORD" in key or "API_KEY" in key
+        for key in proxy["environment"]
+    )
+    assert proxy["healthcheck"]["test"]
+    assert any(m["type"] == "volume" for m in proxy["volumes"])
+
+
+def test_gateway_readiness_checks_the_running_application(tmp_path):
+    values = _core_environment()
+    project = _compose_project(tmp_path, values)
+    result = _compose_config(project, {**os.environ, **values})
+    assert result.returncode == 0, result.stderr
+    gateway = json.loads(result.stdout)["services"]["gateway"]
+    assert "/health/liveliness" in " ".join(gateway["healthcheck"]["test"])

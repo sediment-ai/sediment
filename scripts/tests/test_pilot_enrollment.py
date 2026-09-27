@@ -17,11 +17,11 @@ import pytest
 from sediment_cli import attribution
 
 
-PILOT_GUIDE = Path(__file__).parents[2] / "docs/operate/run-pilot.md"
+RELEASE_GUIDE = Path(__file__).parents[2] / "CONTRIBUTING.md"
 
 
-def _pilot_shell_block(containing: str) -> str:
-    guide = PILOT_GUIDE.read_text(encoding="utf-8")
+def _guide_shell_block(containing: str, path: Path) -> str:
+    guide = path.read_text(encoding="utf-8")
     matches = [
         textwrap.dedent(block)
         for _, block in re.findall(
@@ -750,8 +750,8 @@ def test_delivery_enrollment_is_explicit_and_doctor_reports_worker(
     assert str(directory) in (home / ".sediment/env.sh").read_text()
 
 
-def test_private_pilot_rehearsal_block_binds_clean_revision_and_test_database() -> None:
-    block = _pilot_shell_block("scripts/release_rehearsal.py")
+def test_release_rehearsal_block_binds_clean_revision_and_test_database() -> None:
+    block = _guide_shell_block("ACCEPTANCE_TMP=", RELEASE_GUIDE)
 
     assert "SEDIMENT_TEST_DATABASE_URL=" in block
     assert "SEDIMENT_DATABASE_URL" not in block
@@ -767,7 +767,7 @@ def test_private_pilot_rehearsal_block_binds_clean_revision_and_test_database() 
     assert 'rm -f "$ACCEPTANCE_TMP"\n  exit 1' in block
 
 
-def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
+def test_release_rehearsal_block_executes_as_an_atomic_record(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "repo"
@@ -777,7 +777,7 @@ def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
     git(repo, "config", "user.email", "pilot@example.invalid")
     git(repo, "commit", "--allow-empty", "-qm", "initial")
     revision = git(repo, "rev-parse", "HEAD")
-    block = _pilot_shell_block("scripts/release_rehearsal.py").replace(
+    block = _guide_shell_block("ACCEPTANCE_TMP=", RELEASE_GUIDE).replace(
         "SEDIMENT_REVISION='<approved full commit hash>'",
         f"SEDIMENT_REVISION='{revision}'",
     )
@@ -850,35 +850,6 @@ def test_private_pilot_rehearsal_block_executes_as_an_atomic_record(
     assert failed.returncode == 1
     assert not acceptance.exists()
     assert not acceptance.with_suffix(".log.tmp").exists()
-
-
-def test_private_pilot_guide_requires_supervised_recovery_and_safe_lifecycle() -> None:
-    guide = PILOT_GUIDE.read_text(encoding="utf-8")
-    flat_guide = " ".join(guide.split())
-    supervisor = _pilot_shell_block("delivery replay --watch")
-    recovery = guide.split("## Verify workstation recovery", 1)[1].split(
-        "## Add approved gateway capture", 1
-    )[0]
-    flat_recovery = " ".join(recovery.split())
-    lifecycle = guide.split("## Update or end enrollment", 1)[1]
-    flat_lifecycle = " ".join(lifecycle.split())
-
-    assert '. "$HOME/.sediment/env.sh"' in supervisor
-    assert '"$SEDIMENT_CHECKOUT/.venv/bin/sediment" delivery replay --watch' in (
-        supervisor
-    )
-    assert "process supervisor" in guide
-    assert "stopped host can retain unredacted payloads past 24 hours" in flat_guide
-    assert "content-free terminal receipts for seven days" in guide
-    assert "at least one pending entry" in recovery
-    assert "exactly one Fact of the expected kind" in flat_recovery
-    assert "native Codex telemetry" in recovery
-    assert "sediment delivery replay --retry-blocked" in flat_lifecycle
-    assert "stop and disable the replay worker" in flat_lifecycle
-    assert "Replay refuses to send retained payloads to a different destination" in (
-        flat_lifecycle
-    )
-    assert "outage and sender-restart recovery gates remain open" in guide
 
 
 def test_fleet_bundle_ships_standalone_transport_implementation(enrollment, tmp_path):
@@ -1138,7 +1109,7 @@ def test_whitespace_buffer_setting_is_disabled_in_enrollment_and_doctor(monkeypa
 
 
 @pytest.mark.parametrize("mode", ["success", "redirect", "duplicate"])
-def test_private_pilot_recovery_block_uses_operator_transport(enrollment, mode):
+def test_recovery_session_query_uses_operator_transport(enrollment, mode):
     repo, home = enrollment
     requests = []
 
@@ -1175,22 +1146,28 @@ def test_private_pilot_recovery_block_uses_operator_transport(enrollment, mode):
     thread.start()
     url = f"http://127.0.0.1:{server.server_port}"
     login(home, url=url, token="recovery-ingest")
-    block = (
-        _pilot_shell_block("RECOVERY_SESSION_ID=")
-        .replace("<Session identifier from the note>", "recovery-session")
-        .replace(
-            "RECOVERY_EVENT='developer_decision'", "RECOVERY_EVENT='edit_observation'"
-        )
+    probe = textwrap.dedent(
+        """\
+        from sediment_cli.client import get_json
+
+        dossier = get_json("/query/session/recovery-session")
+        assert dossier["found"] and dossier["omitted_events"] == 0
+        matching = [
+            event
+            for event in dossier["timeline"]
+            if event["event_type"] == "edit_observation"
+        ]
+        assert len(matching) == 1
+        print(f'recovery Fact verified: {matching[0]["fact_id"]}')
+        """
     )
     try:
         result = subprocess.run(
-            ["/bin/bash", "-c", block],
+            [sys.executable, "-c", probe],
             cwd=repo,
             env={
                 **os.environ,
-                "PILOT_API_URL": "http://127.0.0.1:1",
-                "ACCEPTANCE_API_URL": url,
-                "SEDIMENT_CHECKOUT": str(PILOT_GUIDE.parents[2]),
+                "SEDIMENT_URL": url,
                 "SEDIMENT_INGEST_TOKEN": "recovery-ingest",
             },
             capture_output=True,

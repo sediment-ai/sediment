@@ -1,4 +1,4 @@
-sediment v0.1.0 — Turn AI developer workflow traces into RL-ready training data.
+sediment v0.2.0 — Turn AI developer workflow traces into RL-ready training data.
 
 USAGE:
   sediment <command> [options]

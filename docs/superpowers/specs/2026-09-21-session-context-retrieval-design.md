@@ -6,6 +6,10 @@ Status: implementation in progress under [issue #69](https://github.com/sediment
 and [PR #70](https://github.com/sediment-ai/sediment/pull/70). The implementation
 must record validation before it claims continuation benefit.
 
+Execution amendment: [ADR 0022](../../adr/0022-agent-requested-session-context.md#selection-and-execution)
+replaces this specification's materialized keyword source limits with bounded
+streaming. Selection policy and successful version-1 responses remain unchanged.
+
 ## Outcome
 
 A coding agent in a fresh Session asks a question about one previous Session.
@@ -233,6 +237,10 @@ The `context-retrieve` operation shares the one-evidence-worker admission limit
 inside the existing two query/report slots and the 30-second deadline. It
 inherits cancellation, process-group cleanup, bounded diagnostics, and capacity
 refusal. It creates no additional worker pool or unbounded queue.
+
+The [shared-admission amendment](../../adr/0021-bounded-evidence-access.md#capacity-and-representation)
+supersedes this original worker reservation. The [concurrency specification](2026-09-22-shared-evidence-admission-design.md)
+defines the replacement acceptance criteria.
 
 Every request rechecks Quarantine. A concurrent change after snapshot creation
 applies to the next request, as with existing evidence reads. Returned content

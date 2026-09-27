@@ -176,6 +176,7 @@ test("safe refusals preserve only recognized server reasons", async () => {
   try {
     for (const [status, body, reason] of [
       [409, { detail: { reason: "evidence_source_limit", content: "secret" } }, "evidence_source_limit"],
+      [409, { detail: { reason: "retrieval_state_limit", limit_bytes: 33554432, content: "secret" } }, "retrieval_state_limit"],
       [409, { detail: { reason: "secret" } }, "request_failed"],
       [401, { detail: "secret" }, "unauthorized"], [403, { detail: "secret" }, "forbidden"],
       [503, { detail: "secret" }, "unavailable"], [422, { detail: "secret" }, "invalid_request"],
@@ -184,6 +185,27 @@ test("safe refusals preserve only recognized server reasons", async () => {
       await assert.rejects(invoke(enabled()), new RegExp(`reason=${reason}$`));
     }
   } finally { globalThis.fetch = original; }
+});
+
+test("fixed native tool accepts streaming scan coverage and rejects overflow", async () => {
+  let scanned = 10_100;
+  const wire = () => {
+    const value = responseBody();
+    value.coverage.visible_inference_calls = 100;
+    value.coverage.scanned_parts = scanned;
+    value.skipped.repeated_content = scanned - 1;
+    return JSON.stringify(value).replace('"REPLACE_INTEGER"', "9007199254740993");
+  };
+  const running = await server((_req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" }); res.end(wire());
+  });
+  try {
+    for (scanned of [10_100, 16_384]) {
+      assert.deepEqual((await invoke(enabled(running.endpoint))).content, [{ type: "text", text: wire() }]);
+    }
+    scanned = 16_385;
+    await assert.rejects(invoke(enabled(running.endpoint)), /reason=invalid_response$/);
+  } finally { await running.close(); }
 });
 
 test("client validates the entire response before publishing any evidence", async () => {

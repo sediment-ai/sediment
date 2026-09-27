@@ -2,12 +2,91 @@
 
 ## Unreleased
 
+### Deployment
+
+- Install EC2 deployments from a published Sediment package version, with the
+  published PostgreSQL and Traefik images. Remove the source checkout and local
+  image builds from the operator procedure. Document systemd startup,
+  persistent data, and package upgrades.
+- Stop a failed command block in Deploy Sediment, the Quickstart, or the
+  Compose rehearsal without closing your terminal. The blocks chain their
+  commands instead of calling `exit 1`.
+- Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
+  installation procedure.
+- Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
+  the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
+  provider access, and configure one hostname with automatic certificate renewal.
+- Wait for gateway readiness during Compose startup. Return 401 for missing or
+  incorrect gateway keys without importing the removed Prisma dependency.
+- Document checkout permissions required by the private credential generator
+  on Ubuntu.
+- Exercise both gateway protocols, streaming capture, HTTPS routing, credential
+  boundaries, request limits, and persistence in an opt-in Compose acceptance test.
+
+### Command line
+
+- Show the compact signal-red Sediment logo with `sediment --version` on
+  supported interactive terminals, followed by the version number without a
+  name or website footer. Preserve version-only output for pipes,
+  `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
+
 ### Contributor checks
 
-- Route changes to the root `README.md` through the existing prose checks in
-  continuous integration (CI). Mixed changes, executable files, symlinks,
-  deletions, renames, manual runs, and unavailable Git history retain full
-  validation.
+- Route agents through `AGENTS.md` alone. Claude Code reads it directly, so
+  remove `CLAUDE.md` and the `SessionStart` hook that repeated it, and stop
+  requiring `CLAUDE.md` in the docs check. Prune the router and correct its
+  package map, ingest routes, and tooling notes.
+- Test the pi shim against pi-coding-agent 0.86.1 and read its transcript-based
+  tool declarations in the native test harnesses. Align the continuation
+  comparison's version check with its locked evaluation image.
+- Run the Python suite on four pytest-xdist workers. The PostgreSQL role
+  contract runs alone first, and the deadline-bound installed rehearsals run
+  alone last. Start the local-server platform checks beside the suite instead
+  of after it. Keep the Intel macOS runner's libraries so that the job no
+  longer compiles OpenSSL from source.
+- Bind security dispositions to a review digest of the image build inputs
+  instead of all production source, so that application changes no longer
+  invalidate every review. Scan artifacts on pull requests only when a scan
+  input changes; `main`, a daily run, and releases always scan, and a failure on
+  `main` opens or updates one tracking issue.
+- Run the required workflows on merge-queue groups.
+- Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.6. Keep the
+  TruffleHog action, executable, and complete-tree scanner image pins aligned.
+
+### Installation
+
+- Ship the MIT-licensed pi extension in the CLI wheel and source distribution.
+  `sediment install` registers it without a checkout or npm dependencies.
+  With pi present, `doctor` fails when the extension is missing or unregistered.
+  `sediment uninstall --agents` removes the registration.
+- Load managed capture settings inside Cursor hooks so desktop Agent writes
+  don't depend on inherited shell variables. Preserve process-owned settings
+  with `install --no-env`. Doctor checks the managed file; capture failures
+  retain Session markers and report content-free diagnostics.
+- Refresh the Python 3.12.14 and PostgreSQL 17.11 container image digests.
+- Use the maintained Hugging Face Hub 2 release in the gateway. Declare and test
+  Tokenizers compatibility with that exact version without changing its code.
+- Backport CPython's archive hard-link fix to the gateway's released Python
+  runtime. Guard the patch against vendor source changes and retain its exact
+  file identity in security evidence.
+- Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
+  gateway's reviewed OpenSSL and supporting packages so rolling repository
+  updates don't introduce an OpenSSL configuration-file conflict.
+
+- Wait for API health in Docker deployment instructions. Support separate
+  Compose project image tags and loopback ports for local pilot rehearsals.
+  Include operator volumes in the deployment teardown command.
+- Generate named pilot capture credentials with repeatable `--ingest-client`
+  options. Capture-only installation points developers to ingest enrollment.
+- Let deployment smoke checks use the generated operator credential when the
+  legacy bearer token is unset.
+- Verify capture-only logins in `sediment doctor` without requiring an operator
+  credential. Use the doctor user agent when verifying sourced ingest credentials
+  through ingress filters. Operator containers no longer rerun role provisioning.
+- Add an opt-in Docker rehearsal covering fresh installation, enrollment,
+  synthetic capture, duplicate delivery, restart persistence, and cleanup.
+- Discover Homebrew's PostgreSQL client library in release rehearsal and test
+  setup, matching local server startup without an extra PATH adjustment.
 
 ### Operational evidence
 
@@ -17,6 +96,45 @@
   CSV checks, exact evidence delivery, and selector-inclusive token accounting.
   Live JEV validation requires provider access; implementation alone doesn't
   establish cost savings or autonomous retrieval.
+
+## 0.2.0 — 2026-09-23
+
+### Contributor checks
+
+- Exclude HTTP(S) URLs from local documentation-path checks. Upstream evidence
+  links no longer fail as missing Sediment files; local paths remain checked.
+- Route changes to the root `README.md` through the existing prose checks in
+  continuous integration (CI). Mixed changes, executable files, symlinks,
+  deletions, renames, manual runs, and unavailable Git history retain full
+  validation.
+
+### Operational evidence
+
+- Stream keyword retrieval one call at a time for fixed and granted Sessions.
+  Raise keyword source capacity to 64 MiB and 16,384 parts with an 8 MiB row
+  bound and a separate 32 MiB candidate-state budget. Completed answers retain
+  exact version-1 ranking, references, counts, and Quarantine behavior. State
+  overflow refuses the complete request; factual exact-read limits stay independent.
+  Reuse bounded compiled encoding schemas while validating every value; pi
+  accepts complete scans through 16,384 parts and preserves the closed
+  state-capacity refusal without echoing server content.
+- Declare the pilot target as 100 Sessions per week, 100 calls per Session, and
+  24 weeks of history. Add resource-free workload planning with explicit limits
+  and concurrent exact retrieval to the capture/report/export rehearsal.
+  A declared profile does not establish passing capacity.
+- Defer migration-only imports during evidence reads. Reject batches of earlier
+  Pushes with a native Git ancestry proof before exact owner checks; uncertain
+  and divergent batches retain existing range checks.
+- Use indexed organization-wide identifier witnesses for scoped model and
+  lifecycle report Decision attachment. Historical ambiguity and Quarantine
+  remain complete; more than 30,000 requested identifiers refuses the report.
+- Add a PostgreSQL storage calibration with repeated and varied message content,
+  measured native compression, separate capacity refusals, and verified native
+  backup/restore. Distinct Facts and the physical production schema stay intact.
+- Let evidence use both existing query/report worker slots. The total remains
+  two active reads per API process, with immediate capacity refusal for a third.
+  Reports no longer have a reserved slot. Deadlines, cleanup, source limits,
+  authority, and Quarantine checks remain unchanged.
 - Add grant-scoped factual inventory, manifest, and exact part reads with native
   pi tools. Consumers can inspect authorized evidence independently of keyword
   selection, including uncommitted requirements, failed attempts, and readable
@@ -80,6 +198,12 @@
 
 ### Dependency maintenance
 
+- Remove Expat from the API image. Its only consumer was `git-http-push`,
+  which mirror fetches never use; Python's `pyexpat` bundles its own copy. The
+  image label `io.sediment.removed-packages` records both removals, so the
+  disclosed Bookworm Expat advisory no longer needs a disposition.
+- Update the supplied gateway to LiteLLM 1.102.1 and verify the guarded vendor
+  patch against its release source.
 - Update the supplied gateway to fastapi-sso 0.23.0 to follow upstream's
   latest-release security support policy.
 

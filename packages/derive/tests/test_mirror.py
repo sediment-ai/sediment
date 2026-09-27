@@ -27,6 +27,7 @@ from sediment_derive.mirror import (
     MirrorManager,
     MirrorPolicy,
     MirrorPolicyError,
+    RepoMirror,
 )
 
 GITHUB_DIFF_FIXTURE = Path(__file__).parent / "fixtures" / "github_diff.json"
@@ -589,6 +590,51 @@ def test_native_commit_cap_matches_merge_graph_with_clock_skew(tmp_path, monkeyp
         )
         assert f"--max-count={cap}" in calls[-1][0]
         assert calls[-1][1] <= cap
+
+
+def test_head_batch_rejection_requires_strict_ancestry(tmp_path, monkeypatch):
+    work = make_work_repo(tmp_path)
+    monkeypatch.setenv("GIT_AUTHOR_DATE", "2023-01-01T00:00:00+00:00")
+    monkeypatch.setenv("GIT_COMMITTER_DATE", "2023-01-01T00:00:00+00:00")
+    (work / "README.md").write_text("root\n")
+    root = commit_all(work, "root")
+    run_git(work, "checkout", "-q", "-b", "feature")
+    (work / "feature.py").write_text(FIB)
+    feature = commit_all(work, "feature")
+    run_git(work, "checkout", "-q", "main")
+    (work / "main.py").write_text(CART)
+    main = commit_all(work, "main")
+    monkeypatch.setenv("GIT_AUTHOR_DATE", "2020-01-01T00:00:00+00:00")
+    monkeypatch.setenv("GIT_COMMITTER_DATE", "2020-01-01T00:00:00+00:00")
+    run_git(work, "merge", "-q", "--no-ff", "-m", "merge", "feature")
+    target = run_git(work, "rev-parse", "HEAD").strip()
+    run_git(work, "tag", "-a", "target-tag", "-m", "target")
+    tag = run_git(work, "rev-parse", "target-tag").strip()
+    (work / "later.py").write_text("later = True\n")
+    descendant = commit_all(work, "descendant")
+    remote = make_remote(tmp_path, work)
+    run_git(work, "push", "-q", str(remote), "refs/tags/target-tag")
+    mirror = MirrorManager(str(tmp_path / "mirrors")).ensure(
+        _push(remote, root, descendant)
+    )
+
+    assert mirror.heads_precede_commit(target, [root, feature, main])
+    assert not mirror.heads_precede_commit(target, [root, target])
+    assert not mirror.heads_precede_commit(target, [root, descendant])
+    assert not mirror.heads_precede_commit(main, [root, feature])
+    assert not mirror.heads_precede_commit(root, [root])
+    assert not mirror.heads_precede_commit(target, [root, "f" * 40])
+    assert mirror.commit_exists(tag)
+    assert not mirror.heads_precede_commit(target, [tag])
+    assert not mirror.heads_precede_commit("f" * 40, [root])
+
+
+def test_head_batch_missing_ancestry_cannot_prove_absence(fixture_remote):
+    mirror = RepoMirror(fixture_remote["work"])
+    base, head = fixture_remote["base"], fixture_remote["head"]
+    assert mirror.heads_precede_commit(head, [base])
+    (mirror.path / ".git" / "objects" / base[:2] / base[2:]).unlink()
+    assert not mirror.heads_precede_commit(head, [base])
 
 
 def test_fetch_prunes_refs_deleted_on_remote(tmp_path: Path) -> None:

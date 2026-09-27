@@ -1,6 +1,6 @@
 [project]
 name = "sediment-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sediment ingest API: facts in through three doors"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
@@ -12,10 +12,10 @@ dependencies = [
     "httpx>=0.27",
     "uvicorn>=0.53.0",
     "pydantic-settings>=2.15.0",
-    "sediment-core==0.1.0",
-    "sediment-capture==0.1.0",
-    "sediment-derive==0.1.0",
-    "sediment-export==0.1.0",
+    "sediment-core==0.2.0",
+    "sediment-capture==0.2.0",
+    "sediment-derive==0.2.0",
+    "sediment-export==0.2.0",
 ]
 
 [project.urls]

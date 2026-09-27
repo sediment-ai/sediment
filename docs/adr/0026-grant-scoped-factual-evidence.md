@@ -1,6 +1,6 @@
 # ADR 0026 — Separate factual evidence access from usefulness selection
 
-Status: implementation in progress
+Status: implemented
 
 Date: 2026-09-22
 
@@ -66,8 +66,9 @@ complete response. Exact fetch reads only the requested calls and message
 sides. It still decodes each selected column; a small part inside an oversized
 column can be unavailable. Overflow refuses the whole operation.
 
-The shared one-evidence-worker admission limit, deadline, cancellation,
-process cleanup, strict JSON encoding, and `Cache-Control: no-store` remain.
+Evidence shares the two query/report slots under the amended admission contract
+in ADR 0021. Deadlines, cancellation, process cleanup, strict JSON encoding,
+and `Cache-Control: no-store` remain.
 The native pi tools bound transport and forward validated original JSON text
 so JavaScript cannot round canonical integers through reserialization.
 

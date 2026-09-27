@@ -1,9 +1,7 @@
 # Quickstart
 
-Capture your first agent Session on one machine.
-
-This page runs everything locally: a server, one repo, one agent. For a
-hosted deployment, start at
+Run a local server and verify synthetic capture in a scratch repository.
+For a shared deployment, start at
 [Deploy the API](operate/deploy.md#2-deploy-the-api).
 
 ## 0. Check the prerequisites
@@ -20,8 +18,7 @@ curl -fsSL https://sediment.so/install.sh | sh
 
 The installer installs `sediment-cli` from PyPI in an isolated tool environment
 with Python 3.12. It installs `uv` if needed, plus the maintained host libraries
-that the local PostgreSQL server needs. You don't need a source checkout or
-Docker.
+that the local PostgreSQL server needs.
 
 If the installer prints an `export PATH=...` instruction, run it in this
 terminal before continuing. Repeat the same instruction in each terminal where
@@ -58,7 +55,7 @@ curl -sf http://127.0.0.1:8000/health
 ```
 
 ```text
-{"status":"ok","version":"0.1.0"}
+{"status":"ok","version":"0.2.0"}
 ```
 
 If the health check fails, read the error in the server terminal. PostgreSQL
@@ -88,25 +85,20 @@ and named ingest identities, follow [Configure local capture](capture/local-capt
 
 `error: is the server running?` means step 2's verification never passed.
 
-## 4. Wire a demo repo and this machine
+## 4. Install capture in a scratch repository
 
-Use a scratch repo so the quickstart leaves your real work untouched:
+Use an unused directory for the scratch repository:
 
 ```bash
-git init -q ~/sediment-quickstart
-cd ~/sediment-quickstart
-sediment install .
+mkdir "$HOME/sediment-quickstart" &&
+  cd "$HOME/sediment-quickstart" &&
+  git init -q &&
+  sediment install .
 ```
 
-`install` wires three things:
-
-- git hooks in your repo to record which agent Sessions contributed to
-  each commit
-- hooks for each agent it finds on this machine (Claude Code, Codex, Cursor,
-  pi) —
-  these are user-level, so they apply to every repo
-- the agent telemetry env, generated from your login and sourced from your
-  shell profiles
+`install` adds repository git hooks, user-level hooks for detected agents, and
+an environment file. For pi, check the
+[release and runtime requirements](capture/agent-integrations.md#pi).
 
 Verify:
 
@@ -114,32 +106,17 @@ Verify:
 sediment doctor . && echo "doctor exit 0"
 ```
 
+After the configuration checks, a successful run ends with:
+
 ```text
-ok    claude-code hook: present in /Users/you/.claude/settings.json
-info  codex hook: not detected (/Users/you/.codex does not exist)
-info  cursor hooks: Cursor not detected (no ~/.cursor)
-info  pi extension: pi not detected (no ~/.pi/agent)
-info  fleet template: init.templateDir unset — not a fleet machine
-info  attribution log: /Users/you/.sediment/attribution.log: no events recorded
-ok    server[http://127.0.0.1:8000]: reachable, token valid (org default)
-ok    hooks[/Users/you/sediment-quickstart]: all three current in ...
-ok    notes.rewriteRef[/Users/you/sediment-quickstart]: refs/notes/sediment
-info  notes ref[/Users/you/sediment-quickstart]: no origin remote; none yet locally
-ok    markers[/Users/you/sediment-quickstart]: no unconsumed markers
 doctor exit 0
 ```
 
-Your exact rows depend on which agents this machine has. `info` rows are
-normal — an agent you don't use isn't a failure. Only `FAIL` rows are. Any
-`FAIL` makes `doctor` exit non-zero, so `doctor exit 0` is the check that
-matters.
+Rows depend on the installed agents. Resolve any `FAIL` result before continuing.
 
-## 5. Prove the capture chain
+## 5. Verify the Git hooks
 
-An agent hook records a Session marker on each tool call. The post-commit
-hook turns the markers into a git note. Running the marker verb
-by hand does exactly what the hook does — and unlike the hook, it works
-without restarting your agent:
+Create a synthetic Session marker and commit it to verify the Git hooks:
 
 ```bash
 printf '{"session_id":"quickstart","cwd":"%s"}\n' "$PWD" | sediment mark --tool claude-code
@@ -152,11 +129,10 @@ git notes --ref=refs/notes/sediment show HEAD
 {"v": 1, "sessions": [{"tool": "claude-code", "session_id": "quickstart", "stamped_at": "2026-08-14T00:33:32+00:00"}]}
 ```
 
-The note is the commit Attribution Fact: this commit came from that agent
-Session. It stays in git until a push webhook ingests it, so it doesn't
-show up in the server's counts yet.
+Require `session_id` to be `quickstart`; your timestamp differs. This local note
+doesn't add a server Fact.
 
-## 6. Prove the server side
+## 6. Verify server capture
 
 `demo` posts one synthetic inference call and one Developer decision through
 the same ingest routes that clients use. It then prints the Fact counts:
@@ -165,67 +141,20 @@ the same ingest routes that clients use. It then prints the Fact counts:
 sediment demo
 ```
 
+Require `inference_calls` and `developer_decisions` to each have at least one
+row. A successful run ends with:
+
 ```text
-posting demo session (synthetic) to http://127.0.0.1:8000
-  posted 1 completion and 1 decision as session sediment-demo
-
-table                  total  visible
-sessions                   1        -
-inference_calls            1        1
-developer_decisions        1        1
-ci_outcomes                0        0
-pushes                     0        0
-edit_observations          0        0
-rejected_edits             0        0
-retry_linkages             0        0
-quarantine_revision: 0
-
 These are synthetic facts, not your agent's. They prove the ingest path works end to end.
 ```
 
-Read that last line literally. The demo proves the chain from a client
-POST to a stored Fact, on this machine, with your token. It proves nothing
-about your own agent, which isn't sending anything yet — that is step 7.
-
-The Facts are synthetic but real once stored. `demo` refuses a non-loopback
-server for that reason; `--force` overrides it if you meant to seed a
-shared deployment. Re-running is safe: both doors dedup, so the counts stay
-at one.
-
-## 7. Use it on real work
-
-```bash
-sediment install /path/to/your-repo
-```
-
-Restart any running agent Sessions — each agent reads hooks and environment at
-startup. Then work as usual: edit files with your agent and commit.
-`sediment facts` grows `developer_decisions` when the agent emits a supported
-decision event. Each commit carries its own Session note.
-
-[Agent integrations](capture/agent-integrations.md) routes you to the
-agent-specific decision, inference-call, Edit observation, and verification
-steps.
-
-Each verb prints its own help (`sediment install --help`).
-
-## What you have — and what needs a deployment
-
-The local setup captures decisions and commit Attribution. The rest need
-their own wiring:
-
-| Signal | Captured by | Wired by |
-|---|---|---|
-| Developer decisions | Agent telemetry or adapter | This quickstart plus the selected [agent guide](capture/agent-integrations.md) |
-| Commit Attribution | Git hooks | This quickstart |
-| Edit survival and external line counts | Transcript hooks | `sediment install --transcripts` (opt-in — [Configure local capture](capture/local-capture.md#opt-in-to-transcript-capture)) |
-| Inference calls (structured input + output) | LLM gateway callback | [Roll out managed capture](capture/managed-capture.md#configure-inference-call-capture) |
-| Push / Pull request revisions and merge / CI outcomes | Forge webhooks | [Roll out managed capture](capture/managed-capture.md#configure-push-and-ci-capture) |
+Repeating the demo retains the same Facts through database deduplication.
 
 ## Clean up the demo
 
 ```bash
-sediment uninstall ~/sediment-quickstart && rm -rf ~/sediment-quickstart
+cd "$HOME"
+sediment uninstall "$HOME/sediment-quickstart" && rm -rf "$HOME/sediment-quickstart"
 ```
 
 That leaves the local server's data. To remove it, press Ctrl+C in the server
@@ -238,17 +167,8 @@ rm -rf ~/.sediment/server
 
 ## Next steps
 
-- [Agent integrations](capture/agent-integrations.md) — compare evidence and
-  configure Claude Code, Codex, Cursor, pi, or Copilot Chat
-- [Configure local capture](capture/local-capture.md) — connect real
-  repositories and opt in to transcript capture
-- [Roll out managed capture](capture/managed-capture.md) — connect a gateway,
-  webhooks, private mirrors, and a developer fleet
-- [How capture works](explanation/how-capture-works.md) — understand the five
-  signals and their privacy boundaries
-- [Architecture](explanation/architecture.md) — understand the components,
-  data flow, persistence boundaries, and network boundaries
-- [Deploy runbook](operate/deploy.md) — run the production server on Docker
-  Compose
-- [Choose a training export](exports/training-exports.md) — prepare and audit
-  DPO, SFT, diff-SFT, Recovery, or RLVR rows
+- [Configure your agent](capture/agent-integrations.md) to capture real work.
+  Follow its install, environment, restart, and Session verification steps.
+- [Deploy Sediment](operate/deploy.md) to enroll a team on a shared host.
+  The [PostgreSQL setup](operate/deploy.md#configure-postgresql) covers the
+  shared database connection, credentials, and persistent storage.

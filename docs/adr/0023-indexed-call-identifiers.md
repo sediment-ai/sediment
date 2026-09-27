@@ -91,9 +91,16 @@ Alias lookup selects no input, output, or raw content. Unrelated large outputs
 cannot cause an alias-decoding refusal. Attribution keeps its own content
 budgets and wider candidate population.
 
-Complete-population identity reads used by reports and bundles retain their
-existing contract and limits. Witnesses cannot replace bundle identity evidence
-or its offline completeness declarations.
+Amendment, 2026-09-22: [Issue #93](https://github.com/sediment-ai/sediment/issues/93)
+extends this attachment reader to scoped model and lifecycle reports. Each report
+requests every non-null Decision identifier from its selected Sessions and checks
+all visible organization history through `as_of`. More than 30,000 distinct keys
+refuses the complete operation. The cohort and supporting-Fact bounds remain.
+The report no longer materializes all organization call identities for attachment.
+
+Complete-population identity reads used by bundles and unscoped consumers retain
+their contract and limits. Witnesses cannot replace bundle identity evidence or
+its offline completeness declarations.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 [project]
 name = "sediment-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sediment fact models and PostgreSQL fact store"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
@@ -9,7 +9,7 @@ dependencies = [
     "alembic>=1.20.0",
     "psycopg>=3.3.6",
     "pydantic>=2.13.5",
-    "sqlalchemy>=2.0.54",
+    "sqlalchemy>=2.0.54,<2.1",
 ]
 
 [project.urls]

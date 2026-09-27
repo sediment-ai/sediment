@@ -23,30 +23,17 @@ Cursor native events map to evidence as follows:
 | Failed Agent `Write` | Session marker | None |
 | Accepted Tab edit | Session marker | None |
 
-The adapter keeps the Attribution and decision paths separate. The decision
-path sends an OpenTelemetry Protocol (OTLP) HTTP/JSON log.
-
-```text
-conversation_id ─► Session marker ─► commit git note ─┐
-                                                     ├─► Push evidence ─► Attribution
-forge push ─────────────────────────► Push Fact ──────┘
-
-tool_use_id + conversation_id ─► OTLP HTTP/JSON sediment.tool_decision
-                              ─► Developer decision Fact (explicit=false)
-```
-
-The adapter uses `conversation_id` as the Session identifier in both paths.
-Sediment hasn't verified that this identifier also appears in a Cursor gateway
-request, Cursor OpenTelemetry log, or AI Code Tracking record.
+The adapter uses `conversation_id` as the Session identifier for markers and
+Developer decisions. Sediment hasn't verified a matching identifier in model
+requests.
 
 ## Before you begin
 
 You need the Sediment CLI, an endpoint and ingest-only token, a git repository, and
-the local Cursor desktop app installed under `~/.cursor`.
+the local Cursor desktop app with its `cursor` command-line launcher. Start and
+close Cursor once so `~/.cursor` exists.
 
-If you need an endpoint, complete the [Quickstart](../../quickstart.md). For
-endpoint rules, credential storage, installer behavior, and repository git
-hooks, read [Configure local capture](../local-capture.md).
+For deployment and shared setup, see [Configure local capture](../local-capture.md).
 
 ## Install capture
 
@@ -72,16 +59,24 @@ hooks, read [Configure local capture](../local-capture.md).
    If `~/.cursor` doesn't exist, the installer skips the Cursor hooks. Install
    or start Cursor, then run `sediment install` again.
 
-3. Restart the local Cursor desktop app after installation.
+3. Open the enrolled repository in Cursor:
+
+   ```bash
+   cursor /path/to/repo
+   ```
+
+   Managed Cursor hooks read `~/.sediment/env.sh` for each successful Agent
+   `Write`. You don't need to source the file or restart Cursor to load capture
+   settings. After upgrading Sediment, rerun `sediment install` to update the
+   hook commands.
 
 ## Configure Developer decisions
 
-The installer writes the dedicated endpoint and token from `sediment login --capture`.
-Load them before starting Cursor:
-
-```bash
-. "$HOME/.sediment/env.sh"
-```
+The generated environment supplies the endpoint and token from
+`sediment login --capture`. Managed hooks pass its absolute path through
+`--env-file` and read its exports as literal data. The file owns the capture
+endpoint, token, and developer identity together; inherited Cursor settings
+don't override them. Sediment doesn't execute shell commands from this file.
 
 If another system owns the environment and you used `--no-env`, supply:
 
@@ -90,19 +85,18 @@ export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
 export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
 ```
 
+With `--no-env`, hooks inherit Cursor's process environment and ignore the
+generated file. Fully quit Cursor, then launch it from the configured shell.
+Rerun `sediment install --no-env /path/to/repo` to switch an existing managed
+installation to this mode.
+
 The Cursor adapter doesn't infer its endpoint from
 `OTEL_EXPORTER_OTLP_ENDPOINT`. Without `SEDIMENT_OTLP_ENDPOINT`, it still marks
 commit Attribution but emits no Developer decision.
 
-For each successful Agent `Write`, the adapter sends
-`sediment.tool_decision` with `decision=accept` and `explicit=false`. The
-translator stores the resulting Developer decision with `accepted=true`. The
-value `explicit=false` records the automatic result of the tool call. It
-doesn't record a human approval gesture.
-
-A failed Agent `Write` isn't evidence of rejection, so it emits no Developer
-decision. An accepted Tab edit also emits no decision because Cursor supplies
-no per-call identifier for that event.
+Successful Agent writes send an OpenTelemetry Protocol (OTLP) log with
+`decision=accept` and `explicit=false`. This records tool success, not human
+approval. Failed writes and Tab edits don't produce Developer decisions.
 
 Repeated receipts of the same native successful `Write` collapse on a
 deterministic Fact identity in PostgreSQL. Sediment preserves the first receipt's
@@ -116,22 +110,14 @@ Cursor inference-call capture isn't supported. Sediment hasn't verified an
 identifier that links local Cursor hooks to model requests. Don't treat Cursor
 gateway requests as belonging to the same Session as hook events.
 
-Commit Attribution and successful-write Developer decisions remain available
-without inference-call capture.
-
 ## Configure Edit observations
 
 Cursor Edit observations aren't supported. The adapter doesn't receive the
 applied edit text and Session-end file state that the canonical Fact requires.
 
-Commit Attribution still records successful and failed Agent writes plus
-accepted Tab edits.
-
 ## Verify capture
 
-Remote Fact and Session checks require a separate
-[operator login](../local-capture.md#verify-capture). Capture enrollment alone
-cannot authorize these reads.
+Remote checks require a separate [operator login](../local-capture.md#verify-capture).
 
 1. Check the user hooks and repository configuration:
 
@@ -139,7 +125,8 @@ cannot authorize these reads.
    sediment doctor --fetch /path/to/repo
    ```
 
-2. Use local Cursor desktop Agent or Tab to edit a file.
+2. Ask Cursor Agent to create a harmless file with its `Write` tool. Tab edits
+   don't produce the Developer decision that this check requires.
 
 3. Commit the change.
 
@@ -167,7 +154,6 @@ only the marker, so they don't satisfy this decision check. Cursor rejects
   `~/.cursor/hooks.json` user hooks.
 - It doesn't configure Cursor Cloud Agents, Cursor CLI, Enterprise
   cloud-distributed hooks, or the Sediment fleet bundle.
-- It doesn't capture inference calls or Edit observations.
 - The adapter omits prompts, model output, edit text, file content, tool
   output, transcript paths, and Cursor account email.
 - If `conversation_id` is missing, the adapter emits no Session marker or
@@ -187,6 +173,12 @@ only the marker, so they don't satisfy this decision check. Cursor rejects
   diagnostic. A successful Agent `Write` can still emit its Developer decision.
 - Hook errors and delivery failures don't block Cursor. The adapter writes a
   size-limited diagnostic to standard error and skips the affected evidence.
+- If the managed environment file is missing or malformed, a successful Agent
+  `Write` still creates its Session marker but skips the Developer decision.
+  Rerun `sediment install` to regenerate the file. `doctor` reports a failed
+  configuration check when this file is unreadable, invalid, or lacks the
+  endpoint or token. A passing configuration check doesn't prove delivery;
+  verify the actual Session after another Agent `Write`.
 - If `doctor --fetch` reports a notes-ref failure, follow
   [Repair a notes ref](../local-capture.md#repair-a-notes-ref).
 

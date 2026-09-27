@@ -1,11 +1,11 @@
 [project]
 name = "sediment-derive"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sediment derive: git mirror substrate, attribution, reward linkage"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
-dependencies = ["sediment-core==0.1.0", "pydantic>=2.13.5"]
+dependencies = ["sediment-core==0.2.0", "pydantic>=2.13.5"]
 
 [project.urls]
 Source = "https://github.com/sediment-ai/sediment"

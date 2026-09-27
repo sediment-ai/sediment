@@ -1,8 +1,7 @@
 # Export SFT and diff-SFT rows
 
-For a specific downstream release, select a versioned consumer profile.
-[Export for a consumer](consumer-compatibility.md) documents installation,
-configuration, exact commands, and the limits of each support claim.
+For a supported downstream release, select a versioned
+[consumer profile](consumer-compatibility.md).
 
 Run the default supervised fine-tuning (SFT) and diff-shaped SFT (diff-SFT)
 exports:
@@ -94,41 +93,26 @@ Example SFT row:
 }
 ```
 
-The shared canonical-to-trainer mapper keeps text in `content` and readable
-reasoning in assistant `thinking`. It keeps tool calls in structured
-`tool_calls` and tool responses in `tool` messages. Reasoning never enters
-visible `content`. Tool arguments remain objects. OpenAI Responses `developer`
-prompt messages retain their role and ordered text. Tool results in native user
-messages retain their position; strings remain verbatim and structured JSON
-values become deterministic JSON strings. The mapper doesn't call
-`render_scoring_text`.
+The mapper keeps text in `content`, readable reasoning in `thinking`, and tool
+calls in `tool_calls`. Arguments remain objects. Tool results retain their order;
+structured results become deterministic JSON strings. Earlier assistant messages
+stay in `prompt`, outside the completion loss boundary.
 
 ### Interpret skipped SFT inputs
 
-The SFT export reports every skipped input under this closed vocabulary:
-
-- `abandoned`
-- `explicit_reject`
-- `resolved_ci_failure`
-- `no_eligibility_source`
-- `unreliable_ci_resolution`
-- `conflicting_run_identity`
-- `ambiguous_workflow_verdicts`
-- `no_reward_signal`
-- `below_confidence_floor`
-- `inference_call_not_found`
-- `model_absent`
-- `duplicate_completion`
-- `conflicting_evidence`
-- `completionless`
-- `duplicate_tool_call_id`
-- `empty_message`
-- `non_string_tool_result`
-- `unrepresentable_part_order`
-- `unresolved_tool_call`
-- `unsupported_completion_role`
-- `unsupported_message_role`
-- `unsupported_role_part`
+Inspect `skipped` before training. The SFT export reports every skipped input
+under this closed vocabulary: `conflicting_run_identity`,
+`ambiguous_workflow_verdicts`, `repository_identity_absent`,
+`repository_identity_conflict`, `repository_identity_unresolved`,
+`repository_mirror_identity_unresolved`, `repository_source_absent`,
+`non_finite_number`, `unrepresentable_unicode`, `completionless`,
+`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
+`unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
+`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
+`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
+`duplicate_completion`, and `conflicting_evidence`.
 
 ## Export diff-SFT rows
 
@@ -167,38 +151,21 @@ still produce rows.
 ### Interpret skipped diff-SFT inputs
 
 The diff-SFT export reports every skipped input under this closed vocabulary:
-
-- `abandoned`
-- `repo_mismatch`
-- `split_mismatch`
-- `explicit_reject`
-- `conflicting_run_identity`
-- `ambiguous_workflow_verdicts`
-- `resolved_ci_failure`
-- `no_eligibility_source`
-- `unreliable_ci_resolution`
-- `eligibility_source_mismatch`
-- `no_reward_signal`
-- `below_confidence_floor`
-- `inference_call_not_found`
-- `model_absent`
-- `duplicate_completion`
-- `conflicting_evidence`
-- `mirror_absent`
-- `commit_diff_unavailable`
-- `unsupported_diff_section`
-- `malformed_diff_section`
-- `file_diff_unavailable`
-- `empty_patch`
-- `completionless`
-- `duplicate_tool_call_id`
-- `empty_message`
-- `non_string_tool_result`
-- `unrepresentable_part_order`
-- `unresolved_tool_call`
-- `unsupported_completion_role`
-- `unsupported_message_role`
-- `unsupported_role_part`
+`conflicting_run_identity`, `ambiguous_workflow_verdicts`,
+`repository_identity_absent`, `repository_identity_conflict`,
+`repository_identity_unresolved`, `repository_mirror_identity_unresolved`,
+`repository_source_absent`, `non_finite_number`, `unrepresentable_unicode`,
+`completionless`, `duplicate_tool_call_id`, `empty_message`,
+`non_string_tool_result`, `unrepresentable_part_order`, `unresolved_tool_call`,
+`unsupported_completion_role`, `unsupported_message_role`,
+`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
+`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
+`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
+`duplicate_completion`, `conflicting_evidence`, `unsupported_diff_section`,
+`malformed_diff_section`, `repo_mismatch`, `split_mismatch`,
+`eligibility_source_mismatch`, `mirror_absent`, `commit_diff_unavailable`,
+`empty_patch`, and `file_diff_unavailable`. `unsupported_diff_section` and
+`malformed_diff_section` identify unusable Git evidence.
 
 Keep Attribution source metadata and observation IDs with each row. Version 1
 recipe eligibility permits inferred Attribution; an empty observation list means
