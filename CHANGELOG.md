@@ -14,8 +14,9 @@
 - Stop a failed command block in Deploy Sediment, the Quickstart, or the
   Compose rehearsal without closing your terminal. The blocks chain their
   commands instead of calling `exit 1`.
-- Publish the EC2 and Traefik setup on Deploy Sediment, alongside the package
-  installation procedure.
+- Publish the EC2 and Traefik setup as its own page, Deploy Sediment on EC2
+  with Traefik. Deploy Sediment keeps the existing-host installation and the
+  enrollment, upgrade, and data-handling procedures that both pages share.
 - Add `create_deploy_env.py --domain` for a single-host pilot with PostgreSQL,
   the API, LiteLLM, and Traefik HTTPS. Generate private credentials, prompt for
   provider access, and configure one hostname with automatic certificate renewal.
@@ -83,6 +84,12 @@
 - Keep client installations on the reviewed SQLAlchemy 2.0 series. Pin the
   gateway's reviewed OpenSSL and supporting packages so rolling repository
   updates don't introduce an OpenSSL configuration-file conflict.
+- Update the supplied gateway to LiteLLM 1.103.0, the release that the
+  latest-stable security gate requires. The guarded vendor patch covers the
+  Prisma SQLSTATE lookup that 1.103.0 adds and returns `None` from it when
+  Prisma is absent. Remove the Vertex speech SDK that this release adds, which
+  the gateway doesn't use. Drop the MCP 1.30.0 override: the vendor image ships
+  the MCP 2.2.0 release that LiteLLM 1.103.0 requires.
 
 - Wait for API health in Docker deployment instructions. Support separate
   Compose project image tags and loopback ports for local pilot rehearsals.

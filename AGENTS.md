@@ -173,7 +173,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 
 | Topic | Read |
 |---|---|
-| Deploy, secure, enroll a team, verify | `docs/operate/deploy.md`; `docs/operate/security.md`; `docs/operate/run-pilot.md`; `docs/operate/validate-deployment.md` |
+| Deploy, secure, enroll a team, verify | `docs/operate/deploy.md`; `docs/operate/deploy-ec2.md`; `docs/operate/security.md`; `docs/operate/run-pilot.md`; `docs/operate/validate-deployment.md` |
 | Network exposure; quarantine and incident response | [Network exposure](docs/operate/deploy.md#84-network-exposure); [Quarantine and wholesale deletion](docs/operate/deploy.md#83-quarantine-and-wholesale-deletion) |
 | Run, scope, profile, and recompute Derivations | `docs/operate/run-derivations.md`; `docs/operate/profile-derivations.md`; `docs/adr/0020-bounded-derivation-execution.md` |
 | Measure agent work; merge retention and the lifecycle report | `docs/operate/measure-agent-work.md`; `docs/operate/lifecycle-report.md` |

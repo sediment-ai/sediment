@@ -3,12 +3,12 @@
 Use this contributor runbook to build and qualify the checked-in containers,
 including PostgreSQL, the API, LiteLLM, and Traefik. These commands require the
 repository's source and Docker build tools. For package installation, use
-[Install the published package](deploy.md#install-the-published-package).
+[Deploy Sediment](deploy.md).
 
 ## Deploy a pilot on EC2
 
 For instance setup, DNS, credentials, startup, and public HTTPS verification,
-follow [Deploy on EC2 with Traefik](deploy.md#deploy-on-ec2-with-traefik).
+follow [Deploy Sediment on EC2 with Traefik](deploy-ec2.md).
 That procedure installs the published Python package with the upstream
 PostgreSQL and Traefik images. It doesn't use this source-build rehearsal. The
 remaining sections are for contributors who qualify the repository containers.
