@@ -448,6 +448,8 @@ thread.join(2)
 with manager.read_repository_snapshot([key, other]):
     assert_locked()
 """
+    # Locks need an existing base; a missing one reads every mirror absent.
+    (tmp_path / "mirrors").mkdir()
     subprocess.run(
         [sys.executable, "-c", code, str(tmp_path / "mirrors")],
         check=True,

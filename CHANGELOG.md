@@ -29,6 +29,9 @@
   supported interactive terminals, followed by the version number without a
   name or website footer. Preserve version-only output for pipes,
   `NO_COLOR`, `TERM=dumb`, narrow terminals, and unsupported text encodings.
+- Read a missing `--mirror-path` without creating it. Reports and exports treat
+  every mirror there as absent instead of writing lock files under that path,
+  or failing when the path can't be created.
 
 ### Contributor checks
 

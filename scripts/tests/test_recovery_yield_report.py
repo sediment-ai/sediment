@@ -92,9 +92,12 @@ def test_json_output_reports_recovery_yield_and_skips(
 
 
 def test_table_output_prints_counts_and_skip_breakdown(
-    postgres_store_factory, capsys
+    tmp_path, monkeypatch, postgres_store_factory, capsys
 ) -> None:
     database_url = _seed_no_mirror_candidate(postgres_store_factory)
+    # A relative --mirror-path resolves against the working directory, which
+    # would be the checkout under a plain `pytest` run.
+    monkeypatch.chdir(tmp_path)
 
     assert _report(database_url, "missing") == 0
 
@@ -103,6 +106,7 @@ def test_table_output_prints_counts_and_skip_breakdown(
     assert "recovery_pairs: 0" in out
     assert "mirror_absent: 1" in out
     assert "diff_size_distribution:" in out
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_invalid_org_id_is_a_clean_error_not_a_traceback(
