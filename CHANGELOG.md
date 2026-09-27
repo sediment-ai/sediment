@@ -8,6 +8,20 @@
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
 
+### Deployment
+
+- Restructure the Operate docs into one path: deploy on EC2 or on your own
+  host, enroll your team, then measure agent work. Deploy Sediment becomes
+  Deploy Sediment on your own host. Enroll your team replaces the Cursor, pi,
+  and Codex pilot, creates capture tokens, and covers Claude Code. Maintain a
+  deployment collects upgrades, backups, credential rotation, quarantine,
+  troubleshooting, and teardown. Secure a deployment collects stored data,
+  credential authority, network exposure, and release checks. Retrieval setup
+  lives only in Continue a task with captured evidence, and Measure agent work
+  absorbs the lifecycle report. Remove Validate a deployment and Review release
+  verification. Move Profile reports and Derivations to CONTRIBUTING.md as a
+  maintainer procedure.
+
 ## 0.3.0 — 2026-09-27
 
 ### Deployment

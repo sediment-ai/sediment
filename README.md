@@ -48,9 +48,9 @@ Follow the
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.
 
-For a shared pilot, follow [Deploy Sediment on EC2 with Traefik](docs/operate/deploy-ec2.md).
-If you already run PostgreSQL and HTTPS, follow [Deploy Sediment](docs/operate/deploy.md).
-Follow the [pilot guide](docs/operate/run-pilot.md) to enroll developers and verify capture.
+To run Sediment for a team, [deploy it on EC2](docs/operate/deploy-ec2.md), or
+[on your own host](docs/operate/deploy.md) if you already run PostgreSQL and
+HTTPS. Then [enroll your team](docs/operate/run-pilot.md).
 
 ## Architecture
 

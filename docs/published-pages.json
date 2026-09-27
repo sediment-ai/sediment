@@ -24,44 +24,37 @@
     {
       "source": "docs/operate/deploy.md",
       "destination": "operate/deploy",
-      "description": "Install a published Sediment version on a host with your own PostgreSQL and HTTPS, then enroll, verify, upgrade, and operate it."
+      "description": "Install a published Sediment version on a host where you already run PostgreSQL and HTTPS."
     },
     {
       "source": "docs/operate/deploy-ec2.md",
       "destination": "operate/deploy-ec2",
-      "description": "Install a published Sediment version on one EC2 instance with PostgreSQL and Traefik HTTPS."
+      "description": "Install a published Sediment version on one EC2 instance, with PostgreSQL and Traefik HTTPS."
     },
     {
       "source": "docs/operate/security.md",
       "destination": "operate/security",
-      "description": "Verify artifact inventories, maintenance coverage, vulnerability dispositions, and deployment controls."
+      "description": "Review stored data, credential authority, and network exposure, and verify a release."
     },
     {
       "source": "docs/operate/run-pilot.md",
       "destination": "operate/run-pilot",
-      "description": "Install Sediment, enroll a team, and verify agent and forge capture."
+      "description": "Create capture tokens, connect repositories and developer machines, and verify each agent's capture."
     },
     {
-      "source": "docs/operate/validate-deployment.md",
-      "destination": "operate/validate-deployment",
-      "title": "Validate a deployment",
-      "description": "Verify capture, recovery, data integrity, exports, and capacity for your workload."
-    },
-    {
-      "source": "docs/operate/rehearse-release.md",
-      "destination": "operate/rehearse-release",
-      "description": "Review published release evidence and verify the installed deployment.",
-      "title": "Review release verification"
+      "source": "docs/operate/maintain.md",
+      "destination": "operate/maintain",
+      "description": "Upgrade, back up, rotate credentials, quarantine data, troubleshoot, and tear down a deployment."
     },
     {
       "source": "docs/operate/rehearse-compose.md",
       "destination": "operate/rehearse-compose",
-      "description": "Build and qualify the repository's PostgreSQL, API, LiteLLM, and Traefik containers on one host."
+      "description": "For contributors: build and qualify the repository's PostgreSQL, API, LiteLLM, and Traefik containers on one host."
     },
     {
       "source": "docs/operate/measure-agent-work.md",
       "destination": "operate/measure-agent-work",
-      "description": "Compare agent outcomes, find accepted work that did not ship, and inspect merge retention."
+      "description": "Compare model outcomes, find accepted work that didn't ship, and measure retention through merge."
     },
     {
       "source": "docs/capture/agent-integrations.md",
@@ -120,16 +113,6 @@
       "description": "Run, scope, inspect, recompute, and export a derivation."
     },
     {
-      "source": "docs/operate/profile-derivations.md",
-      "destination": "operate/profile-derivations",
-      "description": "Measure complete report, Derivation, and training workloads with isolated inputs and explicit memory and storage budgets."
-    },
-    {
-      "source": "docs/operate/lifecycle-report.md",
-      "destination": "operate/lifecycle-report",
-      "description": "Measure accepted-work progression, retention, attrition, and rework evidence."
-    },
-    {
       "source": "docs/exports/training-exports.md",
       "destination": "exports/training-exports",
       "description": "Choose a training objective, prepare its evidence, and audit the output."
@@ -162,7 +145,7 @@
     {
       "source": "docs/operate/resume-with-evidence.md",
       "destination": "operate/resume-with-evidence",
-      "description": "Select captured Inference-call parts and test controlled agent continuation with an intact workspace."
+      "description": "Give an agent exact captured parts from a previous Session, through retrieval tools or a CLI evidence packet."
     }
   ]
 }

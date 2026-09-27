@@ -173,11 +173,11 @@ on an orphan. Report a routed file that does not exist as a bug.
 
 | Topic | Read |
 |---|---|
-| Deploy, secure, enroll a team, verify | `docs/operate/deploy.md`; `docs/operate/deploy-ec2.md`; `docs/operate/security.md`; `docs/operate/run-pilot.md`; `docs/operate/validate-deployment.md` |
-| Network exposure; quarantine and incident response | [Network exposure](docs/operate/deploy.md#84-network-exposure); [Quarantine and wholesale deletion](docs/operate/deploy.md#83-quarantine-and-wholesale-deletion) |
-| Run, scope, profile, and recompute Derivations | `docs/operate/run-derivations.md`; `docs/operate/profile-derivations.md`; `docs/adr/0020-bounded-derivation-execution.md` |
-| Measure agent work; merge retention and the lifecycle report | `docs/operate/measure-agent-work.md`; `docs/operate/lifecycle-report.md` |
-| Review release verification; rehearse the Compose deployment from source | `docs/operate/rehearse-release.md`; `docs/operate/rehearse-compose.md` |
+| Deploy on EC2 or your own host, then enroll a team | `docs/operate/deploy-ec2.md`; `docs/operate/deploy.md`; `docs/operate/run-pilot.md` |
+| Upgrade, back up, rotate credentials, quarantine, tear down; stored data, network exposure, release checks | `docs/operate/maintain.md`; `docs/operate/security.md` |
+| Run, scope, and recompute Derivations; profile them | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
+| Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
+| Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
 | Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026 |
 | Synthetic scenarios | `sim/README.md` |
 
