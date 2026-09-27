@@ -99,5 +99,5 @@ remain responsible for their declared small-data envelope. Captured evidence is
 not truncated to reduce memory. Physical content deduplication, persistent
 Derivation caches, and distributed execution require separate decisions.
 
-[Profile reports and Derivations](../operate/profile-derivations.md) defines
+[Profile reports and Derivations](../../CONTRIBUTING.md#profile-reports-and-derivations) defines
 workload measurements and resource budgets.

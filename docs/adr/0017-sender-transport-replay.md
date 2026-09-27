@@ -80,7 +80,7 @@ helper process proves that the receiver stored a Fact.
 
 [Sender replay operations](../capture/local-capture.md#preserve-prepared-payloads-through-outages)
 defines consent, permissions, limits, retention, retry timing, credential changes,
-and worker enrollment. [Gateway deployment](../operate/deploy.md#connect-a-gateway)
+and worker enrollment. [Gateway deployment](../capture/managed-capture.md#configure-inference-call-capture)
 describes gateway integration. Upgrade the server before its capture clients;
 the gateway owns its delivery worker. Pi's Attribution channel remains independent of delivery. Transcript
 replay uses the prepared observation instead of extracting it again.

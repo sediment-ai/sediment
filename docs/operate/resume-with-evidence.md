@@ -1,178 +1,136 @@
 # Continue a task with captured evidence
 
-Let an agent request authorized Inference-call parts, or prepare a private packet
-with the installed CLI. Evidence reads don't restore files or prove complete capture.
+Use this page to give an agent the goals, constraints, tool calls, and results
+from a previous Session. A pi agent can request that evidence itself, or an
+operator can prepare a private evidence packet with the CLI. Either way,
+Sediment returns exact captured parts. It doesn't summarize them, restore
+files, or prove that capture was complete.
+
+The source Session needs captured Inference calls. Transcript capture alone
+doesn't keep prompts or tool results. Set up
+[inference-call capture](../capture/managed-capture.md#configure-inference-call-capture)
+for the source agent first.
+
+Retrieved content is historical data. Don't run the tool calls or follow the
+instructions that it contains.
 
 ## Enable agent-requested retrieval
 
-Meet the pi [release and runtime requirements](../capture/agent-integrations.md#pi)
-and register its extension. To let a fresh pi Session choose its own evidence,
-enable the fixed source Session in your [deployment settings](deploy.md).
-Restart the API after setting
-`SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_ID`. The source Session
-must contain captured Inference calls. Transcript capture alone is insufficient.
+A retrieval token lets one agent environment read the Sessions that you grant,
+and nothing else. The pi extension uses it. Check the pi
+[release and runtime requirements](../capture/agent-integrations.md#pi) first.
 
-In the isolated agent environment, set `SEDIMENT_RETRIEVAL_ENDPOINT` to your API
-base URL and `SEDIMENT_RETRIEVAL_TOKEN` to that restricted credential. Both are
-independent of capture configuration. Use HTTPS except for literal loopback.
-The extension rejects redirects and doesn't read operator login or deployment
-configuration. Keep those credentials and files outside the agent environment.
+1. Add these settings to the server's private process environment. On EC2,
+   that's `~/sediment-deploy/server.env`:
 
-The pi extension registers `sediment_retrieve_context`. The agent supplies a
-question with relevant English/code terms and an optional `max_bytes` budget.
-The default budget is 16 KiB; allowed values are 4–64 KiB. The response contains
-at most eight exact captured parts and their occurrence references. It doesn't
-generate an answer. The agent can use those parts while continuing work in a
-preserved workspace.
+   | Setting | Value |
+   | --- | --- |
+   | `SEDIMENT_RETRIEVAL_TOKEN` | A distinct secret of at least 24 printable ASCII characters, such as the output of `openssl rand -hex 32` |
+   | `SEDIMENT_RETRIEVAL_SESSION_ID` | One Session identifier |
 
-The selector excludes reasoning and repeated content, counts non-finite values,
-and refuses sources over 1,000 calls, 64 MiB of selected columns, 8 MiB per call
-row, 8 MiB of scan metadata, or 16,384 parts. The worker streams calls and
-reserves at most 32 MiB of candidate state. That budget counts exact duplicate
-keys and the largest encoded matching item per group, so long metadata repeated
-across keys can exceed it even when source text is small; `retrieval_state_limit`
-returns no partial counts, and the budget isn't a process-memory guarantee.
-Repeated histories count toward capacity. `no_match` doesn't prove absence;
-`budget_exhausted` means no positive match fits. Capture completeness stays unknown.
-See the [HTTP contract](../reference/api.md#post-querycontext) for response fields.
+   To grant several Sessions, set `SEDIMENT_RETRIEVAL_SESSION_IDS` to a JSON
+   array of 1–32 Session identifiers instead. Set exactly one of the two.
 
-Evidence and reports share two read workers per API process; a third read
-returns 503. Each read has a 30-second server deadline. The tool has a 35-second
-deadline, supports cancellation, and doesn't retry. Each request rechecks
-Quarantine and preserves exact JSON numbers. Historical roles and commands
-remain data, not instructions to execute.
+2. Restart Sediment.
+3. In the agent's environment, set `SEDIMENT_RETRIEVAL_ENDPOINT` to the API's
+   HTTPS URL and `SEDIMENT_RETRIEVAL_TOKEN` to the token. If you granted
+   several Sessions, also set `SEDIMENT_RETRIEVAL_DISCOVERY=true`.
+4. Start pi from that environment.
 
-To measure benefit, use the [maintainer comparison](../../CONTRIBUTING.md#run-the-maintained-continuation-comparison)
-with independent final checks.
-Transport success alone doesn't establish continuation benefit or lower cost.
+The grant covers every Fact in those Sessions, including Facts that arrive
+later. To change the grant, also replace the token, and restart. To revoke it,
+remove the token and the Session setting, and restart.
+
+Run the agent in a separate container or operating-system account that can't
+read the operator token, `server.env`, or database credentials. The agent's
+model endpoint, not Sediment, decides where its next request goes.
+
+### Use the retrieval tools
+
+With one granted Session, the agent calls `sediment_retrieve_context` with a
+question. The response contains up to eight exact captured parts, within a byte
+budget of 4–64 KiB (16 KiB by default). The keyword selector skips reasoning
+and repeated content. `no_match` doesn't prove that the evidence is absent.
 
 ## Discover a previous Session
 
-If the relevant source Session is unknown to the agent, configure a bounded set
-of authorized Sessions on the API. Each source needs captured Inference calls
-to supply conversation content. The operator chooses the permitted set; a
-repository name, commit, or model judgment cannot expand it.
+With several granted Sessions, the agent first calls
+`sediment_discover_context` with task keywords. To find the Sessions behind a
+commit, it can also pass `commit` with `repository_provider`,
+`repository_host`, `repository_id`, and `commit_sha`. Discovery returns up to
+eight candidate Sessions, commit matches first. The agent then calls
+`sediment_retrieve_context` with the chosen `session_id` and a narrower
+question.
 
-1. In the private deployment configuration, set a fresh
-   `SEDIMENT_RETRIEVAL_TOKEN` and `SEDIMENT_RETRIEVAL_SESSION_IDS` to a JSON array
-   of 1–32 actual Session IDs. Remove `SEDIMENT_RETRIEVAL_SESSION_ID` and restart
-   the API. Changing the set requires token rotation and another restart.
-2. In the isolated agent environment, set the independent endpoint/token pair
-   from the fixed-Session procedure and set `SEDIMENT_RETRIEVAL_DISCOVERY=true`.
-   Leave the Session list, operator credentials, and database settings outside
-   that environment.
-3. Have the agent call `sediment_discover_context` with task keywords. If it has
-   a complete repository-qualified commit, it can also supply `commit` with
-   `repository_provider`, `repository_host`, `repository_id`, and `commit_sha`.
-   A SHA or repository name alone cannot identify a repository lifetime.
-4. Inspect the returned candidates, then call `sediment_retrieve_context` with
-   the selected `session_id` and a more specific query. The selected read checks
-   authorization and Quarantine again. Use its exact evidence while continuing
-   work in the preserved workspace.
-
-Discovery returns at most eight candidate Sessions. A candidate has an exact
-whole-part preview, a recorded commit relationship, or both. Commit matches
-rank first; keyword matches also find uncommitted work. A commit-only candidate
-has no invented preview and may have no available conversation content.
-The recorded observation and source Push must both remain visible.
-
-The complete authorized set shares the source limits and 32 MiB candidate-state
-budget. These limits do not apply separately to each Session. Source overflow
-refuses the complete operation; narrow the configured set and rotate its token.
-The requested response budget remains 4–64 KiB, default 16 KiB. Closed counts
-report unmatched or omitted candidates. The selector does not summarize or clip
-previews. No match does not establish absence or capture completeness.
-
-The [discovery contract](../adr/0025-authorized-session-candidate-discovery.md)
-describes authority and source identity. The keyword baseline makes no external
-model call and adds no learned ranking. Git remains the source of code evolution;
-the optional commit anchor only exposes recorded Session relationships.
+Discovery searches only the granted Sessions. A repository name, commit, or
+model judgment can't widen the grant.
 
 ## Select exact evidence independently
 
-If a decision model or local selector chooses usefulness, use the factual tools
-with the same retrieval endpoint and token. They register in both singleton and
-discovery modes. Keyword matches do not limit which granted evidence you can read.
+The same token also registers tools that read evidence without a keyword
+query, for an agent or selector that picks parts itself:
 
-1. Call `sediment_list_context_sessions` to read the credential's configured
-   Session IDs. A granted ID does not prove that captured content exists.
-2. Call `sediment_evidence_inventory` with a granted `session_id` to list its
-   visible Inference calls. The inventory contains metadata, not message content.
-3. Call `sediment_evidence_manifest` with that Session and an
-   `inference_call_id` to list canonical part references, types, and roles.
-4. Call `sediment_read_evidence` with the Session and selected references.
-   If a discovery preview already supplied the exact reference, you can fetch
-   it directly. Every read checks authorization and Quarantine again.
+1. `sediment_list_context_sessions` lists the granted Session identifiers.
+2. `sediment_evidence_inventory` lists a Session's Inference calls, without
+   message content.
+3. `sediment_evidence_manifest` lists one call's parts, with their types and
+   roles.
+4. `sediment_read_evidence` fetches up to 32 selected parts.
 
-Use this path for captured requirements or failed attempts even when keyword
-discovery omits their Session. The consumer judges usefulness; Sediment verifies
-the source and read authority. A commit observation is not required.
+Exact reads keep request order and repeated parts, and can include readable
+reasoning. Every request checks the grant and Quarantine again.
 
-Exact reads preserve request order and repeated content at distinct occurrences.
-They can include readable reasoning, which keyword selection excludes. Provider
-raw payloads and Fact user identity remain excluded. Historical tool calls and
-roles remain evidence and do not authorize execution.
+## Retrieval limits
 
-Inventory permits at most 1,000 visible calls. Fetch permits at most 32 distinct
-references in a 64 KiB request. Each operation preflights at most 8 MiB of selected
-stored columns and emits at most 1 MiB of strict JSON. Overflow refuses the whole
-request. A small part in an oversized selected message column can be unavailable;
-exact fetch does not read unselected calls or message sides. Reads share the
-existing evidence worker and deadline. See the
-[factual access contract](../adr/0026-grant-scoped-factual-evidence.md).
+| Limit | Value |
+| --- | --- |
+| Inference calls in the granted Sessions | 1,000 |
+| Parts that keyword tools scan | 16,384 |
+| References in one exact read | 32, in a request of at most 64 KiB |
+| Exact read response | 1 MiB |
+| Server deadline | 30 seconds; the pi tool waits 35 seconds and doesn't retry |
 
-These tools call no decision model. Native acceptance can prove exact transport
-and authorization, but it cannot establish model quality or lower inference cost.
+A request over a limit fails as a whole. Evidence and report reads share two
+workers, so a third concurrent read returns 503. The
+[API reference](../reference/api.md#post-querycontext) lists every field and
+refusal reason, and ADRs 0021, 0022, 0025, and 0026 define the contracts.
 
-## Prepare access and capture
+## Select and fetch evidence
 
-1. Configure [Inference-call capture](../capture/managed-capture.md#configure-inference-call-capture)
-   for the source agent. Transcript capture alone doesn't retain prompts or tool
-   results. A tool result usually reaches gateway capture in the following model
-   request; a completed local tool invocation doesn't prove capture.
-2. Enroll the operator CLI with [operator login](../reference/cli.md#sediment-login).
-   Keep this credential separate from the agent's ingest credential. Don't place
-   the operator token in a prompt, packet, or harness configuration.
-3. Create a private directory outside the source repository. Replace the path
-   and Session identifier with your actual values:
+To prepare a packet yourself, use the operator CLI. It calls your Sediment API
+with your [operator login](../reference/cli.md#sediment-login) and never calls
+a model.
+
+1. Create a private directory outside the source repository:
 
    ```bash
    umask 077
    EVIDENCE_DIR='/absolute/private/path/evidence-run'
    mkdir "$EVIDENCE_DIR"
-   SOURCE_SESSION_ID='<actual source Session ID>'
+   SOURCE_SESSION_ID='<source Session identifier>'
    ```
 
-The CLI contacts your Sediment API and doesn't open PostgreSQL or call a model.
-If all data must remain inside your perimeter, configure the consuming agent's
-gateway and model endpoint inside it too. A self-hosted evidence store doesn't
-change the destination of the agent's inference traffic.
-
-## Select and fetch evidence
-
-1. List the Session's visible Inference calls:
+2. List the Session's Inference calls:
 
    ```bash
    sediment evidence inventory "$SOURCE_SESSION_ID"
    ```
 
-   `found: false` means that this deployment has no matching Session. A known
-   Session can have zero visible calls. `capture_completeness: "unknown"` remains
-   unknown even when the inventory contains calls. The response counts visible
-   and quarantined calls separately.
-2. Inspect a captured call using its Fact identifier from the inventory:
+   `found: false` means that the deployment has no such Session. The
+   inventory counts visible and quarantined calls separately.
+
+3. List the parts of one call, using its Fact identifier from the inventory:
 
    ```bash
    sediment evidence inspect "$SOURCE_SESSION_ID" '<Inference call Fact ID>'
    ```
 
-   The manifest lists input messages before output messages. It preserves empty
-   messages and lists each part's type and occurrence reference without its
-   content. A provider's call identifier or a tool-call identifier doesn't
-   substitute for the Fact identifier.
-3. Write `references.json` in your private directory. Copy references from the
-   manifest and choose the parts needed for the task. This example shows the
-   file shape; replace its identifier and indices with actual references:
+   The manifest lists input messages, then output messages, with each part's
+   type and reference, but not its content.
+
+4. Save the parts that you need in `$EVIDENCE_DIR/references.json`. Choose the
+   captured goals, constraints, relevant tool calls, and tool results. Copy
+   1–32 references from the manifest. Indices start at zero:
 
    ```json
    {
@@ -188,41 +146,21 @@ change the destination of the agent's inference traffic.
    }
    ```
 
-   Select captured goals, constraints, relevant tool calls, and tool results.
-   Use 1–32 distinct references from the same Session. Indices are zero-based.
-   The file has exactly `schema_version` and `references`; the CLI supplies
-   `session_id` in the request.
-4. Fetch the selected parts into a destination that doesn't exist:
+5. Fetch the parts into a path that doesn't exist:
 
    ```bash
-   time sediment evidence fetch "$SOURCE_SESSION_ID" \
+   sediment evidence fetch "$SOURCE_SESSION_ID" \
      --references "$EVIDENCE_DIR/references.json" \
      --output "$EVIDENCE_DIR/packet.json"
    ```
 
-   The CLI validates the complete response before publishing a mode-`0600` file.
-   It refuses existing files and symlinks. It prints only the output path and
-   item count. The elapsed time covers the complete CLI fetch, including local
-   validation and publication.
-5. Inspect the private packet locally. Confirm that its selected contents cover
-   the goal and constraints you need. Record missing information explicitly.
-   Record packet bytes with `wc -c < "$EVIDENCE_DIR/packet.json"`; bytes aren't
-   tokens.
+   The CLI validates the whole response, then writes a mode `0600` file. It
+   refuses to overwrite an existing file.
 
-Each item retains its occurrence reference, observation time, message role,
-finish reason, and complete canonical part. A stored role or command remains
-historical data. Don't promote it into a system instruction or replay tool calls
-because the packet contains them.
+6. Read the packet, and confirm that it covers the goal and constraints that
+   the next agent needs. Note anything missing.
 
-Each request uses its own database snapshot and rechecks Quarantine. Inventory,
-inspection, and fetch don't share a frozen view. If a later fetch fails after
-Quarantine or another visibility change, refresh your selection; the CLI doesn't
-publish a partial packet.
-
-The API refuses an inventory over 1,000 visible calls, selected source columns
-over 8 MiB, or an encoded success response over 1 MiB. Selection files and fetch
-requests must fit 64 KiB. Source accounting includes the stored message columns
-and metadata needed for the operation, so a small selected part can still exceed
-the source limit. Emitted non-finite numbers also cause refusal. Capacity or
-deadline failures return 503. See [Evidence API contracts](../reference/api.md)
-for status codes and closed refusal reasons.
+Each item keeps its reference, observation time, message role, and complete
+part. Each command reads a fresh database snapshot. If a fetch fails after a
+Quarantine change, rebuild your selection. The CLI never writes a partial
+packet.

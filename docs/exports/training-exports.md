@@ -113,6 +113,8 @@ Schema, recipe, policy, and database versions identify separate contracts.
 
 Confidence and CI reliability don't set trainer weights. If you use them for
 weighting, define and version that mapping with the Evidence recipe and source.
+A Confidence of 0.9 doesn't mean that 90% of such rows are correct. Before you
+treat Confidence as a probability, check it against independent judgments.
 
 ## Audit the split before training
 

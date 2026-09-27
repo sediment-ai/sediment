@@ -4,7 +4,8 @@ Use this guide to connect a Sediment deployment to gateways, forges, private
 repositories, and a managed developer fleet. For one developer machine, use
 [Configure local capture](local-capture.md).
 
-Complete [Deploy Sediment](../operate/deploy.md) before configuring capture.
+Deploy Sediment [on EC2](../operate/deploy-ec2.md) or
+[on your own host](../operate/deploy.md) before configuring capture.
 
 ## Prerequisites
 

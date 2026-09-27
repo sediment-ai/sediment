@@ -1,8 +1,8 @@
 # Configure local capture
 
 Connect one macOS or Linux developer machine to a deployed Sediment API.
-If you need an endpoint, start with [Deploy Sediment](../operate/deploy.md) or
-the single-machine [Quickstart](../quickstart.md).
+If you need an endpoint, start with [Deploy Sediment on EC2](../operate/deploy-ec2.md)
+or the single-machine [Quickstart](../quickstart.md).
 
 Review [Agent integrations](agent-integrations.md) before enrollment. Codex
 native decision telemetry can include patch arguments even without transcript
@@ -251,7 +251,7 @@ that Session and its Session/tool entry in the local `HEAD` note. Add
 Add `--inference-calls` for a gateway-routed Session. Cursor rejects both
 unsupported requirements. Missing, incomplete, or unreadable evidence fails
 verification; organization-wide Fact counts don't substitute for it. Follow
-[Run a Cursor and Codex pilot](../operate/run-pilot.md) for the complete
+[Verify capture](../operate/run-pilot.md#verify-capture) in Enroll your team for the complete
 edit-to-commit checks.
 
 ## Installed hooks
