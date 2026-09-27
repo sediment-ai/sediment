@@ -19,6 +19,10 @@ import httpx
 
 from scripts import capacity_rehearsal as rehearsal
 
+# Installed rehearsals enforce wall-clock deadlines that parallel test load
+# breaks, so CI runs `serial` tests alone after the parallel pass.
+pytestmark = pytest.mark.serial
+
 
 def test_plan_counts_complete_repeated_history_without_claiming_qualification():
     from sim.capacity_workload import CapacityProfile

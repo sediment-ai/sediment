@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Route prose changes conservatively and check retained source reviews early."""
+"""Route prose, shim, and artifact-scan checks conservatively; check reviews early."""
 
 from __future__ import annotations
 
@@ -27,12 +27,27 @@ SHIM_FILES = {
     "scripts/ci_preflight.py",
     "scripts/tests/test_ci_preflight.py",
 }
+# Inputs that can change a scanned artifact or the scanner's verdict. A pull
+# request or merge group touching none of them skips the artifact scans; main
+# pushes, the daily schedule, releases, and manual runs always scan, so
+# upstream drift surfaces there instead of on unrelated pull requests.
+SCAN_FILES = {
+    "Dockerfile",
+    "uv.lock",
+    ".env.example",
+    "docker-compose.yml",
+    ".github/workflows/security.yml",
+    "scripts/ci_preflight.py",
+}
+SCAN_PREFIXES = ("docker/", "security/", "scripts/security_", "shims/pi/package")
 
 
-def requires_shim_validation(root: Path, event: str, base: str) -> bool:
-    """Skip shim work only for a readable PR diff outside its dependencies."""
-    if event != "pull_request" or not re.fullmatch(r"[0-9a-f]{40}", base):
-        return True
+def _changed_paths(root: Path, event: str, base: str) -> list[str] | None:
+    """Paths a readable PR or merge-group diff changes; None when unknown."""
+    if event not in {"pull_request", "merge_group"} or not re.fullmatch(
+        r"[0-9a-f]{40}", base
+    ):
+        return None
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", "-z", "--no-renames", base, "HEAD"],
@@ -42,15 +57,36 @@ def requires_shim_validation(root: Path, event: str, base: str) -> bool:
         )
         names = result.stdout.decode("utf-8").split("\0")
         if names.pop() != "" or not names:
-            return True
-        return any(name.startswith("shims/") or name in SHIM_FILES for name in names)
+            return None
+        return names
     except (OSError, subprocess.CalledProcessError, UnicodeError):
-        return True
+        return None
+
+
+def requires_shim_validation(root: Path, event: str, base: str) -> bool:
+    """Skip shim work only for a readable PR diff outside its dependencies."""
+    names = _changed_paths(root, event, base)
+    return names is None or any(
+        name.startswith("shims/") or name in SHIM_FILES for name in names
+    )
+
+
+def requires_artifact_scans(root: Path, event: str, base: str) -> bool:
+    """Skip artifact scans only for a readable PR diff outside the scan inputs."""
+    names = _changed_paths(root, event, base)
+    return names is None or any(
+        name in SCAN_FILES
+        or name.startswith(SCAN_PREFIXES)
+        or name.rsplit("/", 1)[-1] == "pyproject.toml"
+        for name in names
+    )
 
 
 def requires_full_validation(root: Path, event: str, base: str) -> bool:
     """Only added or modified regular prose files qualify for reduced checks."""
-    if event not in {"push", "pull_request"} or not re.fullmatch(r"[0-9a-f]{40}", base):
+    if event not in {"push", "pull_request", "merge_group"} or not re.fullmatch(
+        r"[0-9a-f]{40}", base
+    ):
         return True
     try:
         result = subprocess.run(
@@ -79,13 +115,19 @@ def requires_full_validation(root: Path, event: str, base: str) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("scope", "shims", "reviews"))
+    parser.add_argument("command", choices=("scope", "shims", "scans", "reviews"))
     args = parser.parse_args()
     if args.command == "shims":
         required = requires_shim_validation(
             ROOT, os.environ.get("CI_EVENT", ""), os.environ.get("CI_BASE_SHA", "")
         )
         print(f"shims={str(required).lower()}")
+        return 0
+    if args.command == "scans":
+        required = requires_artifact_scans(
+            ROOT, os.environ.get("CI_EVENT", ""), os.environ.get("CI_BASE_SHA", "")
+        )
+        print(f"scans={str(required).lower()}")
         return 0
     if args.command == "scope":
         full = requires_full_validation(
@@ -94,7 +136,7 @@ def main() -> int:
         print(f"full={str(full).lower()}")
         return 0
 
-    from security_image_assurance import source_digest
+    from security_image_assurance import review_digest
     from security_policy import check_source_reviews
 
     try:
@@ -102,7 +144,7 @@ def main() -> int:
             "dispositions"
         ]
         errors = check_source_reviews(
-            dispositions, source_digest(ROOT), datetime.now(UTC).date()
+            dispositions, review_digest(ROOT), datetime.now(UTC).date()
         )
     except (OSError, KeyError, TypeError, ValueError) as exc:
         errors = [f"Cannot read source reviews: {exc}"]

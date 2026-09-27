@@ -73,7 +73,7 @@ def test_unfixed_high_requires_exact_unexpired_disposition(scan, finding):
     scan["Results"][0]["Vulnerabilities"] = [finding]
     disposition = {
         "targets": ["api/arm64/example@1.0"],
-        "source_digest": "a" * 64,
+        "review_digest": "a" * 64,
         "required_predicates": ["minizip_absent"],
         "id": "CVE-2026-1234",
         "status": "not_affected",
@@ -84,7 +84,7 @@ def test_unfixed_high_requires_exact_unexpired_disposition(scan, finding):
         "evidence": ["https://vendor.example/advisory"],
     }
     check = policy_module().check_vulnerabilities
-    assurance = {"source_digest": "a" * 64, "predicates": {"minizip_absent": True}}
+    assurance = {"review_digest": "a" * 64, "predicates": {"minizip_absent": True}}
     assert (
         check(
             scan, "api", "arm64", [disposition], date(2026, 9, 12), assurance=assurance
@@ -103,7 +103,7 @@ def test_unfixed_high_requires_exact_unexpired_disposition(scan, finding):
     for key, value in [
         ("targets", ["api/amd64/example@1.0"]),
         ("targets", ["api/arm64/example@2.0"]),
-        ("source_digest", "b" * 64),
+        ("review_digest", "b" * 64),
         ("required_predicates", []),
         ("required_predicates", ["unchecked"]),
         ("expires_on", "2026-09-11"),
@@ -144,14 +144,14 @@ def test_source_review_preflight_requires_matching_unexpired_reviews():
     assert callable(check), "Fail stale source reviews before building images"
     review = {
         "id": "CVE-2026-1234",
-        "source_digest": "a" * 64,
+        "review_digest": "a" * 64,
         "owner": "Sediment maintainers",
         "reviewed_on": "2026-09-12",
         "expires_on": "2026-10-12",
     }
     assert check([review], "a" * 64, date(2026, 9, 12)) == []
     for changed in (
-        {"source_digest": "b" * 64},
+        {"review_digest": "b" * 64},
         {"expires_on": "2026-09-11"},
         {"reviewed_on": "2026-09-13"},
         {"expires_on": "2026-10-13"},

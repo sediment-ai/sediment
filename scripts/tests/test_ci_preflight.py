@@ -48,7 +48,7 @@ def repository(tmp_path):
     return tmp_path, git, git("rev-parse", "HEAD")
 
 
-@pytest.mark.parametrize("event", ["push", "pull_request"])
+@pytest.mark.parametrize("event", ["push", "pull_request", "merge_group"])
 @pytest.mark.parametrize(
     "name",
     [
@@ -168,7 +168,9 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
             for text in (
                 "docker build --pull",
                 "sediment db upgrade",
-                "pytest -q -n 4 --durations=30",
+                "pytest -q -m cluster_roles --durations=10",
+                'pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30',
+                "pytest -q -m serial --durations=10",
                 "scripts/release_rehearsal.py",
             )
         ):
@@ -187,9 +189,12 @@ def test_security_drafts_wait_for_ready_and_release_remains_full():
     assert jobs["source"]["if"] == workflow("ci.yml")["jobs"]["test"]["if"]
     for name in ("client", "pi", "images"):
         assert jobs[name]["needs"] == "source"
-        assert jobs[name]["if"] == "needs.source.outputs.full == 'true'"
+        assert jobs[name]["if"] == "needs.source.outputs.scans == 'true'"
     source = jobs["source"]
     assert source["outputs"]["full"] == "${{ steps.scope.outputs.full }}"
+    assert source["outputs"]["scans"] == "${{ steps.scope.outputs.scans }}"
+    assert "merge_group" in events
+    assert "schedule" in events
     commands = [step.get("run", "") for step in source["steps"]]
     for expected in (
         "ruff check .",
@@ -203,6 +208,8 @@ def test_security_drafts_wait_for_ready_and_release_remains_full():
     assert scope["env"]["CI_EVENT"] == (
         "${{ inputs.wheels-artifact != '' && 'workflow_call' || github.event_name }}"
     )
+    assert "ci_preflight.py scans" in scope["run"]
+    assert "github.event.merge_group.base_sha" in scope["env"]["CI_BASE_SHA"]
     reviews = next(
         step
         for step in source["steps"]
@@ -215,7 +222,7 @@ def test_security_drafts_wait_for_ready_and_release_remains_full():
 
 
 @pytest.mark.parametrize(
-    "source,full,images,client,pi,expected",
+    "source,scans,images,client,pi,expected",
     [
         ("success", "true", "success", "success", "success", 0),
         ("success", "false", "skipped", "skipped", "skipped", 0),
@@ -227,7 +234,7 @@ def test_security_drafts_wait_for_ready_and_release_remains_full():
     ],
 )
 def test_security_summary_cannot_hide_failed_or_missing_checks(
-    source, full, images, client, pi, expected
+    source, scans, images, client, pi, expected
 ):
     summary = workflow("security.yml")["jobs"].get("security")
     assert summary is not None, "A required summary must reject upstream failures"
@@ -241,7 +248,7 @@ def test_security_summary_cannot_hide_failed_or_missing_checks(
         env={
             **os.environ,
             "SOURCE_RESULT": source,
-            "FULL": full,
+            "SCANS": scans,
             "IMAGES_RESULT": images,
             "CLIENT_RESULT": client,
             "PI_RESULT": pi,
@@ -347,7 +354,9 @@ def test_shim_workflow_always_reports_and_gates_installed_tests():
     assert checkout["with"]["fetch-depth"] == 0
     scope = next(s for s in steps if s.get("id") == "scope")
     assert "ci_preflight.py shims" in scope["run"]
-    assert scope["env"]["CI_BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
+    assert scope["env"]["CI_BASE_SHA"] == (
+        "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+    )
     for step in steps:
         if step.get("id") in {"install", "typecheck", "tests"}:
             assert step["if"] == "steps.scope.outputs.shims == 'true'"
@@ -400,3 +409,83 @@ def test_shim_gate_rejects_failed_or_missing_selected_work(
         capture_output=True,
     )
     assert result.returncode == expected, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("event", ["pull_request", "merge_group"])
+@pytest.mark.parametrize(
+    "name,required",
+    [
+        ("Dockerfile", True),
+        ("uv.lock", True),
+        (".env.example", True),
+        ("docker-compose.yml", True),
+        ("docker/gateway/entrypoint.py", True),
+        ("docker/postgres/README.md", True),
+        ("pyproject.toml", True),
+        ("packages/core/pyproject.toml", True),
+        ("shims/pi/package-lock.json", True),
+        ("security/dispositions.json", True),
+        ("scripts/security_scan.py", True),
+        ("scripts/ci_preflight.py", True),
+        (".github/workflows/security.yml", True),
+        ("packages/core/sediment_core/store.py", False),
+        ("apps/api/sediment_api/main.py", False),
+        ("shims/pi/index.ts", False),
+        ("scripts/example.py", False),
+        ("docs/operate/security.md", False),
+        ("README.md", False),
+    ],
+)
+def test_artifact_scans_follow_scan_inputs(repository, event, name, required):
+    root, git, base = repository
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("changed\n")
+    git("add", ".")
+    git("commit", "-qm", "change")
+    assert preflight().requires_artifact_scans(root, event, base) is required
+
+
+@pytest.mark.parametrize("operation", ["delete", "rename"])
+def test_artifact_scans_keep_removed_or_moved_inputs(repository, operation):
+    root, git, _ = repository
+    path = root / "docker/postgres/Dockerfile"
+    path.parent.mkdir(parents=True)
+    path.write_text("FROM postgres\n")
+    git("add", ".")
+    git("commit", "-qm", "image")
+    base = git("rev-parse", "HEAD")
+    if operation == "delete":
+        path.unlink()
+    else:
+        git("mv", "docker/postgres/Dockerfile", "docs/explanation/moved.md")
+    git("add", "-A")
+    git("commit", "-qm", "remove image input")
+    assert preflight().requires_artifact_scans(root, "pull_request", base)
+
+
+@pytest.mark.parametrize(
+    "event,base",
+    [
+        ("push", "valid"),
+        ("schedule", "valid"),
+        ("workflow_dispatch", "valid"),
+        ("workflow_call", "valid"),
+        ("pull_request", ""),
+        ("pull_request", "0" * 40),
+        ("merge_group", "--output=/tmp/unsafe"),
+    ],
+)
+def test_main_schedule_release_and_unknown_history_always_scan(repository, event, base):
+    root, git, original = repository
+    (root / "README.md").write_text("prose\n")
+    git("add", ".")
+    git("commit", "-qm", "prose")
+    assert preflight().requires_artifact_scans(
+        root, event, original if base == "valid" else base
+    )
+
+
+def test_empty_diff_scans(repository):
+    root, _, base = repository
+    assert preflight().requires_artifact_scans(root, "pull_request", base)

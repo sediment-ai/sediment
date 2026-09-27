@@ -10,6 +10,8 @@ on:
   # the draft gate below skips every draft push.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  # Required checks must also report on merge-queue groups.
+  merge_group:
 
 # Least privilege, pinned in-repo rather than inherited: the org/repo default
 # is a mutable setting that no PR review would show changing. checkout is the
@@ -45,7 +47,7 @@ jobs:
       # from main, then appears as a direct addition in the squash commit.
       # Scan the complete proposed tree before dependencies add untracked files.
       - name: Scan complete pull-request tree for secrets
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
         env:
           TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.97.6@sha256:cc1a591e83fec7bf56f64c15beaaa5d8e3d179a4165a03a087d07165296ef7df
         run: |
@@ -66,7 +68,7 @@ jobs:
         id: scope
         env:
           CI_EVENT: ${{ github.event_name }}
-          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -144,9 +146,16 @@ jobs:
           scripts/tests/test_postgresql_only_repository.py
       # Run role fixtures against the clean cluster before rehearsal provisions
       # fixed deployment identities for its installed server.
-      # Four workers match the hosted runner's four vCPUs. The conftest gives
-      # each worker its own databases cloned from one migrated template.
-      - run: uv run pytest -q -n 4 --durations=30
+      # Three passes. The role contract runs first, before any real server
+      # provisions the fixed deployment roles. Four workers then match the
+      # hosted runner's four vCPUs; the conftest gives each its own databases
+      # cloned from one migrated template. Deadline-bound installed rehearsals
+      # run last, without concurrent load.
+      - run: uv run pytest -q -m cluster_roles --durations=10
+        if: steps.scope.outputs.full == 'true'
+      - run: uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
+        if: steps.scope.outputs.full == 'true'
+      - run: uv run pytest -q -m serial --durations=10
         if: steps.scope.outputs.full == 'true'
       - name: Exercise the complete pilot Compose deployment
         if: steps.scope.outputs.full == 'true'
@@ -182,6 +191,8 @@ jobs:
       # results visible. The action picks its own range from the event: PR
       # base..head, push before..after, and exits 0 when there is nothing to
       # scan — the checkout above is already unshallow, which is what it needs.
+      # It has no merge_group range, so a merge group passes its own bounds;
+      # without them the action would scan the entire history.
       # `verified,unknown` is the low-false-positive posture: a live credential
       # or a detector that could not reach its verifier fails the job; a
       # detector that actively verified the match as dead does not. The
@@ -201,8 +212,8 @@ jobs:
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
-          base: ${{ steps.secret-range.outputs.base || '' }}
-          head: ${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}
+          base: ${{ steps.secret-range.outputs.base || github.event.merge_group.base_sha || '' }}
+          head: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && github.sha || '' }}
           version: "3.97.6"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database

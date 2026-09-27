@@ -35,14 +35,18 @@ def _source(value: object) -> bool:
 def check_source_reviews(
     dispositions: list[dict], digest: str, today: date
 ) -> list[str]:
-    """Reject stale retained reviews before automatic artifact builds."""
+    """Reject stale retained reviews before automatic artifact builds.
+
+    ``digest`` is the review digest of the image build inputs; application
+    source changes leave it, and therefore the reviews, unchanged.
+    """
     if not isinstance(dispositions, list):
         return ["malformed source review catalog"]
     errors = []
     for record in dispositions:
         if not isinstance(record, dict):
             errors.append("malformed source review")
-        elif not _review_valid(record, today) or record.get("source_digest") != digest:
+        elif not _review_valid(record, today) or record.get("review_digest") != digest:
             errors.append(
                 f"{record.get('id', 'unknown')}: stale or invalid source review"
             )
@@ -96,10 +100,10 @@ def check_vulnerabilities(
                     and bool(disposition.get("evidence"))
                     and all(_source(e) for e in disposition["evidence"])
                     and re.fullmatch(
-                        r"[0-9a-f]{64}", disposition.get("source_digest", "")
+                        r"[0-9a-f]{64}", disposition.get("review_digest", "")
                     )
                     is not None
-                    and disposition["source_digest"] == assurance.get("source_digest")
+                    and disposition["review_digest"] == assurance.get("review_digest")
                     and bool(disposition.get("required_predicates"))
                     and all(
                         assurance.get("predicates", {}).get(name) is True
