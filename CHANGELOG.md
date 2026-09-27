@@ -26,6 +26,13 @@
   verification. Move Profile reports and Derivations to CONTRIBUTING.md as a
   maintainer procedure.
 
+### Contributor checks
+
+- Centralize repository agent skills in `.skills/`, including release preparation
+  and publication. Route every skill from `AGENTS.md` and remove the repository
+  Claude Code settings so agents can read the same procedures across harnesses.
+  Require verification of the README PyPI badge during release closeout.
+
 ## 0.3.0 — 2026-09-27
 
 ### Deployment

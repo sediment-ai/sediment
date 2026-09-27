@@ -116,7 +116,7 @@ PATH_ANCHORS = (
     "scripts/",
     "litellm/",
     "sim/",
-    ".claude/",
+    ".skills/",
     ".github/",
 )
 
