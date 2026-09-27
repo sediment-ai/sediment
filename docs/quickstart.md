@@ -96,8 +96,8 @@ mkdir "$HOME/sediment-quickstart" &&
 ```
 
 `install` adds repository git hooks, user-level hooks for detected agents, and
-an environment file. For pi, check the
-[release and runtime requirements](capture/agent-integrations.md#pi).
+an environment file. For pi, first meet the requirements in
+[Capture pi work](capture/agents/pi.md#before-you-begin).
 
 Verify:
 

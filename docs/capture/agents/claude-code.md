@@ -20,10 +20,9 @@ produce pathless or no Facts.
 
 ## Before you begin
 
-You need the Sediment CLI, an endpoint and ingest-only token, a git repository, and
-Claude Code installed under `~/.claude`.
-
-For deployment and shared setup, see [Configure local capture](../local-capture.md).
+Install the CLI and get a capture token with
+[Configure local capture](../local-capture.md). Start Claude Code once so that
+`~/.claude` exists.
 
 ## Install capture
 
@@ -43,11 +42,8 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
    `PostToolUse` entry to `~/.claude/settings.json`, installs the repository git
    hooks, and writes the telemetry environment from the saved login.
 
-   If `~/.claude` doesn't exist, the installer skips the Claude Code hook.
-   Install or start Claude Code, then run `sediment install` again.
-
 3. End active Claude Code Sessions, then load the environment and start Claude
-   Code in the enrolled repository:
+   Code in the repository:
 
    ```bash
    . "$HOME/.sediment/env.sh"
@@ -57,24 +53,19 @@ For deployment and shared setup, see [Configure local capture](../local-capture.
 
 ## Configure Developer decisions
 
-The environment written by `sediment install` enables Claude Code telemetry,
-OpenTelemetry Protocol (OTLP) HTTP/JSON logs, tool details, and authenticated
-delivery to the Sediment endpoint. Passing `--user-id` also stamps `user.id`.
-
-If mobile device management (MDM) or an agent service owns the environment,
-distribute the same values from
+The environment that `sediment install` writes turns on Claude Code's
+OpenTelemetry Protocol (OTLP) logs and sends them to Sediment. If mobile device
+management (MDM) or a service owns the environment, set the variables in
 [Distribute decision telemetry](../managed-capture.md#distribute-decision-telemetry)
-instead of relying on the installer-written shell files.
+there instead.
 
-Claude Code emits accepted and rejected Developer decisions. A user approval
-or refusal has `explicit=true`. A configuration or hook approval has
-`explicit=false`. Missing tool details can preserve a decision with an empty
-file path.
+A user's approval or refusal has `explicit=true`. An approval from
+configuration or a hook has `explicit=false`.
 
 ## Configure inference-call capture
 
-If your deployment exposes a compatible large language model (LLM) gateway,
-rerun the installer with its URL and client key:
+If your deployment runs a model gateway, rerun the installer with its URL and
+your client key:
 
 ```bash
 sediment install \
@@ -85,14 +76,12 @@ sediment install \
 . "$HOME/.sediment/env.sh"
 ```
 
-The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
-`SEDIMENT_GATEWAY_KEY`. The upstream provider key stays on the gateway host.
 [Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-sets up the server-side callback.
+sets up the gateway side.
 
-Claude Code prefers a saved subscription credential over
-`ANTHROPIC_AUTH_TOKEN`. If this machine must use the gateway, run
-`claude logout` once and restart Claude Code from the configured shell.
+Claude Code prefers a saved subscription sign-in over `ANTHROPIC_AUTH_TOKEN`.
+To use the gateway, run `claude logout` once, and restart Claude Code from the
+configured shell.
 
 The Claude desktop app pins its bundled CLI to `api.anthropic.com`. Desktop
 Sessions can export Developer decisions through OTLP, but they can't use this
@@ -100,62 +89,46 @@ gateway route.
 
 ## Configure Edit observations
 
-Transcript capture sends applied edit text and Session-end file content. It is
-a different privacy class from commit Attribution, so the installer leaves it
-off unless you opt in.
+Transcript capture sends applied edit text and the file's content at Session
+end, so it's off until you opt in. Rerun the installer with `--transcripts`
+added to your usual flags, and restart Claude Code. If you use the gateway,
+keep `--gateway-url` and `--gateway-key` in the command:
 
-1. Persist the transcript endpoint and token in the environment that starts
-   Claude Code:
+```bash
+sediment install --user-id alice --transcripts /path/to/repo
+. "$HOME/.sediment/env.sh"
+```
 
-   ```bash
-   export SEDIMENT_OTLP_ENDPOINT=https://sediment-api.example.com
-   export SEDIMENT_INGEST_TOKEN='<ingest-only token>'
-   ```
-
-2. Install the `SessionEnd` extractor and `PreToolUse` snapshot hook:
-
-   ```bash
-   sediment install --transcripts --no-env /path/to/repo
-   ```
-
-   The extractor emits Edit observations for successful `Edit` and `Write`
-   calls. It can also emit Rejected edits, Retry linkages, and external line
-   counts.
-
-3. Restart Claude Code after you install the hooks.
-
+The installer adds a `SessionEnd` extractor and a `PreToolUse` snapshot hook.
+The extractor emits Edit observations for successful `Edit` and `Write` calls,
+plus Rejected edits, Retry linkages, and external line counts.
 [Opt in to transcript capture](../local-capture.md#opt-in-to-transcript-capture)
-defines the shared endpoint safety rules and payload limits.
+covers the `--no-env` case.
 
 ## Verify capture
 
-Remote checks require a separate [operator login](../local-capture.md#verify-capture).
+Remote checks need a separate [operator login](../local-capture.md#verify-capture).
 
-1. Check the agent and repository configuration:
+1. Check the configuration, and note the current counts:
 
    ```bash
    sediment doctor --fetch /path/to/repo
+   sediment facts
    ```
 
-2. Ask Claude Code to edit a file.
-
-3. Commit the change.
-
-4. Inspect the Session note from inside the repository:
+2. Ask Claude Code to edit a file, and commit the change.
+3. Read the commit's Session note:
 
    ```bash
    git notes --ref=refs/notes/sediment show HEAD
    ```
 
-5. After telemetry flushes, inspect the deployment:
+4. After telemetry flushes, run `sediment facts` again. `developer_decisions`
+   grows. With transcript capture, `edit_observations` can also grow after the
+   Session ends.
 
-   ```bash
-   sediment facts
-   ```
-
-`developer_decisions` grows after supported edit-tool decisions. If you opted
-in to transcript capture, `edit_observations`, `rejected_edits`, and
-`retry_linkages` can grow after the Session ends.
+`sediment doctor --agent` doesn't support Claude Code, so compare counts
+instead.
 
 ## Limits and troubleshooting
 

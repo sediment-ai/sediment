@@ -92,7 +92,7 @@ The sanctioned client, `cli/sediment_cli/transcript.py`, runs as `sediment trans
 `scripts/sediment_transcript.py` is the checkout shim. Harness parsers register in `_PARSERS`;
 the client pairs, caps, and POSTs records. JSONL framing splits on LF, preserving Unicode separators in content.
 A non-Python harness may emit the wire shape directly and owns its privacy contract.
-Pi resolves relative paths from header `cwd` and excludes proven inherited fork messages; [Pi source boundaries](../capture/agent-integrations.md#pi) define bounded parent reads and counted declines.
+Pi resolves relative paths from header `cwd` and excludes proven inherited fork messages; [Pi source boundaries](../capture/agents/pi.md#configure-edit-observations) define bounded parent reads and counted declines.
 Codex Add reads `content`; Update reads complete unified-diff hunks. Shell Update patches permit the first hunk without `@@`, including move and end-of-file markers. Shell patches use explicit `workdir` (Session cwd only when absent) and anchored result headers before stdout.
 Codex 0.153.4 `item_completed` / `FileChange` requires matching Session identity,
 an event timestamp, native `item.id`, and `status=completed`; stdout isn't success evidence.

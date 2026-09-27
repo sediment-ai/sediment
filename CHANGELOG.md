@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Capture
+
+- Restructure the Capture docs. Capture pi work moves out of Agent
+  integrations into its own page, like the other agents. Agent integrations
+  becomes a comparison page that also shows Inference-call support. To opt in
+  to transcript capture, rerun `sediment install` with `--transcripts`; the
+  generated environment already holds the endpoint and token. Configure local
+  capture, Roll out managed capture, and the agent guides drop repeated steps,
+  and managed capture puts the GitHub webhooks first.
+
 ### Deployment
 
 - Restructure the Operate docs into one path: deploy on EC2 or on your own
