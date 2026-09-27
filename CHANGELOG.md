@@ -41,7 +41,7 @@
 ### Contributor checks
 
 - Skip the artifact scans for pull requests that change only Markdown under
-  `docker/` or `security/`, such as the Compose runbook. No image or scanner
+  `docker/` or `security/`, such as the gateway README. No image or scanner
   verdict depends on Markdown.
 - Route agents through `AGENTS.md` alone. Claude Code reads it directly, so
   remove `CLAUDE.md` and the `SessionStart` hook that repeated it, and stop
