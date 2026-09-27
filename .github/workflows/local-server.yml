@@ -30,6 +30,14 @@ jobs:
       - name: Install maintained macOS libraries
         if: runner.os == 'macOS'
         run: |
+          # Homebrew publishes no Intel bottles (Tier 3), so an upgrade there
+          # compiles OpenSSL from source for about ten minutes. Intel keeps the
+          # runner image's libpq and OpenSSL, which GitHub refreshes weekly.
+          if [[ "$RUNNER_ARCH" == X64 ]]; then
+            HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_UPGRADE=1 \
+              brew install libpq openssl@3
+            exit 0
+          fi
           brew update
           brew install libpq openssl@3
           brew upgrade libpq openssl@3

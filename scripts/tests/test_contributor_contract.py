@@ -237,6 +237,7 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     )
     assert tree_scan["if"] == (
         "github.event_name == 'pull_request' || "
+        "github.event_name == 'merge_group' || "
         "github.event_name == 'workflow_dispatch'"
     )
     assert "git archive HEAD" in tree_scan["run"]
@@ -269,9 +270,14 @@ def test_manual_secret_scan_resolves_only_proposed_history(tmp_path, proposal) -
     assert resolve["env"]["DEFAULT_BRANCH"] == (
         "${{ github.event.repository.default_branch }}"
     )
-    assert history["with"]["base"] == "${{ steps.secret-range.outputs.base || '' }}"
+    # The action has no merge_group range; unbounded, it scans all history.
+    assert history["with"]["base"] == (
+        "${{ steps.secret-range.outputs.base || "
+        "github.event.merge_group.base_sha || '' }}"
+    )
     assert history["with"]["head"] == (
-        "${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}"
+        "${{ (github.event_name == 'workflow_dispatch' || "
+        "github.event_name == 'merge_group') && github.sha || '' }}"
     )
     assert history["if"] == (
         "github.event_name != 'workflow_dispatch' || "

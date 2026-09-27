@@ -25,6 +25,9 @@ SOURCE_FILES = (
     ".env.example",
     "docker-compose.yml",
 )
+# Retained dispositions bind to the image build inputs, not application source.
+REVIEW_DIRS = ("docker",)
+REVIEW_FILES = ("Dockerfile", "uv.lock", ".env.example", "docker-compose.yml")
 EXCLUDED = {
     "tests",
     "test",
@@ -209,10 +212,24 @@ def gzip_write_api_unreachable(image_id: str) -> bool:
 
 def source_digest(root: Path = ROOT) -> str:
     """Hash deployed source paths, content, and executable bits in stable order."""
-    paths = {root / name for name in SOURCE_FILES}
+    return _tree_digest(root, SOURCE_FILES, SOURCE_DIRS)
+
+
+def review_digest(root: Path = ROOT) -> str:
+    """Hash the image build inputs that retained dispositions were reviewed against.
+
+    Application source is excluded: a Python change cannot alter the installed
+    native packages, and every scan measures the required predicates on the
+    built image. Image provenance labels keep using ``source_digest``.
+    """
+    return _tree_digest(root, REVIEW_FILES, REVIEW_DIRS)
+
+
+def _tree_digest(root: Path, files: tuple[str, ...], dirs: tuple[str, ...]) -> str:
+    paths = {root / name for name in files}
     if not all(path.is_file() for path in paths):
         raise AssuranceFailure("required production source input is missing")
-    for name in SOURCE_DIRS:
+    for name in dirs:
         directory = root / name
         if directory.is_symlink() or not directory.is_dir():
             raise AssuranceFailure("required production source directory is missing")
@@ -919,6 +936,7 @@ def collect_assurance(
         "architecture": architecture,
         "image_id": image_id,
         "source_digest": source_digest(root),
+        "review_digest": review_digest(root),
         "predicates": predicates,
         "image": observed,
         "postgres": postgres,
@@ -953,6 +971,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("source-digest", help="print the deployed production source digest")
+    sub.add_parser(
+        "review-digest", help="print the image build input digest dispositions bind to"
+    )
     collect = sub.add_parser(
         "collect", help="measure an exact image and checked-in deployment"
     )
@@ -964,6 +985,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "source-digest":
             print(source_digest())
+        elif args.command == "review-digest":
+            print(review_digest())
         else:
             collect_assurance(args.image_id, args.artifact, args.architecture, args.out)
     except AssuranceFailure as error:

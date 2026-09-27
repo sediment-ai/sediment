@@ -89,6 +89,37 @@ def test_source_digest_excludes_docs_tests_and_generated_caches(tmp_path):
         module.source_digest(root)
 
 
+def test_review_digest_tracks_image_build_inputs_but_not_application_source(tmp_path):
+    module = assurance()
+    root = source_tree(tmp_path)
+    original = module.review_digest(root)
+    for name in (
+        "packages/core/store.py",
+        "apps/api/main.py",
+        "cli/client.py",
+        "litellm/callback.py",
+        "shims/pi/index.ts",
+        "pyproject.toml",
+    ):
+        (root / name).write_text("changed application source")
+    (root / "docker/postgres/README.md").write_text("image documentation")
+    assert module.review_digest(root) == original
+    for name in (
+        "Dockerfile",
+        "uv.lock",
+        ".env.example",
+        "docker-compose.yml",
+        "docker/postgres/Dockerfile",
+    ):
+        path = root / name
+        path.write_text("changed build input")
+        assert module.review_digest(root) != original, name
+        path.write_text(name)
+    assert module.review_digest(root) == original
+    (root / "docker/postgres/entrypoint.sh").write_text("new build input")
+    assert module.review_digest(root) != original
+
+
 def test_source_digest_rejects_external_source_links(tmp_path):
     module = assurance()
     root = source_tree(tmp_path / "root")

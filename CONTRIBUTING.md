@@ -188,7 +188,9 @@ above: `.git/hooks` is shared by every worktree.
 ## Review and merging
 
 Every PR gets a maintainer review; merging requires maintainer approval.
-Maintainers manage labels, milestones, and issue closure under the
+Approved pull requests merge through the merge queue, which reruns the
+required checks against the latest `main`, so you don't need to update your
+branch before merging. Maintainers manage labels, milestones, and issue closure under the
 [issue tracker rules](docs/agents/issue-tracker.md). Architectural decisions
 belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
@@ -255,7 +257,9 @@ uv run python scripts/dump_openapi.py --check
 uv run python scripts/gen_cli_docs.py --check
 uv run python scripts/gen_api_docs.py --check
 uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
-uv run pytest -q --durations=30
+uv run pytest -q -m cluster_roles --durations=10
+uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
+uv run pytest -q -m serial --durations=10
 uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
 ```
 
@@ -561,12 +565,20 @@ When a scanner reports a vulnerability, apply an available fix. If the finding
 has no fix, document its exact scope, prerequisites, residual risk, evidence,
 owner, and expiry in [the disposition register](security/dispositions.json).
 Verify the required image and deployment conditions. Don't remove findings from
-raw reports or use a blanket exclusion. A changed source or deployment condition
-requires another review.
+raw reports or use a blanket exclusion.
 
-An independent maintainer must approve changes to dispositions or release
-gates. Contributors cannot approve their own suppressions. Source fingerprints
-and required predicates verify integrity; they do not authorize a suppression.
+Each disposition records the review digest of the image build inputs: the
+Dockerfiles, `docker/`, `uv.lock`, `docker-compose.yml`, and `.env.example`.
+Print the current value with
+`uv run --no-project python scripts/security_image_assurance.py review-digest`.
+A changed build input or deployment condition requires another review.
+Application source changes don't, because every scan measures the required
+predicates on the built image.
+
+Changes to dispositions or release gates follow the normal pull request review:
+the maintainer who approves the merge also approves the suppression. Review
+digests and required predicates verify integrity; they do not authorize a
+suppression.
 
 PostgreSQL retains native XML support that an ordinary SQL role can invoke.
 A `mitigated` XML finding relies on the measured database access and containment
@@ -592,10 +604,16 @@ Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
 source, or scanner error blocks the gate. Keep failed evidence for investigation.
 
-Automatic security runs check lint, formatting, review dates, and source
-fingerprints before building. If a review expires, run the workflow manually to
+Automatic security runs check lint, formatting, review dates, and review
+digests before building. If a review expires, run the workflow manually to
 collect evidence, then review or remove the disposition. Manual and release
 runs still enforce the final scanner gate.
+
+Pull requests and merge groups build and scan artifacts only when they change a
+scan input that `scripts/ci_preflight.py` lists. Pushes to `main`, a daily run,
+manual runs, and releases always scan. The
+[security drift workflow](.github/workflows/security-drift.yml) opens or updates
+one `security` issue when a run on `main` fails.
 
 Draft pull requests wait until review readiness. The
 [prose validation path](docs/onboarding.md#your-first-pull-request) doesn't produce
