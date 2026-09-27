@@ -73,30 +73,15 @@ file path.
 
 ## Configure inference-call capture
 
-If your deployment exposes a compatible large language model (LLM) gateway,
-rerun the installer with its URL and client key:
+If your operator routes Claude Code through a gateway, the operator distributes
+the gateway URL and credential through Claude Code managed settings.
+[Distribute gateway routing](../managed-capture.md#distribute-gateway-routing)
+defines them. You don't need a gateway credential of your own, and
+`sediment install` doesn't change the route.
 
-```bash
-sediment install \
-  --gateway-url https://sediment-llm.example.com \
-  --gateway-key "$SEDIMENT_GATEWAY_KEY" \
-  --user-id alice \
-  /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
-`SEDIMENT_GATEWAY_KEY`. The upstream provider key stays on the gateway host.
-[Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-sets up the server-side callback.
-
-Claude Code prefers a saved subscription credential over
-`ANTHROPIC_AUTH_TOKEN`. If this machine must use the gateway, run
-`claude logout` once and restart Claude Code from the configured shell.
-
-The Claude desktop app pins its bundled CLI to `api.anthropic.com`. Desktop
-Sessions can export Developer decisions through OTLP, but they can't use this
-gateway route.
+While the gateway credential is active, Claude Code doesn't use your claude.ai
+subscription. The Claude desktop app reads gateway routing from its own
+configuration and ignores these managed settings.
 
 ## Configure Edit observations
 

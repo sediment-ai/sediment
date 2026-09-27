@@ -79,9 +79,8 @@ Session:
 sediment install --user-id alice --codex-profile sediment /path/to/repo
 ```
 
-Repeat any gateway arguments used for the generated environment. If you need
-only a profile refresh, add `--no-env`; update other agents' token environments
-through their existing owner.
+If you need only a profile refresh, add `--no-env`; update other agents' token
+environments through their existing owner.
 
 If the profile already has an unmanaged `[otel]` table, use another profile name
 or remove that table yourself. The installer refuses malformed or conflicting
@@ -100,49 +99,26 @@ decision event.
 
 ## Configure inference-call capture
 
-If the deployment exposes a Responses API gateway that serves your selected
-Codex model, do the following. Configure that model on the gateway first; the
-bundled Claude-only example doesn't serve native OpenAI model requests.
+If your operator routes Codex through a gateway, the operator distributes the
+`sediment` provider, the `gateway` profile, and its credential.
+[Distribute gateway routing](../managed-capture.md#distribute-gateway-routing)
+defines them. You don't need a gateway credential of your own.
 
-1. Add a provider to `<Codex home>/config.toml`:
-
-   ```toml
-   [model_providers.sediment]
-   name = "Sediment gateway"
-   base_url = "https://sediment-llm.example.com/v1"
-   env_key = "SEDIMENT_GATEWAY_KEY"
-   wire_api = "responses"
-   ```
-
-2. In `<Codex home>/gateway.config.toml`, select the provider and disable the
-   unsupported image tool. Preserve other settings in that profile:
-
-   ```toml
-   model_provider = "sediment"
-
-   [features]
-   image_generation = false
-   ```
-
-3. Add native telemetry to the gateway profile:
+1. Add native telemetry to the gateway profile:
 
    ```bash
    sediment install --codex-profile gateway --no-env /path/to/repo
    ```
 
-4. Start Codex with the gateway key:
+2. Start Codex with the gateway profile:
 
    ```bash
-   SEDIMENT_GATEWAY_KEY='<gateway client key>' \
    codex --profile gateway -C /path/to/repo
    ```
 
-The gateway profile disables `image_generation` because the LiteLLM
-bridge rejects that tool. Codex carries Session identity in
-`x-codex-turn-metadata`; this route doesn't carry a user identifier.
-
-[Configure inference-call capture](../managed-capture.md#configure-inference-call-capture)
-describes the required server-side capture integration.
+The gateway profile disables `image_generation` because the LiteLLM bridge
+rejects that tool. Codex carries Session identity in `x-codex-turn-metadata`;
+this route doesn't carry a user identifier.
 
 ## Configure Edit observations
 

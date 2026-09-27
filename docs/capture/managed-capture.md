@@ -15,7 +15,7 @@ Start with the deployed API. For each enabled path, obtain the following access:
 | --- | --- |
 | GitHub webhooks | Repository administrator access and the deployment's webhook secret |
 | Private mirrors | Read-only repository credentials for the API |
-| Gateway | Its configuration, provider credentials, and a named ingest-only token |
+| Gateway | Its configuration, provider credentials, a named ingest-only token, and a way to distribute client routing |
 | Fleet hooks | Mobile device management (MDM) access and Python 3.12 on each macOS or Linux machine |
 
 Native Windows capture is unsupported. The installer requires POSIX file locks
@@ -127,11 +127,103 @@ If the integration buffers payloads, agree its storage, retention, retries,
 and recovery behavior. A successful model response doesn't establish capture.
 See [Gateway request and capture paths](../explanation/how-capture-works.md#gateway-request-and-capture-paths).
 
-### Configure Codex for a compatible gateway
+### Distribute gateway routing
 
-Codex requires a compatible Responses API route for its chosen model.
-[Configure inference-call capture for Codex](agents/codex.md#configure-inference-call-capture)
-defines its client configuration and capture limits.
+A gateway records only the model requests that an agent sends to it. Each agent
+needs the gateway URL and a client credential in the environment that starts
+it. Distribute both through the configuration that you manage, such as MDM or
+an agent service definition. `sediment install` doesn't configure gateway
+routing, and developers don't request a gateway credential.
+
+Keep provider keys on the gateway. Give each machine a client credential that
+the gateway accepts and that can't administer the gateway. The bundled LiteLLM
+gateway accepts only `LITELLM_MASTER_KEY`, its administrative key, and can't
+issue per-developer keys. Keep that key on machines that the operator controls.
+
+Routed requests use the gateway's provider key. While a gateway credential is
+active, Claude Code doesn't use the developer's claude.ai subscription.
+
+#### Claude Code
+
+Merge the gateway route into the Claude Code managed settings file and preserve
+its other keys. The file is
+`/Library/Application Support/ClaudeCode/managed-settings.json` on macOS and
+`/etc/claude-code/managed-settings.json` on Linux:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://sediment-llm.example.com"
+  },
+  "apiKeyHelper": "<credential helper command>"
+}
+```
+
+`apiKeyHelper` names a command that prints the client credential. Claude Code
+sends its output in the `Authorization` and `x-api-key` headers and reruns the
+command after five minutes by default. The Claude desktop app reads gateway
+routing from its own configuration, not from this file.
+
+#### Codex
+
+If the gateway serves the Responses API for the developer's selected Codex
+model, distribute the following files. The bundled gateway serves only
+`claude-*` models.
+
+1. Add a provider to `<Codex home>/config.toml`:
+
+   ```toml
+   [model_providers.sediment]
+   name = "Sediment gateway"
+   base_url = "https://sediment-llm.example.com/v1"
+   env_key = "SEDIMENT_GATEWAY_KEY"
+   wire_api = "responses"
+   ```
+
+2. In `<Codex home>/gateway.config.toml`, select the provider and disable the
+   image tool, which the LiteLLM bridge rejects. Preserve other settings in that
+   profile:
+
+   ```toml
+   model_provider = "sediment"
+
+   [features]
+   image_generation = false
+   ```
+
+3. Set `SEDIMENT_GATEWAY_KEY` in the environment that starts Codex.
+
+[Capture Codex work](agents/codex.md#configure-inference-call-capture) adds
+telemetry to the gateway profile.
+
+#### pi
+
+Merge this provider into `~/.pi/agent/models.json` and preserve existing
+providers. Replace the URL and model placeholder with the deployment values:
+
+```json
+{
+  "providers": {
+    "sediment": {
+      "baseUrl": "https://sediment-llm.example.com",
+      "api": "anthropic-messages",
+      "apiKey": "$SEDIMENT_GATEWAY_KEY",
+      "models": [{"id": "<existing Anthropic model ID>"}]
+    }
+  }
+}
+```
+
+Set `SEDIMENT_GATEWAY_KEY` in the environment that starts pi. `apiKey` holds
+`$SEDIMENT_GATEWAY_KEY` literally so that pi resolves the variable.
+
+If pi's custom-model defaults differ, copy input capabilities, reasoning
+settings, context, and output limits from the existing model definition.
+Omitted price fields aren't evidence of zero cost.
+
+The pi extension defaults to provider `sediment` and API `anthropic-messages`.
+If you use another registered provider or API, set `SEDIMENT_PROVIDER_ID` and
+`SEDIMENT_PROVIDER_API` to match it.
 
 ## Distribute decision telemetry
 

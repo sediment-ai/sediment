@@ -1,8 +1,7 @@
 USAGE:
   sediment install [-h] [--no-agents] [--transcripts] [--no-env]
-                   [--user-id USER_ID] [--codex-profile NAME]
-                   [--gateway-url GATEWAY_URL] [--gateway-key GATEWAY_KEY]
-                   [--fleet] [--out DIR | --apply] [--prefix PREFIX]
+                   [--user-id USER_ID] [--codex-profile NAME] [--fleet]
+                   [--out DIR | --apply] [--prefix PREFIX]
                    [repo]
 
 ARGUMENTS:
@@ -27,11 +26,6 @@ OPTIONS:
   --codex-profile NAME  write a Codex telemetry profile with resolved login
                         credentials (0600); preserve its model and unrelated
                         settings
-  --gateway-url GATEWAY_URL
-                        also wire ANTHROPIC_BASE_URL to this LLM gateway
-  --gateway-key GATEWAY_KEY
-                        also wire ANTHROPIC_AUTH_TOKEN and SEDIMENT_GATEWAY_KEY
-                        (the key agents present to the gateway)
   --fleet               emit the machine-wide MDM bundle instead of a per-repo
                         install
   --out DIR             fleet: emit the bundle to DIR (default: ./sediment-

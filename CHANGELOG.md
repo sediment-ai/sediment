@@ -16,6 +16,15 @@
   verification. Move Profile reports and Derivations to CONTRIBUTING.md as a
   maintainer procedure.
 
+### Command line
+
+- Remove `sediment install --gateway-url` and `--gateway-key`. The operator
+  distributes gateway routing and client credentials through managed settings
+  or MDM; developers no longer receive a gateway key. Reinstalling drops
+  `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
+  the generated environment files. See
+  [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+
 ## 0.3.0 — 2026-09-27
 
 ### Deployment

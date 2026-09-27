@@ -135,38 +135,9 @@ your ingest token or operator login.
 
 ### Configure inference-call capture for pi
 
-Configure the gateway to serve the developer's existing model before routing
-traffic. Follow [Configure inference-call capture](managed-capture.md#configure-inference-call-capture)
-for the capture callback.
-
-For pi using an Anthropic-compatible route, merge this provider into
-`~/.pi/agent/models.json`. Preserve existing providers. Replace the URL and
-model placeholder with the deployment values:
-
-```json
-{
-  "providers": {
-    "sediment": {
-      "baseUrl": "https://sediment-llm.example.com",
-      "api": "anthropic-messages",
-      "apiKey": "$SEDIMENT_GATEWAY_KEY",
-      "models": [{"id": "<existing Anthropic model ID>"}]
-    }
-  }
-}
-```
-
-Load `SEDIMENT_GATEWAY_KEY` from the team's credential mechanism into the pi
-environment. `apiKey` uses `$SEDIMENT_GATEWAY_KEY` literally in the JSON file so
-pi resolves the variable.
-
-If pi's custom-model defaults differ, copy input capabilities, reasoning
-settings, context, and output limits from the existing model definition.
-Omitted price fields aren't evidence of zero cost.
-
-The shim defaults to provider `sediment` and API `anthropic-messages`. If you
-use another registered provider or API, set `SEDIMENT_PROVIDER_ID` and
-`SEDIMENT_PROVIDER_API` to match it.
+If your operator routes pi through a gateway, the operator distributes the
+`sediment` provider and its credential. [Distribute gateway routing](managed-capture.md#distribute-gateway-routing)
+defines both. You don't need a gateway credential of your own.
 
 Open `/model` to reload the model file, then select the matching model. To start
 a separate Session, replace the repository path and model ID:

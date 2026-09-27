@@ -109,10 +109,9 @@ they don't depend on Cursor inheriting the shell environment. After upgrading,
 rerun `sediment install` to update the hook commands. With `--no-env`, Cursor
 hooks use the process environment instead.
 
-When you rewrite the generated environment, repeat the original `--user-id`,
-`--gateway-url`, and `--gateway-key` values that you still need. An ordinary
-reinstall preserves an existing generated pi transcript opt-in. It doesn't
-preserve omitted identity or gateway arguments.
+When you rewrite the generated environment, repeat the original `--user-id`
+value. An ordinary reinstall preserves an existing generated pi transcript
+opt-in. It doesn't preserve an omitted identity.
 
 Follow your [agent guide](agent-integrations.md) to select its telemetry profile
 or trust its hooks. For integrations that inherit environment settings, start
@@ -121,31 +120,13 @@ desktop process first; it can retain the old environment.
 
 [Verify capture](#verify-capture) before adding optional channels.
 
-## Route inference calls through a gateway
+## Capture inference calls
 
-If your deployment exposes a large language model (LLM) gateway, add its URL
-and client key:
-
-```bash
-sediment install \
-  --gateway-url https://sediment-llm.example.com \
-  --gateway-key "$SEDIMENT_GATEWAY_KEY" \
-  --user-id '<developer>' \
-  /path/to/repo
-. "$HOME/.sediment/env.sh"
-```
-
-Restart the agent from this shell before verifying gateway capture.
-
-The installer writes `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and
-`SEDIMENT_GATEWAY_KEY` into the agent environment. The upstream provider key
-stays on the gateway host.
-
-For the client-side route and its limits, follow
-[Capture Claude Code work](agents/claude-code.md#configure-inference-call-capture)
-or [Capture Codex work](agents/codex.md#configure-inference-call-capture). For
-the server-side callback and gateway setup, follow
-[Configure inference-call capture](managed-capture.md#configure-inference-call-capture).
+If your deployment captures Inference calls, the operator routes agents through
+its gateway and distributes the gateway URL and client credential.
+[Distribute gateway routing](managed-capture.md#distribute-gateway-routing)
+defines both. `sediment install` doesn't configure gateway routing, and you
+don't need a gateway credential of your own.
 
 ## Opt in to transcript capture
 
@@ -171,9 +152,8 @@ Add the transcript hooks:
 sediment install --transcripts --no-env /path/to/repo
 ```
 
-`--no-env` preserves the `--user-id` and gateway settings from the earlier
-install. Restart the agent after you persist the variables and install the
-hooks.
+`--no-env` preserves the `--user-id` setting from the earlier install. Restart
+the agent after you persist the variables and install the hooks.
 
 For pi content capture with `--no-env`, also set
 `SEDIMENT_PI_TRANSCRIPTS=1` in the environment that starts pi. Only that exact
