@@ -59,5 +59,8 @@
   `0.3.0`; both the Shields source SVG and GitHub's cached README image report
   `pypi: v0.3.0`. The dynamic image and its PyPI project link were correct, so
   no README edit or cache purge was needed.
+- A subsequent stale-badge report required a README update: add
+  `release=0.3.0` to the dynamic image URL so readers request a distinct image.
+  The refreshed Shields URL reports `pypi: v0.3.0`.
 - The owned local PostgreSQL cluster stopped after local checks. The original
   checkout and its uncommitted changes were preserved.
