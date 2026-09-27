@@ -316,9 +316,10 @@ profile doesn't reinstall something that you already removed:
    fleet prefix until nothing references it.
 2. Delete the four GitHub webhooks. For another CI system, remove its
    `POST /ingest/ci` call and its capture token.
-3. Remove each gateway's Sediment callback and capture token. Remove the
-   gateway variables and Codex profiles from client machines, and restart the
-   agents.
+3. Remove each gateway's Sediment callback and capture token. From client
+   machines, remove the gateway routing that you distributed: the Claude Code
+   `ANTHROPIC_BASE_URL` and `apiKeyHelper` settings, the Codex provider and
+   profile, the pi provider, and `SEDIMENT_GATEWAY_KEY`. Restart the agents.
 4. [Revoke the retired capture tokens](../operate/maintain.md#rotate-credentials).
    Never reuse a retired token for another client.
 5. Remove the distributed OpenTelemetry and pi variables from shell profiles,

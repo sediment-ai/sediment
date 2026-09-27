@@ -67,8 +67,8 @@ finds. It writes the capture endpoint, token, and developer identifier to
 profiles. Rerun it after you install another agent, or for another repository.
 
 Each run rewrites `env.sh` from the flags that you pass, so always pass the same
-`--user-id`. Otherwise the rerun drops it. The installer changes only Sediment's own entries in agent
-configuration.
+`--user-id`. Otherwise the rerun drops it. The installer changes only
+Sediment's own entries in agent configuration.
 
 Start each agent from a shell that loaded `env.sh`. Fully quit a running
 desktop agent first, because it keeps its old environment. Cursor is the
