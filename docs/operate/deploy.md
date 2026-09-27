@@ -1,322 +1,16 @@
 # Deploy Sediment
 
-This page is for operators who run Sediment for a team. It installs a published
-Sediment version on one Amazon Elastic Compute Cloud (EC2) instance with
-PostgreSQL and Traefik HTTPS, or on a host where you already run PostgreSQL and
-HTTPS.
+Use this page to run Sediment for a team on a host where you already manage
+PostgreSQL and HTTPS. It installs the published Sediment package. You provide
+the database, the HTTPS endpoint, and the process supervisor. The sections on
+enrollment, capture, verification, upgrades, and data handling apply to every
+deployment.
 
-- To deploy on one EC2 instance, follow
-  [Deploy on EC2 with Traefik](#deploy-on-ec2-with-traefik).
-- If you manage PostgreSQL and HTTPS separately, follow
-  [Install the published package](#install-the-published-package).
+- To deploy on one Amazon Elastic Compute Cloud (EC2) instance with PostgreSQL
+  and Traefik, follow [Deploy Sediment on EC2 with Traefik](deploy-ec2.md).
 - For a one-machine evaluation, follow the [Quickstart](../quickstart.md).
 
-## Deploy on EC2 with Traefik
-
-This procedure deploys Sediment on one Ubuntu instance with one public hostname.
-You install Sediment from the Python Package Index (PyPI) by release version and
-pull the published PostgreSQL and Traefik images. You don't need a Sediment
-checkout or an image build. The API runs under systemd as your non-root account.
-Docker Compose runs the database and the proxy.
-
-This setup captures agent and Git activity. The published package doesn't
-include a deployable LiteLLM gateway. If you also need a model gateway, follow
-[Connect a gateway](#connect-a-gateway).
-
-### Prepare the instance
-
-1. Launch an Ubuntu 24.04 instance on 64-bit Intel, AMD, or Arm hardware with at
-   least 4 virtual CPUs (vCPUs) and 8 GB of memory. Give it encrypted persistent
-   storage for the database, credentials, mirrors, and backups.
-2. Sign in over SSH as a dedicated non-root operator account that has `sudo`
-   access. Run the remaining commands in this procedure from that session.
-3. Install `curl`, OpenSSL, and Docker Engine with its Compose plugin. For
-   Docker, follow [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
-4. To run Docker as a non-root user, follow
-   [Linux post-installation steps for Docker Engine](https://docs.docker.com/engine/install/linux-postinstall/),
-   and then sign in again. Docker access gives this account root-level control
-   of the host.
-5. Run `docker info` and `docker compose version` without `sudo`. Both commands
-   succeed.
-6. Associate an [Elastic IP address](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html)
-   with the instance.
-7. Point your hostname's DNS A record at the Elastic IP address. If you also
-   publish an AAAA record, make the host reachable over IPv6.
-8. Configure the instance security group and the host firewall:
-   - Allow inbound TCP ports 80 and 443. Certificate renewal requires inbound
-     port 80 and outbound access to the certificate authority.
-   - Restrict SSH to the operator's IP address.
-   - Keep ports 5432 and 8000 private.
-
-### Install a Sediment version
-
-1. Select a [published release](https://github.com/sediment-ai/sediment/releases).
-2. Review the release's evidence with
-   [Check release and deployment security](security.md).
-3. As the operator account, run the installer. This example installs version
-   0.2.0:
-
-   ```bash
-   SEDIMENT_VERSION=0.2.0
-   SEDIMENT_INSTALLER="$(mktemp)" &&
-     curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
-     UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \
-       sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" &&
-     rm "$SEDIMENT_INSTALLER" &&
-     export PATH="$HOME/.local/bin:$PATH" &&
-     sediment --version
-   ```
-
-   Confirm that the output shows the version that you selected.
-
-If a required wheel is unavailable, `UV_NO_BUILD=1` makes the installation fail
-instead of building from source. The installer also installs Python 3.12 and
-the host libraries through package managers.
-
-### Configure PostgreSQL and Traefik
-
-1. Create a private deployment directory and its environment files. Before you
-   run the following commands, replace the example hostname, certificate contact
-   email, and organization. The commands stop if the directory already exists.
-
-   ```bash
-   umask 077
-   if mkdir -m 700 "$HOME/sediment-deploy" && cd "$HOME/sediment-deploy"; then
-   POSTGRES_PASSWORD="$(openssl rand -hex 32)"
-   cat > .env <<EOF_ENV
-   POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-   SEDIMENT_DOMAIN=sediment.example.com
-   SEDIMENT_ACME_EMAIL=operator@example.com
-   EOF_ENV
-   cat > server.env <<EOF_SERVER
-   SEDIMENT_ORG_ID=acme
-   SEDIMENT_BOOTSTRAP_DATABASE_URL=postgresql+psycopg://sediment:$POSTGRES_PASSWORD@127.0.0.1:5432/sediment
-   SEDIMENT_ALLOWED_CLONE_HOSTS=["github.com"]
-   SEDIMENT_DEV_MODE=false
-   EOF_SERVER
-   unset POSTGRES_PASSWORD
-   sudo install -d -m 700 -o root -g root certificates
-   fi
-   ```
-
-   Keep `.env`, `server.env`, and `certificates/` private. Don't source these
-   files or share them with developers.
-
-2. Save the following as `compose.yaml` in `~/sediment-deploy`:
-
-   ```yaml
-   name: sediment-deployment
-   services:
-     postgres:
-       image: postgres:17.11-bookworm
-       restart: unless-stopped
-       environment:
-         POSTGRES_DB: sediment
-         POSTGRES_USER: sediment
-         POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
-         POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=scram-sha-256
-       ports: ["127.0.0.1:5432:5432"]
-       volumes: ["postgres-data:/var/lib/postgresql/data"]
-       mem_limit: 1g
-       pids_limit: 256
-       logging:
-         driver: json-file
-         options: {max-size: 10m, max-file: "3"}
-       healthcheck:
-         test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U sediment -d sediment]
-         interval: 5s
-         timeout: 5s
-         retries: 12
-     proxy:
-       image: traefik:v3.7.13
-       restart: unless-stopped
-       network_mode: host
-       read_only: true
-       cap_drop: [ALL]
-       cap_add: [NET_BIND_SERVICE]
-       security_opt: [no-new-privileges:true]
-       mem_limit: 256m
-       pids_limit: 64
-       environment:
-         SEDIMENT_DOMAIN: "${SEDIMENT_DOMAIN:?Set SEDIMENT_DOMAIN in .env}"
-         TRAEFIK_GLOBAL_CHECKNEWVERSION: "false"
-         TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE: "false"
-         TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: :80
-         TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: websecure
-         TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
-         TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: :443
-         TRAEFIK_PROVIDERS_FILE_FILENAME: /etc/traefik/routes.yml
-         TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: "${SEDIMENT_ACME_EMAIL:?Set SEDIMENT_ACME_EMAIL in .env}"
-         TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE: /certificates/acme.json
-         TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT: web
-       volumes:
-         - ./routes.yml:/etc/traefik/routes.yml:ro
-         - ./certificates:/certificates
-       logging:
-         driver: json-file
-         options: {max-size: 10m, max-file: "3"}
-   volumes:
-     postgres-data:
-   ```
-
-3. Save the following as `routes.yml` beside `compose.yaml`:
-
-   ```yaml
-   http:
-     routers:
-       sediment:
-         rule: 'Host(`{{ env "SEDIMENT_DOMAIN" }}`)'
-         entryPoints: [websecure]
-         middlewares: [request-limit]
-         service: sediment
-         tls:
-           certResolver: letsencrypt
-     middlewares:
-       request-limit:
-         rateLimit:
-           average: 100
-           burst: 200
-     services:
-       sediment:
-         loadBalancer:
-           servers:
-             - url: http://127.0.0.1:8000
-   ```
-
-4. Make the routing file readable by the proxy, and then start the database:
-
-   ```bash
-   chmod 644 routes.yml
-   docker compose pull
-   docker compose up -d --wait postgres
-   ```
-
-   Confirm that PostgreSQL reports `healthy`. If it doesn't, inspect
-   `docker compose logs --tail 100 postgres` before you continue.
-
-On Linux, host networking lets Traefik reach the API on loopback. The Traefik
-container runs as root with only the capability to bind ports 80 and 443. It
-writes certificates to the root-owned private `certificates/` directory. It
-gets no Docker socket, database password, or Sediment credential.
-
-Sediment's image scan reports cover its contributor images, not these upstream
-images. Track PostgreSQL and Traefik releases separately from the Sediment
-package. For release details, see the
-[postgres official image](https://hub.docker.com/_/postgres) and the
-[Traefik Proxy documentation](https://doc.traefik.io/traefik/).
-
-### Run the installed package as a service
-
-1. Create the systemd user directory:
-   `mkdir -p ~/.config/systemd/user`.
-2. Save the following unit as `~/.config/systemd/user/sediment.service`:
-
-   ```ini
-   [Unit]
-   Description=Sediment API
-
-   [Service]
-   ExecStart=%h/.local/bin/sediment server --host 127.0.0.1 --port 8000
-   EnvironmentFile=%h/sediment-deploy/server.env
-   Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-   Restart=on-failure
-   RestartSec=5
-   TimeoutStopSec=120
-   UMask=0077
-   NoNewPrivileges=yes
-   MemoryMax=2G
-   TasksMax=256
-
-   [Install]
-   WantedBy=default.target
-   ```
-
-3. Enable startup at boot and after logout, and then start Sediment:
-
-   ```bash
-   sudo loginctl enable-linger "$USER"
-   systemctl --user daemon-reload
-   systemctl --user enable --now sediment.service
-   systemctl --user status sediment.service
-   curl -fsS http://127.0.0.1:8000/health
-   ```
-
-   Confirm that the health response shows `status: "ok"` and the version that
-   you selected. If startup fails, inspect
-   `journalctl --user -u sediment.service -n 100 --no-pager`.
-
-Startup provisions separate database roles and applies migrations. The API
-receives only runtime database authority. `~/.sediment/server/server.env` holds
-the generated API credentials and database-role passwords.
-`~/.sediment/server/mirror` holds the mirrors. Keep `~/.sediment/server` on
-persistent storage.
-
-### Enable and verify HTTPS
-
-1. From `~/sediment-deploy`, start Traefik and check the public endpoint:
-
-   ```bash
-   docker compose up -d proxy
-   docker compose logs --tail 100 proxy
-   curl -fsS https://sediment.example.com/health
-   ```
-
-   Confirm that the health response shows `status: "ok"` and the installed
-   version. Don't bypass certificate verification.
-
-2. [Enroll named capture clients](#enroll-named-capture-clients). After you
-   change credentials, restart Sediment with
-   `systemctl --user restart sediment.service`.
-3. Give developers `https://sediment.example.com` as the endpoint.
-4. [Configure capture](#4-configure-capture).
-5. [Verify the deployment](#5-verify-the-deployment). A health check doesn't
-   prove capture or provider access.
-
-Traefik obtains and renews the certificate. It also redirects HTTP to HTTPS. If
-certificate issuance fails, check public DNS, ports 80 and 443, and the proxy
-log. After you correct DNS, run `docker compose restart proxy` and repeat the
-public health check. Preserve `certificates/acme.json` across restarts.
-
-The request limit applies to each direct peer address: an average of 100
-requests per second, with bursts of 200. Clients behind one outbound address
-share that limit.
-
-### Operate and upgrade this installation
-
-| Task | Command |
-| --- | --- |
-| Stop the API | `systemctl --user stop sediment.service` |
-| Restart the API | `systemctl --user restart sediment.service` |
-| Stop the database and proxy | `docker compose stop`, from `~/sediment-deploy` |
-| Start the database and proxy | `docker compose up -d`, from `~/sediment-deploy` |
-
-PostgreSQL runs independently of the API. Stop the API before you stop the
-database.
-
-**Warning:** `docker compose down --volumes` permanently deletes the database.
-Use `--volumes` only when you intend to delete it.
-
-- Before an upgrade, follow [Back up and restore](#back-up-and-restore). Retain
-  the `postgres-data` volume, `~/sediment-deploy`, and `~/.sediment/server`.
-- To upgrade Sediment, follow [Upgrade the deployment](#6-upgrade-the-deployment)
-  with the target package version. Stop `sediment.service` before you install
-  the package, and restart it afterward.
-- To upgrade PostgreSQL or Traefik, follow its own release instructions. Don't
-  change the PostgreSQL major version on an existing volume.
-
-A single instance is a single point of failure. Before you enroll developers,
-set storage quotas, monitor service restarts, and test restoring an encrypted
-backup.
-
-## Install the published package
-
-If you already run PostgreSQL and an HTTPS endpoint, use this procedure to
-install the API on a shared host. This procedure installs only the Sediment
-package. You provide the database, the HTTPS endpoint, and the process
-supervisor. For the complete EC2 procedure, follow
-[Deploy on EC2 with Traefik](#deploy-on-ec2-with-traefik).
-
-### 1. Prerequisites
+## 1. Prerequisites
 
 You need the following:
 
@@ -330,7 +24,7 @@ Use a dedicated operating-system account for Sediment. Keep the database on a
 private network. Start with at least 4 CPU cores and 8 GB of memory. Then check
 capacity for your workload with [Validate a deployment](validate-deployment.md).
 
-### 2. Deploy the API
+## 2. Deploy the API
 
 As the account that runs Sediment, install the approved
 [published release](https://github.com/sediment-ai/sediment/releases). Replace
@@ -353,7 +47,7 @@ sediment --version
 
 The command prints the version that you installed.
 
-#### Configure PostgreSQL
+### Configure PostgreSQL
 
 1. Create a dedicated PostgreSQL 17 instance and database. Don't point Sediment
    at a database that another application uses.
@@ -375,7 +69,7 @@ The command prints the version that you installed.
 
 Keep this environment private. Supply it again on every server restart.
 
-#### Start the API
+### Start the API
 
 1. Start the installed server:
 
@@ -399,7 +93,7 @@ Keep this environment private. Supply it again on every server restart.
 5. Record the supervisor's start, stop, restart, and log commands.
 6. Before enrollment, apply process memory limits and storage quotas.
 
-When `SEDIMENT_BOOTSTRAP_DATABASE_URL` is set, Sediment uses that database. It
+When you set `SEDIMENT_BOOTSTRAP_DATABASE_URL`, Sediment uses that database. It
 provisions separate migrator, runtime, and operator roles. Then it starts the
 API with runtime authority. The API doesn't receive the bootstrap credential.
 
@@ -410,7 +104,7 @@ file `~/.sediment/server/server.env`. Its Git mirrors live under
 An external PostgreSQL service has its own lifecycle. Stopping Sediment doesn't
 stop that database.
 
-#### Enroll named capture clients
+### Enroll named capture clients
 
 1. Stop Sediment through the supervisor.
 2. Generate a separate token for each developer machine or gateway:
@@ -430,7 +124,7 @@ stop that database.
 Reserve `SEDIMENT_OPERATOR_TOKEN` for queries and reports. Don't share the
 configuration file or any database credential with agents.
 
-#### Run a second local deployment
+### Run a second local deployment
 
 For another shared deployment, use a separate database instance,
 operating-system account, and API port. For an isolated local evaluation, select
@@ -438,7 +132,7 @@ a separate data root and port:
 `sediment server --root /absolute/private/path --port 8001`. Don't reuse another
 deployment's credentials or organization configuration.
 
-### 3. Expose a public HTTPS endpoint
+## 3. Expose a public HTTPS endpoint
 
 1. Configure your reverse proxy to forward the HTTPS API hostname to
    `http://127.0.0.1:8000`.
@@ -458,7 +152,7 @@ deployment's credentials or organization configuration.
 A health response alone doesn't verify credentials, Git access, or webhook
 delivery.
 
-### 4. Configure capture
+## 4. Configure capture
 
 1. Enroll developers with
    [Run a Cursor, pi, and Codex pilot](run-pilot.md) or
@@ -468,7 +162,7 @@ delivery.
 3. Before you expand the deployment, verify a Session from each participating
    agent and a real push.
 
-#### Connect a gateway
+### Connect a gateway
 
 The published package doesn't include a deployable LiteLLM gateway. Run your
 gateway separately. Connect an integration that sends the capture envelope that
@@ -478,7 +172,7 @@ Keep provider credentials at the gateway. Give developers the gateway URL and a
 client credential. Don't override the model that each developer chooses. Before
 you rely on gateway reports, verify a captured Inference call.
 
-#### Enable agent-requested retrieval
+### Enable agent-requested retrieval
 
 If your client implements the retrieval API, grant it access to specific
 Sessions:
@@ -501,7 +195,7 @@ runtime requirements in the
 follow [Enable agent-requested retrieval](resume-with-evidence.md#enable-agent-requested-retrieval).
 Operators can also prepare a private evidence packet with the installed CLI.
 
-### 5. Verify the deployment
+## 5. Verify the deployment
 
 1. From the server account's terminal, sign in and list Facts:
 
@@ -534,7 +228,7 @@ Operators can also prepare a private evidence packet with the installed CLI.
 6. Before you increase scope, complete
    [Validate a deployment](validate-deployment.md).
 
-### 6. Upgrade the deployment
+## 6. Upgrade the deployment
 
 Upgrade the API before capture clients and gateway integrations.
 
@@ -578,7 +272,7 @@ operator `sediment login` again. Coordinate database-role password changes with
 the database operator and every process that uses those credentials. Preserve
 the existing database and mirror.
 
-### 7. Monitor the deployment
+## 7. Monitor the deployment
 
 In the operator shell, inspect Fact growth and reports:
 
@@ -591,7 +285,7 @@ Monitor service restarts, capture failures, database availability, storage use,
 and backup results. Apply release and host security updates within your
 maintenance deadlines. Record the exact installed versions with each report.
 
-#### Back up and restore
+### Back up and restore
 
 Use your database operator's encrypted backup procedure. Include a consistent
 PostgreSQL backup, the private server configuration, and the mirrors that
@@ -606,9 +300,9 @@ Before enrollment and after schema changes, test a restore:
    export.
 4. Record the backup timestamp, the restore result, and the recovery duration.
 
-### 8. Privacy and data handling
+## 8. Privacy and data handling
 
-#### 8.1 What Sediment stores
+### 8.1 What Sediment stores
 
 Facts can contain model inputs and outputs, patch arguments, applied text, and
 observed file content. Mirrors contain Git history. Git notes contain Session
@@ -619,7 +313,7 @@ Basic redaction isn't comprehensive secret detection. If Sediment captures a
 credential, quarantine the Facts that contain it, and rotate the credential.
 Raw buffers, mirrors, and backups remain sensitive.
 
-#### 8.2 Where data lives
+### 8.2 Where data lives
 
 | Location | Contents |
 | --- | --- |
@@ -634,7 +328,7 @@ procedures. Configure an alert that fires before storage fills. The mirror
 worker's free-space check doesn't enforce a quota. Restrict administrative
 access to the host and the database.
 
-#### 8.3 Quarantine and wholesale deletion
+### 8.3 Quarantine and wholesale deletion
 
 Quarantine excludes Facts from Derivations and exports without changing their
 rows. To quarantine Inference calls from the operator shell:
@@ -666,7 +360,7 @@ history. To delete it:
 4. Remove mirrors, exports, staging directories, and sender buffers separately,
    under their retention policies.
 
-#### 8.4 Network exposure
+### 8.4 Network exposure
 
 | Direction | Connection |
 | --- | --- |
@@ -688,7 +382,7 @@ The installer downloads packages and maintained runtime dependencies. Repository
 mirroring contacts the permitted Git hosts. Your model endpoint determines where
 inference content goes. Sediment doesn't add analytics or crash reporting.
 
-### 9. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Action |
 | --- | --- |
@@ -699,7 +393,7 @@ inference content goes. Sediment doesn't add analytics or crash reporting.
 
 For client failures, see [Repair or recover capture](../capture/local-capture.md#repair-or-recover-capture).
 
-### 10. Tear down the deployment
+## 10. Tear down the deployment
 
 1. [Uninstall capture](../capture/local-capture.md#uninstall-capture) on each
    client.

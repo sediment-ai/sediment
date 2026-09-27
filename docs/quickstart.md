@@ -1,8 +1,7 @@
 # Quickstart
 
 Run a local server and verify synthetic capture in a scratch repository.
-For a shared deployment, start at
-[Deploy the API](operate/deploy.md#2-deploy-the-api).
+For a shared deployment, start at [Deploy Sediment](operate/deploy.md).
 
 ## 0. Check the prerequisites
 
