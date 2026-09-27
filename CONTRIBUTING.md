@@ -188,9 +188,9 @@ above: `.git/hooks` is shared by every worktree.
 ## Review and merging
 
 Every PR gets a maintainer review; merging requires maintainer approval.
-Approved pull requests merge through the merge queue, which reruns the
-required checks against the latest `main`, so you don't need to update your
-branch before merging. Maintainers manage labels, milestones, and issue closure under the
+Approved pull requests squash-merge once their required checks pass. The
+checks don't require your branch to include the latest `main`. Maintainers
+manage labels, milestones, and issue closure under the
 [issue tracker rules](docs/agents/issue-tracker.md). Architectural decisions
 belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
@@ -610,10 +610,10 @@ collect evidence, then review or remove the disposition. Manual and release
 runs still enforce the final scanner gate.
 
 Pull requests and merge groups build and scan artifacts only when they change a
-scan input that `scripts/ci_preflight.py` lists. Pushes to `main`, a daily run,
-manual runs, and releases always scan. The
-[security drift workflow](.github/workflows/security-drift.yml) opens or updates
-one `security` issue when a run on `main` fails.
+scan input that `scripts/ci_preflight.py` lists. Markdown files are never scan
+inputs. Pushes to `main`, a daily run, manual runs, and releases always scan.
+The [security drift workflow](.github/workflows/security-drift.yml) opens or
+updates one `security` issue when a run on `main` fails.
 
 Draft pull requests wait until review readiness. The
 [prose validation path](docs/onboarding.md#your-first-pull-request) doesn't produce
