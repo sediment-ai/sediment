@@ -28,6 +28,9 @@
 - Test the pi shim against pi-coding-agent 0.86.1 and read its transcript-based
   tool declarations in the native test harnesses. Align the continuation
   comparison's version check with its locked evaluation image.
+- Run the Python suite on four pytest-xdist workers. Start the local-server
+  platform checks beside the suite instead of after it. Keep the Intel macOS
+  runner's libraries so that the job no longer compiles OpenSSL from source.
 - Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.6. Keep the
   TruffleHog action, executable, and complete-tree scanner image pins aligned.
 

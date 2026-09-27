@@ -33,8 +33,6 @@ jobs:
     # The repository variable lets an operator point CI at a self-hosted
     # runner without a commit; unset, it falls back to GitHub-hosted.
     runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-latest' }}
-    outputs:
-      full: ${{ steps.scope.outputs.full }}
     env:
       SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
       SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
@@ -95,6 +93,10 @@ jobs:
         run: |
           set -euo pipefail
           docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          # ponytail: the four-worker suite peaks near 4 GB of cluster data
+          # (measured 2026-09-27); the tmpfs defaults to half the runner's
+          # memory, 8 GB hosted. A smaller self-hosted runner needs a disk
+          # volume here instead.
           docker run --detach --name sediment-ci-postgres \
             -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
             -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
@@ -142,7 +144,9 @@ jobs:
           scripts/tests/test_postgresql_only_repository.py
       # Run role fixtures against the clean cluster before rehearsal provisions
       # fixed deployment identities for its installed server.
-      - run: uv run pytest -q --durations=30
+      # Four workers match the hosted runner's four vCPUs. The conftest gives
+      # each worker its own databases cloned from one migrated template.
+      - run: uv run pytest -q -n 4 --durations=30
         if: steps.scope.outputs.full == 'true'
       - name: Exercise the complete pilot Compose deployment
         if: steps.scope.outputs.full == 'true'
@@ -205,7 +209,8 @@ jobs:
         if: always() && steps.scope.outputs.full == 'true'
         run: docker rm -f sediment-ci-postgres
 
+  # Runs beside test rather than after it: waiting only to read the scope
+  # serialized the macOS legs behind the full suite. Prose-only changes also
+  # run it, which costs a few runner minutes on a non-required check.
   local-server:
-    needs: test
-    if: needs.test.outputs.full == 'true'
     uses: ./.github/workflows/local-server.yml

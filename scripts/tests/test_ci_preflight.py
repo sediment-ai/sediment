@@ -168,7 +168,7 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
             for text in (
                 "docker build --pull",
                 "sediment db upgrade",
-                "pytest -q --durations=30",
+                "pytest -q -n 4 --durations=30",
                 "scripts/release_rehearsal.py",
             )
         ):

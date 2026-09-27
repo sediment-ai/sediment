@@ -255,7 +255,7 @@ uv run python scripts/dump_openapi.py --check
 uv run python scripts/gen_cli_docs.py --check
 uv run python scripts/gen_api_docs.py --check
 uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
-uv run pytest -q --durations=30
+uv run pytest -q -n 4 --durations=30
 uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
 ```
 

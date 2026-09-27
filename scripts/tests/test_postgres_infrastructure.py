@@ -41,7 +41,7 @@ def test_ci_uses_postgres_and_upgrades_before_tests() -> None:
     )
     driver_index = next(i for i, command in enumerate(commands) if "libpq5" in command)
     migration_index = commands.index("uv run sediment db upgrade")
-    test_index = commands.index("uv run pytest -q --durations=30")
+    test_index = commands.index("uv run pytest -q -n 4 --durations=30")
     assert start_index < migration_index < test_index
     assert driver_index < migration_index
     rehearsal_index = next(
