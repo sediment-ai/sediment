@@ -147,6 +147,11 @@ pi sends `reasoning_effort` on every request, the gate rejects any other value,
 and the protocol records it. Reasoning tokens count toward `max_tokens` and
 toward output usage. Without the option, requests carry no reasoning effort.
 
+Protocol version 3 raises the gate's upstream read limit from 120 to 300
+seconds. A hosted backend sent no first response chunk within 120 seconds in
+two of three held-out preflight cycles. The 900-second run deadline still bounds
+selection plus coding.
+
 ### Freeze and execution
 
 `protocol_identity` binds the runner, selector, earlier keyword selector,

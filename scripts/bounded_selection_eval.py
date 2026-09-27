@@ -38,7 +38,11 @@ SCHEMA_VERSION = 1
 # Version 2 adds an optional fixed reasoning effort for reasoning coding models
 # (gpt-oss): the legacy profile disables reasoning, so the server default
 # applied unrecorded. The protocol binds the value and the gate enforces it.
-PROTOCOL_VERSION = 2
+# Version 3 raises the gate's upstream read limit from the legacy 120 seconds:
+# a hosted backend (Ollama cloud) sent no first chunk within 120 seconds in two
+# of three held-out preflight cycles. The run deadline still bounds each run.
+PROTOCOL_VERSION = 3
+GATE_READ_SECONDS = 300
 REASONING_EFFORTS = ("low", "medium", "high")
 # Set once from --reasoning-effort, like legacy.MODEL; None keeps the legacy
 # profile (reasoning off, no reasoning_effort parameter).
@@ -117,6 +121,7 @@ def generation_contract() -> dict:
         ),
         "context_window": CONTEXT_WINDOW,
         "coding_model_calls": legacy.MODEL_CALL_LIMIT,
+        "gate_read_seconds": GATE_READ_SECONDS,
         "selection_and_coding_seconds": legacy.RUN_SECONDS,
         "compaction": False,
         "automatic_retries": False,
@@ -282,7 +287,7 @@ class BoundedGateHandler(legacy.GateHandler):
             with httpx.Client(
                 trust_env=False,
                 follow_redirects=False,
-                timeout=httpx.Timeout(120, connect=5),
+                timeout=httpx.Timeout(GATE_READ_SECONDS, connect=5),
             ) as client:
                 with client.stream(
                     "POST",

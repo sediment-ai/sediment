@@ -822,5 +822,7 @@ def test_reasoning_profile_enables_pi_reasoning_effort(tmp_path, monkeypatch):
     monkeypatch.setattr(run, "REASONING_EFFORT", "low")
     contract = run.generation_contract()
     assert contract["reasoning_effort"] == "low"
+    assert contract["gate_read_seconds"] == 300
+    assert contract["gate_read_seconds"] < contract["selection_and_coding_seconds"]
     monkeypatch.setattr(run, "REASONING_EFFORT", None)
     assert run.generation_contract()["reasoning_effort"] is None
