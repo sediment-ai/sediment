@@ -291,6 +291,10 @@ assert ExportTraceServiceRequest.FromString(ExportTraceServiceRequest().Serializ
 exporter=OTLPSpanExporter(endpoint='127.0.0.1:4317',insecure=True)
 exporter.shutdown()
 assert FastAPIInstrumentor().instrumentation_dependencies()
+# LiteLLM 1.103.0 requires MCP 2 for its proxy and httpx[http2] at its base.
+import httpx
+import litellm.proxy._experimental.mcp_server.server
+httpx.Client(http2=True).close()
 print('protocol consumers interoperate')
 """,
     )
@@ -575,7 +579,7 @@ assert importlib.util.find_spec('backoff') is None
 for package in ('psycopg','psycopg_binary','aws_sdk_bedrock_runtime','aws_sdk_signers',
                 'smithy_aws_core','smithy_aws_event_stream','smithy_core',
                 'smithy_http','smithy_json','awscrt','ijson',
-                'google.cloud.speech','h2','hpack','hyperframe'):
+                'google.cloud.speech'):
     assert importlib.util.find_spec(package) is None, package
 assert not os.path.exists('/opt/prisma')
 import shutil

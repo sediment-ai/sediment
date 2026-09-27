@@ -3830,6 +3830,18 @@
         "0.16.0"
       ]
     },
+    "pypi/h2": {
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "evidence": "https://pypi.org/project/h2/",
+      "provider": "Upstream project",
+      "source": "https://github.com/python-hyper/h2",
+      "source_updated_at": "2026-08-05T09:02:26Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "4.4.1"
+      ]
+    },
     "pypi/hf-xet": {
       "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
       "evidence": "https://pypi.org/project/hf-xet/",
@@ -3852,6 +3864,18 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "3.4.0"
+      ]
+    },
+    "pypi/hpack": {
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "evidence": "https://pypi.org/project/hpack/",
+      "provider": "Upstream project",
+      "source": "https://github.com/python-hyper/hpack",
+      "source_updated_at": "2026-06-23T18:34:58Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "4.2.0"
       ]
     },
     "pypi/httpcore": {
@@ -3939,6 +3963,18 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "10.0"
+      ]
+    },
+    "pypi/hyperframe": {
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "evidence": "https://pypi.org/project/hyperframe/",
+      "provider": "Upstream project",
+      "source": "https://github.com/python-hyper/hyperframe",
+      "source_updated_at": "2026-04-10T17:44:09Z",
+      "status": "maintained",
+      "support_kind": "project_maintenance_review",
+      "versions": [
+        "6.1.0"
       ]
     },
     "pypi/idna": {
@@ -4066,7 +4102,7 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed LiteLLM 1.103.0 on 2026-09-27 against the unwithdrawn PyPI release, immutable release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d, and the resolved ARM64 gateway inventory. The release pins enterprise 0.1.69 and proxy-extras 0.4.100. Both architectures in the official image index carry the release commit as their revision label. All four guarded vendor sources changed. The patch still removes the same 11 PrismaClient retry decorators and rewrites the one master-key database error. db/exception_handler.py adds one Prisma import site, the postgres_sqlstate lookup; without Prisma it returns None, not False, so its only caller keeps classifying failures. The release newly bundles google-cloud-speech, h2, hpack, and hyperframe; the gateway removes them as unused. Native ARM64 runtime and capture checks pass. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
+      "basis": "Reviewed LiteLLM 1.103.0 on 2026-09-27 against the unwithdrawn PyPI release, immutable release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d, and the resolved ARM64 gateway inventory. The release pins enterprise 0.1.69 and proxy-extras 0.4.100. Both architectures in the official image index carry the release commit as their revision label. All four guarded vendor sources changed. The patch still removes the same 11 PrismaClient retry decorators and rewrites the one master-key database error. db/exception_handler.py adds one Prisma import site, the postgres_sqlstate lookup; without Prisma it returns None, not False, so its only caller keeps classifying failures. The release adds google-cloud-speech, which the gateway removes as unused, and the h2, hpack, and hyperframe stack that its base httpx[http2] requirement needs. Its proxy extra requires MCP 2, so the gateway drops its MCP 1.30.0 override and keeps the vendor's MCP 2.2.0. Native ARM64 runtime and capture checks pass. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
       "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
@@ -4193,11 +4229,12 @@
         "2"
       ],
       "versions": [
-        "1.30.0"
+        "1.30.0",
+        "2.2.0"
       ]
     },
     "pypi/mcp-types": {
-      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.2.0 is its newest release. LiteLLM 1.103.0's MCP server imports its handshake protocol versions.",
+      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.2.0 is its newest release. MCP 2.2.0 depends on it, and LiteLLM 1.103.0's MCP server imports its handshake protocol versions.",
       "evidence": "https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/HEAD/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/modelcontextprotocol/python-sdk",

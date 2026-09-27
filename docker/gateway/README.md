@@ -28,10 +28,10 @@ and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
 Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
 
 LiteLLM 1.103.0 also bundles optional PostgreSQL clients, Bedrock real-time
-packages, the Vertex speech SDK, and an HTTP/2 stack that LiteLLM never
-enables. The image removes these unused dependencies, including the native
-`awscrt` library. It removes the bundled PgBouncer executable and its unused
-libevent dependency, and rejects `LITELLM_PGBOUNCER_*` settings before startup.
+packages, and the Vertex speech SDK. The image removes these unused
+dependencies, including the native `awscrt` library. It removes the bundled
+PgBouncer executable and its unused libevent dependency, and rejects
+`LITELLM_PGBOUNCER_*` settings before startup.
 Anthropic routes retain the same provider boundary.
 
 The Dockerfile records pinned input images and direct dependency updates.

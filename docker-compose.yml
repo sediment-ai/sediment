@@ -1,6 +1,6 @@
-# Contributor Compose deployment. See docs/operate/rehearse-compose.md for
-# credentials, storage, backups, and the conditions attached to vulnerability
-# dispositions.
+# Contributor Compose deployment. The runbook "Rehearse the single-host Compose
+# deployment" covers credentials, storage, backups, and the conditions attached
+# to vulnerability dispositions.
 # Start the API and PostgreSQL: docker compose up -d --build
 # Include LiteLLM: docker compose --profile gateway up -d --build
 # Configure its credentials in .env and routes in litellm/config.yaml first.

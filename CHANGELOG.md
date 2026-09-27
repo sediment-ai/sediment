@@ -83,8 +83,9 @@
 - Update the supplied gateway to LiteLLM 1.103.0, the release that the
   latest-stable security gate requires. The guarded vendor patch covers the
   Prisma SQLSTATE lookup that 1.103.0 adds and returns `None` from it when
-  Prisma is absent. Remove the Vertex speech SDK and the HTTP/2 stack that this
-  release adds, which the gateway doesn't use.
+  Prisma is absent. Remove the Vertex speech SDK that this release adds, which
+  the gateway doesn't use. Drop the MCP 1.30.0 override: the vendor image ships
+  the MCP 2.2.0 release that LiteLLM 1.103.0 requires.
 
 - Wait for API health in Docker deployment instructions. Support separate
   Compose project image tags and loopback ports for local pilot rehearsals.
