@@ -53,7 +53,7 @@
   input changes; `main`, a daily run, and releases always scan, and a failure on
   `main` opens or updates one tracking issue.
 - Run the required workflows on merge-queue groups.
-- Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.6. Keep the
+- Update setup-uv to 10.2.0, uv to 0.12.19, and TruffleHog to 3.97.9. Keep the
   TruffleHog action, executable, and complete-tree scanner image pins aligned.
 
 ### Installation

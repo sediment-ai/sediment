@@ -242,10 +242,18 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     )
     assert "git archive HEAD" in tree_scan["run"]
     assert "filesystem /scan" in tree_scan["run"]
-    assert re.fullmatch(
-        r"ghcr\.io/trufflesecurity/trufflehog:3\.97\.6@sha256:[0-9a-f]{64}",
-        tree_scan["env"]["TRUFFLEHOG_IMAGE"],
+    # Dependabot bumps only the action commit and its version comment; the
+    # version input and the complete-tree image must follow that version.
+    action = re.search(
+        r"uses: trufflesecurity/trufflehog@([0-9a-f]{40}) # v(\d+\.\d+\.\d+)\n",
+        _read(".github/workflows/ci.yml"),
     )
+    assert action, "pin the TruffleHog action to a commit with a version comment"
+    commit, version = action.groups()
+    assert re.fullmatch(
+        rf"ghcr\.io/trufflesecurity/trufflehog:{re.escape(version)}@sha256:[0-9a-f]{{64}}",
+        tree_scan["env"]["TRUFFLEHOG_IMAGE"],
+    ), "align the complete-tree image tag and digest with the action version"
     dependency_install = next(
         index
         for index, step in enumerate(steps)
@@ -253,11 +261,10 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     )
     assert steps.index(tree_scan) < dependency_install
     assert any(
-        step.get("uses")
-        == "trufflesecurity/trufflehog@64d939a56362f519781c53ea09b27f8d1dc0140a"
-        and step["with"]["version"] == "3.97.6"
+        step.get("uses") == f"trufflesecurity/trufflehog@{commit}"
+        and step["with"]["version"] == version
         for step in steps
-    )
+    ), "align the action's version input with its pinned commit"
 
 
 @pytest.mark.parametrize("proposal", [False, True])
