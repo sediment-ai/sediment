@@ -90,10 +90,10 @@ and named ingest identities, follow [Configure local capture](capture/local-capt
 Use an unused directory for the scratch repository:
 
 ```bash
-test ! -e "$HOME/sediment-quickstart" || exit 1
-git init -q "$HOME/sediment-quickstart"
-cd "$HOME/sediment-quickstart"
-sediment install .
+mkdir "$HOME/sediment-quickstart" &&
+  cd "$HOME/sediment-quickstart" &&
+  git init -q &&
+  sediment install .
 ```
 
 `install` adds repository git hooks, user-level hooks for detected agents, and
