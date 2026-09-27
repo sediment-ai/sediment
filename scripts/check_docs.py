@@ -46,7 +46,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # needs a row (the no-orphan rule below), so a cap that never moves is a cap
 # that eventually gets paid for in shaved prose rather than in brevity.
 # Raise the cap only when added documentation needs routing space.
-AGENTS_CAP = 326
+AGENTS_CAP = 268
 
 # Every docs/agents/*.md must appear in exactly one registry. Playbooks
 # forbid code fences; adapters (skill config, checklists) may carry them.
@@ -120,7 +120,7 @@ PATH_ANCHORS = (
     ".github/",
 )
 
-_REQUIRED_NAVIGATION_FILES = ("AGENTS.md", "CLAUDE.md", "CONTEXT.md", "README.md")
+_REQUIRED_NAVIGATION_FILES = ("AGENTS.md", "CONTEXT.md", "README.md")
 
 # Public package modules subject to the coverage check: not
 # underscore-prefixed, not __init__ (excluded by the [!_] glob below).
@@ -217,13 +217,6 @@ def check_router(problems: list[str], root: Path) -> int:
     if not agents.exists():
         problems.append("AGENTS.md missing")
         return 0
-    # Claude Code auto-loads CLAUDE.md, not AGENTS.md — the pointer file is
-    # what routes a Claude agent into the router.
-    claude = root / "CLAUDE.md"
-    if not claude.exists():
-        problems.append("CLAUDE.md missing — Claude Code has no route to AGENTS.md")
-    elif "AGENTS.md" not in _read(claude):
-        problems.append("CLAUDE.md does not point at AGENTS.md")
     routes = set(_ROUTE.findall(_REMOTE_URL.sub("", _read(agents))))
     for doc in _doc_files(root):
         rel = doc.relative_to(root).as_posix()
