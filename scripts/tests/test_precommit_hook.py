@@ -24,8 +24,8 @@ HOOK = REPO_ROOT / "scripts" / "hooks" / "pre-commit"
 # Paths a change to which must regenerate a committed artifact. From
 # gen_cli_docs.render(): the cli tree, the attribution tree, mirror_gc, and
 # every report module in _REPORTS. From dump_openapi/gen_api_docs: the
-# routers and the spec they dump to. From gen_schema_docs.GROUPS: the fact
-# models and every module defining a derived artifact or a training row.
+# routers, shared HTTP contract types, and the spec they dump to. From
+# gen_schema_docs: the fact models and the canonical contract registry.
 GENERATOR_SOURCES = [
     "cli/sediment_cli/cli.py",
     "cli/sediment_cli/attribution.py",
@@ -39,7 +39,9 @@ GENERATOR_SOURCES = [
     "scripts/gen_api_docs.py",
     "scripts/dump_openapi.py",
     "packages/core/sediment_core/models.py",
+    "packages/core/sediment_core/evidence.py",
     "packages/derive/sediment_derive/attribution.py",
+    "packages/derive/sediment_derive/context_retrieval.py",
     "packages/derive/sediment_derive/rollout.py",
     "packages/derive/sediment_derive/recovery.py",
     "packages/export/sediment_export/attributed_completions.py",
