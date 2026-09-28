@@ -98,7 +98,7 @@ def test_cancellation_and_shutdown_reap_child(monkeypatch, tmp_path, operation):
     marker = tmp_path / "pid"
     _command(
         monkeypatch,
-        f"import os,time; open({str(marker)!r},'w').write(str(os.getpid())); time.sleep(60)",
+        f"import os,time; from pathlib import Path; t=Path({str(marker)!r}+'.tmp'); t.write_text(str(os.getpid())); t.replace({str(marker)!r}); time.sleep(60)",
     )
 
     async def check():
@@ -234,7 +234,7 @@ def test_cancellation_during_spawn_does_not_orphan_the_started_process(
     marker = tmp_path / "pid"
     _command(
         monkeypatch,
-        f"import os,time; open({str(marker)!r},'w').write(str(os.getpid())); time.sleep(60)",
+        f"import os,time; from pathlib import Path; t=Path({str(marker)!r}+'.tmp'); t.write_text(str(os.getpid())); t.replace({str(marker)!r}); time.sleep(60)",
     )
     spawn = asyncio.create_subprocess_exec
 
