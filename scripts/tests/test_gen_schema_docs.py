@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import sys
-from typing import Annotated
+from typing import Annotated, Any
 from decimal import Decimal
 from pathlib import Path
 
@@ -94,6 +94,22 @@ def test_booleans_do_not_render_as_integers():
     """bool subclasses int, so scalar order decides this."""
     assert module._render_type(bool, set()) == "boolean"
     assert module._render_type(int, set()) == "integer"
+
+
+def test_any_json_value_is_not_restricted_to_an_object():
+    assert module._render_type(Any, set()) == "any JSON value"
+    assert (
+        "| `result` | any JSON value |"
+        in _sections(module.render())["ToolCallResponsePart"]
+    )
+
+
+def test_unknown_type_fails_instead_of_inventing_an_object_contract():
+    class Unsupported:
+        pass
+
+    with pytest.raises(SystemExit, match="Unsupported"):
+        module._render_type(Unsupported, set())
 
 
 def test_decimal_prices_render_as_exact_json_strings():

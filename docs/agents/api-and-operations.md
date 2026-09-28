@@ -85,7 +85,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
   Pipes, `NO_COLOR`, and `TERM=dumb` retain byte-identical plain text. Direct script and fleet invocations of `attribution.py` use plain output.
   `--version` shows the static knot in the terminal's own text color, followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
-  The banner adds no dependency or network request. Help names the full installed command path.
+  The banner adds no dependency or network request. Help names the full installed command path. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works
   without a valid `SEDIMENT_ORG_ID`. `export dpo` defaults to `dpo_human`;
   `export sft` and `export diff-sft` default to `sft_curated`. Operators must
@@ -150,7 +150,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   `litellm`. CI runs `--check` over all of them.
 - `check_docs.py` gates doc freshness (`docs/agents/doc-sync.md`); `ci_preflight.py` selects conservative prose, shim, and artifact-scan checks and rejects source reviews whose image build input digest (`security_image_assurance.py review-digest`) is stale before automatic artifact builds (`docs/onboarding.md`, `docs/operate/security.md`). Its `shims` command defaults to testing when the PR diff is unavailable; the stable workflow result rejects incomplete selected work.
 - `release_rehearsal.py` verifies source, actions, wheels, and installed commands
-  outside the checkout. `scratch_database` overrides the administrative database selector; `_run_installed_worker` owns bounded process-group cleanup. The caller's database receives no corpus or migration. Every stage must reconcile before success; [Release rehearsal and publication](../../CONTRIBUTING.md#release-rehearsal-and-publication) states the corpus and runtime limits.
+  outside the checkout. `scratch_database` overrides the administrative database selector; `_run_installed_worker` owns bounded process-group cleanup. The caller's database receives no corpus or migration. Every stage and `validate_installed_evidence` must reconcile before success; CI runs the complete rehearsal once, and its tests share one installed build for failure paths; [Release rehearsal and publication](../../CONTRIBUTING.md#release-rehearsal-and-publication) states the corpus and runtime limits.
 - `dump_openapi.py` regenerates `openapi.yaml` and injects the auth schemes. `gen_api_docs.py` renders `docs/reference/api.md` from that spec plus its own
   map of response shapes and status codes. `gen_cli_docs.py` renders
   `docs/reference/cli.md` from every `build_parser`, so **declare flags

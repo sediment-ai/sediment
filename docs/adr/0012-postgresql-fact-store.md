@@ -68,6 +68,11 @@ lookup table. PostgreSQL indexes those scalar copies without parsing content.
 
 ### Migrations and startup
 
+[ADR 0027](0027-postgresql-without-superuser.md) amends this section: `sediment
+db upgrade` also applies the owner's grants and validates the roles, and
+`sediment server` migrates at start. Until its implementation lands, this
+section describes current behavior.
+
 Deployments run `sediment db upgrade` before starting API replicas. The
 command acquires a PostgreSQL advisory lock and runs Alembic to the supported
 head revision. Repeating the command at head succeeds without changing the
