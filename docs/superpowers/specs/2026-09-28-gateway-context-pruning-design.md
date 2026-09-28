@@ -1,8 +1,7 @@
 # Context-minimal agents at the gateway
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
-Evidence: [Phase 2](2026-09-28-context-minimal-phase-2-design.md) and
-[Phase 3](2026-09-28-context-pointer-phase-3-design.md).
+Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
 
 ## Thesis
 
