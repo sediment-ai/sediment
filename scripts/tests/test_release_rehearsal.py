@@ -1111,7 +1111,11 @@ def _interrupt_worker(monkeypatch, interruption: str, owned: dict, prelude=None)
     real_popen = subprocess.Popen
 
     def instrument_worker(args, *a, **kw):
-        worker = kw.get("start_new_session") is True
+        # Match the worker by its command, then require the process group
+        # cleanup depends on; a missing group fails here without spawning.
+        worker = "-c" in args
+        if worker:
+            assert kw.get("start_new_session") is True, "worker needs its own group"
         if worker and prelude is not None:
             args = list(args)
             index = args.index("-c") + 1
