@@ -115,3 +115,21 @@ Catalogs are capped at 32 parts and 32 KB, far below real long Sessions, so the
 measured savings understate what longer histories would show, and also leave
 their risks untested. Excluding tool output assumes the workspace still holds
 the files and commands that produced it.
+
+## Results (version 5)
+
+All 36 slots were recorded with no instrument failure. 11 of 12 tasks were
+complete; one K run was `upstream_unavailable`. The thesis isn't supported:
+J2 met the validity, rule-delivery, and quality targets but used 0.83 of FULL's
+tokens, above the 0.60 target, and 1.32 of K's.
+
+| | FULL | K | J2 |
+| --- | --- | --- | --- |
+| Both checks passed, measured runs | 12 of 12 | 9 of 11 | 11 of 12 |
+| Median delivered context | 15,200 bytes | 8,155 bytes | 912 bytes |
+| Mean coding calls per run | 4.3 | 4.4 | 8.2 |
+
+With minimal context, the agent re-read the files and re-ran the checks that
+FULL had supplied, doubling its model round trips. J2 delivered the rule in
+every run that needed it; K missed it in both shipping-weight `missing` runs.
+Issue #134 records the full counts and protocol notes.
