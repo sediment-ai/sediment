@@ -13,13 +13,20 @@ import copy
 import http.client
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
 
 from erode import litellm_hook
-from erode.core import STUB_PREFIX, PrunePolicy, prune_input, prune_request
+from erode.core import (
+    STUB_PREFIX,
+    PrunePolicy,
+    _statements,
+    prune_input,
+    prune_request,
+)
 from erode.proxy import make_server
 
 RECORDED = Path(__file__).resolve().parent / "fixtures" / "codex"
@@ -396,3 +403,20 @@ def test_proxy_prunes_the_responses_route_and_streams_events() -> None:
         for server in (upstream, proxy):
             server.shutdown()
             server.server_close()
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "text(await tools.apply_patch(" + "text(await tools.apply_patch(a" * 40_000,
+        "text(await tools.exec_command({a" + " " * 1_000_000 + "x}));",
+        "text(await tools.exec_command({" + "$" * 1_000_000 + "}));",
+        "text(await tools.exec_command({" + "a:1," * 250_000 + "}));",
+    ],
+    ids=["nested-heads", "spaces", "dollars", "many-keys"],
+)
+def test_handwritten_hostile_statements_parse_in_linear_time(source) -> None:
+    # Agent-controlled input: parsing about 1 MB must stay far under a second.
+    started = time.perf_counter()
+    _statements(source)
+    assert time.perf_counter() - started < 1.0

@@ -60,11 +60,13 @@ _TARGET_CHARS = 160  # keeps every stub far below min_result_bytes
 
 # Codex CLI (Responses API): every tool call is a custom_tool_call named exec,
 # one statement per line. Anything else on a line makes the call opaque.
-_STATEMENT = re.compile(r"text\(await tools\.(exec_command|apply_patch)\((.*)\)\);")
-_ARGUMENT = re.compile(
-    r'\s*([A-Za-z_$][\w$]*)\s*:\s*("(?:[^"\\]|\\.)*"'
-    r"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false)\s*(?:,|$)"
-)
+# Statements are parsed with string operations and JSON decoding, never a
+# backtracking pattern: the input is agent-controlled.
+_STATEMENT_HEADS = {
+    "exec_command": "text(await tools.exec_command(",
+    "apply_patch": "text(await tools.apply_patch(",
+}
+_STATEMENT_TAIL = "));"
 _PATCH_PATH = re.compile(r"^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$", re.M)
 _CWD = re.compile(r"<cwd>([^<]*)</cwd>")
 _SHELL_META = frozenset("|&;<>`$()*?[\n")
@@ -183,10 +185,10 @@ def _statements(source: Any) -> list[tuple[str, Any]] | None:
         line = line.strip()
         if not line:
             continue
-        match = _STATEMENT.fullmatch(line)
-        if match is None:
+        found = _statement(line)
+        if found is None:
             return None
-        tool, argument = match.groups()
+        tool, argument = found
         try:
             if tool == "apply_patch":
                 value = json.loads(argument)
@@ -202,19 +204,50 @@ def _statements(source: Any) -> list[tuple[str, Any]] | None:
     return statements or None
 
 
+def _statement(line: str) -> tuple[str, str] | None:
+    """(tool, argument source) for one recognized statement line, else None."""
+    if not line.endswith(_STATEMENT_TAIL):
+        return None
+    for tool, head in _STATEMENT_HEADS.items():
+        if line.startswith(head):
+            return tool, line[len(head) : -len(_STATEMENT_TAIL)]
+    return None
+
+
 def _arguments(source: str) -> dict | None:
     """``{key:value, ...}`` with identifier keys and JSON scalar values."""
     source = source.strip()
     if not (source.startswith("{") and source.endswith("}")):
         return None
     body, arguments, position = source[1:-1], {}, 0
-    while position < len(body):
-        match = _ARGUMENT.match(body, position)
-        if match is None or match.group(1) in arguments:
+    decoder = json.JSONDecoder(parse_constant=_reject)
+    while True:
+        colon = body.find(":", position)
+        if colon < 0:
+            return None if body[position:].strip() else arguments
+        key = body[position:colon].strip()
+        if not (key.isascii() and key.replace("$", "_").isidentifier()):
             return None
-        arguments[match.group(1)] = json.loads(match.group(2))
-        position = match.end()
-    return arguments
+        if key in arguments:
+            return None
+        start = colon + 1
+        while start < len(body) and body[start].isspace():
+            start += 1
+        value, end = decoder.raw_decode(body, start)
+        if isinstance(value, (dict, list)) or value is None:
+            return None
+        arguments[key] = value
+        while end < len(body) and body[end].isspace():
+            end += 1
+        if end == len(body):
+            return arguments
+        if body[end] != ",":
+            return None
+        position = end + 1
+
+
+def _reject(constant: str) -> None:
+    raise ValueError(constant)  # NaN and Infinity aren't JSON
 
 
 def _codex_path(path: str, cwd: str | None) -> str:
