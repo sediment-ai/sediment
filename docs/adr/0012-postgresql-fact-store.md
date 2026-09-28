@@ -82,7 +82,7 @@ database, then serves with the runtime role only. A deployment that migrates
 as a separate job runs `sediment db upgrade` first. Provisioning runs the same
 step through the migrator credential.
 
-`sediment db upgrade` upgrades only a PostgreSQL schema. Sediment does not ship
+`sediment db upgrade` supports only PostgreSQL. Sediment does not ship
 a SQLite-to-PostgreSQL migration command, SQLite importer, or SQLite migration
 guide.
 

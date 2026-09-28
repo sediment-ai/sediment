@@ -55,29 +55,40 @@ migrates it, `sediment_runtime` serves the API, and `sediment_operator` runs
 operator commands. The API can't change or delete a Fact. Don't point Sediment
 at a database that another application uses.
 
-No managed PostgreSQL service, such as Amazon RDS, is qualified yet.
-[ADR 0027](../adr/0027-postgresql-without-superuser.md#qualification-before-compatibility-claims)
-describes the qualification that a service needs first.
+Sediment doesn't claim support for a managed PostgreSQL service, such as Amazon
+RDS, until the service passes the
+[qualification in ADR 0027](../adr/0027-postgresql-without-superuser.md#qualification-before-compatibility-claims).
 
-1. As the server account, generate the three role passwords into a private
-   file:
+1. Optional: If your organization names the roles itself, export
+   `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
+   `SEDIMENT_OPERATOR_ROLE`. Set them in the server's environment too, and use
+   those names in place of `sediment_migrator`, `sediment_runtime`, and
+   `sediment_operator` in every URL on this page. Two deployments with
+   different role names and databases can share one PostgreSQL instance.
+2. As the server account, generate the three role passwords into a private
+   file. The command refuses to overwrite an existing file, which holds the
+   only copy of the passwords:
 
    ```bash
-   umask 077
-   mkdir -p ~/.sediment
-   cat > ~/.sediment/database-roles.env <<EOF_ROLES
+   (
+     umask 077
+     mkdir -p ~/.sediment
+     set -o noclobber
+     cat > ~/.sediment/database-roles.env <<EOF_ROLES
    SEDIMENT_MIGRATOR_PASSWORD=$(openssl rand -hex 32)
    SEDIMENT_RUNTIME_PASSWORD=$(openssl rand -hex 32)
    SEDIMENT_OPERATOR_PASSWORD=$(openssl rand -hex 32)
    EOF_ROLES
+   )
    ```
 
-2. Create the roles in one of two ways:
+3. Create the roles in one of two ways:
 
    - If you hold the administrator connection, let Sediment create the roles.
      Enter the administrator URL at the prompt, for example
-     `postgresql+psycopg://admin:<password>@db.internal:5432/sediment`. The
-     URL reaches only this command:
+     `postgresql+psycopg://admin:<password>@db.internal:5432/sediment`.
+     Percent-encode any reserved URL character in the password. The URL
+     reaches only this command:
 
      ```bash
      (
@@ -103,12 +114,6 @@ describes the qualification that a service needs first.
      `~/.sediment/database-roles.env`. `sediment-roles.sql` contains no
      password.
 
-3. Optional: If your organization names the roles itself, set
-   `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
-   `SEDIMENT_OPERATOR_ROLE` before you print the SQL or provision, and in the
-   server's environment. Two deployments with different role names and
-   databases can share one PostgreSQL instance.
-
 ## Configure the server
 
 In the server account's private environment, set the following variables.
@@ -125,17 +130,19 @@ export SEDIMENT_DEV_MODE=false
 ```
 
 Keep this environment private. Your supervisor must supply it on every start.
-The administrator URL never belongs here.
+The administrator URL never belongs here. A database URL in these variables
+takes only TLS options, such as `sslmode` and `sslrootcert`.
 
-Check the database before the first start:
+Check the database before the first start. The URL goes through the
+environment, so it stays out of process listings:
 
 ```bash
-sediment db check --database-url "$SEDIMENT_MIGRATOR_DATABASE_URL"
+SEDIMENT_DATABASE_URL="$SEDIMENT_MIGRATOR_DATABASE_URL" sediment db check
 ```
 
 The check prints `passed`. Otherwise, it lists each failed check with the
-statement that fixes it. Before the first start, the schema is `absent`, or
-`at_head` after `sediment db provision`.
+statement that fixes it. Before the first start, the schema is `absent` after
+the administrator's SQL, or `at_head` after `sediment db provision`.
 
 ## Start the API
 
@@ -147,9 +154,9 @@ statement that fixes it. Before the first start, the schema is `absent`, or
 
    On each start, Sediment migrates the database as `sediment_migrator`,
    applies the table grants, and checks all three roles. It then removes the
-   migrator credential from its environment and serves with the runtime role
-   only. Replicas that start together wait up to two minutes for one
-   migration.
+   migrator credential from its environment before the API and its workers
+   start, and serves with the runtime role only. Replicas that start together
+   wait up to two minutes for one migration.
 
 2. In a second terminal, check readiness:
 
