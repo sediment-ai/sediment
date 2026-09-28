@@ -43,8 +43,9 @@ def test_server_owns_managed_database_until_api_exit(
         finally:
             events.append("database stopped")
 
-    def provision(url, **passwords):
+    def provision(url, *, roles, **passwords):
         assert url.startswith("postgresql+psycopg://sediment_bootstrap:")
+        assert roles.runtime == "sediment_runtime"
         assert len(set(passwords.values())) == 3
         events.append("provisioned")
 
@@ -116,7 +117,7 @@ def test_unsupported_platform_explains_external_database(tmp_path, monkeypatch):
     from sediment_cli import local_postgres
 
     monkeypatch.setattr(local_postgres.platform, "system", lambda: "Windows")
-    with pytest.raises(ValueError, match="SEDIMENT_BOOTSTRAP_DATABASE_URL"):
+    with pytest.raises(ValueError, match="SEDIMENT_MIGRATOR_DATABASE_URL"):
         local_postgres._install_postgres(tmp_path)
 
 

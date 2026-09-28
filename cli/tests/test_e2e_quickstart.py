@@ -10,6 +10,7 @@ README's missing OTEL_LOGS_EXPORTER and the hook path rot)."""
 from __future__ import annotations
 
 import json
+import secrets
 import os
 import socket
 import subprocess
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy.engine import make_url
 
 import sediment_cli.client as api_client
 from sediment_cli import cli
@@ -51,7 +53,34 @@ def quickstart_server(tmp_path, postgres_database_url):
     home.mkdir()
     env = {k: v for k, v in os.environ.items() if not k.startswith("SEDIMENT_")}
     env["HOME"] = str(home)
-    env["SEDIMENT_BOOTSTRAP_DATABASE_URL"] = postgres_database_url
+    # Provision once as the administrator; the server then migrates as the
+    # migrator and serves as the runtime role (ADR 0027).
+    passwords = {
+        role: secrets.token_hex(16) for role in ("migrator", "runtime", "operator")
+    }
+    subprocess.run(
+        [sys.executable, "-m", "sediment_cli.cli", "db", "provision"],
+        cwd=tmp_path,
+        env={
+            **env,
+            "SEDIMENT_BOOTSTRAP_DATABASE_URL": postgres_database_url,
+            **{
+                f"SEDIMENT_{role.upper()}_PASSWORD": value
+                for role, value in passwords.items()
+            },
+        },
+        check=True,
+        capture_output=True,
+    )
+    for variable, role in (
+        ("SEDIMENT_MIGRATOR_DATABASE_URL", "migrator"),
+        ("SEDIMENT_DATABASE_URL", "runtime"),
+    ):
+        env[variable] = (
+            make_url(postgres_database_url)
+            .set(username=f"sediment_{role}", password=passwords[role])
+            .render_as_string(hide_password=False)
+        )
     proc = subprocess.Popen(
         [sys.executable, "-m", "sediment_cli.cli", "server", "--port", str(port)],
         cwd=tmp_path,  # a stray checkout .env must not leak into Settings

@@ -159,8 +159,10 @@ def test_db_upgrade_connection_failure_never_exposes_credentials(
 
 def test_db_upgrade_lock_failure_exits_nonzero(
     postgres_database_factory,
+    monkeypatch,
     capsys,
 ) -> None:
+    monkeypatch.setattr(postgres_migrations, "MIGRATION_LOCK_WAIT_SECONDS", 0.2)
     database_url = postgres_database_factory(migrated=False)
     engine = create_engine(database_url)
     try:
@@ -173,7 +175,8 @@ def test_db_upgrade_lock_failure_exits_nonzero(
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err == (
-            "error: database migration lock is held by another process\n"
+            "error: database migration lock is held by another process after "
+            "waiting 0.2 seconds\n"
         )
     finally:
         engine.dispose()

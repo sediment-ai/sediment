@@ -15,6 +15,7 @@ from alembic.script import ScriptDirectory
 from alembic.util import CommandError
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import DBAPIError
 
 from .postgres_engine import (
     DatabaseOperationError,
@@ -25,6 +26,9 @@ from .postgres_engine import (
 
 HEAD_REVISION = "0011_inference_call_aliases"
 MIGRATION_LOCK_KEY = 7_315_324_899_385_581_412
+# A replica that finds the lock held waits for the one migrating, as
+# coder/coder's startup migration does, then fails with a diagnostic.
+MIGRATION_LOCK_WAIT_SECONDS = 120.0
 
 
 class MigrationError(RuntimeError):
@@ -102,17 +106,27 @@ def upgrade_database(
         engine = create_postgres_engine(database_url)
         with engine.connect() as connection:
             verify_minimum_server_version(connection)
-            acquired = bool(
-                connection.execute(
-                    text("SELECT pg_try_advisory_lock(:key)"),
-                    {"key": MIGRATION_LOCK_KEY},
-                ).scalar_one()
+            wait = MIGRATION_LOCK_WAIT_SECONDS
+            # PostgreSQL applies lock_timeout to advisory locks; 0 means forever.
+            connection.execute(
+                text("SELECT set_config('lock_timeout', :timeout, false)"),
+                {"timeout": f"{max(1, round(wait * 1000))}ms"},
             )
-            connection.commit()
-            if not acquired:
-                raise MigrationError(
-                    "database migration lock is held by another process"
+            try:
+                connection.execute(
+                    text("SELECT pg_advisory_lock(:key)"),
+                    {"key": MIGRATION_LOCK_KEY},
                 )
+            except DBAPIError as exc:
+                if getattr(exc.orig, "sqlstate", None) != "55P03":
+                    raise
+                connection.rollback()
+                raise MigrationError(
+                    "database migration lock is held by another process after "
+                    f"waiting {wait:g} seconds"
+                ) from None
+            connection.exec_driver_sql("RESET lock_timeout")
+            connection.commit()
             try:
                 if before_upgrade is not None:
                     before_upgrade(connection)

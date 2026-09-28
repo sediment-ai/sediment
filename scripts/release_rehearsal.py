@@ -556,13 +556,40 @@ def exercise_installed_pipeline(
     env["SEDIMENT_INGEST_TOKEN"] = token
     engine = create_engine(env["SEDIMENT_DATABASE_URL"])
     store = FactStore(engine)
+    # Provision once as the administrator; the server only migrates (ADR 0027).
+    role_passwords = {
+        "sediment_migrator": "synthetic-rehearsal-migrator-6d1f02aa",
+        "sediment_runtime": "synthetic-rehearsal-runtime-2c9b7e41",
+        "sediment_operator": "synthetic-rehearsal-operator-db-81f3c5d0",
+    }
+
+    def role_url(role):
+        return (
+            make_url(env["SEDIMENT_DATABASE_URL"])
+            .set(username=role, password=role_passwords[role])
+            .render_as_string(hide_password=False)
+        )
+
+    command(
+        "db",
+        "provision",
+        command_env={
+            **env,
+            "SEDIMENT_BOOTSTRAP_DATABASE_URL": env["SEDIMENT_DATABASE_URL"],
+            **{
+                f"SEDIMENT_{role.removeprefix('sediment_').upper()}_PASSWORD": value
+                for role, value in role_passwords.items()
+            },
+        },
+    )
     server_env = {
         **{
             key: value
             for key, value in env.items()
             if key != "SEDIMENT_TEST_DATABASE_URL"
         },
-        "SEDIMENT_BOOTSTRAP_DATABASE_URL": env["SEDIMENT_DATABASE_URL"],
+        "SEDIMENT_MIGRATOR_DATABASE_URL": role_url("sediment_migrator"),
+        "SEDIMENT_DATABASE_URL": role_url("sediment_runtime"),
     }
     log_path = workspace / "server.log"
     with log_path.open("w") as log:
@@ -763,19 +790,7 @@ def exercise_installed_pipeline(
             )
             # Direct operator commands use their own database role. The API server
             # retains its separately provisioned runtime connection on each restart.
-            server_credentials = dict(
-                line.split("=", 1)
-                for line in (server_root / "server.env").read_text().splitlines()
-                if line and not line.startswith("#")
-            )
-            env["SEDIMENT_DATABASE_URL"] = (
-                make_url(env["SEDIMENT_DATABASE_URL"])
-                .set(
-                    username="sediment_operator",
-                    password=server_credentials["SEDIMENT_OPERATOR_PASSWORD"],
-                )
-                .render_as_string(hide_password=False)
-            )
+            env["SEDIMENT_DATABASE_URL"] = role_url("sediment_operator")
             with engine.connect() as connection:
                 require(
                     connection.exec_driver_sql(

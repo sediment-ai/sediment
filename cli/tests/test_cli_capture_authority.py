@@ -10,7 +10,6 @@ import types
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
-from sqlalchemy.engine import make_url
 
 from sediment_cli import attribution, cli
 from sediment_cli import client as api_client
@@ -172,7 +171,7 @@ def test_explicit_capture_override_requires_live_ingest_authority(
         server.server_close()
 
 
-def test_server_provisions_once_then_runs_only_runtime_database_authority(
+def test_server_migrates_then_runs_only_runtime_database_authority(
     tmp_path, monkeypatch, capsys
 ):
     import sediment_core.postgres_roles as roles
@@ -186,16 +185,27 @@ def test_server_provisions_once_then_runs_only_runtime_database_authority(
             if not key.startswith("SEDIMENT_")
         },
     )
-    bootstrap = (
-        "postgresql+psycopg://bootstrap:bootstrap-secret@127.0.0.1:5432/evaluation"
+    migrator = (
+        "postgresql+psycopg://sediment_migrator:migrator-secret@127.0.0.1:5432/"
+        "evaluation"
     )
-    monkeypatch.setenv("SEDIMENT_BOOTSTRAP_DATABASE_URL", bootstrap)
-    monkeypatch.setenv("SEDIMENT_BOOTSTRAP_PASSWORD", "unused-local-bootstrap-secret")
+    runtime = (
+        "postgresql+psycopg://sediment_runtime:runtime-secret@127.0.0.1:5432/evaluation"
+    )
+    monkeypatch.setenv("SEDIMENT_MIGRATOR_DATABASE_URL", migrator)
+    monkeypatch.setenv("SEDIMENT_DATABASE_URL", runtime)
+    monkeypatch.setenv("SEDIMENT_OPERATOR_PASSWORD", "unused-operator-secret")
     calls = []
+
+    def migrate(*args, **kwargs):
+        calls.append((args, kwargs))
+        return True
+
+    monkeypatch.setattr(roles, "migrate_database", migrate)
     monkeypatch.setattr(
         roles,
         "provision_database",
-        lambda *args, **kwargs: calls.append((args, kwargs)),
+        lambda *a, **k: pytest.fail("provisioned an external database"),
     )
     environments = []
     monkeypatch.setitem(
@@ -212,34 +222,21 @@ def test_server_provisions_once_then_runs_only_runtime_database_authority(
         "SEDIMENT_OPERATOR_TOKEN",
         "SEDIMENT_API_BEARER_TOKEN",
         "SEDIMENT_GITHUB_WEBHOOK_SECRET",
-        "SEDIMENT_MIGRATOR_PASSWORD",
-        "SEDIMENT_RUNTIME_PASSWORD",
-        "SEDIMENT_OPERATOR_PASSWORD",
     )
     assert len({values[name] for name in names}) == len(names)
-    assert calls == [
-        (
-            (bootstrap,),
-            {
-                "migrator_password": values[names[3]],
-                "runtime_password": values[names[4]],
-                "operator_password": values[names[5]],
-            },
-        )
-    ]
+    assert not any(name.endswith("_PASSWORD") for name in values)
+    assert calls == [((migrator, roles.RoleNames()), {})]
     running = environments[0]
-    database = make_url(running["SEDIMENT_DATABASE_URL"])
-    assert database.username == "sediment_runtime"
-    assert database.password == values["SEDIMENT_RUNTIME_PASSWORD"]
+    assert running["SEDIMENT_DATABASE_URL"] == runtime
     for name in (
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
         "SEDIMENT_BOOTSTRAP_DATABASE_URL",
-        "SEDIMENT_BOOTSTRAP_PASSWORD",
-        "SEDIMENT_MIGRATOR_PASSWORD",
         "SEDIMENT_OPERATOR_PASSWORD",
     ):
         assert name not in running
     output = capsys.readouterr()
-    assert all(values[name] not in output.out + output.err for name in names)
+    for secret in (*(values[name] for name in names), "migrator-secret"):
+        assert secret not in output.out + output.err
     assert root.stat().st_mode & 0o777 == 0o700
     assert (root / "server.env").stat().st_mode & 0o777 == 0o600
 
