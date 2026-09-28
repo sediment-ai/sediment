@@ -1,16 +1,29 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Provision and verify the fixed roles of one dedicated Sediment database."""
+"""Provision, check, and verify the fixed roles of one dedicated Sediment database."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection, Engine
 
 from .models import FactTable
-from .postgres_engine import DatabaseOperationError, create_postgres_engine
-from .postgres_migrations import upgrade_database
+from .postgres_engine import (
+    DatabaseOperationError,
+    DatabaseURLValidationError,
+    create_postgres_engine,
+    database_operation_error,
+    verify_minimum_server_version,
+)
+from .postgres_migrations import (
+    HEAD_REVISION,
+    RevisionState,
+    inspect_connection_revision,
+    upgrade_database,
+)
 from .postgres_schema import metadata
 
 if TYPE_CHECKING:
@@ -19,6 +32,7 @@ if TYPE_CHECKING:
 MIGRATOR_ROLE = "sediment_migrator"
 RUNTIME_ROLE = "sediment_runtime"
 OPERATOR_ROLE = "sediment_operator"
+ROLES = (MIGRATOR_ROLE, RUNTIME_ROLE, OPERATOR_ROLE)
 SESSION_UPDATE_COLUMNS = frozenset(
     {"first_observed_at", "last_observed_at", "user_id", "user_id_conflict"}
 )
@@ -27,6 +41,18 @@ _PROVISION_LOCK = 7_315_324_899_385_581_413
 
 class DatabasePrivilegeError(DatabaseOperationError):
     """A credential-free deployment permission failure."""
+
+
+@dataclass(frozen=True)
+class PrivilegeFailure:
+    """One failed deployment check and the statement that corrects it."""
+
+    subject: str
+    problem: str
+    fix: str
+
+    def __str__(self) -> str:
+        return f"{self.subject} {self.problem}; fix: {self.fix}"
 
 
 def _tables() -> dict[str, tuple[str, ...]]:
@@ -359,50 +385,151 @@ def provision_database(
         engine.dispose()
 
 
-def _validate_privileges(connection: Connection, role: str) -> None:
-    expected = _tables()
-    params = {"role": role}
-    dangerous_role = connection.execute(
-        text(
-            "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls "
-            "FROM pg_roles WHERE rolname=:role"
-        ),
-        params,
-    ).scalar_one_or_none()
-    membership = connection.execute(
+def _quote(name: str) -> str:
+    """Quote an identifier for a diagnostic's corrective statement."""
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _relation(schema: str, name: str) -> str:
+    return f"{_quote(schema)}.{_quote(name)}"
+
+
+_ROLE_ATTRIBUTES = (
+    ("rolsuper", "SUPERUSER"),
+    ("rolcreatedb", "CREATEDB"),
+    ("rolcreaterole", "CREATEROLE"),
+    ("rolreplication", "REPLICATION"),
+    ("rolbypassrls", "BYPASSRLS"),
+)
+# Grants on migrator-owned objects come only from the owner's grant pass.
+_REGRANT = "run `sediment db provision`"
+
+
+def _role_failures(connection: Connection, role: str) -> Iterator[PrivilegeFailure]:
+    """Elevated attributes and memberships; a missing role ends every check."""
+    subject = f"role {_quote(role)}"
+    attributes = (
+        connection.execute(
+            text(
+                "SELECT rolsuper, rolcreatedb, rolcreaterole, rolreplication, "
+                "rolbypassrls FROM pg_roles WHERE rolname=:role"
+            ),
+            {"role": role},
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if attributes is None:
+        yield PrivilegeFailure(subject, "does not exist", _REGRANT)
+        return
+    held = [name for column, name in _ROLE_ATTRIBUTES if attributes[column]]
+    if held:
+        yield PrivilegeFailure(
+            subject,
+            f"holds {', '.join(held)}",
+            f"ALTER ROLE {_quote(role)} " + " ".join(f"NO{name}" for name in held),
+        )
+    if connection.execute(
         text(
             "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname<>:role "
             "AND pg_has_role(:role, oid, 'MEMBER'))"
         ),
-        params,
-    ).scalar_one()
-    if dangerous_role is not False or membership:
-        raise DatabasePrivilegeError(
-            "database role has privileged attributes or membership"
-        )
+        {"role": role},
+    ).scalar_one():
+        grants = connection.execute(
+            text(
+                "SELECT parent.rolname, grantor.rolname FROM pg_auth_members m "
+                "JOIN pg_roles parent ON parent.oid=m.roleid "
+                "JOIN pg_roles member ON member.oid=m.member "
+                "JOIN pg_roles grantor ON grantor.oid=m.grantor "
+                "WHERE member.rolname=:role ORDER BY 1, 2"
+            ),
+            {"role": role},
+        ).all()
+        for parent, grantor in grants:
+            yield PrivilegeFailure(
+                subject,
+                f"is a member of {_quote(parent)}",
+                f"REVOKE {_quote(parent)} FROM {_quote(role)} "
+                f"GRANTED BY {_quote(grantor)}",
+            )
+        if not grants:
+            yield PrivilegeFailure(
+                subject, "has the privileges of other roles", "revoke its memberships"
+            )
+
+
+def _privilege_failures(
+    connection: Connection, role: str, *, relations: bool = True
+) -> Iterator[PrivilegeFailure]:
+    """Yield each departure from the runtime or operator policy, in check order.
+
+    ``_validate_privileges`` raises the first; ``check_database`` reports all.
+    ``relations=False`` skips table coverage for a database without a schema.
+    """
+    expected = _tables()
+    params = {"role": role}
+    quoted = _quote(role)
+    subject = f"role {quoted}"
+    missing = False
+    for failure in _role_failures(connection, role):
+        missing = failure.problem == "does not exist"
+        yield failure
+    if missing:
+        return
+    database = connection.exec_driver_sql("SELECT current_database()").scalar_one()
     if connection.execute(
         text("SELECT has_database_privilege(:role, current_database(), 'CREATE,TEMP')"),
         params,
     ).scalar_one():
-        raise DatabasePrivilegeError("database role can create database objects")
-    if connection.execute(
+        yield PrivilegeFailure(
+            subject,
+            f"can create objects or temporary tables in database {_quote(database)}",
+            f"REVOKE CREATE, TEMPORARY ON DATABASE {_quote(database)} "
+            f"FROM PUBLIC, {quoted}",
+        )
+    schemas = connection.execute(
         text(
-            "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname<>'information_schema' AND (has_schema_privilege(:role, oid, 'CREATE') OR pg_has_role(:role, nspowner, 'MEMBER')))"
+            "SELECT nspname, has_schema_privilege(:role, oid, 'CREATE') FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname<>'information_schema' AND (has_schema_privilege(:role, oid, 'CREATE') OR pg_has_role(:role, nspowner, 'MEMBER')) ORDER BY 1"
         ),
         params,
-    ).scalar_one():
-        raise DatabasePrivilegeError("database role owns or can create in a schema")
-    if connection.execute(
-        text(
-            "SELECT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND has_function_privilege(:role, p.oid, 'EXECUTE'))"
-        ),
-        params,
-    ).scalar_one():
-        raise DatabasePrivilegeError("database role can execute an unexpected function")
-    relations = (
+    ).all()
+    for schema, can_create in schemas:
+        yield (
+            PrivilegeFailure(
+                subject,
+                f"can create objects in schema {_quote(schema)}",
+                f"REVOKE CREATE ON SCHEMA {_quote(schema)} FROM PUBLIC, {quoted}",
+            )
+            if can_create
+            else PrivilegeFailure(
+                subject,
+                f"owns schema {_quote(schema)}",
+                f"ALTER SCHEMA {_quote(schema)} OWNER TO pg_database_owner",
+            )
+        )
+    functions = (
         connection.execute(
             text(
-                "SELECT c.oid, n.nspname, c.relname, c.relkind, pg_get_userbyid(c.relowner) AS owner, pg_has_role(:role, c.relowner, 'MEMBER') AS owns FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','f','S')"
+                "SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND has_function_privilege(:role, p.oid, 'EXECUTE') ORDER BY 1"
+            ),
+            params,
+        )
+        .scalars()
+        .all()
+    )
+    for function in functions:
+        yield PrivilegeFailure(
+            subject,
+            f"can execute function {function}",
+            f"REVOKE EXECUTE ON FUNCTION {function} FROM PUBLIC, {quoted}",
+        )
+    if not relations:
+        return
+    relations_found = (
+        connection.execute(
+            text(
+                "SELECT c.oid, n.nspname, c.relname, c.relkind, pg_get_userbyid(c.relowner) AS owner, pg_has_role(:role, c.relowner, 'MEMBER') AS owns FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','p','v','m','f','S') ORDER BY n.nspname, c.relname"
             ),
             params,
         )
@@ -417,25 +544,37 @@ def _validate_privileges(connection: Connection, role: str) -> None:
         text("SELECT CAST(CAST(:name AS regclass) AS oid)"),
         {"name": _sequence(connection)},
     ).scalar_one()
-    for relation in relations:
+    for relation in relations_found:
         params = {"role": role, "oid": relation["oid"]}
+        target = _relation(relation["nspname"], relation["relname"])
         if relation["owns"]:
-            raise DatabasePrivilegeError("database role owns a relation")
+            yield PrivilegeFailure(
+                subject,
+                f"owns relation {target}",
+                f"ALTER TABLE {target} OWNER TO {_quote(MIGRATOR_ROLE)}",
+            )
+            continue
         if relation["relkind"] == "S":
+            known_sequence = relation["oid"] == sequence
+            drift = []
             for permission in ("USAGE", "SELECT", "UPDATE", "USAGE WITH GRANT OPTION"):
                 allowed = (
-                    role == OPERATOR_ROLE
-                    and relation["oid"] == sequence
-                    and permission == "USAGE"
+                    role == OPERATOR_ROLE and known_sequence and permission == "USAGE"
                 )
                 actual = connection.execute(
                     text("SELECT has_sequence_privilege(:role, :oid, :permission)"),
                     {**params, "permission": permission},
                 ).scalar_one()
                 if actual != allowed:
-                    raise DatabasePrivilegeError(
-                        "database sequence permissions differ from policy"
-                    )
+                    drift.append(f"{'holds' if actual else 'lacks'} {permission}")
+            if drift:
+                yield PrivilegeFailure(
+                    subject,
+                    f"{', '.join(drift)} on sequence {target}",
+                    _REGRANT
+                    if known_sequence
+                    else f"REVOKE ALL ON SEQUENCE {target} FROM PUBLIC, {quoted}",
+                )
             continue
         name = relation["relname"]
         known = (
@@ -451,13 +590,19 @@ def _validate_privileges(connection: Connection, role: str) -> None:
         )
         if known:
             if relation["owner"] != MIGRATOR_ROLE:
-                raise DatabasePrivilegeError(
-                    "application table is not owned by the migrator"
+                yield PrivilegeFailure(
+                    f"table {target}",
+                    f"is owned by {_quote(relation['owner'])}, "
+                    f"not {_quote(MIGRATOR_ROLE)}",
+                    f"ALTER TABLE {target} OWNER TO {_quote(MIGRATOR_ROLE)}",
                 )
             found.add(name)
             if set(columns) != set(expected[name]):
-                raise DatabasePrivilegeError(
-                    "database columns differ from permission coverage"
+                yield PrivilegeFailure(
+                    f"table {target}",
+                    "has columns that differ from the supported schema",
+                    "run `sediment db upgrade`; if the columns still differ, "
+                    "restore the table from a backup",
                 )
         insert = known and (
             (
@@ -466,6 +611,7 @@ def _validate_privileges(connection: Connection, role: str) -> None:
             )
             or (role == OPERATOR_ROLE and name == "fact_quarantine")
         )
+        drift = []
         for permission in (
             "SELECT",
             "INSERT",
@@ -485,9 +631,16 @@ def _validate_privileges(connection: Connection, role: str) -> None:
                 {**params, "permission": permission},
             ).scalar_one()
             if actual != allowed:
-                raise DatabasePrivilegeError(
-                    "database table permissions differ from policy"
-                )
+                drift.append(f"{'holds' if actual else 'lacks'} {permission}")
+        if drift:
+            yield PrivilegeFailure(
+                subject,
+                f"{', '.join(drift)} on {target}",
+                _REGRANT
+                if known
+                else f"REVOKE ALL ON TABLE {target} FROM PUBLIC, {quoted}",
+            )
+        column_drift: dict[str, list[str]] = {}
         for column in columns:
             for permission in (
                 "SELECT",
@@ -516,11 +669,321 @@ def _validate_privileges(connection: Connection, role: str) -> None:
                     {**params, "column": column, "permission": permission},
                 ).scalar_one()
                 if actual != allowed:
-                    raise DatabasePrivilegeError(
-                        "database column permissions differ from policy"
-                    )
+                    key = f"{'holds' if actual else 'lacks'} {permission}"
+                    column_drift.setdefault(key, []).append(column)
+        for drift_kind, drifted in column_drift.items():
+            listed = ", ".join(map(_quote, drifted))
+            yield PrivilegeFailure(
+                subject,
+                f"{drift_kind} on columns ({listed}) of {target}",
+                _REGRANT
+                if known
+                else f"REVOKE ALL ({listed}) ON TABLE {target} FROM PUBLIC, {quoted}",
+            )
     if found != set(expected):
-        raise DatabasePrivilegeError("database tables differ from permission coverage")
+        yield PrivilegeFailure(
+            "database schema",
+            "lacks tables " + ", ".join(sorted(set(expected) - found)),
+            _REGRANT,
+        )
+
+
+def _validate_privileges(connection: Connection, role: str) -> None:
+    failure = next(_privilege_failures(connection, role), None)
+    if failure is not None:
+        raise DatabasePrivilegeError(str(failure))
+
+
+def _sediment_roles(connection: Connection) -> set[str]:
+    return set(
+        connection.execute(
+            text("SELECT rolname FROM pg_roles WHERE rolname = ANY(:roles)"),
+            {"roles": list(ROLES)},
+        )
+        .scalars()
+        .all()
+    )
+
+
+def _database_failures(connection: Connection) -> Iterator[PrivilegeFailure]:
+    """The dedicated database and ``public`` schema grant only the required access."""
+    existing = _sediment_roles(connection)
+    database, owner = connection.exec_driver_sql(
+        "SELECT datname, pg_get_userbyid(datdba) FROM pg_database "
+        "WHERE datname=current_database()"
+    ).one()
+    subject = f"database {_quote(database)}"
+    if owner in ROLES:
+        yield PrivilegeFailure(
+            subject,
+            f"is owned by Sediment role {_quote(owner)}",
+            f"ALTER DATABASE {_quote(database)} OWNER TO <administrator>",
+        )
+    grants = connection.exec_driver_sql(
+        "SELECT CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) "
+        "END, a.privilege_type FROM pg_database d CROSS JOIN LATERAL "
+        "aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a "
+        "WHERE d.datname=current_database() ORDER BY 1, 2"
+    ).all()
+    public = [privilege for grantee, privilege in grants if grantee == "PUBLIC"]
+    if public:
+        yield PrivilegeFailure(
+            subject,
+            f"grants PUBLIC {', '.join(public)}",
+            f"REVOKE ALL ON DATABASE {_quote(database)} FROM PUBLIC",
+        )
+    for role in ROLES:
+        held = {privilege for grantee, privilege in grants if grantee == role}
+        if role not in existing:
+            continue
+        if "CONNECT" not in held:
+            yield PrivilegeFailure(
+                subject,
+                f"doesn't grant {_quote(role)} CONNECT",
+                f"GRANT CONNECT ON DATABASE {_quote(database)} TO {_quote(role)}",
+            )
+        if role == MIGRATOR_ROLE and held - {"CONNECT"}:
+            yield PrivilegeFailure(
+                subject,
+                f"grants {_quote(role)} {', '.join(sorted(held - {'CONNECT'}))}",
+                f"REVOKE CREATE, TEMPORARY ON DATABASE {_quote(database)} "
+                f"FROM {_quote(role)}",
+            )
+    grants = connection.exec_driver_sql(
+        "SELECT CASE WHEN a.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(a.grantee) "
+        "END, a.privilege_type FROM pg_namespace n CROSS JOIN LATERAL "
+        "aclexplode(coalesce(n.nspacl, acldefault('n', n.nspowner))) a "
+        "WHERE n.nspname='public' ORDER BY 1, 2"
+    ).all()
+    subject = "schema public"
+    if not connection.exec_driver_sql(
+        "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='public')"
+    ).scalar_one():
+        yield PrivilegeFailure(subject, "does not exist", "CREATE SCHEMA public")
+        return
+    public = [privilege for grantee, privilege in grants if grantee == "PUBLIC"]
+    if public:
+        yield PrivilegeFailure(
+            subject,
+            f"grants PUBLIC {', '.join(public)}",
+            "REVOKE ALL ON SCHEMA public FROM PUBLIC",
+        )
+    for role in ROLES:
+        held = {privilege for grantee, privilege in grants if grantee == role}
+        if role not in existing:
+            continue
+        needed = ["USAGE", "CREATE"] if role == MIGRATOR_ROLE else ["USAGE"]
+        for privilege in needed:
+            if privilege not in held:
+                yield PrivilegeFailure(
+                    subject,
+                    f"doesn't grant {_quote(role)} {privilege}",
+                    f"GRANT {privilege} ON SCHEMA public TO {_quote(role)}",
+                )
+
+
+def _ownership_failures(connection: Connection) -> Iterator[PrivilegeFailure]:
+    """Every existing Sediment table belongs to the migrator."""
+    owners = connection.execute(
+        text(
+            "SELECT c.relname, pg_get_userbyid(c.relowner) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' "
+            "AND c.relkind='r' AND c.relname = ANY(:tables) ORDER BY 1"
+        ),
+        {"tables": list(_tables())},
+    ).all()
+    for name, owner in owners:
+        if owner != MIGRATOR_ROLE:
+            target = _relation("public", name)
+            yield PrivilegeFailure(
+                f"table {target}",
+                f"is owned by {_quote(owner)}, not {_quote(MIGRATOR_ROLE)}",
+                f"ALTER TABLE {target} OWNER TO {_quote(MIGRATOR_ROLE)}",
+            )
+
+
+def _migrator_failures(connection: Connection) -> Iterator[PrivilegeFailure]:
+    """The migrator logs in, holds nothing elevated, and owns Sediment's tables."""
+    missing = False
+    for failure in _role_failures(connection, MIGRATOR_ROLE):
+        missing = failure.problem == "does not exist"
+        yield failure
+    if missing:
+        return
+    if not connection.execute(
+        text("SELECT rolcanlogin FROM pg_roles WHERE rolname=:role"),
+        {"role": MIGRATOR_ROLE},
+    ).scalar_one():
+        yield PrivilegeFailure(
+            f"role {_quote(MIGRATOR_ROLE)}",
+            "can't log in",
+            f"ALTER ROLE {_quote(MIGRATOR_ROLE)} LOGIN",
+        )
+    yield from _ownership_failures(connection)
+
+
+def _provisioning_failures(connection: Connection) -> Iterator[PrivilegeFailure]:
+    """What the connected administrator needs before provisioning changes anything.
+
+    ADR 0027: a superuser, or ``CREATEROLE`` with the database owner's
+    privileges; ``ADMIN`` on each existing Sediment role; the ability to clear
+    each existing role's attributes and memberships.
+    """
+    administrator = (
+        connection.execute(
+            text(
+                "SELECT rolname, rolsuper, rolcreatedb, rolcreaterole, rolreplication, "
+                "rolbypassrls FROM pg_roles WHERE rolname=current_user"
+            )
+        )
+        .mappings()
+        .one()
+    )
+    name = administrator["rolname"]
+    subject = f"administrator {_quote(name)}"
+    database = connection.exec_driver_sql("SELECT current_database()").scalar_one()
+    if administrator["rolsuper"]:
+        return
+    # ponytail: the rolsuper gate stays until capability-based provisioning
+    # lands (ADR 0027, step 3); the checks after it are that step's contract.
+    yield PrivilegeFailure(
+        subject,
+        "isn't a superuser, which `sediment db provision` requires",
+        "provision as a superuser",
+    )
+    if not administrator["rolcreaterole"]:
+        yield PrivilegeFailure(
+            subject,
+            "lacks CREATEROLE",
+            f"ALTER ROLE {_quote(name)} CREATEROLE",
+        )
+    if not connection.exec_driver_sql(
+        "SELECT pg_has_role(current_user, datdba, 'USAGE') FROM pg_database "
+        "WHERE datname=current_database()"
+    ).scalar_one():
+        yield PrivilegeFailure(
+            subject,
+            f"lacks the privileges of the owner of database {_quote(database)}",
+            f"ALTER DATABASE {_quote(database)} OWNER TO {_quote(name)}",
+        )
+    if connection.exec_driver_sql(
+        "SELECT NOT pg_has_role(current_user, nspowner, 'USAGE') FROM pg_namespace "
+        "WHERE nspname='public'"
+    ).scalar():
+        yield PrivilegeFailure(
+            subject,
+            "lacks the privileges of the owner of schema public",
+            "ALTER SCHEMA public OWNER TO pg_database_owner",
+        )
+    for role in sorted(_sediment_roles(connection)):
+        quoted = _quote(role)
+        if not connection.execute(
+            text("SELECT pg_has_role(current_user, :role, 'MEMBER WITH ADMIN OPTION')"),
+            {"role": role},
+        ).scalar_one():
+            yield PrivilegeFailure(
+                f"role {quoted}",
+                f"doesn't grant {subject} the ADMIN option",
+                f"GRANT {quoted} TO {_quote(name)} WITH ADMIN OPTION, run by a role "
+                f"that holds ADMIN on {quoted}; or switch to administrator-"
+                f"provisioned roles with the credentials of {quoted}",
+            )
+        attributes = (
+            connection.execute(
+                text(
+                    "SELECT rolsuper, rolcreatedb, rolreplication, rolbypassrls "
+                    "FROM pg_roles WHERE rolname=:role"
+                ),
+                {"role": role},
+            )
+            .mappings()
+            .one()
+        )
+        for column, attribute in _ROLE_ATTRIBUTES:
+            if (
+                column in attributes
+                and attributes[column]
+                and not administrator[column]
+            ):
+                yield PrivilegeFailure(
+                    f"role {quoted}",
+                    f"holds {attribute}, which only a role with {attribute} can remove",
+                    f"ALTER ROLE {quoted} NO{attribute}, run by a superuser",
+                )
+        grants = connection.execute(
+            text(
+                "SELECT parent.rolname, grantor.rolname, "
+                "pg_has_role(current_user, m.roleid, 'MEMBER WITH ADMIN OPTION') "
+                "AND pg_has_role(current_user, m.grantor, 'USAGE') "
+                "FROM pg_auth_members m "
+                "JOIN pg_roles parent ON parent.oid=m.roleid "
+                "JOIN pg_roles member ON member.oid=m.member "
+                "JOIN pg_roles grantor ON grantor.oid=m.grantor "
+                "WHERE member.rolname=:role ORDER BY 1, 2"
+            ),
+            {"role": role},
+        ).all()
+        for parent, grantor, revocable in grants:
+            if not revocable:
+                yield PrivilegeFailure(
+                    f"role {quoted}",
+                    f"is a member of {_quote(parent)} through a grant by "
+                    f"{_quote(grantor)} that {subject} can't revoke",
+                    f"REVOKE {_quote(parent)} FROM {quoted} GRANTED BY "
+                    f"{_quote(grantor)}, run by a superuser",
+                )
+    yield from _ownership_failures(connection)
+
+
+@dataclass(frozen=True)
+class DatabaseCheck:
+    """One read-only check of a dedicated database, as the connected identity."""
+
+    identity: str
+    revision: RevisionState
+    failures: tuple[PrivilegeFailure, ...]
+
+
+def check_database(database_url: str) -> DatabaseCheck:
+    """Report every failed deployment check without changing the database.
+
+    An identity other than a Sediment role is checked as the administrator
+    that would provision this database. An absent schema is the expected
+    state before the first migration, so table coverage waits for it.
+    """
+    engine = create_postgres_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            connection.exec_driver_sql("SET TRANSACTION READ ONLY")
+            verify_minimum_server_version(connection)
+            identity = connection.exec_driver_sql("SELECT current_user").scalar_one()
+            failures: list[PrivilegeFailure] = []
+            if identity not in ROLES:
+                failures += _provisioning_failures(connection)
+            failures += _database_failures(connection)
+            failures += _migrator_failures(connection)
+            revision = inspect_connection_revision(connection).state
+            if revision in {RevisionState.BEHIND, RevisionState.AHEAD}:
+                failures.append(
+                    PrivilegeFailure(
+                        "database schema",
+                        f"is {revision.value} the supported head {HEAD_REVISION}",
+                        "run `sediment db upgrade` with the release that "
+                        "supports this schema",
+                    )
+                )
+            for role in (RUNTIME_ROLE, OPERATOR_ROLE):
+                failures += _privilege_failures(
+                    connection, role, relations=revision is RevisionState.AT_HEAD
+                )
+            connection.rollback()
+    except (DatabasePrivilegeError, DatabaseOperationError, DatabaseURLValidationError):
+        raise
+    except Exception:
+        raise database_operation_error("check database", database_url) from None
+    finally:
+        engine.dispose()
+    return DatabaseCheck(identity, revision, tuple(dict.fromkeys(failures)))
 
 
 def validate_runtime_privileges(engine: Engine) -> None:

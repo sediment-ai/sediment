@@ -14,6 +14,14 @@
 
 ### Command line
 
+- Add `sediment db check`, a read-only command that reports every failed
+  database role and grant check at once, each with the statement that fixes
+  it. It checks the migrator role, the dedicated database and its `public`
+  schema, and the unchanged runtime and operator policies. Connected as an
+  administrator, it also reports what provisioning needs from that
+  administrator. Privilege diagnostics from provisioning and API startup now
+  name the role, the privilege, and the fix
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
 - Remove `sediment install --gateway-url` and `--gateway-key`. The operator
   distributes gateway routing and client credentials through managed settings
   or MDM; developers no longer receive a gateway key. Reinstalling drops

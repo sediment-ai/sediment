@@ -1,0 +1,9 @@
+USAGE:
+  sediment db check [-h] [--database-url DATABASE_URL]
+
+  report every failed role and grant check without changing anything
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --database-url DATABASE_URL
+                        PostgreSQL URL (default: SEDIMENT_DATABASE_URL)

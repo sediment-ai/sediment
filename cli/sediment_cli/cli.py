@@ -195,6 +195,22 @@ def cmd_db_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_db_check(args: argparse.Namespace) -> int:
+    """Report every failed database role and grant check without changing it."""
+    from sediment_core.postgres_roles import check_database
+
+    result = check_database(_database_url(args))
+    heading = f'database check as "{result.identity}"'
+    if not result.failures:
+        print(f"{heading}: passed (schema {result.revision.value})")
+        return 0
+    print(f"{heading}: schema {result.revision.value}")
+    for failure in result.failures:
+        print(f"  {failure}")
+    count = len(result.failures)
+    return _fail(f"{count} database check{'s' if count != 1 else ''} failed")
+
+
 def _public_status(status: int) -> int:
     """Map a dispatched command's semantic failure onto the CLI contract."""
     return 0 if status == 0 else 1
@@ -1579,6 +1595,11 @@ def build_parser() -> argparse.ArgumentParser:
     for operation, help_text, func in (
         ("status", "inspect the schema revision without changing it", cmd_db_status),
         ("upgrade", "upgrade the schema under an advisory lock", cmd_db_upgrade),
+        (
+            "check",
+            "report every failed role and grant check without changing anything",
+            cmd_db_check,
+        ),
     ):
         command = db_sub.add_parser(operation, help=help_text)
         command.add_argument(
