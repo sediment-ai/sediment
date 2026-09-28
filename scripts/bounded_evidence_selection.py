@@ -47,6 +47,11 @@ JEV_ARMS = frozenset({"J1", "J2", "J2P"})
 # new information and conflict stay stable. J2 therefore qualifies on those two
 # and keeps no initial evidence. FULL delivers the whole catalog as a baseline.
 J2_POLICY_VERSION = 2
+# Version 3 (Phase 3, chosen on development data): long-history development runs
+# scored a correction note relevance 0.87 but new information 0.56 and conflict
+# 0.52, so version 2 delivered the superseded note without its correction.
+# Version 3 also qualifies strongly relevant candidates.
+J2_RELEVANCE_STRONG = 0.80
 J2_CANDIDATE_LIMIT = 12
 J2_ROLES = frozenset({"user", "assistant"})
 FULL_CONTEXT_BYTES = base.CATALOG_BYTES_LIMIT + 1024
@@ -114,7 +119,12 @@ def policy() -> dict:
             "candidate_limit": J2_CANDIDATE_LIMIT,
             "candidate_order": "conversation; oldest dropped first to fit",
             "initial_parts": 0,
-            "qualify": "new_information >= 0.60 or conflict >= 0.60",
+            "qualify": "new_information >= 0.60 or conflict >= 0.60"
+            + (
+                f" or relevant >= {J2_RELEVANCE_STRONG:.2f}"
+                if J2_POLICY_VERSION >= 3
+                else ""
+            ),
             "delivery": "qualifying parts in conversation order within the "
             "eight-part, 8,192-byte envelope",
             "jev_attempts": f"{len(J2_RETRY_WAITS) + 1} of {J2_ATTEMPT_SECONDS} s "
@@ -740,6 +750,8 @@ def j2_candidates(catalog: dict) -> list[dict]:
 
 
 def j2_qualifies(scores: dict) -> bool:
+    if J2_POLICY_VERSION >= 3 and scores["relevant"] >= J2_RELEVANCE_STRONG:
+        return True
     return (
         scores["new_information"] >= ADDITION_MIN or scores["conflict"] >= ADDITION_MIN
     )

@@ -33,6 +33,8 @@ CATALOG_BYTES_LIMIT = 131_072
 EVIDENCE_CALL_LIMIT = 12
 # Five inspection turns plus notes need more than the 12-call continuation limit.
 SOURCE_MODEL_CALL_LIMIT = 40
+# Chosen on development data: see bounded_evidence_selection.J2_RELEVANCE_STRONG.
+J2_POLICY_VERSION = 3
 TARGETS = {
     "validity": "every slot recorded; no instrument failure; at least 10 of 12 "
     "tasks have all three arms measured with complete usage",
@@ -50,7 +52,7 @@ def configure() -> None:
     phase2.FIXTURES, phase2.ARMS, phase2.SETS = FIXTURES, ARMS, SETS
     phase2.CANDIDATE, phase2.SECONDARY = "J2P", "J2"
     phase2.EXPERIMENT, phase2.TARGETS = "context-pointer-phase-3", TARGETS
-    phase2.PROTOCOL_VERSION = 6
+    phase2.PROTOCOL_VERSION = 7
     phase2.configure()
     run.SOURCE_MODEL_CALL_LIMIT = SOURCE_MODEL_CALL_LIMIT
     base = selector.base
@@ -61,6 +63,7 @@ def configure() -> None:
         base._read = selector.read_chunked(base._read)
         base._read.chunked = True
     selector.FULL_CONTEXT_BYTES = CATALOG_BYTES_LIMIT + 1024
+    selector.J2_POLICY_VERSION = J2_POLICY_VERSION
     identity = run.protocol_identity
 
     def protocol_identity(config: dict, task_set: str, transport_label: str) -> dict:

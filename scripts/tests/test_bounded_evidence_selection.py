@@ -837,3 +837,22 @@ def test_chunked_read_merges_references_and_refuses_changed_revisions():
     revision[0] = 2
     with pytest.raises(mod.BoundedSelectionError, match="source_changed"):
         chunked(None, None, None, None, "s", list(range(70)))
+
+
+@pytest.mark.parametrize(
+    "version,scores,qualifies",
+    [
+        (2, (0.87, 0.56, 0.52), False),
+        (3, (0.87, 0.56, 0.52), True),
+        (3, (0.79, 0.59, 0.59), False),
+        (2, (0.2, 0.9, 0.1), True),
+        (3, (0.2, 0.1, 0.6), True),
+    ],
+)
+def test_j2_policy_versions_qualify_as_documented(
+    monkeypatch, version, scores, qualifies
+):
+    mod = load()
+    monkeypatch.setattr(mod, "J2_POLICY_VERSION", version)
+    names = ("relevant", "new_information", "conflict")
+    assert mod.j2_qualifies(dict(zip(names, scores, strict=True))) is qualifies

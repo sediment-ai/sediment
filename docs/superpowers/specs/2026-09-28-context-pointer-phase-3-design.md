@@ -40,6 +40,30 @@ re-exploration enough to reach the Phase 2 token target on longer Sessions?
 - `scripts/context_pointer_eval.py` configures the Phase 2 driver. Its protocol
   identity is version 6, and Phase 3 keeps its own probe ledger.
 
+## Development findings and J2 policy version 3
+
+The development run (`threshold-alerts`, 9 continuations) showed two things
+before any held-out run:
+
+- On long histories, both J2 arms used about 35% of FULL's tokens across the 3
+  complete tasks. FULL's 36 KB context was resent on every call, which outweighed
+  the two extra round trips the minimal arms needed. The pointer list changed
+  little (J2P used 1.02 times J2's tokens).
+- In the correction profile, JEV scored the correction note relevance 0.87 but
+  new information 0.56 and conflict 0.52, while the obsolete note it replaces
+  qualified. Policy version 2 therefore delivered the superseded rule without
+  its correction.
+
+Policy version 3 also qualifies a candidate whose relevance is at least 0.80.
+Re-scoring the recorded development selections, version 3 delivers the rule in
+all seven runs with JEV scores, against three for version 2. Its only other
+effect is one small restated note in redundant runs. Phase 3 uses version 3 for
+J2 and J2P (protocol version 7); Phase 2's recorded results used version 2. On
+this family, every arm, FULL included, failed the constraint check in missing
+and correction runs: the visible task states "every reading below or at the
+limit is quiet", which the note contradicts. That is a fixture difficulty, not
+an instrument failure, and the held-out families are unchanged.
+
 ## Targets (fixed before any development or held-out run)
 
 | Target | Criterion |

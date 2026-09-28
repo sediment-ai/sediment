@@ -41,6 +41,7 @@ def test_configure_binds_phase_3_arms_limits_and_identity(monkeypatch, tmp_path)
         for name in names:
             monkeypatch.setattr(module, name, getattr(module, name))
     monkeypatch.setattr(selector, "FULL_CONTEXT_BYTES", selector.FULL_CONTEXT_BYTES)
+    monkeypatch.setattr(selector, "J2_POLICY_VERSION", selector.J2_POLICY_VERSION)
     phase3.configure()
     order = run.run_order()
     assert len(order) == 36
@@ -60,7 +61,9 @@ def test_configure_binds_phase_3_arms_limits_and_identity(monkeypatch, tmp_path)
     }
     identity = run.protocol_identity(config, "heldout", "direct")
     assert identity["experiment"] == "context-pointer-phase-3"
-    assert identity["protocol_version"] == 6
+    assert identity["protocol_version"] == 7
+    assert identity["policy"]["j2"]["policy_version"] == 3
+    assert "relevant >= 0.80" in identity["policy"]["j2"]["qualify"]
     assert identity["arms"] == list(phase3.ARMS)
     assert identity["limits"]["catalog_bytes"] == 131_072
     assert identity["generation"]["source_model_calls"] == 40
