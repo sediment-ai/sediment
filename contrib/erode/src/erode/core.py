@@ -52,7 +52,7 @@ _TARGET_CHARS = 160  # keeps every stub far below min_result_bytes
 
 @dataclass(frozen=True)
 class PrunePolicy:
-    policy_version: str = "1"
+    policy_version: str = "2"
     min_result_bytes: int = 512
     min_new_bytes: int = 4096
     protected_turns: int = 2
@@ -72,14 +72,20 @@ class _Call:
 
 
 def _text(content: Any) -> str | None:
-    """Result text for a string or all-text-parts content; None otherwise."""
+    """Result text for a string or all-text-parts content; None otherwise.
+
+    A part with any field besides ``type`` and ``text``, such as
+    ``cache_control``, isn't prunable: a stub can't carry that field.
+    """
     if isinstance(content, str):
         return content
     if isinstance(content, list) and content:
         parts = [
             part.get("text")
             for part in content
-            if isinstance(part, dict) and part.get("type") == "text"
+            if isinstance(part, dict)
+            and part.keys() == {"type", "text"}
+            and part["type"] == "text"
         ]
         if len(parts) == len(content) and all(isinstance(p, str) for p in parts):
             return "".join(parts)

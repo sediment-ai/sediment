@@ -47,6 +47,16 @@ HOP_BY_HOP = frozenset(
 UPSTREAM_TIMEOUT_SECONDS = 600
 
 
+def _nominated(values: list[str] | None) -> frozenset[str]:
+    """Header names that a Connection header nominates for this hop only."""
+    return frozenset(
+        name.strip().lower()
+        for value in values or ()
+        for name in value.split(",")
+        if name.strip()
+    )
+
+
 def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
     """Return the body to forward: pruned when it's a known chat request."""
     if not enabled or method != "POST" or urlsplit(path).path not in PRUNED_ROUTES:
@@ -103,10 +113,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Malformed request body")
             return
         body = prune_body(self.command, self.path, body, self.prune_enabled)
+        dropped = HOP_BY_HOP | _nominated(self.headers.get_all("Connection"))
         headers = {
             name: value
             for name, value in self.headers.items()
-            if name.lower() not in HOP_BY_HOP
+            if name.lower() not in dropped
         }
         headers["Host"] = self.upstream.netloc
         if body or self.command in ("POST", "PUT", "PATCH"):
@@ -143,8 +154,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.send_response_only(response.status, response.reason)
         length = response.getheader("Content-Length")
         bodiless = self.command == "HEAD" or response.status in (204, 304)
+        dropped = HOP_BY_HOP | _nominated(response.msg.get_all("Connection"))
         for name, value in response.getheaders():
-            if name.lower() not in HOP_BY_HOP:
+            if name.lower() not in dropped:
                 self.send_header(name, value)
         if bodiless:
             if length is not None:
@@ -157,13 +169,29 @@ class ProxyHandler(BaseHTTPRequestHandler):
         else:
             self.send_header("Content-Length", length)
         self.end_headers()
+        sent, complete = 0, True
         # read1 returns whatever has arrived, so server-sent events stream.
-        while chunk := response.read1(65536):
+        while True:
+            try:
+                chunk = response.read1(65536)
+            except (http.client.HTTPException, OSError):
+                complete = False  # the upstream broke off mid-body
+                break
+            if not chunk:
+                break
             if chunked:
                 self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk))
             else:
                 self.wfile.write(chunk)
             self.wfile.flush()
+            sent += len(chunk)
+        if not chunked and length.isdigit() and sent != int(length):
+            complete = False
+        if not complete:
+            # The framing can't report truncation; closing the connection does.
+            logger.warning("erode_proxy reason=upstream_truncated")
+            self.close_connection = True
+            return
         if chunked:
             self.wfile.write(b"0\r\n\r\n")
             self.wfile.flush()

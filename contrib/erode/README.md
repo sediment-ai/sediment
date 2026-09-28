@@ -81,7 +81,7 @@ retries, and streams each response as it arrives.
    ```
 
 The proxy logs a count-only report for each chat request:
-`erode_prune policy_version=1 stubbed_results=3 bytes_removed=48210`.
+`erode_prune policy_version=2 stubbed_results=3 bytes_removed=48210`.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |
