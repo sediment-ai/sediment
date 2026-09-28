@@ -1,10 +1,11 @@
 # ADR 0027 — Run on PostgreSQL without a superuser
 
-Status: proposed ([#185](https://github.com/sediment-ai/sediment/issues/185)).
-The maintainer resolved decisions 1–4 on 2026-09-28; decisions 5–7 carry
-recommendations pending confirmation. When accepted, it amends
-[ADR 0012](0012-postgresql-fact-store.md)'s migration and startup contract.
-Nothing described here is implemented.
+Status: accepted, implementation pending
+([#191](https://github.com/sediment-ai/sediment/issues/191)). Design:
+[#185](https://github.com/sediment-ai/sediment/issues/185).
+
+Amends [ADR 0012](0012-postgresql-fact-store.md)'s migration and startup
+contract.
 
 ## Context
 
@@ -66,7 +67,7 @@ Removing the `rolsuper` check alone therefore fails at the next statement. The
 design problem is ownership: an administrator that doesn't own Sediment's tables
 can't manage their privileges, and Sediment's own migrator already can.
 
-## Decision (proposed)
+## Decision
 
 ### Separate provisioning, migration, and startup
 
@@ -243,7 +244,7 @@ single credential.
 
 ## Decisions
 
-Resolved by the maintainer on 2026-09-28:
+The maintainer resolved all seven on 2026-09-28.
 
 1. Qualify Amazon RDS for PostgreSQL 17 first.
 2. `sediment server` migrates at start, following coder/coder: `coder server`
@@ -254,22 +255,19 @@ Resolved by the maintainer on 2026-09-28:
    applies its defaults only when it provisions them.
 4. No provider memberships in the first release, so no `rds_iam`: password
    authentication only.
-
-Recommended, pending maintainer confirmation:
-
-5. Decision: extend `sediment db upgrade`, which ADR 0012 already names. After
+5. Extend `sediment db upgrade`, which ADR 0012 already names. After
    Alembic it applies the owner's grants, verifies columns, and validates all
    three roles; `sediment server` calls the same function at start, so both
    paths share one implementation. Add one read-only `sediment db check` that
    reports every failed check with its fixing statement. Alternative: a new
    migrate command, which would leave `db upgrade` as a second, weaker path.
-6. Decision: generate the administrator's SQL. `sediment db provision
+6. Generate the administrator's SQL. `sediment db provision
    --print-sql` prints it without a connection, for the configured role names
    and database, from the same policy the validators enforce. A test applies
    that output as a non-superuser administrator and requires `db check` to pass,
    so the SQL can't drift. Alternative: static SQL in `docs/operate/deploy.md`,
    which no check keeps current.
-7. Decision: fail before any change when an existing Sediment role grants the
+7. Fail before any change when an existing Sediment role grants the
    administrator no `ADMIN` option. The diagnostic names the role and both
    fixes: grant `ADMIN` on it to this administrator, or switch to the
    administrator-provisioned mode with that role's credentials. Alternative:
