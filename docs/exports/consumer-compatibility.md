@@ -1,6 +1,6 @@
 # Export for a consumer
 
-Use an exact `--profile` to export for Hugging Face TRL (Transformer
+Use a versioned `--profile` to export for Hugging Face TRL (Transformer
 Reinforcement Learning), Fireworks, SWE-bench, or NeMo Gym. The
 [Consumer compatibility reference](../reference/compatibility.md) lists the
 supported versions and checks. Without a profile, Sediment emits its canonical
@@ -11,27 +11,27 @@ Evidence recipe, labels, Reward, and Provenance. Missing negative examples
 remain missing. A permissive agent workflow can produce verified SFT rows while
 producing no DPO pairs. Prompt steering alone isn't a rejection label.
 
-## Check consumer capacity
+## Prepare the source and select a profile
 
-Profiles use the 64 MiB encoded materialization allowance from `BundleLimits`.
-SFT and DPO profiles check canonical training rows before collecting their
-consumer view. RLVR profiles check complete Rollouts before hydration; the
-NeMo check also includes the source Inference calls. A file-backed population
-that exceeds the allowance fails before its first record is decoded.
+Before starting, [choose an objective and prepare a reviewed bundle](training-exports.md).
+Select the Evidence recipe in [Export DPO pairs](dpo.md) or
+[Export SFT and diff-SFT rows](sft.md), or the target in
+[Export RLVR tasks and trajectories](rlvr-export.md). A profile adapts that
+selection; it doesn't choose training evidence for you.
 
-The same allowance applies separately to projected native rows, adapted data
-and evidence together, loader inputs, consumer settings, and prepared data and
-evidence files together. Native projectors stage each admitted row before
-collecting a consumer view. Python callers that supply iterators receive a
-capacity error when their cumulative encoded rows exceed the allowance.
-These limits bound encoded populations, not total process memory.
+The examples use `$HOME/sediment-derived/review`. Follow the
+[private destination setup](training-exports.md#prepare-private-destinations),
+and use a nonexistent child directory for each export. Don't create that child
+in advance. Check the [capacity limit](#check-consumer-capacity) before planning
+a large export.
 
-If a limit is exceeded, the complete export fails before publication. Sediment
-preserves the destination and removes its private staging. Capacity failures
-don't become eligibility skips or smaller successful datasets. For a larger
-export, use canonical rows without `--profile` and qualify downstream conversion
-separately. The [profiling procedure](../../CONTRIBUTING.md#profile-reports-and-derivations) explains
-resource measurement and qualification boundaries.
+| Objective and consumer | Profile | Next step |
+| --- | --- | --- |
+| SFT with Hugging Face TRL | `hf-trl-sft-v1` | Install the optional environment, then export SFT |
+| DPO with Hugging Face TRL | `hf-trl-dpo-v2` | Install the optional environment, then export DPO |
+| SFT or DPO with Fireworks | `fireworks-sft-v1` or `fireworks-dpo-v2` | Export SFT or DPO; no optional package is required |
+| SWE-bench tasks | `swe-bench-tasks-v1` | Qualify the consumer environment and supply task/runtime inputs |
+| NeMo Gym Rollouts | `nemo-gym-rollouts-v1` | Qualify the consumer environment and supply response parameters |
 
 ## Install the matching optional environment
 
@@ -51,29 +51,32 @@ export PATH="$HOME/.local/share/sediment-consumer/bin:$PATH"
 Fireworks format profiles need no optional package. They validate the format;
 they don't upload data or run a hosted training job.
 
-The exact SWE-bench and NeMo profile qualifications use upstream revisions that
+The SWE-bench and NeMo profile qualifications use upstream revisions that
 aren't supplied by the Sediment package. This guide doesn't provide a package-only
 setup for those environments. Use canonical exports without `--profile`, or an
 independently qualified consumer environment that meets the reference contract.
 
 ## Export SFT or DPO
 
-If captured CI evidence supports verified imitation, select `sft_verified`:
+Run only the command for your selected objective and recipe. This SFT example
+uses `sft_verified`; if you selected curated imitation, pass
+`--recipe sft_curated` instead:
 
 ```bash
-sediment export sft --from /data/derived/review \
-  --recipe sft_verified --profile hf-trl-sft-v1 --out /data/consumer/hf-sft
+sediment export sft --from "$HOME/sediment-derived/review" \
+  --recipe sft_verified --profile hf-trl-sft-v1 --out "$HOME/sediment-exports/hf-sft"
 ```
 
-If captured human preferences support DPO, select `dpo_human`:
+This DPO example uses `dpo_human`; if you selected CI labels, pass
+`--recipe dpo_outcome` instead:
 
 ```bash
-sediment export dpo --from /data/derived/review \
-  --recipe dpo_human --profile hf-trl-dpo-v2 --out /data/consumer/hf-dpo
+sediment export dpo --from "$HOME/sediment-derived/review" \
+  --recipe dpo_human --profile hf-trl-dpo-v2 --out "$HOME/sediment-exports/hf-dpo"
 ```
 
-For Fireworks, use `fireworks-sft-v1` or `fireworks-dpo-v2`. Every invocation
-requires an unused destination directory. An invalid profile, incompatible
+For Fireworks, use `fireworks-sft-v1` or `fireworks-dpo-v2` and another unused
+destination. An invalid profile, incompatible
 package version, invalid row, or incomplete configuration fails before
 publication. A populated export contains data, aligned evidence sidecars, and
 a compatibility manifest. An empty export reports zero rows and creates no
@@ -86,14 +89,17 @@ See [Migrate retained DPO exports](dpo.md#migrate-retained-dpo-exports).
 
 ### Load Hugging Face data
 
-Use Sediment's loader to preserve heterogeneous nested message and tool values.
+After confirming that the reported training file exists, use Sediment's loader
+to preserve heterogeneous nested message and tool values.
 Inferring Arrow structs from early rows can reject a later tool argument shape.
 
 ```python
+from pathlib import Path
+
 from sediment_export.compatibility import load_hf_dataset
 
 train = load_hf_dataset(
-    "/data/consumer/hf-sft/data.train.jsonl", "hf-trl-sft-v1"
+    Path.home() / "sediment-exports/hf-sft/data.train.jsonl", "hf-trl-sft-v1"
 )
 ```
 
@@ -133,7 +139,9 @@ of hosted readiness. See the provider's
 
 ## Export NeMo Gym Rollouts
 
-Supply a JSON configuration with explicit adapter parameters:
+In the qualified NeMo environment, save a JSON configuration as
+`$HOME/sediment-exports/nemo.json`. Set these response parameters to your
+consumer's verified configuration:
 
 ```json
 {
@@ -146,9 +154,10 @@ These values describe your consumer setup. The evidence sidecar identifies
 the operator as their source; they aren't reconstructed inference-request Facts.
 
 ```bash
-sediment export rlvr --from /data/derived/review \
+sediment export rlvr --from "$HOME/sediment-derived/review" \
   --target nemo-gym --profile nemo-gym-rollouts-v1 \
-  --consumer-config /data/nemo.json --out /data/consumer/nemo
+  --consumer-config "$HOME/sediment-exports/nemo.json" \
+  --out "$HOME/sediment-exports/nemo"
 ```
 
 The profile hydrates full captured messages through validated Inference-call
@@ -160,7 +169,8 @@ messages. Response timestamps cite the source Inference call. Missing status
 and token usage stay absent.
 
 Every admitted row passes the upstream `BaseVerifyResponse` parser without
-silent field loss. The profile requires captured numeric Reward. It counts
+silent field loss. The profile requires numeric Reward from resolved CI
+evidence. It counts
 missing Reward, missing Inference calls, identity mismatches, missing or mixed
 models, and unsupported message mappings. The closed vocabulary lives in
 `consumer_rlvr.py::NEMO_PROFILE_SKIP_REASONS`.
@@ -177,8 +187,9 @@ the snippet unchanged.
 The SWE-bench profile requires an explicit repair request and executable task
 configuration for each canonical instance ID. First inspect the canonical
 `--target swe-bench` projection and its repository/base-commit binding. Then
-supply `tasks` in the consumer JSON configuration. Replace the illustrative
-values with your verified task configuration:
+save `tasks` in `$HOME/sediment-exports/swe.json`. You also need
+`SEDIMENT_MIRROR_PATH` for the Reference patches. Replace the illustrative
+values with your verified task configuration before running the profile:
 
 ```json
 {
@@ -212,9 +223,10 @@ the tests you run. Sediment validates the fields and parser registration but
 doesn't run the image or establish test transitions.
 
 ```bash
-sediment export rlvr --from /data/derived/review \
+sediment export rlvr --from "$HOME/sediment-derived/review" \
   --target swe-bench --profile swe-bench-tasks-v1 \
-  --consumer-config /data/swe.json --out /data/consumer/swe
+  --consumer-config "$HOME/sediment-exports/swe.json" \
+  --out "$HOME/sediment-exports/swe"
 ```
 
 The repository and base commit must match the source row exactly. The patch
@@ -226,7 +238,19 @@ mustn't become a guessed repair request. Qualification uses the pinned
 
 ## Check suitability before training
 
-Inspect the manifest's split counts, numeric Reward counts, and exclusions.
+After the command succeeds, inspect the published directory:
+
+1. Open `compatibility.json`. Check the profile identity, file hashes, split
+   counts, numeric Reward counts, and exclusions.
+2. Confirm that each populated partition has aligned `data` and `evidence`
+   files. With splitting enabled, the names include `.train` or `.eval`;
+   empty partitions produce no file. With splitting disabled, the files are
+   `data.jsonl` and `evidence.jsonl`.
+3. Inspect representative data rows with their matching evidence sidecars.
+   Keep the sidecars for audit and send only data to the consumer.
+4. [Audit task overlap and the evaluation population](training-exports.md#audit-the-split-before-training)
+   before training. An empty export creates no destination; don't use output
+   from an earlier command as its result.
 `skipped` records consumer-adapter exclusions. CLI exports also preserve
 `canonical_skipped` from the training projection. RLVR exports preserve
 `fragmented` from the source bundle. These fields count separate populations;
@@ -243,5 +267,28 @@ The pinned CI matrix qualifies every advertised profile and gates release
 preparation. The weekly canary tests updated upstream packages without
 changing product pins. Dependency or Python-version incompatibility counts as
 drift. Fireworks has no local dataset loader; its format tests remain separate
-from hosted acceptance. If an upstream release needs different output bytes,
-add a profile version before changing the support claim.
+from hosted acceptance. The
+[compatibility reference](../reference/compatibility.md) states the tested
+boundary for each profile. Parser acceptance doesn't establish training quality.
+
+## Check consumer capacity
+
+Profiles use the 64 MiB encoded materialization allowance from `BundleLimits`.
+SFT and DPO profiles check canonical training rows before collecting their
+consumer view. RLVR profiles check complete Rollouts before hydration; the
+NeMo check also includes the source Inference calls. A file-backed population
+that exceeds the allowance fails before its first record is decoded.
+
+The same allowance applies separately to projected native rows, adapted data
+and evidence together, loader inputs, consumer settings, and prepared data and
+evidence files together. Native projectors stage each admitted row before
+collecting a consumer view. Python callers that supply iterators receive a
+capacity error when their cumulative encoded rows exceed the allowance.
+These limits bound encoded populations, not total process memory.
+
+If a limit is exceeded, the complete export fails before publication. Sediment
+preserves the destination and removes its private staging. Capacity failures
+don't become eligibility skips or smaller successful datasets. For a larger
+export, use canonical rows without `--profile` and qualify downstream conversion
+separately. The [profiling procedure](../../CONTRIBUTING.md#profile-reports-and-derivations) explains
+resource measurement and qualification boundaries.
