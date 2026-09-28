@@ -193,7 +193,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 
 | Topic | Read |
 |---|---|
-| Choose a training objective and consumer profile | `docs/exports/training-exports.md`; `docs/exports/consumer-compatibility.md` |
+| Start an export: choose an objective, prepare evidence, select a consumer, and audit output | `docs/exports/training-exports.md`; `docs/exports/consumer-compatibility.md` |
 | DPO pairs; SFT and diff-SFT rows; Recovery rows | `docs/exports/dpo.md`; `docs/exports/sft.md`; `docs/exports/recovery.md` |
 | RLVR artifacts (`tasks.jsonl`, `rollouts.jsonl`, manifest) | `docs/exports/rlvr-export.md` |
 

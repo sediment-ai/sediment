@@ -1,60 +1,54 @@
 # Export DPO pairs
 
-For a supported downstream release, select a versioned
-[consumer profile](consumer-compatibility.md).
-
-Run the default direct preference optimization (DPO) export:
-
-```bash
-sediment export dpo --out /data/export
-```
-
-The command writes `dpo.jsonl`, or split train and eval files, with distinct
-chosen and rejected responses for matching prompt buckets. It selects
-`dpo_human` version 2 by default. For shared prerequisites, reviewed-bundle steps, output
-inspection, and holdout guidance, see [Choose a training
-export](training-exports.md).
+Export distinct chosen and rejected responses for direct preference optimization
+(DPO), using the same prompt and model.
+This procedure is for operators with captured preference or CI evidence.
+Before starting, [prepare a reviewed bundle and private output parent](training-exports.md#prepare-the-export).
+The examples use `$HOME/sediment-derived/review`.
 
 ## Choose an Evidence recipe
+
+Both members need Attributed completions for the same model and structurally
+identical input messages. Their mapped responses must differ. A rejected edit
+or Retry linkage alone doesn't supply those canonical inputs.
 
 `dpo_human` version 2 is the default. The chosen member requires a
 human-explicit accept. The rejected member requires a human-explicit reject.
 These are independent gestures. The row doesn't claim that the developer
 compared the two members directly.
 
-To use CI outcomes, select the outcome recipe:
-
-```bash
-sediment export dpo --recipe dpo_outcome --out /data/export
-```
-
 `dpo_outcome` version 2 requires explicit selection. A clean resolved CI pass
 labels the chosen member. A clean resolved CI failure labels the rejected
 member. Ambiguous verdicts, non-verdict-only evidence, and suspected flakes
 don't label a member. A pair never mixes human and CI sources.
 
-## Understand the pairing contract
+## Export the selected recipe
 
-The DPO export pairs a `chosen` completion with a `rejected` completion. Both
-members must share the same model and an identical prompt, defined as a
-structurally equal native message history. Those shared values form the prompt
-bucket.
+For human preferences, run:
 
-Within a bucket, the projection first keeps one Attributed completion that the
-selected recipe can label for each inference call. Confidence and a
-deterministic evidence key break ties. Each bucket evaluates the first
-`DPOPolicy.max_pairs_per_bucket` candidate pairs in sorted call-ID order, with a
-default of 3. A declined pair consumes a slot. The projection doesn't examine
-later pairs to replace it.
+```bash
+sediment export dpo \
+  --from "$HOME/sediment-derived/review" \
+  --recipe dpo_human \
+  --out "$HOME/sediment-exports/review-dpo"
+```
 
-After complete-row representation validation, the projection compares the full
-mapped response lists through strict JSON. It ignores dictionary insertion
-order. Whitespace, Unicode code points, readable reasoning, message/list order,
-tool identities, nested arguments, and scalar types remain significant.
-Different native text-part segmentation can map to identical responses.
-Metadata differences don't provide response contrast.
+If you selected CI outcomes, use `--recipe dpo_outcome` and another unused
+output directory. If you need a supported trainer format, use the matching
+[consumer-profile procedure](consumer-compatibility.md#export-sft-or-dpo).
 
-A pair that straddles the holdout lands in eval.
+## Inspect the output
+
+The command prints `pairs projected`, `skipped`, and each written path. With
+the default split, expect `dpo.train.jsonl` and `dpo.eval.jsonl` only for
+populated partitions. A bundle with splitting disabled produces `dpo.jsonl`.
+
+1. Check that each pair has the intended recipe and both label sources in
+   `metadata`. A pair never mixes human and CI labels.
+2. Inspect `prompt`, `chosen`, and `rejected`. Verify that the responses differ
+   and that the prompt and source model match the task you want to train.
+3. Review exclusions and [audit the split](training-exports.md#audit-the-split-before-training).
+   Zero rows leave any earlier files untouched.
 
 ## Read a DPO row
 
@@ -62,7 +56,7 @@ A pair that straddles the holdout lands in eval.
 |---|---|
 | `prompt` | shared trainer-facing request messages |
 | `chosen`, `rejected` | preferred and dispreferred response-message lists |
-| `tools` | tool definitions; empty because inference-call version 1 doesn't carry definitions |
+| `tools` | tool definitions; empty because Inference call schema version 1 doesn't carry definitions |
 | `metadata` | organization, source model, both completion IDs, recipe ID and version, both label sources, label Confidence, CI reliability, Confidence margin, per-member Provenance, and split |
 
 Example DPO row:
@@ -82,9 +76,9 @@ Example DPO row:
     "recipe_version": 2,
     "chosen_label_source": "explicit_accept",
     "rejected_label_source": "explicit_reject",
-    "label_confidence": 0.7,
+    "label_confidence": 0.0,
     "ci_reliability": 1.0,
-    "confidence_margin": 0.3,
+    "confidence_margin": 1.0,
     "provenance": {
       "chosen": {"policy_version": "5", "quarantine_revision": 0, "policy_digest": null},
       "rejected": {"policy_version": "5", "quarantine_revision": 0, "policy_digest": null}
@@ -102,30 +96,52 @@ Example DPO row:
 }
 ```
 
-`metadata.label_confidence` is the weaker member's Confidence.
+`metadata.label_confidence` is the weaker member's Confidence. Under the
+default policy, an explicit reject has Confidence 0.0, so a human-preference
+pair can have label Confidence 0.0 and still qualify. Confidence isn't a
+probability that the pair's preference label is correct.
 `metadata.confidence_margin` is chosen Confidence minus rejected Confidence,
 bounded to [−1, 1].
 
 ## Interpret skipped inputs
 
-Review `skipped` before training. The DPO export reports every skipped input
-under this closed vocabulary: `conflicting_run_identity`,
-`ambiguous_workflow_verdicts`, `repository_identity_absent`,
-`repository_identity_conflict`, `repository_identity_unresolved`,
-`repository_mirror_identity_unresolved`, `repository_source_absent`,
-`non_finite_number`, `unrepresentable_unicode`, `completionless`,
-`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
-`unrepresentable_part_order`, `unresolved_tool_call`,
-`unsupported_completion_role`, `unsupported_message_role`,
-`unsupported_role_part`, `inference_call_not_found`, `promptless`,
-`model_absent`, `no_label_source`, `unreliable_ci_resolution`, `bucket_capped`,
-and `identical_responses`.
+| Result | What to check |
+| --- | --- |
+| `no_label_source` | The selected recipe lacks an explicit human decision or a resolved CI verdict. Implicit accepts and corrective prompts don't supply human-explicit labels. |
+| `unreliable_ci_resolution` | Suspected flakes can't label an outcome pair. |
+| `identical_responses` | The mapped response lists are equal. Metadata differences don't provide response contrast. |
+| `bucket_capped` | The bucket reached the default limit of three evaluated candidate pairs. Declined pairs consume slots without replacement. |
+| Zero pairs with eligible members | Both labels must occur in one structurally identical prompt/model bucket. Different prompts and different models don't pair. |
 
 `identical_responses` counts evaluated pairs; `bucket_capped` counts buckets.
-Don't add these different units to estimate lost pairs. Existing representation
-failures take precedence over equality and count once. If every pair declines,
-the command reports zero rows and leaves earlier files untouched. That result
-doesn't describe a fresh dataset.
+Don't add these units to estimate lost pairs. Representation failures take
+precedence over equality and count once. For the complete vocabulary, see
+[DPO projection contracts](../agents/exports-and-stats.md#dpo-dpopy) and
+[representation exclusions](training-exports.md#check-representation-exclusions).
+
+## Understand the pairing contract
+
+The DPO export pairs a `chosen` completion with a `rejected` completion. Both
+members must share the same model and an identical prompt, defined as a
+structurally equal native message history. Those shared values form the prompt
+bucket.
+
+Within a bucket, the projection first keeps one Attributed completion that the
+selected recipe can label for each Inference call. Confidence and a
+deterministic evidence key break ties. Each bucket evaluates the first
+`DPOPolicy.max_pairs_per_bucket` candidate pairs in sorted call-ID order, with a
+default of 3. A declined pair consumes a slot. The projection doesn't examine
+later pairs to replace it.
+
+After complete-row representation validation, the projection compares the full
+mapped response lists through strict JSON. It ignores dictionary insertion
+order. Whitespace, Unicode code points, readable reasoning, message/list order,
+tool identities, nested arguments, and scalar types remain significant.
+Different native text-part segmentation can map to identical responses.
+Metadata differences don't provide response contrast.
+
+If either member belongs to an eval Session, the pair lands in eval.
+This rule alone doesn't enforce prompt or task isolation across the dataset.
 
 ## Migrate retained DPO exports
 

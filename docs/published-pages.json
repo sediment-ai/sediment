@@ -121,7 +121,7 @@
     {
       "source": "docs/exports/training-exports.md",
       "destination": "exports/training-exports",
-      "description": "Choose a training objective, prepare its evidence, and audit the output."
+      "description": "Start with an objective and reviewed evidence, then export and audit training rows."
     },
     {
       "source": "docs/exports/dpo.md",
@@ -141,7 +141,7 @@
     {
       "source": "docs/exports/rlvr-export.md",
       "destination": "exports/rlvr-export",
-      "description": "Verifiable task specifications and reward-labeled trajectories: tasks.jsonl, rollouts.jsonl, and the taskset manifest."
+      "description": "Choose an RLVR target, prepare its inputs, and inspect tasks, trajectories, and CI evidence."
     },
     {
       "source": "docs/exports/consumer-compatibility.md",
