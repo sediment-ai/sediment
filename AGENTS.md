@@ -125,7 +125,7 @@ AGPL-3.0-or-later (see `LICENSE`). Every first-party `.py` file begins with:
 CI runs `--check`. `shims/` and `contrib/erode/` are carved out as MIT
 (`shims/pi/LICENSE`, `contrib/erode/LICENSE`; `SPDX-License-Identifier: MIT`) —
 shim code runs inside someone else's harness process, and erode in front of
-someone else's agent (ADR 0027), where AGPL blocks adoption.
+someone else's agent (ADR 0028), where AGPL blocks adoption.
 
 Open-core boundary: a single team's complete, auditable pipeline stays open —
 see `docs/adr/0006-open-core-boundary.md`. Review cross-team operational
@@ -179,7 +179,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Start with a reviewed Derivation bundle, then export; compare policies and profile workloads | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
 | Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
 | Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
-| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026; request-path context pruning: `docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md`, ADR 0027 |
+| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026; request-path context pruning: `docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md`, ADR 0028 |
 | Synthetic scenarios | `sim/README.md` |
 
 **Capture clients** (`docs/capture/`)

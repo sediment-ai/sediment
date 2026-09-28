@@ -25,7 +25,7 @@ broad try/except and failures are logged, never raised.
 
 With ``SEDIMENT_CONTEXT_PRUNE=supersede`` and the MIT ``erode`` package
 importable, ``async_pre_call_hook`` also stubs superseded tool output before
-the model call (ADR 0027). The logged messages are then the pruned request,
+the model call (ADR 0028). The logged messages are then the pruned request,
 and the payload carries erode's count-only report under ``sediment_context``.
 """
 
@@ -69,7 +69,7 @@ try:
 except ImportError:
     erode_apply = None
 
-# Off unless set to exactly "supersede"; ADR 0027 keeps the transform opt-in.
+# Off unless set to exactly "supersede"; ADR 0028 keeps the transform opt-in.
 CONTEXT_PRUNE = os.environ.get("SEDIMENT_CONTEXT_PRUNE", "").strip()
 if CONTEXT_PRUNE and CONTEXT_PRUNE != "supersede":
     logger.warning("sediment_context_prune reason=unknown_mode mode=%s", CONTEXT_PRUNE)

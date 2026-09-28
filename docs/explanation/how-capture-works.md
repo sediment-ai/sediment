@@ -74,7 +74,7 @@ gateway translates between client and provider protocols.
 Sediment's own [context pruning](../capture/managed-capture.md#prune-superseded-tool-output)
 is an opt-in prompt rewrite of this kind. It replaces superseded tool output
 with stub lines, and capture records the pruned request that the model
-received ([ADR 0027](../adr/0027-opt-in-request-transforms.md)).
+received ([ADR 0028](../adr/0028-opt-in-request-transforms.md)).
 
 A thin gateway configuration should not change model quality when it preserves
 the request and parameters, sends them to the same provider and model, and

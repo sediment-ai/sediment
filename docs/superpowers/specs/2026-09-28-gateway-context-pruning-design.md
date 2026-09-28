@@ -201,7 +201,7 @@ input.
 
 | Item | Estimate |
 | --- | --- |
-| ADR 0027: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
+| ADR 0028: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
 | Stage A core, both format adapters, the LiteLLM hook, and tests | 2–3 days |
 | Stage A.1 proxy and pass-through tests | 1–2 days |
 | E1 | about 2 days |

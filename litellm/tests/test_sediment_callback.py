@@ -34,7 +34,7 @@ sys.modules.setdefault("litellm.integrations", integrations)
 sys.modules.setdefault("litellm.integrations.custom_logger", custom_logger)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-# The MIT erode package (ADR 0027), as the bundled gateway mounts it.
+# The MIT erode package (ADR 0028), as the bundled gateway mounts it.
 _ERODE = Path(__file__).resolve().parents[2] / "contrib" / "erode" / "src"
 sys.path.insert(0, str(_ERODE))
 
@@ -456,7 +456,7 @@ def test_unsafe_raw_capture_never_writes_but_delivery_continues(
         assert target.read_text() == "unchanged"
 
 
-# The context-pruning pre-call hook (ADR 0027).
+# The context-pruning pre-call hook (ADR 0028).
 
 
 def _superseded_request() -> dict:

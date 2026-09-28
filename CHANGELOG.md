@@ -11,7 +11,7 @@
   generated environment already holds the endpoint and token. Configure local
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
-- Add opt-in context pruning (ADR 0027). With
+- Add opt-in context pruning (ADR 0028). With
   `SEDIMENT_CONTEXT_PRUNE=supersede`, the LiteLLM capture callback replaces
   superseded tool output with a one-line stub before each model call: a file
   read that a later read, edit, or write of the file replaced, and a command
