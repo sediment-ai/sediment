@@ -104,19 +104,19 @@
       "description": "The five capture signals, their data paths, attribution, edit survival, and privacy boundaries."
     },
     {
+      "source": "docs/operate/run-derivations.md",
+      "destination": "derive/run-derivations",
+      "description": "Start here: prepare inputs, build one bundle, review its evidence, and export training rows."
+    },
+    {
       "source": "docs/explanation/how-derivation-works.md",
       "destination": "derive/how-derivation-works",
-      "description": "Facts, snapshots, resolved policy, cohort selection, and the canonical derived bundle."
+      "description": "Follow Facts through snapshots, policy, canonical artifacts, cohort selection, and training projection."
     },
     {
       "source": "docs/explanation/attribution.md",
       "destination": "derive/attribution",
-      "description": "Git notes and jaccard fallback join commits to inference calls."
-    },
-    {
-      "source": "docs/operate/run-derivations.md",
-      "destination": "derive/run-derivations",
-      "description": "Run, scope, inspect, recompute, and export a derivation."
+      "description": "How Git notes and similarity match Inference calls to commit files, and where the evidence is uncertain."
     },
     {
       "source": "docs/exports/training-exports.md",
