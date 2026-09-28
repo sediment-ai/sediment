@@ -227,8 +227,8 @@ order, with the matching output part as its result:
 | Statement | Normalized as |
 | --- | --- |
 | `apply_patch` | Edit or write of each path named by its `*** Add File:`, `*** Update File:`, `*** Delete File:`, or `*** Move to:` lines |
-| `exec_command` whose `cmd` is one of `cat P`, `nl -ba P`, `head P`, or `tail P` | Read of path P |
-| `exec_command` whose `cmd` is `sed -n '<range>p' P` | Partial read of P: superseded only by a later edit of P or the identical command, never by another partial read |
+| `exec_command` whose `cmd` is `cat P` or `nl -ba P` | Read of path P |
+| `exec_command` whose `cmd` is `head P`, `tail P`, or `sed -n '<range>p' P` | Partial read of P: superseded only by a later edit of P or the identical command, never by another read |
 | Any other `exec_command` | Run of command C, compared by its exact `cmd` string and other arguments |
 
 A read form must split, with POSIX shell quoting rules, into exactly the tokens
@@ -241,8 +241,10 @@ statement (same `cmd` and same other arguments, such as `max_output_tokens`),
 or, for full reads only, by a later full read of P with the same other
 arguments. A run is superseded only by a later identical statement.
 
-Paths are compared lexically. A relative path joins the `<cwd>` of the latest
-environment context before the call, and then both paths are normalized
+Paths are compared lexically. A relative path joins the command's `workdir`
+argument when it has one, itself joined to the `<cwd>` of the latest environment
+context before the call when relative. Without a `workdir`, a relative path
+joins that `<cwd>`. Both paths are then normalized
 without touching a filesystem or resolving symlinks. If no `<cwd>` precedes a
 call, its relative paths are compared as written, so they never match an
 absolute path.

@@ -85,7 +85,7 @@ retries, and streams each response as it arrives.
    ```
 
 The proxy logs a count-only report for each chat request:
-`erode_prune policy_version=2 stubbed_results=3 bytes_removed=48210`.
+`erode_prune policy_version=3 stubbed_results=3 bytes_removed=48210`.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |
@@ -112,14 +112,16 @@ and never runs it:
   `text(await tools.apply_patch("..."));`, with JSON string, number, or boolean
   values. Any other line makes the whole call opaque, and erode never stubs its
   output.
-- `cat P`, `nl -ba P`, `head P`, and `tail P` are reads of P, and
-  `sed -n '<range>p' P` is a partial read. A form with a pipe, a redirect, `&&`,
-  two paths, a glob, or a variable is an ordinary command run.
+- `cat P` and `nl -ba P` are full reads of P. `head P`, `tail P`, and
+  `sed -n '<range>p' P` are partial reads, which only an edit of P or the
+  identical command supersedes. A form with a pipe, a redirect, `&&`, two paths,
+  a glob, or a variable is an ordinary command run.
 - Each path an `apply_patch` names in an `*** Add File:`, `*** Update File:`,
   `*** Delete File:`, or `*** Move to:` line is an edit. A patch counts only when
   its result is `{}`.
-- Relative paths join the working directory from Codex's environment context.
-  erode compares paths as text and never touches the filesystem.
+- Relative paths join the command's `workdir` when it has one, and otherwise the
+  working directory from Codex's environment context. erode compares paths as
+  text and never touches the filesystem.
 - erode stubs individual results inside a bundled output and leaves the rest of
   the output unchanged.
 

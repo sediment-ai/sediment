@@ -75,7 +75,7 @@ _SED_RANGE = re.compile(r"\d+(?:,\d+)?p")
 
 @dataclass(frozen=True)
 class PrunePolicy:
-    policy_version: str = "2"
+    policy_version: str = "3"
     min_result_bytes: int = 512
     min_new_bytes: int = 4096
     protected_turns: int = 2
@@ -273,7 +273,9 @@ def _codex_read(cmd: str, cwd: str | None) -> tuple[str, str] | None:
         if not _SED_RANGE.fullmatch(tokens[2]):
             return None
         form, path = "partial", tokens[3]
-    elif len(tokens) == 2 and tokens[0] in ("cat", "head", "tail"):
+    elif len(tokens) == 2 and tokens[0] in ("head", "tail"):
+        form, path = "partial", tokens[1]  # the first or last lines only
+    elif len(tokens) == 2 and tokens[0] == "cat":
         form, path = "full", tokens[1]
     elif len(tokens) == 3 and tokens[:2] == ["nl", "-ba"]:
         form, path = "full", tokens[2]
@@ -301,7 +303,13 @@ def _codex_calls(
         others = json.dumps(
             {k: v for k, v in value.items() if k != "cmd"}, sort_keys=True
         )
-        read = _codex_read(cmd, cwd)
+        # A call's workdir, absolute or relative to cwd, is where it runs.
+        workdir = value.get("workdir", cwd)
+        if "workdir" in value and (not isinstance(workdir, str) or not workdir):
+            read = None  # an unreadable workdir: treat the command as a run
+        else:
+            base = workdir if cwd is None else posixpath.join(cwd, workdir)
+            read = _codex_read(cmd, base)
         if read is None:
             call = _Call(step, turn, tool, RUN, cmd + "\x00" + others, shown=cmd)
         else:

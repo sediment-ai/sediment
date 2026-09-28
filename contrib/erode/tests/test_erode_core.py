@@ -115,7 +115,7 @@ def test_read_superseded_by_later_edit_openai() -> None:
         "read it again if you need the current content]"
     )
     assert report == {
-        "policy_version": "2",
+        "policy_version": "3",
         "stubbed_results": 1,
         "bytes_removed": len(BIG) - len(pruned[3]["content"]),
     }

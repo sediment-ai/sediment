@@ -420,3 +420,29 @@ def test_handwritten_hostile_statements_parse_in_linear_time(source) -> None:
     started = time.perf_counter()
     _statements(source)
     assert time.perf_counter() - started < 1.0
+
+
+def test_handwritten_head_and_tail_are_partial_reads() -> None:
+    # head and tail show part of a file, so they never replace another read.
+    assert stubbed_calls([[cmd("cat a.py")], [cmd("head a.py")]]) == []
+    assert stubbed_calls([[cmd("head a.py")], [cmd("tail a.py")]]) == []
+    assert stubbed_calls([[cmd("head a.py")], [cmd("cat a.py")]]) == []
+    assert stubbed_calls([[cmd("head a.py")], [cmd("head a.py")]]) == ["call_0"]
+    turns = [[cmd("tail a.py")], [patch("*** Update File: /work/a.py")]]
+    assert stubbed_calls(turns) == ["call_0"]
+
+
+@pytest.mark.parametrize(
+    ("workdir", "patched", "superseded"),
+    [
+        ("/other", "/work/a.py", False),
+        ("/other", "/other/a.py", True),
+        ("sub", "/work/sub/a.py", True),
+        ("sub", "/work/a.py", False),
+    ],
+)
+def test_handwritten_reads_resolve_against_the_call_workdir(
+    workdir, patched, superseded
+) -> None:
+    turns = [[cmd("cat a.py", workdir=workdir)], [patch(f"*** Update File: {patched}")]]
+    assert stubbed_calls(turns) == (["call_0"] if superseded else [])
