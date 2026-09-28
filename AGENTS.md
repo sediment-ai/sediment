@@ -156,6 +156,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 |---|---|
 | Reading order for humans and agents | `docs/onboarding.md` |
 | Try Sediment locally | `docs/quickstart.md` |
+| Help operators and developers use Sediment (`sediment guide`) | `docs/operate/agent-guide.md` |
 | Generated references — edit the source, never the page: CLI flags, HTTP routes, schema fields, consumer profiles | `docs/reference/cli.md`; `docs/reference/api.md`; `docs/reference/schema.md`; `docs/reference/compatibility.md` |
 
 **Concepts** (`docs/explanation/`)
@@ -186,7 +187,6 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Topic | Read |
 |---|---|
 | One developer machine: git hooks, agent hooks, transcripts, sender replay | `docs/capture/local-capture.md` |
-| Work as a coding agent where Sediment is installed (`sediment guide`) | `docs/capture/agent-guide.md` |
 | Choose an agent integration | `docs/capture/agent-integrations.md`; `docs/capture/agents/claude-code.md`; `docs/capture/agents/codex.md`; `docs/capture/agents/cursor.md`; `docs/capture/agents/pi.md` |
 | Gateways, webhooks, mirrors, fleet distribution | `docs/capture/managed-capture.md` |
 

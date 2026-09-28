@@ -159,4 +159,6 @@ else
     echo "Enroll capture: sediment login <url> --capture"
     echo "Then install repository hooks: sediment install /path/to/repo"
 fi
-echo "Read the coding-agent guide: sediment guide"
+if "$EXECUTABLE" guide --help >/dev/null 2>&1; then
+    echo "Agents: sediment guide"
+fi

@@ -46,6 +46,9 @@ sediment --version
 
 The command prints the version that you installed.
 
+If a coding agent helps you operate this deployment, give it the output of
+`sediment guide` for guidance that matches the installed release.
+
 ## Connect PostgreSQL
 
 Sediment needs a PostgreSQL superuser (`rolsuper=true`) connection to create

@@ -1428,7 +1428,9 @@ def test_server_second_run_names_the_env_file_not_the_environment(
 ) -> None:
     root = tmp_path / "server-root"
     assert main(["server", "--root", str(root)]) == 0
-    assert "Generated server credentials" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "Generated server credentials" in output
+    assert "Agents: sediment guide\n" in output
     original = (root / "server.env").read_bytes()
     for name in (
         "SEDIMENT_API_BEARER_TOKEN",
@@ -1759,8 +1761,6 @@ def test_direct_and_offline_rlvr_agree_by_value_and_keep_each_modes_bytes(
 
 def test_guide_prints_packaged_guide_without_settings(monkeypatch, capsys) -> None:
     """`sediment guide` is a static print: no server, no login, no org id."""
-    from importlib import resources
-
     from sediment_cli.cli import main
 
     import socket
@@ -1774,9 +1774,41 @@ def test_guide_prints_packaged_guide_without_settings(monkeypatch, capsys) -> No
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(cli_module, "_prepare_store_command", _deny)
     monkeypatch.setattr(socket.socket, "connect", _deny)
+    monkeypatch.setattr(cli_module, "__version__", "1.2.3")
     assert main(["guide"]) == 0
     out = capsys.readouterr().out
-    expected = (
-        resources.files("sediment_cli").joinpath("agent_guide.md").read_text("utf-8")
+    assert "## Help an operator" in out
+    assert "## Help a developer" in out
+    assert (
+        "https://raw.githubusercontent.com/sediment-ai/sediment/v1.2.3/"
+        "docs/operate/deploy.md"
+    ) in out
+    assert (
+        "https://raw.githubusercontent.com/sediment-ai/sediment/v1.2.3/"
+        "docs/capture/local-capture.md#uninstall-capture"
+    ) in out
+    assert "](../" not in out
+    assert "https://docs.sediment.so" not in out
+
+
+def test_guide_resolves_relative_links_and_preserves_external_links(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    from importlib import resources
+
+    import sediment_cli.cli as cli_module
+
+    (tmp_path / "agent_guide.txt").write_text(
+        "[Deploy](deploy.md) [Capture](../capture/local-capture.md#install-capture)\n"
+        "[External](https://example.com/page#anchor)\n"
     )
-    assert out == expected
+    monkeypatch.setattr(resources, "files", lambda _package: tmp_path)
+    monkeypatch.setattr(cli_module, "__version__", "2.0.0rc1")
+    assert main(["guide"]) == 0
+    assert capsys.readouterr().out == (
+        "[Deploy](https://raw.githubusercontent.com/sediment-ai/sediment/"
+        "v2.0.0rc1/docs/operate/deploy.md) "
+        "[Capture](https://raw.githubusercontent.com/sediment-ai/sediment/"
+        "v2.0.0rc1/docs/capture/local-capture.md#install-capture)\n"
+        "[External](https://example.com/page#anchor)\n"
+    )

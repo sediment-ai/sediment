@@ -619,6 +619,7 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
         print(f"Using credentials from {env_file} and explicit environment overrides")
     print(f"Serving on {ui.style(url, 'sandstone', 'bold')}")
     print(f"Next:  {ui.style(f'sediment login {url}', 'sandstone')}")
+    print("Agents: sediment guide")
 
     del bootstrap, target, effective, stored, additions
     import uvicorn
@@ -796,11 +797,20 @@ def cmd_logout(args: argparse.Namespace) -> int:
 
 
 def cmd_guide(args: argparse.Namespace) -> int:
-    """Print the packaged coding-agent guide. Static text: no Settings, no
-    network, so it works on a machine that has only the CLI."""
+    """Print the bundled guide with release-pinned links, without reading settings."""
+    import re
     from importlib import resources
+    from urllib.parse import urljoin
 
-    text = resources.files("sediment_cli").joinpath("agent_guide.md").read_text("utf-8")
+    text = (
+        resources.files("sediment_cli").joinpath("agent_guide.txt").read_text("utf-8")
+    )
+    base = (
+        f"https://raw.githubusercontent.com/sediment-ai/sediment/v{__version__}/"
+        "docs/operate/agent-guide.md"
+    )
+    # The bundled Markdown uses the published page's relative procedure links.
+    text = re.sub(r"\]\(([^)\s]+)\)", lambda m: f"]({urljoin(base, m[1])})", text)
     sys.stdout.write(text)
     return 0
 
@@ -1710,7 +1720,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_guide = sub.add_parser(
         "guide",
-        help="print the guide for coding agents working where Sediment is installed",
+        help="print the agent guide for operators and developers",
     )
     p_guide.set_defaults(func=cmd_guide)
 

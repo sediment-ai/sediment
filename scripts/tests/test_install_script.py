@@ -65,7 +65,13 @@ elif name in ("uv", "pipx", "python3", "python3.12"):
                               str(pathlib.Path(os.environ["HOME"]) / ".local/bin"))
         target.mkdir(parents=True, exist_ok=True)
         executable = target / "sediment"
-        executable.write_text("#!/bin/sh\n[ \"${TEST_FAIL:-}\" != verify ]\n")
+        executable.write_text("""#!/bin/sh
+[ "${TEST_FAIL:-}" != verify ] || exit 1
+if [ "$1" = guide ] && [ "${TEST_GUIDE_SUPPORTED:-1}" = 0 ]; then
+    echo "invalid command: guide" >&2
+    exit 2
+fi
+""")
         executable.chmod(0o755)
     else:
         sys.exit(2)
@@ -144,7 +150,7 @@ def test_default_prepares_linux_and_installs_python_312_tool(installer):
     ] in calls
     assert (home / ".local/bin/sediment").is_file()
     assert "sediment server" in result.stdout
-    assert "Read the coding-agent guide: sediment guide\n" in result.stdout
+    assert "Agents: sediment guide\n" in result.stdout
     assert "Installing host packages with sudo apt-get" in result.stdout
     export = next(
         line.strip() for line in result.stdout.splitlines() if "export PATH=" in line
@@ -239,9 +245,33 @@ def test_capture_only_does_not_require_system_package_access(installer):
     assert result.returncode == 0, result.stderr
     assert "sediment login" in result.stdout
     assert "Enroll capture: sediment login <url> --capture\n" in result.stdout
-    assert "Read the coding-agent guide: sediment guide\n" in result.stdout
+    assert "Agents: sediment guide\n" in result.stdout
     assert "sediment server" not in result.stdout
     assert not any(call[0] in ("apt-get", "brew", "sudo") for call in commands())
+
+
+def test_older_release_installs_without_advertising_an_unavailable_guide(installer):
+    run, commands, _, _, _ = installer
+    result = run(
+        "--capture-only",
+        "--version",
+        "0.3.0",
+        changes={"TEST_GUIDE_SUPPORTED": "0"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Installed sediment-cli==0.3.0." in result.stdout
+    assert "sediment login <url> --capture" in result.stdout
+    assert "sediment guide" not in result.stdout
+    assert "invalid command" not in result.stderr
+    assert [
+        "uv",
+        "tool",
+        "install",
+        "--python",
+        "3.12",
+        "--upgrade",
+        "sediment-cli==0.3.0",
+    ] in commands()
 
 
 @pytest.mark.parametrize(

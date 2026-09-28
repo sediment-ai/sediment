@@ -30,8 +30,7 @@ COMMANDS:
   server                run a local API server with managed PostgreSQL
   login                 store credentials for a server
   logout                remove stored credentials
-  guide                 print the guide for coding agents working where Sediment
-                        is installed
+  guide                 print the agent guide for operators and developers
   commit                pretty-print attributions for a commit
   derive                materialize a reviewed canonical derivation bundle
   export                run an export projection

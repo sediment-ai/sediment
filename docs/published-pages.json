@@ -93,10 +93,10 @@
       "description": "Connect one developer machine, its coding agents, and its repositories to Sediment."
     },
     {
-      "source": "docs/capture/agent-guide.md",
-      "destination": "capture/agent-guide",
-      "title": "Work as a coding agent where Sediment is installed",
-      "description": "What a coding agent should leave alone, how to check capture, and what leaves the machine."
+      "source": "docs/operate/agent-guide.md",
+      "destination": "operate/agent-guide",
+      "title": "Help operators and developers use Sediment",
+      "description": "Agent guidance for server operations, developer capture, credentials, and removal, with links to each procedure."
     },
     {
       "source": "docs/capture/managed-capture.md",

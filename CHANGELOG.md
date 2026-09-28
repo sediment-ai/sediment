@@ -14,9 +14,10 @@
 
 ### Command line
 
-- Add `sediment guide`, which prints a guide for coding agents that work where
-  Sediment is installed. The installer's last line names the command, and the
-  docs site publishes the same page at `capture/agent-guide`.
+- Add `sediment guide` for agents helping operators run Sediment and developers
+  install capture. It prints a bundled guide with procedure links pinned to
+  the installed release. Server startup and compatible installers name the
+  command. The docs site publishes the guide at `operate/agent-guide`.
 - Remove `sediment install --gateway-url` and `--gateway-key`. The operator
   distributes gateway routing and client credentials through managed settings
   or MDM; developers no longer receive a gateway key. Reinstalling drops

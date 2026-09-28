@@ -650,6 +650,10 @@ def test_installed_wheel_prints_the_agent_guide(installed_wheels) -> None:
         [str(sediment), "guide"], check=False, capture_output=True, text=True
     )
     assert guide.returncode == 0, guide.stderr
-    assert guide.stdout.startswith(
-        "# Work as a coding agent where Sediment is installed"
-    )
+    assert guide.stdout.startswith("# Help operators and developers use Sediment")
+    assert "## Help an operator" in guide.stdout
+    assert "## Help a developer" in guide.stdout
+    assert (
+        f"https://raw.githubusercontent.com/sediment-ai/sediment/v{__version__}/"
+        "docs/operate/deploy.md"
+    ) in guide.stdout

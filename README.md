@@ -44,8 +44,8 @@ sediment server
 
 Follow the
 [Quickstart](docs/quickstart.md) to connect an agent and verify capture.
-If you are a coding agent and Sediment is already installed here, read the
-[agent guide](docs/capture/agent-guide.md) or run `sediment guide`.
+If you help an operator run Sediment or a developer install capture, read the
+[agent guide](docs/operate/agent-guide.md) or run `sediment guide`.
 
 [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex, Cursor,
 pi, and Copilot Chat. Available signals vary by agent.

@@ -274,7 +274,7 @@ Options:
 
 ## sediment guide
 
-print the guide for coding agents working where Sediment is installed
+print the agent guide for operators and developers
 
 ```text
 sediment guide [-h]
