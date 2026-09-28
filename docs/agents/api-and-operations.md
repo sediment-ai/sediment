@@ -107,7 +107,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - `sediment server` manages PostgreSQL 17 under `~/.sediment/server` or `--root`: `postgres/` holds data, a versioned `postgresql-*` directory holds binaries, `postgres.log` holds database logs, and `mirror/` holds repositories. First use downloads a checksum-pinned archive from theseus-rs; macOS uses maintained Homebrew OpenSSL libraries. `server.lock` confines ownership to one process per root. The command waits for database readiness, provisions roles, and derives the runtime URL before starting the foreground API. Ctrl+C stops the API and its owned database; restart preserves data. `SEDIMENT_BOOTSTRAP_DATABASE_URL` selects external provisioning without managed database startup or shutdown.
   Mode-`0600` `server.env` preserves database/API secrets without printing them. Bootstrap, migrator, and operator database credentials never reach the API. Bare loopback login enrolls both local API authorities; explicit `--with-token` enrolls only the selected authority.
 - `report <name>` (eight read-only reports) and `mirror-gc` dispatch before
-  argparse and never construct `Settings`. The CLI forwards argv verbatim to
+  argparse; they and `guide` never construct `Settings`. The CLI forwards argv verbatim to
   the module in `sediment_api/reports/` or `sediment_api/mirror_gc.py`. `--org`
   runs through `normalize_org_id` and defaults from `SEDIMENT_ORG_ID`. Storage
   defaults from `SEDIMENT_DATABASE_URL` and `SEDIMENT_MIRROR_PATH`. Each one-shot command owns and disposes one engine. **An empty

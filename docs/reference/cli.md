@@ -272,6 +272,14 @@ Options:
 |---|---|
 | `--server` | server URL to log out of (default: current) |
 
+## sediment guide
+
+print the guide for coding agents working where Sediment is installed
+
+```text
+sediment guide [-h]
+```
+
 ## sediment commit
 
 pretty-print attributions for a commit

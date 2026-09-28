@@ -1755,3 +1755,28 @@ def test_direct_and_offline_rlvr_agree_by_value_and_keep_each_modes_bytes(
     )
     assert '"aaa": {"q": 2}, "zz": 1' in offline_text, "bundle export lost sorted keys"
     assert direct_text != offline_text
+
+
+def test_guide_prints_packaged_guide_without_settings(monkeypatch, capsys) -> None:
+    """`sediment guide` is a static print: no server, no login, no org id."""
+    from importlib import resources
+
+    from sediment_cli.cli import main
+
+    import socket
+
+    import sediment_cli.cli as cli_module
+
+    def _deny(*_args, **_kwargs):
+        raise AssertionError("sediment guide reached the store seam or the network")
+
+    for name in ("SEDIMENT_ORG_ID", "SEDIMENT_DATABASE_URL", "DATABASE_URL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(cli_module, "_prepare_store_command", _deny)
+    monkeypatch.setattr(socket.socket, "connect", _deny)
+    assert main(["guide"]) == 0
+    out = capsys.readouterr().out
+    expected = (
+        resources.files("sediment_cli").joinpath("agent_guide.md").read_text("utf-8")
+    )
+    assert out == expected

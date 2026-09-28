@@ -640,3 +640,16 @@ def test_installed_server_manages_database_and_preserves_facts(
         assert failed.returncode != 0
     assert not (root / "postgres" / "postmaster.pid").exists()
     assert (root / "server.env").read_bytes() == original_credentials
+
+
+def test_installed_wheel_prints_the_agent_guide(installed_wheels) -> None:
+    """The guide ships inside the wheel, not only in the source checkout."""
+    _wheels, venv = installed_wheels
+    sediment = venv / "bin" / "sediment"
+    guide = subprocess.run(
+        [str(sediment), "guide"], check=False, capture_output=True, text=True
+    )
+    assert guide.returncode == 0, guide.stderr
+    assert guide.stdout.startswith(
+        "# Work as a coding agent where Sediment is installed"
+    )

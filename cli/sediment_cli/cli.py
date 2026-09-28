@@ -795,6 +795,16 @@ def cmd_logout(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_guide(args: argparse.Namespace) -> int:
+    """Print the packaged coding-agent guide. Static text: no Settings, no
+    network, so it works on a machine that has only the CLI."""
+    from importlib import resources
+
+    text = resources.files("sediment_cli").joinpath("agent_guide.md").read_text("utf-8")
+    sys.stdout.write(text)
+    return 0
+
+
 def cmd_commit(args: argparse.Namespace) -> int:
     """GET /query/commit/{sha} and pretty-print the per-repo attributions,
     decisions, and CI outcomes."""
@@ -1698,6 +1708,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_logout.set_defaults(func=cmd_logout)
 
+    p_guide = sub.add_parser(
+        "guide",
+        help="print the guide for coding agents working where Sediment is installed",
+    )
+    p_guide.set_defaults(func=cmd_guide)
+
     p_commit = sub.add_parser("commit", help="pretty-print attributions for a commit")
     p_commit.add_argument("sha", help="full 40- or 64-char commit SHA")
     p_commit.add_argument(
@@ -1924,6 +1940,10 @@ def main(argv: list[str] | None = None) -> int:
             return args.func(None, None, args)
         except (OSError, ValueError) as exc:
             return _fail(str(exc))
+
+    if args.command == "guide":
+        # Static print; must never reach _prepare_store_command or Settings.
+        return args.func(args)
 
     if args.command == "server":
         # Pre-Settings dispatch: provision before the API imports its settings.
