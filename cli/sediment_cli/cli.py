@@ -152,11 +152,17 @@ def _database_url(args: argparse.Namespace) -> str:
 
 
 def cmd_db_upgrade(args: argparse.Namespace) -> int:
-    """Upgrade the PostgreSQL physical schema to the supported head."""
-    from sediment_core.postgres_migrations import HEAD_REVISION, upgrade_database
+    """Upgrade the schema; as the migrator, also grant and validate the roles."""
+    from sediment_core.postgres_migrations import HEAD_REVISION
+    from sediment_core.postgres_roles import migrate_database
 
-    upgrade_database(_database_url(args))
-    print(f"database schema upgraded to {HEAD_REVISION}")
+    if migrate_database(_database_url(args)):
+        print(
+            f"database schema upgraded to {HEAD_REVISION}; "
+            "grants applied and roles validated"
+        )
+    else:
+        print(f"database schema upgraded to {HEAD_REVISION}")
     return 0
 
 
@@ -1600,7 +1606,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     for operation, help_text, func in (
         ("status", "inspect the schema revision without changing it", cmd_db_status),
-        ("upgrade", "upgrade the schema under an advisory lock", cmd_db_upgrade),
+        (
+            "upgrade",
+            "upgrade the schema under an advisory lock; as the migrator, "
+            "also grant and validate the roles",
+            cmd_db_upgrade,
+        ),
         (
             "check",
             "report every failed role and grant check without changing anything",

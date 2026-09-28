@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -83,7 +84,16 @@ def inspect_connection_revision(connection: Connection) -> RevisionInspection:
     return RevisionInspection(state, database_revision)
 
 
-def upgrade_database(database_url: str) -> None:
+def upgrade_database(
+    database_url: str,
+    *,
+    after_upgrade: Callable[[Connection], None] | None = None,
+) -> None:
+    """Upgrade to head under the migration lock.
+
+    ``after_upgrade`` runs on the same connection before the lock is released,
+    and its work commits only when it returns.
+    """
     engine = None
     try:
         engine = create_postgres_engine(database_url)
@@ -104,6 +114,12 @@ def upgrade_database(database_url: str) -> None:
                 config = _alembic_config()
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")
+                if after_upgrade is not None:
+                    after_upgrade(connection)
+                    connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
             finally:
                 connection.execute(
                     text("SELECT pg_advisory_unlock(:key)"),
