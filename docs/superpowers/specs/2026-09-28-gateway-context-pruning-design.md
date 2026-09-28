@@ -168,7 +168,8 @@ from the provider's actual prices.
 
 0. **E0, replay recorded requests (about half a day, no model calls).** Every
    coding request in the issue #134 experiments was recorded in full by the
-   evaluation gate: several hundred requests across Phases 1–3. Once `prune`
+   evaluation gate: about 1,500 requests across Phases 1–3, kept in the private
+   run archive, not in Git. Once `prune`
    exists, run it over those recorded request bodies, in order within each
    Session, and report per Session:
    - input bytes before and after, and bytes removed per request as the
