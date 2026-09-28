@@ -15,6 +15,7 @@ paths that participants approve:
 | [Repository mirrors](#configure-repository-mirrors) | Commit Attribution, with the developers' git hooks | Read-only credentials for private repositories |
 | [Gateway callback](#configure-inference-call-capture) | Inference calls | A gateway, its provider credentials, a capture token, and a way to distribute client routing |
 | [Fleet distribution](#distribute-decision-telemetry) | Developer decisions and commit Attribution on many machines | Mobile device management (MDM), and Python 3.12 on each macOS or Linux machine |
+| [Context pruning](#prune-superseded-tool-output) | Nothing: it removes stale tool output from model requests | The gateway callback or the pruning proxy |
 
 ## Configure push and CI capture
 
@@ -68,8 +69,9 @@ repository identities before you redeliver the Push.
 
 A gateway sends a copy of each successful model call to
 [`POST /ingest/gateway`](../reference/api.md#post-ingestgateway). Sediment
-doesn't serve model requests, and the published package doesn't include a
-gateway.
+doesn't serve or change model requests unless you enable
+[context pruning](#prune-superseded-tool-output). The published package
+doesn't include a gateway.
 
 Sediment reads the LiteLLM callback payload. To add the callback to your own
 LiteLLM proxy, follow
@@ -182,6 +184,111 @@ Set `SEDIMENT_GATEWAY_KEY` in the environment that starts pi. Keep
 `$SEDIMENT_GATEWAY_KEY` literally in the file; pi resolves it from the
 environment. If you register a different provider name or API, also set
 `SEDIMENT_PROVIDER_ID` and `SEDIMENT_PROVIDER_API` to match it.
+
+## Prune superseded tool output
+
+A long agent Session resends its whole conversation on every model call, and
+much of that input is tool output that later tool calls have made stale.
+Sediment can replace that output with one stub line before each call. The rule
+is deterministic and off by default, as
+[ADR 0027](../adr/0027-opt-in-request-transforms.md) requires.
+
+A tool result is superseded when a later tool call in the same request makes it
+out of date:
+
+| Earlier result | Superseded by |
+| --- | --- |
+| Read of a file | A later read of the whole file or of the same range, or a later edit or write of the file |
+| Run of a command | A later run of the identical command |
+
+Sediment never changes the following parts of a request:
+
+- System, user, and assistant text.
+- Tool calls and their arguments.
+- Results in the last two turns.
+- Results under 512 bytes, and error results.
+- Output of any tool other than pi's `read`, `edit`, `write`, and `bash`, or
+  Claude Code's `Read`, `Edit`, `MultiEdit`, `Write`, and `Bash`.
+
+Sediment applies new stubs only when they remove at least 4 KB, so the
+provider's cached prefix breaks rarely. A stub names the step that superseded
+the result, and the agent can read the file again when it needs the content.
+
+Pruning changes the model's input, so it can change the model's output. Before
+you enable it for a team, compare priced tokens and task outcomes with pruning
+on and off.
+
+Choose one delivery mode:
+
+| Mode | Use it when |
+| --- | --- |
+| [Bundled gateway](#enable-pruning-in-the-bundled-gateway) | You run the Compose gateway from this repository |
+| [Existing LiteLLM](#enable-pruning-in-an-existing-litellm-gateway) | You run your own LiteLLM proxy with the Sediment callback |
+| [Pruning proxy](#run-the-pruning-proxy) | You run another gateway, or your agents call the provider directly |
+
+### Enable pruning in the bundled gateway
+
+1. In `.env`, set `SEDIMENT_CONTEXT_PRUNE=supersede`.
+2. Start the gateway again with the commands in
+   [Enable bundled LiteLLM](../operate/rehearse-compose.md#enable-bundled-litellm).
+
+Compose mounts `litellm/sediment_context.py` next to the capture callback and
+passes the variable to LiteLLM. To turn pruning off, clear the value and start
+the gateway again.
+
+### Enable pruning in an existing LiteLLM gateway
+
+1. Copy `litellm/sediment_context.py` into the directory that holds
+   `sediment_callback.py`.
+2. In the proxy's environment, set `SEDIMENT_CONTEXT_PRUNE=supersede`.
+3. Restart the proxy.
+
+The capture callback that `litellm_settings.callbacks` registers also runs the
+pruning hook, so the proxy configuration doesn't change. If the proxy logs
+`sediment_context_prune reason=module_unavailable`, the callback can't import
+`sediment_context.py`; put the file next to `sediment_callback.py`.
+
+Each captured Inference call keeps the request that the model received. Its
+`raw` payload carries a count-only report under `sediment_context`:
+`policy_version`, `stubbed_results`, and `bytes_removed`.
+
+### Run the pruning proxy
+
+The pruning proxy is one standard-library Python file around the same rule. It
+prunes `POST /v1/chat/completions` and `POST /v1/messages` requests and
+forwards every request to one upstream URL. It forwards the agent's headers,
+including its credentials, unchanged. It stores nothing, adds no retries, and
+streams each response as it arrives.
+
+1. Copy `litellm/sediment_prune_proxy.py` and `litellm/sediment_context.py`
+   into one directory on a host with Python 3.12.
+2. Start the proxy in front of your gateway or provider:
+
+   ```bash
+   SEDIMENT_CONTEXT_PRUNE=supersede \
+     python3 sediment_prune_proxy.py --upstream https://api.anthropic.com
+   ```
+
+   The proxy listens on `127.0.0.1:8787`. To change the address, pass `--host`
+   and `--port`.
+3. Point each agent at the proxy instead of the upstream. For Claude Code:
+
+   ```bash
+   ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude
+   ```
+
+To chain the proxy in front of a gateway, pass the gateway's URL as
+`--upstream`, and route agents to the proxy with the settings in
+[Distribute gateway routing](#distribute-gateway-routing). Capture behind the
+proxy records the pruned request, which is what the model received. The proxy
+logs a count-only report for each chat request.
+
+Without `SEDIMENT_CONTEXT_PRUNE=supersede`, the proxy forwards every request
+unchanged, which gives you a pass-through baseline to compare against.
+
+The proxy has no authentication of its own and relays whatever credentials an
+agent sends. If you bind it to an address other than loopback, restrict who can
+reach that address.
 
 ## Distribute decision telemetry
 

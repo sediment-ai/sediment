@@ -11,6 +11,16 @@
   generated environment already holds the endpoint and token. Configure local
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
+- Add opt-in context pruning (ADR 0027). With
+  `SEDIMENT_CONTEXT_PRUNE=supersede`, the LiteLLM capture callback replaces
+  superseded tool output with a one-line stub before each model call: a file
+  read that a later read, edit, or write of the file replaced, and a command
+  run that a later identical run replaced. Captured Inference calls record the
+  pruned request and carry a count-only `sediment_context` report on `raw`.
+  The bundled gateway mounts `litellm/sediment_context.py` and passes the
+  variable through. For other gateways, or agents that call a provider
+  directly, run the stdlib `litellm/sediment_prune_proxy.py`. See
+  [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
 
 ### Command line
 

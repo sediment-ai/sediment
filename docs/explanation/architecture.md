@@ -53,7 +53,9 @@ it into the Fact schema. The endpoints append the resulting Facts to
 PostgreSQL. They don't compute an Attribution, Reward, or training label.
 
 Sediment observes model traffic after an agent harness or gateway reports it.
-Sediment doesn't sit in the model request path.
+Sediment doesn't sit in the model request path unless an operator enables
+[context pruning](../capture/managed-capture.md#prune-superseded-tool-output),
+which [ADR 0027](../adr/0027-opt-in-request-transforms.md) governs.
 
 ## Stored evidence
 
