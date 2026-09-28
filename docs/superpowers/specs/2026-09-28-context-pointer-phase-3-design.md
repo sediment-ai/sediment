@@ -82,3 +82,16 @@ Two synthetic families and two repetitions can't support a population estimate.
 Histories of about 40 KB are longer than Phase 2's but far shorter than real
 multi-hour Sessions. The agent must still read the file it edits and rerun the
 check to verify it, so a pointer list can remove only optional re-reads.
+
+## Results
+
+All 36 held-out slots were recorded with no instrument failure; 11 of 12 tasks
+were complete. All four targets hold. J2P used 0.44 of FULL's tokens across
+complete triples (0.37 cache-adjusted, with cache reads weighted at 10% and
+output at 5 times input), delivered the rule in every required run, and matched
+FULL on quality (7 of 11 complete triples each). J2P used 1.01 of J2's tokens, so
+the pointer list added nothing: the saving comes from not resending stale
+history. Median context was 36 KB for FULL and 1.5 KB for J2P, and minimal
+context doubled the coding calls (7.8 against 4.3). Every quality failure fell on
+the same `username-check` tasks in all three arms. Issue #134 records the full
+counts.
