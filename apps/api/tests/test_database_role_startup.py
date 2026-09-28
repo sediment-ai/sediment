@@ -129,6 +129,8 @@ def test_startup_uses_a_runtime_password_the_role_rotated_itself(
 def test_startup_refuses_the_migrator_and_the_administrator(provisioned, monkeypatch):
     url, _ = provisioned
     assert migrate_database(url(ROLES.migrator), ROLES)
-    for identity in (ROLES.migrator, ADMIN):
-        with pytest.raises(DatabasePrivilegeError, match=ROLES.runtime):
-            start(monkeypatch, url(identity))
+    with pytest.raises(DatabasePrivilegeError, match=ROLES.runtime):
+        start(monkeypatch, url(ROLES.migrator))
+    # The administrator can't even read the schema revision.
+    with pytest.raises(DatabaseOperationError, match="verify database startup"):
+        start(monkeypatch, url(ADMIN))

@@ -1109,11 +1109,17 @@ def migrate_database(database_url: str, roles: RoleNames = DEFAULT_ROLES) -> boo
         migrator = identity == roles.migrator
         if migrator:
             # Name a missing role state before Alembic turns it into a bare
-            # permission error.
+            # permission error; table coverage waits for the migration.
             failures = dict.fromkeys(
                 [
                     *_database_failures(connection, roles),
                     *_migrator_failures(connection, roles),
+                    *_privilege_failures(
+                        connection, roles.runtime, roles, coverage=False
+                    ),
+                    *_privilege_failures(
+                        connection, roles.operator, roles, coverage=False
+                    ),
                 ]
             )
             if failures:
