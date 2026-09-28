@@ -183,8 +183,14 @@ rows by reliability, define that downstream rule explicitly.
 Task exporters retain each canonical `TextPart.content` verbatim, including
 JSON-looking examples, whitespace, and Unicode. They join explicit parts with
 newlines and mark each non-text part as `[non-text content omitted]`.
-They don't decode text as legacy provider content. Turns in `rollouts.jsonl`
-keep the full typed message structure.
+They don't decode text as legacy provider content.
+
+In canonical `rollouts.jsonl`, each Turn preserves typed input messages in
+`new_messages`. Its `completion` contains scoring text: joined output text and
+tool-argument string values. That field omits readable reasoning and output
+part boundaries. Full captured responses remain in the bundle's Inference calls.
+If you need those responses in NeMo's native format, use the
+[NeMo consumer profile](consumer-compatibility.md#export-nemo-gym-rollouts).
 
 ### Read Rollout rows
 
@@ -252,8 +258,10 @@ shared CI-resolution, repository-identity, and representation exclusions.
 
 This mapping names [NeMo Gym's rollout
 boundary](https://github.com/NVIDIA-NeMo/Gym), but it doesn't claim direct
-compatibility. Sediment messages and captured responses remain canonical
-evidence, not fabricated OpenAI response objects.
+compatibility. The canonical target retains Turn input messages, scoring text,
+and tool calls. The [NeMo consumer profile](consumer-compatibility.md#export-nemo-gym-rollouts)
+loads full output messages from the referenced Inference calls and validates
+the upstream response format.
 
 ## Interpret the experimental environment manifest
 
