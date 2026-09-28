@@ -670,6 +670,7 @@ def test_check_passes_for_every_identity_after_provisioning(role_database):
             '"sediment_migrator"',
         ),
     ],
+    ids=["connect", "schema-create", "public-temp", "membership", "createdb", "owner"],
 )
 def test_check_names_each_missing_required_state_and_its_fix(
     role_database, fault, expected
@@ -777,3 +778,43 @@ def test_cli_check_reports_failures_without_credentials(role_database, capsys):
     ) in captured.out
     assert captured.err.endswith("1 database check failed\n")
     assert PASSWORDS[ROLES[0]] not in captured.out + captured.err
+
+
+def test_check_before_migration_reports_reachable_unrelated_relations(role_database):
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        # Back to an unmigrated database whose roles and grants exist.
+        for table in [*metadata.tables, "alembic_version"]:
+            connection.exec_driver_sql(f'DROP TABLE "{table}" CASCADE')
+        connection.exec_driver_sql(
+            "CREATE TABLE stray (id int); GRANT SELECT ON stray TO PUBLIC"
+        )
+    result = check(role_url(url, ROLES[0]))
+    assert result.revision.value == "absent"
+    assert [str(failure) for failure in result.failures] == [
+        line
+        for role in ROLES[1:]
+        for line in (
+            f'role "{role}" holds SELECT on "public"."stray"; fix: REVOKE ALL ON '
+            f'TABLE "public"."stray" FROM PUBLIC, "{role}"',
+            f'role "{role}" holds SELECT on columns ("id") of "public"."stray"; '
+            f'fix: REVOKE ALL ("id") ON TABLE "public"."stray" FROM PUBLIC, "{role}"',
+        )
+    ]
+
+
+def test_check_on_a_behind_schema_names_only_the_revision(role_database):
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE alembic_version SET version_num='0010_repository_identity'"
+        )
+    result = check(role_url(url, ROLES[0]))
+    assert result.revision.value == "behind"
+    assert [str(failure) for failure in result.failures] == [
+        "database schema revision is behind; the supported head is "
+        "0011_inference_call_aliases; "
+        "fix: run `sediment db upgrade` with the release that supports this schema"
+    ]

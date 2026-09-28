@@ -460,12 +460,14 @@ def _role_failures(connection: Connection, role: str) -> Iterator[PrivilegeFailu
 
 
 def _privilege_failures(
-    connection: Connection, role: str, *, relations: bool = True
+    connection: Connection, role: str, *, coverage: bool = True
 ) -> Iterator[PrivilegeFailure]:
     """Yield each departure from the runtime or operator policy, in check order.
 
     ``_validate_privileges`` raises the first; ``check_database`` reports all.
-    ``relations=False`` skips table coverage for a database without a schema.
+    ``coverage=False`` checks a schema that isn't at head: Sediment's own
+    tables and quarantine sequence wait for the migration, but every other
+    reachable relation is still checked.
     """
     expected = _tables()
     params = {"role": role}
@@ -522,10 +524,8 @@ def _privilege_failures(
         yield PrivilegeFailure(
             subject,
             f"can execute function {function}",
-            f"REVOKE EXECUTE ON FUNCTION {function} FROM PUBLIC, {quoted}",
+            f"REVOKE EXECUTE ON ROUTINE {function} FROM PUBLIC, {quoted}",
         )
-    if not relations:
-        return
     relations_found = (
         connection.execute(
             text(
@@ -540,12 +540,30 @@ def _privilege_failures(
     maintenance = (
         ("MAINTAIN",) if connection.dialect.server_version_info >= (17,) else ()
     )
-    sequence = connection.execute(
-        text("SELECT CAST(CAST(:name AS regclass) AS oid)"),
-        {"name": _sequence(connection)},
-    ).scalar_one()
+    sequence = (
+        connection.execute(
+            text("SELECT CAST(CAST(:name AS regclass) AS oid)"),
+            {"name": _sequence(connection)},
+        ).scalar_one()
+        if coverage
+        # Catalog lookup: name resolution would need USAGE on public.
+        else connection.exec_driver_sql(
+            "SELECT d.objid FROM pg_depend d "
+            "JOIN pg_class s ON s.oid=d.objid AND s.relkind='S' "
+            "JOIN pg_class t ON t.oid=d.refobjid "
+            "JOIN pg_namespace n ON n.oid=t.relnamespace "
+            "WHERE d.classid='pg_class'::regclass "
+            "AND d.refclassid='pg_class'::regclass AND d.deptype='i' "
+            "AND n.nspname='public' AND t.relname='fact_quarantine'"
+        ).scalar()
+    )
     for relation in relations_found:
         params = {"role": role, "oid": relation["oid"]}
+        if not coverage and (
+            relation["oid"] == sequence
+            or (relation["nspname"] == "public" and relation["relname"] in expected)
+        ):
+            continue
         target = _relation(relation["nspname"], relation["relname"])
         if relation["owns"]:
             yield PrivilegeFailure(
@@ -680,7 +698,7 @@ def _privilege_failures(
                 if known
                 else f"REVOKE ALL ({listed}) ON TABLE {target} FROM PUBLIC, {quoted}",
             )
-    if found != set(expected):
+    if coverage and found != set(expected):
         yield PrivilegeFailure(
             "database schema",
             "lacks tables " + ", ".join(sorted(set(expected) - found)),
@@ -967,14 +985,15 @@ def check_database(database_url: str) -> DatabaseCheck:
                 failures.append(
                     PrivilegeFailure(
                         "database schema",
-                        f"is {revision.value} the supported head {HEAD_REVISION}",
+                        f"revision is {revision.value}; the supported head is "
+                        f"{HEAD_REVISION}",
                         "run `sediment db upgrade` with the release that "
                         "supports this schema",
                     )
                 )
             for role in (RUNTIME_ROLE, OPERATOR_ROLE):
                 failures += _privilege_failures(
-                    connection, role, relations=revision is RevisionState.AT_HEAD
+                    connection, role, coverage=revision is RevisionState.AT_HEAD
                 )
             connection.rollback()
     except (DatabasePrivilegeError, DatabaseOperationError, DatabaseURLValidationError):
