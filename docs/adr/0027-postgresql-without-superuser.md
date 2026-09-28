@@ -1,7 +1,9 @@
 # ADR 0027 — Run on PostgreSQL without a superuser
 
-Status: accepted, implementation pending
-([#191](https://github.com/sediment-ai/sediment/issues/191)). Design:
+Status: accepted, implemented
+([#191](https://github.com/sediment-ai/sediment/issues/191)); managed-service
+qualification pending
+([#199](https://github.com/sediment-ai/sediment/issues/199)). Design:
 [#185](https://github.com/sediment-ai/sediment/issues/185).
 
 Amends [ADR 0012](0012-postgresql-fact-store.md)'s migration and startup

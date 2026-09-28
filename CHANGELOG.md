@@ -86,6 +86,16 @@
 
 ### Deployment
 
+- Document PostgreSQL without a superuser. Deploy Sediment on your own host
+  replaces its superuser requirement with two ways to create the database
+  roles: `sediment db provision` with an administrator that owns the
+  database, or SQL from `sediment db provision --print-sql` that a database
+  administrator runs. The server's environment holds the migrator and runtime
+  URLs, never the administrator's. Deploy Sediment on EC2 provisions once with
+  the PostgreSQL superuser. Maintain a deployment covers password rotation in
+  both modes, `pg_dump` as the migrator, and a restore test into a copy with
+  its own roles. No managed PostgreSQL service is qualified yet
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
 - Restructure the Operate docs into one path: deploy on EC2 or on your own
   host, enroll your team, then measure agent work. Deploy Sediment becomes
   Deploy Sediment on your own host. Enroll your team replaces the Cursor, pi,

@@ -68,6 +68,13 @@ from source.
    umask 077
    if mkdir -m 700 "$HOME/sediment-deploy" && cd "$HOME/sediment-deploy"; then
    POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+   MIGRATOR_PASSWORD="$(openssl rand -hex 32)"
+   RUNTIME_PASSWORD="$(openssl rand -hex 32)"
+   cat > database-roles.env <<EOF_ROLES
+   SEDIMENT_MIGRATOR_PASSWORD=$MIGRATOR_PASSWORD
+   SEDIMENT_RUNTIME_PASSWORD=$RUNTIME_PASSWORD
+   SEDIMENT_OPERATOR_PASSWORD=$(openssl rand -hex 32)
+   EOF_ROLES
    cat > .env <<EOF_ENV
    POSTGRES_PASSWORD=$POSTGRES_PASSWORD
    SEDIMENT_DOMAIN=sediment.example.com
@@ -75,17 +82,21 @@ from source.
    EOF_ENV
    cat > server.env <<EOF_SERVER
    SEDIMENT_ORG_ID=acme
-   SEDIMENT_BOOTSTRAP_DATABASE_URL=postgresql+psycopg://sediment:$POSTGRES_PASSWORD@127.0.0.1:5432/sediment
+   SEDIMENT_MIGRATOR_DATABASE_URL=postgresql+psycopg://sediment_migrator:$MIGRATOR_PASSWORD@127.0.0.1:5432/sediment
+   SEDIMENT_DATABASE_URL=postgresql+psycopg://sediment_runtime:$RUNTIME_PASSWORD@127.0.0.1:5432/sediment
    SEDIMENT_ALLOWED_CLONE_HOSTS=["github.com"]
    SEDIMENT_DEV_MODE=false
    EOF_SERVER
-   unset POSTGRES_PASSWORD
+   unset POSTGRES_PASSWORD MIGRATOR_PASSWORD RUNTIME_PASSWORD
    sudo install -d -m 700 -o root -g root certificates
    fi
    ```
 
-   Keep `.env`, `server.env`, and `certificates/` private. Don't source these
-   files or share them with developers.
+   Keep `.env`, `database-roles.env`, `server.env`, and `certificates/`
+   private. Don't source these files in your shell or share them with
+   developers. `.env` holds the PostgreSQL superuser password;
+   `database-roles.env` holds the passwords of Sediment's three database
+   roles.
 
 2. Save the following as `compose.yaml` in `~/sediment-deploy`:
 
@@ -179,6 +190,20 @@ from source.
    PostgreSQL reports `healthy`. If it doesn't, inspect
    `docker compose logs --tail 100 postgres` before you continue.
 
+5. Create Sediment's database roles with the PostgreSQL superuser. Its
+   credential reaches only this command, never the server:
+
+   ```bash
+   (
+     set -a; . ./database-roles.env; set +a
+     POSTGRES_PASSWORD="$(sed -n 's/^POSTGRES_PASSWORD=//p' .env)"
+     export SEDIMENT_BOOTSTRAP_DATABASE_URL="postgresql+psycopg://sediment:$POSTGRES_PASSWORD@127.0.0.1:5432/sediment"
+     sediment db provision
+   )
+   ```
+
+   The command prints `database roles provisioned and schema upgraded`.
+
 Host networking lets Traefik reach the API on loopback. The Traefik container
 runs as root with only the capability to bind ports 80 and 443. It gets no
 Docker socket, database password, or Sediment credential. Sediment's release
@@ -225,9 +250,9 @@ releases yourself.
    selected. If startup fails, inspect
    `journalctl --user -u sediment.service -n 100 --no-pager`.
 
-On start, Sediment creates separate database roles and applies migrations. The
-API runs with the runtime role only. Sediment writes its generated API tokens
-and database-role passwords to `~/.sediment/server/server.env`, and its Git
+On each start, Sediment migrates the database as `sediment_migrator` and
+applies its grants. The API runs with the runtime role only. Sediment writes
+its generated API tokens to `~/.sediment/server/server.env`, and its Git
 mirrors to `~/.sediment/server/mirror`.
 
 ## Enable and verify HTTPS
@@ -263,7 +288,7 @@ directly through the `sediment_operator` role.
    ```bash
    export SEDIMENT_ORG_ID=acme
    export SEDIMENT_MIRROR_PATH="$HOME/.sediment/server/mirror"
-   OPERATOR_PASSWORD="$(sed -n 's/^SEDIMENT_OPERATOR_PASSWORD=//p' ~/.sediment/server/server.env)"
+   OPERATOR_PASSWORD="$(sed -n 's/^SEDIMENT_OPERATOR_PASSWORD=//p' ~/sediment-deploy/database-roles.env)"
    export SEDIMENT_DATABASE_URL="postgresql+psycopg://sediment_operator:$OPERATOR_PASSWORD@127.0.0.1:5432/sediment"
    unset OPERATOR_PASSWORD
    ```
