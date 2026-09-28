@@ -503,6 +503,18 @@ def test_server_rejects_invalid_external_database_before_mutating_its_root(
             {
                 "SEDIMENT_MIGRATOR_DATABASE_URL": (
                     "postgresql://sediment_migrator:private-migrator@localhost/a"
+                    "?user=postgres"
+                ),
+                "SEDIMENT_DATABASE_URL": (
+                    "postgresql://sediment_runtime:private-runtime@localhost/a"
+                ),
+            },
+            "SEDIMENT_MIGRATOR_DATABASE_URL may carry only TLS options",
+        ),
+        (
+            {
+                "SEDIMENT_MIGRATOR_DATABASE_URL": (
+                    "postgresql://sediment_migrator:private-migrator@localhost/a"
                 ),
                 "SEDIMENT_DATABASE_URL": (
                     "postgresql://sediment_runtime:private-runtime@localhost/a"
@@ -1828,3 +1840,13 @@ def test_direct_and_offline_rlvr_agree_by_value_and_keep_each_modes_bytes(
     )
     assert '"aaa": {"q": 2}, "zz": 1' in offline_text, "bundle export lost sorted keys"
     assert direct_text != offline_text
+
+
+def test_server_treats_a_missing_port_as_the_default(
+    tmp_path, monkeypatch, local_server_stub
+) -> None:
+    monkeypatch.setenv(
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
+        "postgresql://sediment_migrator:private-migrator@localhost:5432/sediment",
+    )
+    assert main(["server", "--root", str(tmp_path / "server-root")]) == 0

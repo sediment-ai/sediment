@@ -1181,6 +1181,8 @@ def administrator_provision(admin_url, connect, managed_admin, passwords=PASSWOR
         ("a", "a", "c"),
         ("a" * 64, "b", "c"),
         ('a"b', "b", "c"),
+        ("public", "b", "c"),
+        ("a", "none", "c"),
     ],
 )
 def test_role_names_reject_reserved_duplicate_or_unsafe_names(names):

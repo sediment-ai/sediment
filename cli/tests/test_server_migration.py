@@ -94,6 +94,10 @@ def test_two_replicas_migrate_once_and_serve_with_the_runtime_role(
 ):
     database, url = unmigrated
     replicas = []
+    # Hold the migration lock while both start, so both must wait for it.
+    holder = create_engine(url(ROLES.migrator), poolclass=NullPool)
+    lock = holder.connect()
+    lock.execute(text("SELECT pg_advisory_lock(:key)"), {"key": MIGRATION_LOCK_KEY})
     try:
         for index in range(2):
             port = free_port()
@@ -115,6 +119,24 @@ def test_two_replicas_migrate_once_and_serve_with_the_runtime_role(
                 stderr=subprocess.STDOUT,
             )
             replicas.append((process, port, log))
+        # Both replicas reach the lock and wait; neither serves yet.
+        waited = time.monotonic() + 30
+        while time.monotonic() < waited:
+            with create_engine(url(), poolclass=NullPool).connect() as connection:
+                waiting = connection.execute(
+                    text(
+                        "SELECT count(*) FROM pg_locks WHERE locktype='advisory' "
+                        "AND NOT granted"
+                    )
+                ).scalar_one()
+            if waiting == 2:
+                break
+            time.sleep(0.2)
+        assert waiting == 2, "replicas did not wait on the migration lock"
+        lock.execute(
+            text("SELECT pg_advisory_unlock(:key)"), {"key": MIGRATION_LOCK_KEY}
+        )
+        lock.close()
         deadline = time.monotonic() + 90
         for index, (process, port, _) in enumerate(replicas):
             while True:
@@ -143,6 +165,8 @@ def test_two_replicas_migrate_once_and_serve_with_the_runtime_role(
             output = (tmp_path / f"replica-{index}.log").read_text()
             assert "secret" not in output
     finally:
+        lock.close()
+        holder.dispose()
         for process, _, log in replicas:
             process.terminate()
             try:

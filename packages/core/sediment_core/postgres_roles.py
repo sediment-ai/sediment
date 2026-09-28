@@ -40,8 +40,24 @@ class DatabasePrivilegeError(DatabaseOperationError):
     """A credential-free deployment permission failure."""
 
 
+# TLS settings only: any other driver option could change the user or target.
+URL_OPTIONS = frozenset(
+    {
+        "sslmode",
+        "sslrootcert",
+        "sslcert",
+        "sslkey",
+        "sslcrl",
+        "sslcrldir",
+        "channel_binding",
+    }
+)
 # Lowercase, unquoted-safe, and never in PostgreSQL's reserved pg_ namespace.
 _ROLE_NAME = re.compile(r"(?!pg_)[a-z_][a-z0-9_]{0,62}")
+# Names that PostgreSQL reserves or that GRANT reads as a keyword.
+_RESERVED_ROLES = frozenset(
+    {"public", "none", "current_role", "current_user", "session_user"}
+)
 
 
 @dataclass(frozen=True)
@@ -55,12 +71,15 @@ class RoleNames:
     def __post_init__(self) -> None:
         names = (self.migrator, self.runtime, self.operator)
         if not all(
-            isinstance(name, str) and _ROLE_NAME.fullmatch(name) for name in names
+            isinstance(name, str)
+            and _ROLE_NAME.fullmatch(name)
+            and name not in _RESERVED_ROLES
+            for name in names
         ):
             raise ValueError(
                 "database role names must be 1-63 lowercase letters, digits, or "
-                "underscores, start with a letter or underscore, and not start "
-                "with pg_"
+                "underscores, start with a letter or underscore, not start "
+                "with pg_, and not be a reserved name such as public"
             )
         if len(set(names)) != 3:
             raise ValueError("database role names must differ")
@@ -426,15 +445,7 @@ def provision_database(
                 "database roles require distinct nonempty passwords"
             )
         # Driver URL parameters must not override the target or managed identity.
-        if set(engine.url.query) - {
-            "sslmode",
-            "sslrootcert",
-            "sslcert",
-            "sslkey",
-            "sslcrl",
-            "sslcrldir",
-            "channel_binding",
-        }:
+        if set(engine.url.query) - URL_OPTIONS:
             raise DatabasePrivilegeError(
                 "unsupported database provisioning URL options"
             )
@@ -563,14 +574,21 @@ def _role_failures(connection: Connection, role: str) -> Iterator[PrivilegeFailu
 
 
 def _privilege_failures(
-    connection: Connection, role: str, roles: RoleNames, *, coverage: bool = True
+    connection: Connection,
+    role: str,
+    roles: RoleNames,
+    *,
+    coverage: bool = True,
+    relations: bool = True,
 ) -> Iterator[PrivilegeFailure]:
     """Yield each departure from the runtime or operator policy, in check order.
 
     ``_validate_privileges`` raises the first; ``check_database`` reports all.
     ``coverage=False`` checks a schema that isn't at head: Sediment's own
     tables and quarantine sequence wait for the migration, but every other
-    reachable relation is still checked.
+    reachable relation is still checked. ``relations=False`` stops after the
+    role-level checks, for the migrate step's check before Alembic, which may
+    still drop or rename a table that an older revision granted.
     """
     expected = _tables()
     params = {"role": role}
@@ -629,6 +647,8 @@ def _privilege_failures(
             f"can execute function {function}",
             f"REVOKE EXECUTE ON ROUTINE {function} FROM PUBLIC, {quoted}",
         )
+    if not relations:
+        return
     relations_found = (
         connection.execute(
             text(
@@ -1109,16 +1129,16 @@ def migrate_database(database_url: str, roles: RoleNames = DEFAULT_ROLES) -> boo
         migrator = identity == roles.migrator
         if migrator:
             # Name a missing role state before Alembic turns it into a bare
-            # permission error; table coverage waits for the migration.
+            # permission error; relations wait for the migration.
             failures = dict.fromkeys(
                 [
                     *_database_failures(connection, roles),
                     *_migrator_failures(connection, roles),
                     *_privilege_failures(
-                        connection, roles.runtime, roles, coverage=False
+                        connection, roles.runtime, roles, relations=False
                     ),
                     *_privilege_failures(
-                        connection, roles.operator, roles, coverage=False
+                        connection, roles.operator, roles, relations=False
                     ),
                 ]
             )

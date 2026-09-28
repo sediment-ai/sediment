@@ -174,6 +174,8 @@ def _role_url(variable: str, role: str) -> str:
     """A configured PostgreSQL URL whose user must be the named role."""
     from sqlalchemy.engine import make_url
 
+    from sediment_core.postgres_roles import URL_OPTIONS
+
     value = os.environ.get(variable)
     if not value:
         raise ValueError(f"set {variable}")
@@ -190,6 +192,8 @@ def _role_url(variable: str, role: str) -> str:
         raise ValueError(
             f"{variable} must name an explicit PostgreSQL host and database"
         )
+    if set(url.query) - URL_OPTIONS:
+        raise ValueError(f"{variable} may carry only TLS options")
     if url.username != role:
         raise ValueError(f"{variable} must connect as the configured role {role}")
     return value
@@ -616,7 +620,7 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
         migrator_url = _role_url("SEDIMENT_MIGRATOR_DATABASE_URL", roles.migrator)
         runtime_url = _role_url("SEDIMENT_DATABASE_URL", roles.runtime)
         targets = {
-            (url.host, url.port, url.database)
+            (url.host, url.port or 5432, url.database)
             for url in map(make_url, (migrator_url, runtime_url))
         }
         if len(targets) != 1:
