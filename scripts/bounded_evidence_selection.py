@@ -39,7 +39,8 @@ RELEVANCE_MIN = 0.60
 ADDITION_MIN = 0.60
 CONTEXT_BYTES_LIMIT = base.CONTEXT_BYTES_LIMIT
 CONTEXT_ITEM_LIMIT = base.CONTEXT_ITEM_LIMIT
-ARMS = ("K", "J1", "FULL", "J2")
+ARMS = ("K", "J1", "FULL", "J2", "J2P")
+JEV_ARMS = frozenset({"J1", "J2", "J2P"})
 # Phase 2 (policy version 2). J2 asks JEV about recorded user and assistant
 # text only: tool output can be recovered from the workspace, and the replay of
 # Phase 1 requests showed relevance drops when a detailed task is amended, while
@@ -513,7 +514,7 @@ def select_evidence(
             raise BoundedSelectionError("invalid_config")
         if not isinstance(query, str) or not query.strip():
             raise BoundedSelectionError("invalid_query")
-        if arm in {"J1", "J2"}:
+        if arm in JEV_ARMS:
             jev_transport(jev_transport_config)
         with base._deadline(), _evidence_client() as client:
             phase = time.monotonic()
@@ -548,7 +549,9 @@ def select_evidence(
             elif arm == "FULL":
                 selected = full_history(catalog)
                 selection["decision"] = "full"
-            elif arm == "J2":
+            elif arm in {"J2", "J2P"}:
+                if arm == "J2P":
+                    selection["pointers"] = workspace_pointers(catalog)
                 selected = _select_j2(
                     catalog,
                     query,
@@ -573,7 +576,7 @@ def select_evidence(
                     selection["fallback_skipped"] = fallback_skipped
             if not ranked:
                 selection["evidence_gap"] = "no_keyword_match"
-            elif not selected and arm != "J2":
+            elif not selected and arm not in {"J2", "J2P"}:
                 # An empty J2 result is a judgment, not an initial-budget gap.
                 selection["evidence_gap"] = "initial_budget"
             body, items = b"", ()
@@ -673,6 +676,58 @@ def full_history(catalog: dict) -> list[dict]:
         for c in catalog["candidates"]
         if c["evidence"]["part"]["type"] != "reasoning"
     ]
+
+
+def workspace_pointers(catalog: dict) -> list[dict]:
+    """Paths read or changed and commands run, from captured tool calls only.
+
+    Phase 3 (J2P) passes these as pointers, never content: the agent re-reads a
+    file only when it needs the current bytes.
+    """
+    pointers, seen = [], set()
+    for candidate in catalog["candidates"]:
+        part = candidate["evidence"]["part"]
+        if part["type"] != "tool_call" or not isinstance(part.get("arguments"), dict):
+            continue
+        name, arguments = part.get("name"), part["arguments"]
+        value = arguments.get("command") if name == "bash" else arguments.get("path")
+        if not isinstance(value, str) or not value.strip():
+            continue
+        key = (name, value)
+        if key not in seen:
+            seen.add(key)
+            pointers.append({"tool": name, "target": value})
+    return pointers
+
+
+def pointer_text(pointers: list[dict]) -> str:
+    """Plain pointer block; paths and commands only."""
+    if not pointers:
+        return ""
+    verbs = {"read": "read", "bash": "ran", "edit": "edited", "write": "wrote"}
+    lines = [f"- {verbs.get(p['tool'], p['tool'])}: {p['target']}" for p in pointers]
+    return (
+        "\n\nWorkspace pointers from the earlier Session (paths and commands only; "
+        "files may have changed since, so read a file again only when you need its "
+        "current content):\n" + "\n".join(lines) + "\n"
+    )
+
+
+def read_chunked(read, chunk: int = 32):
+    """Wrap the factual read so catalogs above the per-read reference limit work."""
+
+    def chunked(client, config, metrics, records, session, references):
+        if len(references) <= chunk:
+            return read(client, config, metrics, records, session, references)
+        parts = [
+            read(client, config, metrics, records, session, references[i : i + chunk])
+            for i in range(0, len(references), chunk)
+        ]
+        if len({p["quarantine_revision"] for p in parts}) != 1:
+            raise BoundedSelectionError("source_changed")
+        return {**parts[0], "items": [i for p in parts for i in p["items"]]}
+
+    return chunked
 
 
 def j2_candidates(catalog: dict) -> list[dict]:

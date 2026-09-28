@@ -45,7 +45,7 @@ def test_summary_applies_the_declared_targets(monkeypatch):
     rows = [_row(s, tokens[s["arm"]]) for s in phase2.run_order()]
     result = phase2.summarize(rows)
     assert result["acceptance"]["supported"] is True
-    assert result["j2_to_full_token_ratio"] == 0.55
+    assert result["candidate_to_full_token_ratio"] == 0.55
     tokens["J2"] = 61
     rows = [_row(s, tokens[s["arm"]]) for s in phase2.run_order()]
     assert phase2.summarize(rows)["acceptance"]["tokens"] is False

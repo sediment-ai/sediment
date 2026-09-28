@@ -799,3 +799,41 @@ def test_j2_retries_only_when_no_valid_answer_arrives(
         assert metrics["usage"]["input_tokens"] == 900
     else:
         assert result.context_text == keyword.context_text
+
+
+def test_j2p_adds_path_and_command_pointers_but_no_content(monkeypatch, tmp_path):
+    scores = {"c3": (0.2, 0.9, 0.1)}
+    mod, config, digest, calls, _ = setup(monkeypatch, scores=scores)
+    plain = run(mod, config, digest, tmp_path / "j2", "J2", jev_api_key="k" * 24)
+    result = run(mod, config, digest, tmp_path / "j2p", "J2P", jev_api_key="k" * 24)
+    assert result.context_text == plain.context_text
+    selection = record(tmp_path / "j2p")["metrics"]["selection"]
+    assert selection["pointers"] == [{"tool": "bash", "target": "python3 check.py"}]
+    text = mod.pointer_text(selection["pointers"])
+    assert "- ran: python3 check.py" in text and "zeta failure" not in text
+    assert mod.pointer_text([]) == ""
+
+
+def test_chunked_read_merges_references_and_refuses_changed_revisions():
+    mod = load()
+    seen = []
+
+    def read(client, config, metrics, records, session, references):
+        seen.append(len(references))
+        return {
+            "schema_version": 1,
+            "session_id": session,
+            "quarantine_revision": 1 if len(seen) < 3 else revision[0],
+            "items": [{"n": r} for r in references],
+        }
+
+    revision = [1]
+    chunked = mod.read_chunked(read)
+    merged = chunked(None, None, None, None, "s", list(range(70)))
+    assert seen == [32, 32, 6] and [i["n"] for i in merged["items"]] == list(range(70))
+    seen.clear()
+    assert chunked(None, None, None, None, "s", [1, 2])["items"] == [{"n": 1}, {"n": 2}]
+    seen.clear()
+    revision[0] = 2
+    with pytest.raises(mod.BoundedSelectionError, match="source_changed"):
+        chunked(None, None, None, None, "s", list(range(70)))

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "note": "Evaluation labels. Never part of a coding-agent or selector input.",
+  "families": {
+    "threshold-alerts": {
+      "set": "development",
+      "module": "alerts.py",
+      "function": "alerts",
+      "rule": "exactly equal to the limit also raises an alert",
+      "obsolete": "within 1 below the limit also raises an alert",
+      "distractor": "optional_pager_bridge unavailable"
+    },
+    "invoice-subtotal": {
+      "set": "heldout",
+      "module": "invoice.py",
+      "function": "subtotal",
+      "rule": "is a free sample and never charges",
+      "obsolete": "charges 1 cent per unit",
+      "distractor": "optional_pdf_renderer unavailable"
+    },
+    "username-check": {
+      "set": "heldout",
+      "module": "usernames.py",
+      "function": "valid",
+      "rule": "is reserved for staff accounts and must be rejected",
+      "obsolete": "the exact names admin and root are reserved",
+      "distractor": "optional_avatar_service unavailable"
+    }
+  },
+  "profiles": {
+    "missing": {
+      "necessary": "rule",
+      "source_requires": [
+        "rule",
+        "distractor"
+      ]
+    },
+    "redundant": {
+      "necessary": null,
+      "source_requires": [
+        "rule",
+        "distractor"
+      ]
+    },
+    "correction": {
+      "necessary": "rule",
+      "source_requires": [
+        "rule",
+        "obsolete",
+        "distractor"
+      ]
+    }
+  }
+}

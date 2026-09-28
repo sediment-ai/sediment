@@ -1,0 +1,22 @@
+{
+  "invoice": "INV-2210",
+  "lines": [
+    {
+      "sku": "PEN-BLUE",
+      "unit_cents": 150,
+      "quantity": 10,
+      "memo": "office"
+    },
+    {
+      "sku": "PAPER-A4",
+      "unit_cents": 899,
+      "quantity": 2
+    },
+    {
+      "sku": "STAPLER",
+      "unit_cents": 1299,
+      "quantity": 1
+    }
+  ],
+  "currency": "EUR"
+}

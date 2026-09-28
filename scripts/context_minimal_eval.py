@@ -22,6 +22,10 @@ import bounded_selection_eval as run
 ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "tests/fixtures/context_minimal"
 ARMS = ("FULL", "K", "J2")
+# The arm the targets judge, and the secondary arm its tokens are also
+# compared with. Phase 3 reuses this summary with its own arms.
+CANDIDATE, SECONDARY = "J2", "K"
+EXPERIMENT = "context-minimal-phase-2"
 SETS = {
     # Version 4 spent ledger-balance and tag-normalize (stopped at slot 5).
     "heldout": {"families": ("shipping-weight", "score-average"), "repetitions": 2},
@@ -146,7 +150,7 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
     j2_needed = [
         r
         for r in records
-        if r.get("arm") == "J2"
+        if r.get("arm") == CANDIDATE
         and r.get("profile") in {"missing", "correction"}
         and r.get("measured")
     ]
@@ -158,11 +162,11 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
     rule = bool(j2_needed) and all(
         (r.get("evidence_hits") or {}).get("rule") for r in j2_needed
     )
-    quality = bool(complete) and both["J2"] >= both["FULL"] - 1
-    ratio = totals["J2"] / totals["FULL"] if totals and totals["FULL"] else None
+    quality = bool(complete) and both[CANDIDATE] >= both["FULL"] - 1
+    ratio = totals[CANDIDATE] / totals["FULL"] if totals and totals["FULL"] else None
     tokens_met = ratio is not None and ratio <= 0.60
     return {
-        "experiment": "context-minimal-phase-2",
+        "experiment": EXPERIMENT,
         "set": task_set,
         "scheduled_runs": len(schedule),
         "recorded_runs": len(records),
@@ -170,9 +174,12 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
         "complete_triples": len(complete),
         "complete_triple_both_checks": both,
         "triple_token_totals": totals,
-        "j2_to_full_token_ratio": round(ratio, 4) if ratio is not None else None,
-        "j2_to_k_token_ratio": round(totals["J2"] / totals["K"], 4)
-        if totals and totals["K"]
+        "candidate": CANDIDATE,
+        "candidate_to_full_token_ratio": round(ratio, 4) if ratio is not None else None,
+        "candidate_to_secondary_token_ratio": round(
+            totals[CANDIDATE] / totals[SECONDARY], 4
+        )
+        if totals and totals[SECONDARY]
         else None,
         "targets": TARGETS,
         "acceptance": {
@@ -203,7 +210,7 @@ def configure() -> None:
     def protocol_identity(config: dict, task_set: str, transport_label: str) -> dict:
         value = identity(config, task_set, transport_label)
         value.update(
-            experiment="context-minimal-phase-2",
+            experiment=EXPERIMENT,
             protocol_version=PROTOCOL_VERSION,
             phase2_driver_sha256=run.legacy.digest(Path(__file__).read_bytes()),
             arms=list(ARMS),

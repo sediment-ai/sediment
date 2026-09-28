@@ -946,14 +946,20 @@ def continuation(
                 records / "selection",
                 expected_history_sha256=manifest["history_sha256"],
                 expected_quarantine_revision=manifest["quarantine_revision"],
-                jev_api_key=key if arm in {"J1", "J2"} else None,
-                jev_transport_config=transport if arm in {"J1", "J2"} else None,
+                jev_api_key=key if arm in {"J1", "J2", "J2P"} else None,
+                jev_transport_config=transport if arm in {"J1", "J2", "J2P"} else None,
             )
         finally:
             latency["selection_seconds"] = time.monotonic() - phase
         items = selection.items
         row["selection_status"] = selection.status
         prompt = continuation_prompt(visible, selection.context_text)
+        pointers = selection.metrics.get("selection", {}).get("pointers")
+        if pointers:
+            import bounded_evidence_selection as selector
+
+            prompt += selector.pointer_text(pointers)
+            row["pointers"] = len(pointers)
         row["prompt_sha256"] = legacy.digest(prompt.encode())
         legacy.write_bytes(records / "prompt.txt", prompt.encode())
         phase = time.monotonic()

@@ -1,0 +1,15 @@
+# Report settings for account names; usernames.py reads none of these.
+[report]
+width = 60
+timezone = "UTC"
+locale = "en"
+
+[export]
+format = "csv"
+delimiter = ","
+include_header = true
+
+[schedule]
+nightly = "02:15"
+retries = 2
+notify = "ops-channel"
