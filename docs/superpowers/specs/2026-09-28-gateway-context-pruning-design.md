@@ -30,16 +30,25 @@ is added only where the deterministic rule leaves a measured gap.
 
 ## Build (stage A): deterministic supersession, per request
 
-One stdlib-only module (planned: sediment_context.py in the litellm directory), registered next to the
-capture callback. It exposes a LiteLLM `CustomLogger.async_pre_call_hook` that
-rewrites `data["messages"]`, and a pure function:
+The contract is the wire format (OpenAI chat and Anthropic Messages), not the
+gateway. Stage A has two parts:
 
-```python
-def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
-    """Return the messages the model sees and a count-only report."""
-```
+1. **A pure core** in one stdlib-only module (planned: sediment_context.py in the
+   litellm directory). It imports nothing from LiteLLM:
 
-It is off by default and enabled per deployment with `SEDIMENT_CONTEXT_PRUNE=supersede`.
+   ```python
+   def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
+       """Return the messages the model sees and a count-only report."""
+   ```
+
+2. **A LiteLLM hook** of about 20 lines around the core: a
+   `CustomLogger.async_pre_call_hook` that rewrites `data["messages"]`. It serves
+   the bundled gateway and any customer's own LiteLLM, which registers it the way
+   it registers the capture callback today: copy one file and add it to
+   `litellm_settings.callbacks`.
+
+Both are off by default and enabled per deployment with
+`SEDIMENT_CONTEXT_PRUNE=supersede`.
 
 ### Rules
 
@@ -101,6 +110,36 @@ unpruned conversation.
 - User and assistant text are never altered.
 - Unknown tools pass through untouched.
 
+## Build (stage A.1): standalone pruning proxy
+
+Stage A reaches only LiteLLM users. Many teams run another gateway (Portkey,
+Kong, Cloudflare AI Gateway, OpenRouter, an in-house proxy) or none at all, with
+the agent calling the provider directly. Stage A.1 reaches them with a small
+stdlib HTTP pass-through around the same core:
+
+- It accepts OpenAI chat (`POST /v1/chat/completions`) and Anthropic Messages
+  (`POST /v1/messages`) requests, applies `prune`, and forwards them to one
+  configured upstream URL: the customer's gateway, another gateway, or the
+  provider.
+- It streams responses byte for byte without buffering, and forwards the agent's
+  auth and provider headers unchanged. It stores no credentials and adds no
+  retries.
+- It binds to loopback by default. A deployment chains it in front of its
+  existing gateway, or a developer points an agent at it directly, for example
+  `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude`.
+- Provider fields it doesn't understand, including Anthropic `cache_control`
+  breakpoints, pass through untouched. A malformed or unknown request is
+  forwarded unchanged, never rejected.
+- Capture keeps working: the downstream gateway, and Sediment capture behind it,
+  record exactly what the model received.
+
+Tests reuse the core's tests and add pass-through checks: streaming order,
+header forwarding, unknown routes forwarded, and an upstream error returned
+unchanged.
+
+E2 and the launch demo use the proxy: "point your agent at one URL" works with
+Claude Code without LiteLLM or a Sediment deployment.
+
 ## Out of scope for stage A
 
 - **The decision model.** It's stage B, and runs only if stage A leaves a
@@ -132,8 +171,8 @@ uncached input, plus cached input at the provider's discount, plus output.
    profiles × 2 repetitions × 2 arms = 24 runs. Targets: priced input cost at
    least 30% lower, and both-check passes no more than one below passthrough.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
-   random 50-instance subset of SWE-bench Verified, run with one open agent
-   through the gateway: passthrough against stage A, with the same model and
+   random 50-instance subset of SWE-bench Verified, run with one agent through
+   the stage A.1 proxy: pass-through against pruning, with the same model and
    settings. Report resolve rate, priced tokens, cache hits, calls, and latency
    per instance. Targets: priced input at least 30% lower, and resolved
    instances within 2 of passthrough. Publish the harness, subset, and raw
@@ -147,8 +186,9 @@ input.
 
 | Item | Estimate |
 | --- | --- |
-| ADR 0027: a gateway may transform requests, opt-in, with captured output equal to model input | 1 day |
-| Stage A module, both adapters, and tests | 2–3 days |
+| ADR 0027: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
+| Stage A core, both format adapters, the LiteLLM hook, and tests | 2–3 days |
+| Stage A.1 proxy and pass-through tests | 1–2 days |
 | E1 | about 2 days |
 | E2 | about 1 week, plus model spend |
 
@@ -160,7 +200,11 @@ Risks:
   pass through untouched.
 - **An agent may re-read a stubbed file.** That's acceptable: the stub states how
   to fetch the current content, and E1 counts the extra calls.
-- **The gateway stops being passive capture.** It must stay opt-in, and captured
-  input must remain exactly what the model received.
+- **The gateway stops being passive capture.** The capture docs promise "Sediment
+  stays out of the LLM request path". Both delivery modes must stay opt-in, the
+  ADR must amend that statement, and captured input must remain exactly what the
+  model received.
+- **Provider-native formats aren't covered** (Bedrock and Vertex wrappers) until
+  there's demand.
 - **Open core.** The transform serves a single team's pipeline, so it's open
   source under ADR 0006.
