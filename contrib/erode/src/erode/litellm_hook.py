@@ -32,17 +32,17 @@ def apply(data: Any, policy: PrunePolicy | None = None) -> dict | None:
     """
     if not isinstance(data, dict):
         return None
-    original = data.get("messages")
+    original = {key: data[key] for key in ("messages", "input") if key in data}
     try:
         pruned, report = prune_request(data, policy or PrunePolicy())
-        if report is None:
-            return None
-        data["messages"] = pruned["messages"]
+        if report is None or pruned is data:
+            return report
+        data.update({key: pruned[key] for key in original})
         logging_obj = data.get("litellm_logging_obj")
-        if hasattr(logging_obj, "update_messages"):
+        if "messages" in original and hasattr(logging_obj, "update_messages"):
             logging_obj.update_messages(data["messages"])
     except Exception:  # noqa: BLE001 — pruning must never fail a model call
-        data["messages"] = original
+        data.update(original)
         logger.warning("erode_prune reason=prune_failed")
         return None
     return report
