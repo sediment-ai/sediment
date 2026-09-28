@@ -796,6 +796,18 @@ def cmd_logout(args: argparse.Namespace) -> int:
     return 0
 
 
+def _guide_ref() -> str:
+    """The ref whose docs match this CLI.
+
+    A released wheel ships the guide and the pages it links from one commit, so
+    its tag resolves. A source checkout runs ahead of that tag: its guide links
+    pages the last release never had, and `v{__version__}` would name a release
+    predating them. Those runs resolve against `main` instead.
+    """
+    checkout = Path(__file__).resolve().parents[2] / "docs" / "operate"
+    return "main" if (checkout / "agent-guide.md").is_file() else f"v{__version__}"
+
+
 def cmd_guide(args: argparse.Namespace) -> int:
     """Print the bundled guide with release-pinned links, without reading settings."""
     import re
@@ -806,7 +818,7 @@ def cmd_guide(args: argparse.Namespace) -> int:
         resources.files("sediment_cli").joinpath("agent_guide.txt").read_text("utf-8")
     )
     base = (
-        f"https://raw.githubusercontent.com/sediment-ai/sediment/v{__version__}/"
+        f"https://raw.githubusercontent.com/sediment-ai/sediment/{_guide_ref()}/"
         "docs/operate/agent-guide.md"
     )
     # The bundled Markdown uses the published page's relative procedure links.

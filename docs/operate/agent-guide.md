@@ -7,8 +7,9 @@ Sediment CLI. Developers connecting to a shared server use the installer's
 
 `sediment guide` prints this bundled guide without reading configuration,
 contacting a server, or changing the machine. It converts procedure links to
-raw GitHub URLs pinned to the CLI's release tag. Reading those pages requires
-network access. `sediment --help` lists public commands; hooks invoke others.
+raw GitHub URLs pinned to the release it ships in, or to `main` from a source
+checkout. Reading those pages requires network access. `sediment --help` lists
+public commands; hooks invoke others.
 
 ## Read the state before changing it
 

@@ -23,11 +23,18 @@ def _packaged() -> str:
 
 
 def _heading_anchors(path: Path) -> set[str]:
+    """The fragment ids GitHub derives from headings, matching
+    ``check_docs.py``: lowercase, drop everything but word characters, hyphens,
+    and spaces, then hyphenate. Fenced blocks are skipped so a shell comment
+    inside an example doesn't register as a heading."""
     anchors = set()
+    fenced = False
     for line in path.read_text("utf-8").splitlines():
-        if line.startswith("#"):
-            title = line.lstrip("#").strip().lower()
-            anchors.add(re.sub(r"[^a-z0-9 -]", "", title).replace(" ", "-"))
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        elif not fenced and (match := re.match(r"^#{1,6}\s+(.*)$", line)):
+            title = match.group(1).strip().lower()
+            anchors.add(re.sub(r"[^\w\- ]", "", title).replace(" ", "-"))
     return anchors
 
 
@@ -73,6 +80,18 @@ def test_guide_links_resolve_to_published_pages() -> None:
     text = _packaged()
     assert _DOCS_LINK.search(text), "the guide should link the published docs"
     assert _unresolved(text) == []
+
+
+def test_source_checkout_links_main_not_the_previous_release() -> None:
+    """A checkout's guide links pages the last release never had.
+
+    `v{__version__}` names the previous release until a release bump lands, so
+    pinning it here would print URLs that 404. The installed wheel keeps the
+    tag — `test_installed_wheel.py` covers that side.
+    """
+    from sediment_cli.cli import _guide_ref
+
+    assert _guide_ref() == "main"
 
 
 def test_link_check_flags_unpublished_pages_and_missing_headings() -> None:

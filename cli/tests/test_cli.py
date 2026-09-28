@@ -1774,7 +1774,7 @@ def test_guide_prints_packaged_guide_without_settings(monkeypatch, capsys) -> No
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(cli_module, "_prepare_store_command", _deny)
     monkeypatch.setattr(socket.socket, "connect", _deny)
-    monkeypatch.setattr(cli_module, "__version__", "1.2.3")
+    monkeypatch.setattr(cli_module, "_guide_ref", lambda: "v1.2.3")
     assert main(["guide"]) == 0
     out = capsys.readouterr().out
     assert "## Help an operator" in out
@@ -1803,7 +1803,7 @@ def test_guide_resolves_relative_links_and_preserves_external_links(
         "[External](https://example.com/page#anchor)\n"
     )
     monkeypatch.setattr(resources, "files", lambda _package: tmp_path)
-    monkeypatch.setattr(cli_module, "__version__", "2.0.0rc1")
+    monkeypatch.setattr(cli_module, "_guide_ref", lambda: "v2.0.0rc1")
     assert main(["guide"]) == 0
     assert capsys.readouterr().out == (
         "[Deploy](https://raw.githubusercontent.com/sediment-ai/sediment/"
