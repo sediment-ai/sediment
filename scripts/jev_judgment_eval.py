@@ -109,7 +109,10 @@ def judge(case: dict, key: str, transport: dict | None, records: Path) -> dict:
     }
 
 
-def summarize(rows: list[dict]) -> dict:
+def summarize(results: list[dict]) -> dict:
+    """Failed calls are counted, not retried; any failure fails the pass rule."""
+    rows = [r for r in results if "error" not in r]
+
     def note_added(profile):
         return sum(r["added"]["note"] for r in rows if r["profile"] == profile)
 
@@ -128,7 +131,8 @@ def summarize(rows: list[dict]) -> dict:
     }
     missing, redundant = note_added("missing"), note_added("redundant")
     return {
-        "cases": len(rows),
+        "cases": len(results),
+        "failed_calls": sorted(r["error"] for r in results if "error" in r),
         "note_added_missing": missing,
         "note_added_redundant": redundant,
         "other_parts_added": {
@@ -136,7 +140,7 @@ def summarize(rows: list[dict]) -> dict:
         },
         "median_scores": medians,
         "input_tokens": sum(r["usage"].get("input_tokens") or 0 for r in rows),
-        "usable_as_filter": missing >= 11 and redundant <= 2,
+        "usable_as_filter": missing >= 11 and redundant <= 2 and rows == results,
     }
 
 
@@ -154,7 +158,12 @@ def main() -> int:
     rows = []
     for index, case in enumerate(cases(families)):
         records = sel.base.private_directory(output / f"{index:02d}")
-        rows.append(judge(case, key, transport, records))
+        try:
+            rows.append(judge(case, key, transport, records))
+        except sel.BoundedSelectionError as exc:
+            rows.append(
+                {**{k: case[k] for k in ("family", "profile")}, "error": exc.reason}
+            )
         sel.base.write_json(records / "result.json", rows[-1])
     summary = summarize(rows)
     sel.base.write_json(output / "summary.json", summary)

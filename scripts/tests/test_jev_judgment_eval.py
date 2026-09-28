@@ -38,5 +38,10 @@ def test_cases_use_the_j1_request_and_label_only_the_missing_note():
     rows = [row("missing", i < 11) for i in range(12)]
     rows += [row("redundant", i < 2) for i in range(12)]
     assert judgment.summarize(rows)["usable_as_filter"] is True
+    failed = judgment.summarize(
+        [*rows, {"profile": "missing", "error": "jev_http_error"}]
+    )
+    assert failed["usable_as_filter"] is False
+    assert failed["failed_calls"] == ["jev_http_error"]
     rows[0]["added"]["note"] = False
     assert judgment.summarize(rows)["usable_as_filter"] is False
