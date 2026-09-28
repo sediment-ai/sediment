@@ -136,6 +136,29 @@ def _reconcile_roles(connection: Connection, passwords: dict[str, str]) -> None:
             sql.Identifier(database),
         )
         _ddl(connection, "ALTER ROLE {} SET search_path = public", identifier)
+        # RESET ALL skips settings that only a superuser may reset, silently.
+        kept = (
+            connection.execute(
+                text(
+                    "SELECT DISTINCT split_part(s.setting, '=', 1) "
+                    "FROM pg_db_role_setting d "
+                    "CROSS JOIN LATERAL unnest(d.setconfig) s(setting) "
+                    "JOIN pg_roles r ON r.oid=d.setrole WHERE r.rolname=:role "
+                    "AND d.setdatabase IN (0, (SELECT oid FROM pg_database "
+                    "WHERE datname=current_database())) ORDER BY 1"
+                ),
+                {"role": role},
+            )
+            .scalars()
+            .all()
+        )
+        if kept != ["search_path"]:
+            leftover = ", ".join(name for name in kept if name != "search_path")
+            raise DatabasePrivilegeError(
+                f"role {_quote(role)} keeps settings that this administrator "
+                f"can't reset: {leftover}; fix: ALTER ROLE {_quote(role)} RESET "
+                "<setting>, run by a superuser"
+            )
         memberships = connection.execute(
             text(
                 "SELECT parent.rolname, grantor.rolname FROM pg_auth_members m "

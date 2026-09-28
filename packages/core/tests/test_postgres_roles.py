@@ -1098,3 +1098,49 @@ def test_provisioning_refuses_a_database_the_administrator_does_not_own(
             text("SELECT count(*) FROM pg_roles WHERE rolname = ANY(:roles)"),
             {"roles": list(ROLES)},
         ).scalar_one()
+
+
+def test_superuser_provisioning_revokes_a_membership_from_another_grantor(
+    role_database, role_admin
+):
+    """A plain REVOKE skips a grant that another grantor made."""
+    url, _ = role_database
+    provision(url)
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql(
+            "CREATE ROLE sediment_test_grantor; CREATE ROLE sediment_test_parent; "
+            "GRANT sediment_test_parent TO sediment_test_grantor WITH ADMIN OPTION; "
+            "SET ROLE sediment_test_grantor; "
+            "GRANT sediment_test_parent TO sediment_runtime; RESET ROLE"
+        )
+    try:
+        provision(url)
+        assert check(url).failures == ()
+    finally:
+        with role_admin.connect() as connection:
+            connection.exec_driver_sql(
+                "DROP ROLE sediment_test_parent; DROP ROLE sediment_test_grantor"
+            )
+
+
+def test_provisioning_refuses_a_setting_the_administrator_cannot_reset(
+    admin_database, managed_admin, role_admin
+):
+    admin_url, _ = admin_database
+    provision(admin_url)
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql(
+            "ALTER ROLE sediment_runtime SET session_replication_role = replica"
+        )
+    try:
+        with pytest.raises(
+            role_module().DatabasePrivilegeError,
+            match=(
+                'role "sediment_runtime" keeps settings that this administrator '
+                "can't reset: session_replication_role"
+            ),
+        ):
+            provision(admin_url)
+    finally:
+        with role_admin.connect() as connection:
+            connection.exec_driver_sql("ALTER ROLE sediment_runtime RESET ALL")
