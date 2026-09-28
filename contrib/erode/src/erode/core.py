@@ -1,11 +1,9 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """
-Deterministic supersession pruning of tool output in the request path.
+Deterministic supersession pruning of tool output in an agent's model requests.
 
-Deployment glue, stdlib only (ADR 0027): the LiteLLM hook in
-``sediment_callback.py`` and the standalone proxy in ``sediment_proxy.py``
-both wrap ``prune``. It imports nothing from LiteLLM, so a deployment copies
-this file next to either entry point.
+Standard library only. ``erode.proxy`` and ``erode.litellm_hook`` both wrap
+``prune_request``; nothing here imports LiteLLM or any other dependency.
 
 A tool result is superseded when later tool calls in the same request make it
 out of date: a read of path P by a later read, edit, or write of P, and a run
@@ -37,7 +35,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-STUB_PREFIX = "[sediment: superseded"
+STUB_PREFIX = "[erode: superseded"
 READ, WRITE, RUN = "read", "write", "run"
 
 # Wire format adapters: tool name -> kind. An unlisted tool is never pruned.

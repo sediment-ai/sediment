@@ -32,20 +32,39 @@ through two delivery modes:
 - The LiteLLM hook: `async_pre_call_hook` on the capture callback in
   `litellm/sediment_callback.py`. It serves the bundled gateway and any
   existing LiteLLM proxy.
-- The standalone pruning proxy: `litellm/sediment_prune_proxy.py`, a stdlib
-  HTTP pass-through that a deployment chains in front of any gateway, or that
-  an agent calls directly.
+- The pruning proxy: the `erode proxy` command, a stdlib HTTP pass-through that
+  a deployment chains in front of any gateway, or that an agent calls directly.
 
-Both modes wrap one pure, stdlib-only core, `litellm/sediment_context.py`. The
-core applies only the supersession rule that the spec defines. It changes
-nothing but the content of superseded tool results, which become one stub line
-each.
+Both modes wrap one pure, stdlib-only core in erode, a self-contained package in
+`contrib/erode`. The core applies only the supersession rule that the spec
+defines. It changes nothing but the content of superseded tool results, which
+become one stub line each.
+
+### The erode package
+
+Decision: erode is MIT-licensed, like the `shims/` carve-out. The proxy and the
+hook run in front of other people's agents and inside other people's gateways,
+where AGPL blocks adoption. erode holds the core, both wire-format adapters,
+the LiteLLM hook, and the proxy. It imports nothing from Sediment and depends
+on nothing outside the Python standard library; the hook subclasses LiteLLM's
+`CustomLogger` only when LiteLLM is its host process.
+
+The Sediment-specific piece stays in Sediment's AGPL code. The capture
+callback calls `erode.litellm_hook.apply` and carries its report into the
+Inference call's `raw` payload.
+
+erode is meant to move to its own repository, `sediment-ai/erode`, and publish
+to PyPI as `erode`. After it moves, Sediment pins a released version and the
+directory leaves this repository. Until then, the bundled gateway mounts the
+package from `contrib/erode/src/erode`.
 
 The following constraints bind every request transform:
 
-- **Opt-in, off by default.** A transform runs only when the operator sets
-  `SEDIMENT_CONTEXT_PRUNE=supersede`. Any other value, or no value, leaves the
-  request path a pure pass-through.
+- **Opt-in, off by default.** Sediment's gateway integration runs a transform
+  only when the operator sets `SEDIMENT_CONTEXT_PRUNE=supersede`. Any other
+  value, or no value, leaves the request path a pure pass-through. Starting
+  `erode proxy` is itself the opt-in, so the proxy prunes unless the operator
+  passes `--mode off`.
 - **Captured input equals model input.** The hook updates the messages that
   LiteLLM logs, so the Inference call Fact records the pruned request. Behind
   the proxy, the downstream gateway and its capture record the pruned request.
@@ -66,7 +85,8 @@ The following constraints bind every request transform:
 
 The transform is open core under ADR 0006. It serves a single team's
 pipeline: removing it makes that team's agents cost more, and a team must be
-able to audit exactly what its model received.
+able to audit exactly what its model received. The MIT license widens that
+guarantee rather than narrowing it: nothing about the transform is gated.
 
 ## Consequences
 
@@ -80,3 +100,7 @@ able to audit exactly what its model received.
   compare task outcomes against pass-through.
 - A decision model in the request path, which the spec calls stage B, needs a
   separate ADR.
+- `scripts/add_spdx.py` checks for the MIT identifier under `contrib/erode`,
+  and pytest collects `contrib/` with the rest of the repository.
+- Stubs start with `[erode: superseded`, so the text an agent sees names the
+  tool that wrote it rather than Sediment.

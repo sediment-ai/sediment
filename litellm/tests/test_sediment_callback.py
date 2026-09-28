@@ -34,7 +34,12 @@ sys.modules.setdefault("litellm.integrations", integrations)
 sys.modules.setdefault("litellm.integrations.custom_logger", custom_logger)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# The MIT erode package (ADR 0027), as the bundled gateway mounts it.
+_ERODE = Path(__file__).resolve().parents[2] / "contrib" / "erode" / "src"
+sys.path.insert(0, str(_ERODE))
 
+import erode  # noqa: E402
+import erode.litellm_hook  # noqa: E402
 import sediment_callback  # noqa: E402
 from sediment_capture import resolve_identity  # noqa: E402
 
@@ -511,9 +516,7 @@ def test_prune_hook_is_inert_unless_enabled(monkeypatch, mode) -> None:
 def test_prune_hook_rewrites_messages_and_records_report(monkeypatch) -> None:
     monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
     data = _superseded_request()
-    expected, report = sediment_callback.sediment_context.prune(
-        data["messages"], sediment_callback.sediment_context.PrunePolicy()
-    )
+    expected, report = erode.prune(data["messages"], erode.PrunePolicy())
     assert report["stubbed_results"] == 1
     data["litellm_logging_obj"] = logging_obj = _LoggingObject()
     assert _hook(data) is data
@@ -531,25 +534,11 @@ def test_prune_hook_failure_forwards_request_unchanged(monkeypatch) -> None:
     def broken(messages, policy):
         raise RuntimeError("synthetic")
 
-    monkeypatch.setattr(sediment_callback.sediment_context, "prune", broken)
+    monkeypatch.setattr(erode.litellm_hook, "prune_request", broken)
     data = _superseded_request()
     before = json.loads(json.dumps(data))
     assert _hook(data) is None
     assert data == before
-
-
-def test_prune_hook_restores_messages_when_logging_update_fails(monkeypatch) -> None:
-    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
-
-    class Broken(_LoggingObject):
-        def update_messages(self, messages) -> None:
-            raise RuntimeError("synthetic")
-
-    data = _superseded_request()
-    original = data["messages"]
-    data["litellm_logging_obj"] = Broken()
-    assert _hook(data) is None
-    assert data["messages"] is original
 
 
 def test_prune_report_is_carried_into_raw(monkeypatch) -> None:

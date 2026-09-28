@@ -188,7 +188,7 @@ services:
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
       - ./litellm/sediment_callback.py:/app/sediment_callback.py:ro
-      - ./litellm/sediment_context.py:/app/sediment_context.py:ro
+      - ./contrib/erode/src/erode:/app/erode:ro
       - ./cli/sediment_cli/delivery.py:/app/sediment_delivery.py:ro
       - sediment-delivery:/data/delivery
     tmpfs: ["/tmp:size=512m,mode=1777"]

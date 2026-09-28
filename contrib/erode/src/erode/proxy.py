@@ -1,39 +1,30 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """
-Standalone pruning proxy: a stdlib HTTP pass-through around ``sediment_context``.
+The erode proxy: a standard-library HTTP pass-through around ``prune_request``.
 
-Deployment glue, not an installed package (ADR 0027). Copy this file and
-``sediment_context.py`` into one directory, then run:
-
-    SEDIMENT_CONTEXT_PRUNE=supersede \\
-        python3 sediment_prune_proxy.py --upstream https://api.anthropic.com
-
-Point an agent at it, for example ``ANTHROPIC_BASE_URL=http://127.0.0.1:8787``,
-or chain it in front of a gateway. ``POST /v1/chat/completions`` and
-``POST /v1/messages`` bodies are pruned; every other request, and any body
-that isn't a JSON object with a ``messages`` list, is forwarded unchanged.
-Without ``SEDIMENT_CONTEXT_PRUNE=supersede`` the proxy is a pure pass-through.
+Run it with ``erode proxy --upstream <url>`` and point an agent at it, for
+example ``ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude``. The proxy prunes
+``POST /v1/chat/completions`` and ``POST /v1/messages`` bodies. Every other
+request, and any body that isn't a JSON object with a ``messages`` list, is
+forwarded unchanged. With pruning off, the proxy is a pure pass-through.
 
 The proxy forwards the agent's headers, including its credentials, and stores
 nothing. It adds no retries, streams the upstream response as it arrives, and
-answers 502 only when the upstream can't be reached. Downstream capture records
-the pruned request, which is exactly what the model received.
+answers 502 only when the upstream can't be reached. A gateway behind the proxy
+records the pruned request, which is exactly what the model received.
 """
 
 from __future__ import annotations
 
-import argparse
 import http.client
 import json
 import logging
-import os
-import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
-import sediment_context
+from erode.core import PrunePolicy, prune_request
 
-logger = logging.getLogger("sediment.prune_proxy")
+logger = logging.getLogger("erode.proxy")
 
 PRUNED_ROUTES = frozenset({"/v1/chat/completions", "/v1/messages"})
 # Connection-scoped headers (RFC 9110 section 7.6.1) belong to one hop only.
@@ -65,16 +56,14 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
     except ValueError:
         return body
     try:
-        pruned, report = sediment_context.prune_request(
-            request, sediment_context.PrunePolicy()
-        )
+        pruned, report = prune_request(request, PrunePolicy())
     except Exception:  # noqa: BLE001 — pruning must never fail a model call
-        logger.warning("sediment_context_prune reason=prune_failed")
+        logger.warning("erode_prune reason=prune_failed")
         return body
     if report is None:
         return body
     logger.info(
-        "sediment_context_prune policy_version=%s stubbed_results=%d bytes_removed=%d",
+        "erode_prune policy_version=%s stubbed_results=%d bytes_removed=%d",
         report["policy_version"],
         report["stubbed_results"],
         report["bytes_removed"],
@@ -86,7 +75,7 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
     return json.dumps(pruned, ensure_ascii=False, separators=(",", ":")).encode()
 
 
-class PruneProxyHandler(BaseHTTPRequestHandler):
+class ProxyHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     upstream = urlsplit("http://127.0.0.1:4000")
     prune_enabled = False
@@ -140,7 +129,7 @@ class PruneProxyHandler(BaseHTTPRequestHandler):
             response = upstream.getresponse()
         except OSError:
             upstream.close()
-            logger.warning("sediment_prune_proxy reason=upstream_unreachable")
+            logger.warning("erode_proxy reason=upstream_unreachable")
             self.send_error(502, "Upstream unreachable")
             return
         try:
@@ -183,58 +172,16 @@ class PruneProxyHandler(BaseHTTPRequestHandler):
 
 
 def make_server(
-    upstream: str, host: str = "127.0.0.1", port: int = 8787, prune: bool = False
+    upstream: str, host: str = "127.0.0.1", port: int = 8787, prune: bool = True
 ) -> ThreadingHTTPServer:
     parsed = urlsplit(upstream)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise ValueError("upstream must be an http:// or https:// URL")
     handler = type(
-        "ConfiguredPruneProxyHandler",
-        (PruneProxyHandler,),
+        "ConfiguredProxyHandler",
+        (ProxyHandler,),
         {"upstream": parsed, "prune_enabled": prune},
     )
     server = ThreadingHTTPServer((host, port), handler)
     server.daemon_threads = True
     return server
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Forward model requests to one upstream, stubbing superseded tool output."
-    )
-    parser.add_argument(
-        "--upstream",
-        default=os.environ.get("SEDIMENT_PRUNE_UPSTREAM"),
-        help="Gateway or provider base URL (default: $SEDIMENT_PRUNE_UPSTREAM)",
-    )
-    parser.add_argument("--host", default="127.0.0.1", help="Bind address")
-    parser.add_argument("--port", type=int, default=8787, help="Bind port")
-    args = parser.parse_args(argv)
-    if not args.upstream:
-        parser.error("--upstream or SEDIMENT_PRUNE_UPSTREAM is required")
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    mode = os.environ.get("SEDIMENT_CONTEXT_PRUNE", "").strip()
-    if mode and mode != "supersede":
-        logger.warning("sediment_context_prune reason=unknown_mode mode=%s", mode)
-    try:
-        server = make_server(args.upstream, args.host, args.port, mode == "supersede")
-    except (ValueError, OSError) as exc:
-        parser.error(str(exc))
-    logger.info(
-        "sediment_prune_proxy listening=%s:%d upstream=%s prune=%s",
-        args.host,
-        args.port,
-        args.upstream,
-        "supersede" if mode == "supersede" else "off",
-    )
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.server_close()
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

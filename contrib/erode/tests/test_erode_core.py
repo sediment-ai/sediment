@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """The supersession core: rules, pairing, the 4 KB threshold, and purity."""
 
 from __future__ import annotations
@@ -6,14 +6,10 @@ from __future__ import annotations
 import copy
 import json
 import random
-import sys
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from sediment_context import STUB_PREFIX, PrunePolicy, prune  # noqa: E402
+from erode.core import STUB_PREFIX, PrunePolicy, prune, prune_request
 
 POLICY = PrunePolicy()
 BIG = "x" * 5000  # alone crosses the 4 KB threshold
@@ -115,7 +111,7 @@ def test_read_superseded_by_later_edit_openai() -> None:
     pruned, report = prune(messages, POLICY)
     assert stubbed(pruned) == ["call_1"]
     assert pruned[3]["content"] == (
-        "[sediment: superseded by step 2 (edit of src/app.py); "
+        "[erode: superseded by step 2 (edit of src/app.py); "
         "read it again if you need the current content]"
     )
     assert report == {
@@ -441,8 +437,6 @@ def _result(messages: list[dict], call_id: str) -> str:
 
 
 def test_prune_request_leaves_other_fields_and_provider_managed_context() -> None:
-    from sediment_context import prune_request
-
     messages = anthropic(
         [
             [("Read", {"file_path": "a.py"}, BIG)],

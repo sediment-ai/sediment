@@ -189,9 +189,10 @@ environment. If you register a different provider name or API, also set
 
 A long agent Session resends its whole conversation on every model call, and
 much of that input is tool output that later tool calls have made stale.
-Sediment can replace that output with one stub line before each call. The rule
-is deterministic and off by default, as
-[ADR 0027](../adr/0027-opt-in-request-transforms.md) requires.
+Sediment can replace that output with one stub line before each call, through
+erode, an MIT-licensed package in `contrib/erode`. The rule is deterministic
+and off by default, as [ADR 0027](../adr/0027-opt-in-request-transforms.md)
+requires.
 
 A tool result is superseded when a later tool call in the same request makes it
 out of date:
@@ -240,21 +241,27 @@ Choose one delivery mode:
 2. Start the gateway again with the commands in
    [Enable bundled LiteLLM](../operate/rehearse-compose.md#enable-bundled-litellm).
 
-Compose mounts `litellm/sediment_context.py` next to the capture callback and
-passes the variable to LiteLLM. To turn pruning off, clear the value and start
-the gateway again.
+Compose mounts the `erode` package from `contrib/erode/src/erode` next to the
+capture callback and passes the variable to LiteLLM. To turn pruning off, clear
+the value and start the gateway again.
 
 ### Enable pruning in an existing LiteLLM gateway
 
-1. Copy `litellm/sediment_context.py` into the directory that holds
-   `sediment_callback.py`.
+1. From a Sediment checkout, install erode into the proxy's Python environment:
+
+   ```bash
+   pip install ./contrib/erode
+   ```
+
+   Alternatively, copy the `contrib/erode/src/erode` directory into the
+   directory that holds `sediment_callback.py`.
 2. In the proxy's environment, set `SEDIMENT_CONTEXT_PRUNE=supersede`.
 3. Restart the proxy.
 
 The capture callback that `litellm_settings.callbacks` registers also runs the
 pruning hook, so the proxy configuration doesn't change. If the proxy logs
 `sediment_context_prune reason=module_unavailable`, the callback can't import
-`sediment_context.py`; put the file next to `sediment_callback.py`.
+`erode`; install the package or put its directory next to `sediment_callback.py`.
 
 Each captured Inference call keeps the request that the model received. Its
 `raw` payload carries a count-only report under `sediment_context`:
@@ -262,19 +269,22 @@ Each captured Inference call keeps the request that the model received. Its
 
 ### Run the pruning proxy
 
-The pruning proxy is one standard-library Python file around the same rule. It
-prunes `POST /v1/chat/completions` and `POST /v1/messages` requests and
-forwards every request to one upstream URL. It forwards the agent's headers,
-including its credentials, unchanged. It stores nothing, adds no retries, and
-streams each response as it arrives.
+The pruning proxy is the `erode proxy` command. It prunes
+`POST /v1/chat/completions` and `POST /v1/messages` requests and forwards
+every request to one upstream URL. It forwards the agent's headers, including
+its credentials, unchanged. It stores nothing, adds no retries, and streams
+each response as it arrives.
 
-1. Copy `litellm/sediment_prune_proxy.py` and `litellm/sediment_context.py`
-   into one directory on a host with Python 3.12.
+1. On a host with Python 3.12, install erode from a Sediment checkout:
+
+   ```bash
+   pip install ./contrib/erode
+   ```
+
 2. Start the proxy in front of your gateway or provider:
 
    ```bash
-   SEDIMENT_CONTEXT_PRUNE=supersede \
-     python3 sediment_prune_proxy.py --upstream https://api.anthropic.com
+   erode proxy --upstream https://api.anthropic.com
    ```
 
    The proxy listens on `127.0.0.1:8787`. To change the address, pass `--host`
@@ -291,8 +301,10 @@ To chain the proxy in front of a gateway, pass the gateway's URL as
 proxy records the pruned request, which is what the model received. The proxy
 logs a count-only report for each chat request.
 
-Without `SEDIMENT_CONTEXT_PRUNE=supersede`, the proxy forwards every request
-unchanged, which gives you a pass-through baseline to compare against.
+Running the proxy is the opt-in, so it prunes by default. To forward every
+request unchanged as a pass-through baseline, pass `--mode off` or set
+`ERODE_MODE=off`. The [erode README](../../contrib/erode/README.md) lists every
+setting.
 
 The proxy has no authentication of its own and relays whatever credentials an
 agent sends. If you bind it to an address other than loopback, restrict who can

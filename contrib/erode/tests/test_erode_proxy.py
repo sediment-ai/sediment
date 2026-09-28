@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """The standalone pruning proxy over real sockets: a stub upstream records what
 arrives, and an ``http.client`` agent reads what comes back."""
 
@@ -6,18 +6,14 @@ from __future__ import annotations
 
 import http.client
 import json
-import sys
 import threading
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-import sediment_context  # noqa: E402
-import sediment_prune_proxy  # noqa: E402
+from erode import cli, proxy as erode_proxy
+from erode.core import PrunePolicy, prune
 
 EVENTS = [b"event: message_start\ndata: {}\n\n", b"event: ping\ndata: {}\n\n"]
 
@@ -87,7 +83,7 @@ def upstream() -> Iterator[Upstream]:
 
 
 def _proxy(url: str, prune: bool = True):
-    server = sediment_prune_proxy.make_server(url, port=0, prune=prune)
+    server = erode_proxy.make_server(url, port=0, prune=prune)
     _serve(server)
     return server
 
@@ -148,10 +144,10 @@ def _request() -> dict:
 
 
 def test_binds_to_loopback_by_default(upstream: Upstream) -> None:
-    server = sediment_prune_proxy.make_server(upstream.url, port=0)
+    server = erode_proxy.make_server(upstream.url, port=0)
     try:
         assert server.server_address[0] == "127.0.0.1"
-        assert server.RequestHandlerClass.prune_enabled is False
+        assert server.RequestHandlerClass.prune_enabled is True
     finally:
         server.server_close()
 
@@ -164,9 +160,7 @@ def test_messages_are_pruned_and_other_fields_untouched(upstream, proxy) -> None
     method, path, _, body = upstream.requests[0]
     assert (method, path) == ("POST", "/base/v1/messages?beta=true")
     sent = json.loads(body)
-    expected, report = sediment_context.prune(
-        request["messages"], sediment_context.PrunePolicy()
-    )
+    expected, report = prune(request["messages"], PrunePolicy())
     assert report["stubbed_results"] == 1
     assert sent == {**request, "messages": expected}
     stubbed = sent["messages"][2]["content"][0]
@@ -266,7 +260,7 @@ def test_unreachable_upstream_is_a_502() -> None:
 
 def test_rejects_an_upstream_that_is_not_a_url() -> None:
     with pytest.raises(ValueError):
-        sediment_prune_proxy.make_server("api.anthropic.com", port=0)
+        erode_proxy.make_server("api.anthropic.com", port=0)
 
 
 def _cached_request() -> dict:
@@ -300,9 +294,7 @@ def test_cache_control_bytes_survive_outside_stubbed_results(upstream, proxy) ->
     proxy.getresponse().read()
     forwarded = upstream.requests[0][3]
     stubbed = request["messages"][2]["content"][0]["content"]
-    expected, report = sediment_context.prune(
-        request["messages"], sediment_context.PrunePolicy()
-    )
+    expected, report = prune(request["messages"], PrunePolicy())
     assert report["stubbed_results"] == 1
     stub = expected[2]["content"][0]["content"]
     # The only byte change is the stubbed result's content string.
@@ -319,3 +311,17 @@ def test_provider_managed_context_passes_through(upstream, proxy) -> None:
     proxy.request("POST", "/v1/messages", body=body)
     proxy.getresponse().read()
     assert upstream.requests[0][3] == body
+
+
+def test_cli_requires_an_upstream(monkeypatch) -> None:
+    monkeypatch.delenv("ERODE_UPSTREAM", raising=False)
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["proxy"])
+    assert exit_info.value.code == 2
+
+
+def test_cli_rejects_an_unknown_mode(monkeypatch) -> None:
+    monkeypatch.setenv("ERODE_MODE", "aggressive")
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["proxy", "--upstream", "http://127.0.0.1:1"])
+    assert exit_info.value.code == 2

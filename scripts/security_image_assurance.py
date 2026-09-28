@@ -506,8 +506,8 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                     "/app/sediment_callback.py",
                 ),
                 (
-                    str((root / "litellm/sediment_context.py").resolve()),
-                    "/app/sediment_context.py",
+                    str((root / "contrib/erode/src/erode").resolve()),
+                    "/app/erode",
                 ),
                 (
                     str((root / "cli/sediment_cli/delivery.py").resolve()),
