@@ -38,6 +38,13 @@ Upgrade the server before developer machines.
    same version, rerun `sediment install` with the same options, and restart
    the worker.
 
+If a `sediment` command warns that the server version differs from the client,
+run the `uv tool install` command in the warning. It installs the server's exact
+release, which upgrades or downgrades the CLI as needed. A release candidate's
+command also pins the other five Sediment distributions. If you installed with
+the installer's `pipx` or `pip` method, rerun that method with the server's
+version instead.
+
 ## Rotate credentials
 
 `~/.sediment/server/server.env` holds every generated credential. Stop Sediment

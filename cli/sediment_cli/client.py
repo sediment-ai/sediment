@@ -23,7 +23,7 @@ from urllib.parse import urlsplit
 import httpx
 from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, EVIDENCE_RESPONSE_BYTES_LIMIT
 
-from . import __version__, ui
+from . import __version__, ui, version_skew_advice
 
 CONFIG_PATH = Path.home() / ".sediment" / "config.json"
 _TIMEOUT_SECONDS = 10.0
@@ -351,22 +351,19 @@ _version_checked = False
 
 def maybe_warn_version_skew() -> None:
     """Warn once per process when the server's version differs from this
-    client's, printing the exact upgrade command.  A failed probe is
-    silent — the verb's own request will surface the real error."""
+    client's, printing the exact command that installs the server's version.
+    A failed or unreadable probe is silent — the verb's own request will
+    surface the real error."""
     global _version_checked
     if _version_checked:
         return
     _version_checked = True
     try:
         me = get_json("/v1/me")
-    except ClientError:
+    except (ClientError, ValueError):
         return
-    server_version = me.get("version")
-    if server_version and server_version != __version__:
-        print(
-            ui.warn_line(
-                f"server version {server_version} differs from client "
-                f"{__version__}; run `uv tool upgrade sediment-cli`"
-            ),
-            file=sys.stderr,
-        )
+    if not isinstance(me, dict):
+        return
+    advice = version_skew_advice(me.get("version"), __version__)
+    if advice:
+        print(ui.warn_line(advice), file=sys.stderr)

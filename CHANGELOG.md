@@ -20,6 +20,14 @@
   `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
   the generated environment files. See
   [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+- Fix the version-mismatch warning so that it prints the command that
+  installs the server's exact release instead of `uv tool upgrade
+  sediment-cli`, which kept a pinned client unchanged and could move an
+  unpinned client past an older server. The command handles upgrades,
+  downgrades, and release candidates. `sediment doctor` uses the same command.
+  A server version that isn't `X.Y.Z` or `X.Y.ZrcN` produces a fixed warning
+  that doesn't repeat the server's text, and an unreadable `/v1/me` response
+  stays silent.
 
 ### Deployment
 
