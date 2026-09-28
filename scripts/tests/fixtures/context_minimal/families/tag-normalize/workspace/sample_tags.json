@@ -1,0 +1,20 @@
+{
+  "product": "trail runner 2",
+  "raw_tags": [
+    "  Trail Running ",
+    "shoes",
+    "Shoes",
+    "",
+    "trail  running",
+    "waterproof",
+    "Water Proof",
+    "   "
+  ],
+  "expected_after_import": [
+    "trail-running",
+    "shoes",
+    "waterproof",
+    "water-proof"
+  ],
+  "source": "supplier feed 2026-08"
+}

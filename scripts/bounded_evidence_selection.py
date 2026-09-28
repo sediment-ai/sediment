@@ -39,7 +39,16 @@ RELEVANCE_MIN = 0.60
 ADDITION_MIN = 0.60
 CONTEXT_BYTES_LIMIT = base.CONTEXT_BYTES_LIMIT
 CONTEXT_ITEM_LIMIT = base.CONTEXT_ITEM_LIMIT
-ARMS = ("K", "J1")
+ARMS = ("K", "J1", "FULL", "J2")
+# Phase 2 (policy version 2). J2 asks JEV about recorded user and assistant
+# text only: tool output can be recovered from the workspace, and the replay of
+# Phase 1 requests showed relevance drops when a detailed task is amended, while
+# new information and conflict stay stable. J2 therefore qualifies on those two
+# and keeps no initial evidence. FULL delivers the whole catalog as a baseline.
+J2_POLICY_VERSION = 2
+J2_CANDIDATE_LIMIT = 12
+J2_ROLES = frozenset({"user", "assistant"})
+FULL_CONTEXT_BYTES = base.CATALOG_BYTES_LIMIT + 1024
 # Provider failures after dispatch fall back to K's bounded output. Everything
 # else (authority, Quarantine, source identity, credentials, deadline) refuses.
 FALLBACK_REASONS = frozenset(
@@ -92,6 +101,19 @@ def policy() -> dict:
         "catalog_parts": base.CATALOG_PART_LIMIT,
         "propositions": list(PROPOSITIONS),
         "fallback_reasons": sorted(FALLBACK_REASONS),
+        "j2": {
+            "policy_version": J2_POLICY_VERSION,
+            "candidate_roles": sorted(J2_ROLES),
+            "candidate_part_type": "text",
+            "candidate_limit": J2_CANDIDATE_LIMIT,
+            "candidate_order": "conversation; oldest dropped first to fit",
+            "initial_parts": 0,
+            "qualify": "new_information >= 0.60 or conflict >= 0.60",
+            "delivery": "qualifying parts in conversation order within the "
+            "eight-part, 8,192-byte envelope",
+            "jev_attempts": "two when no valid answer arrives, then K",
+        },
+        "full": {"context_bytes": FULL_CONTEXT_BYTES, "excludes": ["reasoning"]},
     }
 
 
@@ -423,7 +445,9 @@ def _empty_manifest(records: Path) -> bool:
     return False
 
 
-def _final_read(client, config, metrics, records, catalog, selected):
+def _final_read(
+    client, config, metrics, records, catalog, selected, limit=CONTEXT_BYTES_LIMIT
+):
     response = base._read(
         client,
         config,
@@ -437,7 +461,7 @@ def _final_read(client, config, metrics, records, catalog, selected):
     if base.encoded(response["items"]) != base.encoded(selected):
         raise BoundedSelectionError("source_mismatch")
     body = base.encoded(response)
-    if len(body) > CONTEXT_BYTES_LIMIT:
+    if len(body) > limit:
         raise BoundedSelectionError("context_limit")
     return response, body
 
@@ -482,7 +506,7 @@ def select_evidence(
             raise BoundedSelectionError("invalid_config")
         if not isinstance(query, str) or not query.strip():
             raise BoundedSelectionError("invalid_query")
-        if arm == "J1":
+        if arm in {"J1", "J2"}:
             jev_transport(jev_transport_config)
         with base._deadline(), _evidence_client() as client:
             phase = time.monotonic()
@@ -514,6 +538,19 @@ def select_evidence(
             if arm == "K":
                 selected = keyword
                 selection["decision"] = "keyword"
+            elif arm == "FULL":
+                selected = full_history(catalog)
+                selection["decision"] = "full"
+            elif arm == "J2":
+                selected = _select_j2(
+                    catalog,
+                    query,
+                    keyword,
+                    jev_api_key,
+                    jev_transport_config,
+                    metrics,
+                    records,
+                )
             else:
                 selected = _select_j1(
                     catalog,
@@ -529,7 +566,8 @@ def select_evidence(
                     selection["fallback_skipped"] = fallback_skipped
             if not ranked:
                 selection["evidence_gap"] = "no_keyword_match"
-            elif not selected:
+            elif not selected and arm != "J2":
+                # An empty J2 result is a judgment, not an initial-budget gap.
                 selection["evidence_gap"] = "initial_budget"
             body, items = b"", ()
             status = "no_initial_evidence"
@@ -537,7 +575,13 @@ def select_evidence(
                 phase = time.monotonic()
                 try:
                     response, body = _final_read(
-                        client, config, metrics, records, catalog, selected
+                        client,
+                        config,
+                        metrics,
+                        records,
+                        catalog,
+                        selected,
+                        FULL_CONTEXT_BYTES if arm == "FULL" else CONTEXT_BYTES_LIMIT,
                     )
                 except base.SelectionError as exc:
                     raise BoundedSelectionError(exc.reason) from None
@@ -613,6 +657,106 @@ def _select_j1(catalog, query, ranked, keyword, key, transport, metrics, records
         if label not in selection["qualifying"]:
             skipped["below_threshold"] += 1
     return pack_additions(catalog, anchors, qualifying, scores, selection, skipped)
+
+
+def full_history(catalog: dict) -> list[dict]:
+    """Every non-reasoning part in conversation order; the no-selection baseline."""
+    return [
+        c["evidence"]
+        for c in catalog["candidates"]
+        if c["evidence"]["part"]["type"] != "reasoning"
+    ]
+
+
+def j2_candidates(catalog: dict) -> list[dict]:
+    """Recorded user and assistant text; tool output is recoverable from the workspace."""
+    return [
+        c
+        for c in catalog["candidates"]
+        if c["evidence"]["role"] in J2_ROLES and c["evidence"]["part"]["type"] == "text"
+    ][-J2_CANDIDATE_LIMIT:]
+
+
+def j2_qualifies(scores: dict) -> bool:
+    return (
+        scores["new_information"] >= ADDITION_MIN or scores["conflict"] >= ADDITION_MIN
+    )
+
+
+def _decide_twice(body, included, key, transport, metrics, records):
+    """At most two attempts, only when no valid answer arrived; both are counted."""
+    try:
+        with _jev_client(transport) as client:
+            return _decide(client, body, included, key, metrics, records)
+    except BoundedSelectionError as exc:
+        if exc.reason not in FALLBACK_REASONS:
+            raise
+        metrics["selection"]["first_attempt_error"] = exc.reason
+    # The base transport allows one JEV call per metrics object, so the second
+    # attempt keeps its own counters and records, then merges them.
+    retry = _metrics("J2")
+    try:
+        with _jev_client(transport) as client:
+            return _decide(
+                client,
+                body,
+                included,
+                key,
+                retry,
+                base.private_directory(records / "retry"),
+            )
+    finally:
+        for name in ("attempted_calls", "request_bytes", "response_bytes"):
+            metrics["jev"][name] += retry["jev"][name]
+        # A failed attempt returned no valid usage; it stays flagged, not guessed.
+        metrics["usage"].update(retry["usage"])
+        metrics["calls"].extend(retry["calls"])
+
+
+def _select_j2(catalog, query, keyword, key, transport, metrics, records):
+    selection, skipped = metrics["selection"], metrics["skipped"]
+    selection["policy_version"] = J2_POLICY_VERSION
+    tools = {
+        c["evidence"]["part"]["id"]: c["evidence"]["part"]["name"]
+        for c in catalog["candidates"]
+        if c["evidence"]["part"]["type"] == "tool_call"
+    }
+    candidates = j2_candidates(catalog)
+    # Drop the oldest candidates until the request fits the byte budget.
+    while candidates:
+        views = [_view(c, f"c{i + 1}", tools) for i, c in enumerate(candidates)]
+        body = _request_body(query, [], views)
+        if len(body) <= JEV_REQUEST_BYTES:
+            break
+        skipped["request_budget"] += 1
+        candidates = candidates[1:]
+    included = [(f"c{i + 1}", c) for i, c in enumerate(candidates)]
+    selection["candidates"] = [
+        {"id": label, "reference": c["evidence"]["reference"], "request_included": True}
+        for label, c in included
+    ]
+    if not included:
+        selection["decision"] = "skipped"
+        selection["decision_reason"] = "no_text_candidates"
+        return []
+    selection["jev_request_body_bytes"] = len(body)
+    phase = time.monotonic()
+    try:
+        scores = _decide_twice(body, included, key, transport, metrics, records)
+    except BoundedSelectionError as exc:
+        if exc.reason not in FALLBACK_REASONS:
+            raise
+        selection["decision"] = "fallback"
+        selection["decision_reason"] = exc.reason
+        return keyword
+    finally:
+        metrics["timing"]["jev_seconds"] = time.monotonic() - phase
+    selection["scores"] = scores
+    selection["decision"] = "jev"
+    qualifying = [(label, c) for label, c in included if j2_qualifies(scores[label])]
+    selection["qualifying"] = [label for label, _ in qualifying]
+    skipped["below_threshold"] += len(included) - len(qualifying)
+    return pack_additions(catalog, [], qualifying, scores, selection, skipped)
 
 
 def _synthetic_item(order: int, role: str, content: str) -> dict:

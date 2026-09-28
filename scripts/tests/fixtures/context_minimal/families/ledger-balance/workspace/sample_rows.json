@@ -1,0 +1,44 @@
+[
+  {
+    "account": "ops",
+    "amount_cents": 12500,
+    "status": "posted",
+    "memo": "vendor refund",
+    "entered_by": "u17"
+  },
+  {
+    "account": "ops",
+    "amount_cents": -4000,
+    "status": "posted",
+    "memo": "office supplies",
+    "entered_by": "u17"
+  },
+  {
+    "account": " payroll ",
+    "amount_cents": -250000,
+    "status": "posted",
+    "memo": "biweekly run",
+    "entered_by": "u02"
+  },
+  {
+    "account": "Ops",
+    "amount_cents": 700,
+    "status": "posted",
+    "memo": "petty cash (separate account)",
+    "entered_by": "u09"
+  },
+  {
+    "account": "reserve",
+    "amount_cents": 0,
+    "status": "posted",
+    "memo": "opening entry",
+    "entered_by": "u01"
+  },
+  {
+    "account": "payroll",
+    "amount_cents": 250000,
+    "status": "posted",
+    "memo": "funding transfer",
+    "entered_by": "u02"
+  }
+]

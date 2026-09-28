@@ -1,0 +1,18 @@
+{
+  "sensor": "greenhouse-3",
+  "interval_seconds": 60,
+  "readings": [
+    21.4,
+    21.6,
+    21.9,
+    22.3,
+    22.1,
+    21.8,
+    21.7,
+    21.9,
+    22.4,
+    22.8
+  ],
+  "window": 3,
+  "unit": "celsius"
+}

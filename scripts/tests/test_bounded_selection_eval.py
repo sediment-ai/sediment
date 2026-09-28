@@ -103,7 +103,8 @@ class Upstream(BaseHTTPRequestHandler):
             b'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":2}}'
             b"\n\ndata: [DONE]\n\n"
         )
-        self.send_response(self.server.status)
+        statuses = getattr(self.server, "statuses", None)
+        self.send_response(statuses.pop(0) if statuses else self.server.status)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -813,7 +814,8 @@ def test_reasoning_profile_enables_pi_reasoning_effort(tmp_path, monkeypatch):
     run = module()
     home = tmp_path / "home"
     legacy.prepare_home(home, {}, "token", "A")
-    run.enable_reasoning(home / "config/models.json")
+    monkeypatch.setattr(run, "REASONING_EFFORT", "low")
+    run.apply_model_profile(home / "config/models.json")
     models = json.loads((home / "config/models.json").read_bytes())
     (model,) = models["providers"]["sediment"]["models"]
     assert model["reasoning"] is True
@@ -826,3 +828,17 @@ def test_reasoning_profile_enables_pi_reasoning_effort(tmp_path, monkeypatch):
     assert contract["gate_read_seconds"] < contract["selection_and_coding_seconds"]
     monkeypatch.setattr(run, "REASONING_EFFORT", None)
     assert run.generation_contract()["reasoning_effort"] is None
+
+
+def test_gate_retries_once_only_before_the_agent_receives_bytes(gate):
+    run, server, upstream, records, post = gate
+    server.state.config["upstream_retry"] = True
+    upstream.statuses = [503]
+    assert post().status_code == 200
+    assert len(upstream.requests) == 2 and server.state.stopped is None
+    (record,) = legacy.gate_records(records)
+    assert record["retried"] == "upstream_failure" and record["complete"]
+    assert server.state.budget.snapshot()["model"]["forwarded"] == 1
+    upstream.statuses = [503, 503]
+    assert post().status_code == 502
+    assert server.state.stopped == "upstream_failure"

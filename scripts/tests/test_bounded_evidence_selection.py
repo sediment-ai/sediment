@@ -732,3 +732,65 @@ def test_model_availability_check(monkeypatch, tmp_path, models, available):
         assert mod.list_models("private-key", tmp_path / "models")["available"] is (
             available
         )
+
+
+def test_full_arm_delivers_every_non_reasoning_part_without_jev(monkeypatch, tmp_path):
+    mod, config, digest, calls, _ = setup(monkeypatch)
+    result = run(mod, config, digest, tmp_path / "full", "FULL")
+    texts = [p.content for p in default_parts() if p.type == "text"]
+    assert contents(result)[: len(texts)] == texts
+    assert len(result.items) == len(texts) + 2  # the tool call and its result
+    assert record(tmp_path / "full")["metrics"]["selection"]["decision"] == "full"
+    assert not jev_calls(calls)
+
+
+def test_j2_judges_text_only_and_qualifies_on_new_or_conflict(monkeypatch, tmp_path):
+    # c3 is new but scored irrelevant; c4 conflicts; c1 is relevant but not new.
+    scores = {"c1": (0.9, 0.1, 0.1), "c3": (0.2, 0.9, 0.1), "c4": (0.1, 0.1, 0.8)}
+    mod, config, digest, calls, _ = setup(monkeypatch, scores=scores)
+    result = run(mod, config, digest, tmp_path / "j2", "J2", jev_api_key="k" * 24)
+    (request,) = jev_calls(calls)
+    state = json.loads(request.content)["state"]
+    assert state["initial_evidence"] == []
+    assert {c["part"]["type"] for c in state["candidates"]} == {"text"}
+    assert len(state["candidates"]) == 7
+    assert contents(result) == [
+        "alpha beta gamma delta: requirement R",
+        "alpha beta gamma: correction C",
+    ]
+    selection = record(tmp_path / "j2")["metrics"]["selection"]
+    assert selection["decision"] == "jev" and selection["policy_version"] == 2
+    assert selection["qualifying"] == ["c3", "c4"]
+
+
+@pytest.mark.parametrize(
+    "failures,decision,attempts", [(1, "jev", 2), (2, "fallback", 2)]
+)
+def test_j2_retries_once_when_no_valid_answer_arrives(
+    monkeypatch, tmp_path, failures, decision, attempts
+):
+    seen = []
+
+    def transform(request, body, original):
+        if request.url.host != "api.typesafe.ai":
+            return original
+        seen.append(request)
+        if len(seen) <= failures:
+            return response({"detail": "upstream connect error"}, 503)
+        return original
+
+    scores = {"c3": (0.2, 0.9, 0.1)}
+    mod, config, digest, calls, _ = setup(
+        monkeypatch, scores=scores, transform=transform
+    )
+    keyword = run(mod, config, digest, tmp_path / "k", "K")
+    result = run(mod, config, digest, tmp_path / "j2", "J2", jev_api_key="k" * 24)
+    metrics = record(tmp_path / "j2")["metrics"]
+    assert metrics["selection"]["decision"] == decision
+    assert metrics["selection"]["first_attempt_error"] == "jev_http_error"
+    assert metrics["jev"]["attempted_calls"] == attempts == len(seen)
+    if decision == "jev":
+        assert contents(result) == ["alpha beta gamma delta: requirement R"]
+        assert metrics["usage"]["input_tokens"] == 900
+    else:
+        assert result.context_text == keyword.context_text

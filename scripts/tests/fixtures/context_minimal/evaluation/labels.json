@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "note": "Evaluation labels. Never part of a coding-agent or selector input.",
+  "families": {
+    "ledger-balance": {
+      "set": "heldout",
+      "module": "ledger.py",
+      "function": "balances",
+      "rule": "must not change any balance",
+      "obsolete": "counts at half of its amount",
+      "distractor": "optional_statement_renderer unavailable"
+    },
+    "tag-normalize": {
+      "set": "heldout",
+      "module": "tags.py",
+      "function": "normalize",
+      "rule": "is a removal marker",
+      "obsolete": "kept literally in the output",
+      "distractor": "optional_tag_cloud_renderer unavailable"
+    },
+    "sensor-window": {
+      "set": "development",
+      "module": "window.py",
+      "function": "moving_average",
+      "rule": "is a sensor dropout",
+      "obsolete": "counts as 0.0 inside its windows",
+      "distractor": "optional_chart_exporter unavailable"
+    }
+  },
+  "profiles": {
+    "missing": {
+      "necessary": "rule",
+      "source_requires": [
+        "rule",
+        "distractor"
+      ]
+    },
+    "redundant": {
+      "necessary": null,
+      "source_requires": [
+        "rule",
+        "distractor"
+      ]
+    },
+    "correction": {
+      "necessary": "rule",
+      "source_requires": [
+        "rule",
+        "obsolete",
+        "distractor"
+      ]
+    }
+  }
+}

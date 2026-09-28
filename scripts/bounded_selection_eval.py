@@ -43,6 +43,9 @@ SCHEMA_VERSION = 1
 # of three held-out preflight cycles. The run deadline still bounds each run.
 PROTOCOL_VERSION = 3
 GATE_READ_SECONDS = 300
+# Opt-in (Phase 2, version 4): one gate retry when the upstream fails before the
+# agent receives any byte. Phase 1 runs never set it.
+GATE_UPSTREAM_RETRY = False
 REASONING_EFFORTS = ("low", "medium", "high")
 # Set once from --reasoning-effort, like legacy.MODEL; None keeps the legacy
 # profile (reasoning off, no reasoning_effort parameter).
@@ -57,7 +60,10 @@ SETS = {
     "development": {"families": ("duration-parse",), "repetitions": 1},
 }
 OUTPUT_CEILING = 2048
-CONTEXT_WINDOW = 16384
+LEGACY_CONTEXT_WINDOW = 16384
+# Phase 2 raises this for every arm so full history isn't clamped by a window
+# chosen for Phase 1's smaller histories.
+CONTEXT_WINDOW = LEGACY_CONTEXT_WINDOW
 DEVELOPMENT_PROBE_LIMIT = 12
 MEASURED_STATUSES = frozenset({"settled", "budget_exhausted", "run_deadline"})
 CONTEXT_INSTRUCTIONS = (
@@ -117,11 +123,13 @@ def generation_contract() -> dict:
         "max_tokens_ceiling": OUTPUT_CEILING,
         "max_tokens_rule": (
             f"pi {legacy.PI_VERSION} clampMaxTokensToContext: min(2048, max(1, "
-            "16384 - estimated context tokens - 4096)); every value is recorded"
+            f"{CONTEXT_WINDOW} - estimated context tokens - 4096)); every value is "
+            "recorded"
         ),
         "context_window": CONTEXT_WINDOW,
         "coding_model_calls": legacy.MODEL_CALL_LIMIT,
         "gate_read_seconds": GATE_READ_SECONDS,
+        "gate_upstream_retry": GATE_UPSTREAM_RETRY,
         "selection_and_coding_seconds": legacy.RUN_SECONDS,
         "compaction": False,
         "automatic_retries": False,
@@ -284,51 +292,67 @@ class BoundedGateHandler(legacy.GateHandler):
             }
             response_bytes = 0
             started = time.monotonic()
-            with httpx.Client(
-                trust_env=False,
-                follow_redirects=False,
-                timeout=httpx.Timeout(GATE_READ_SECONDS, connect=5),
-            ) as client:
-                with client.stream(
-                    "POST",
-                    config["gateway_url"].rstrip("/") + "/chat/completions",
-                    content=request,
-                    headers=headers,
-                ) as response:
-                    record["status"] = response.status_code
-                    if (
-                        response.headers.get("Content-Encoding", "identity")
-                        != "identity"
-                    ):
-                        raise legacy.EvaluationError("response_encoding")
-                    if response.status_code != 200:
-                        state.stop("upstream_failure")
-                        raise legacy.EvaluationError("upstream_failure")
-                    self.send_response(200)
-                    self.send_header(
-                        "Content-Type",
-                        response.headers.get(
-                            "Content-Type", "application/octet-stream"
-                        ),
+            attempts = 2 if config.get("upstream_retry") else 1
+            for attempt in range(attempts):
+                try:
+                    with httpx.Client(
+                        trust_env=False,
+                        follow_redirects=False,
+                        timeout=httpx.Timeout(GATE_READ_SECONDS, connect=5),
+                    ) as client:
+                        with client.stream(
+                            "POST",
+                            config["gateway_url"].rstrip("/") + "/chat/completions",
+                            content=request,
+                            headers=headers,
+                        ) as response:
+                            record["status"] = response.status_code
+                            if (
+                                response.headers.get("Content-Encoding", "identity")
+                                != "identity"
+                            ):
+                                raise legacy.EvaluationError("response_encoding")
+                            if response.status_code != 200:
+                                raise legacy.EvaluationError("upstream_failure")
+                            self.send_response(200)
+                            self.send_header(
+                                "Content-Type",
+                                response.headers.get(
+                                    "Content-Type", "application/octet-stream"
+                                ),
+                            )
+                            self.send_header("Cache-Control", "no-store")
+                            self.send_header("Connection", "close")
+                            self.end_headers()
+                            sent_headers = True
+                            descriptor = os.open(
+                                state.records / f"{identifier}.response",
+                                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                                0o600,
+                            )
+                            with os.fdopen(descriptor, "wb") as output:
+                                for chunk in response.iter_raw():
+                                    response_bytes += len(chunk)
+                                    if response_bytes > legacy.RECORD_LIMIT:
+                                        raise legacy.EvaluationError("response_limit")
+                                    state.count_bytes(len(chunk))
+                                    output.write(chunk)
+                                    self.wfile.write(chunk)
+                                    self.wfile.flush()
+                    break
+                except (httpx.TransportError, legacy.EvaluationError) as exc:
+                    # Retry only when the agent has received nothing, so the
+                    # model's visible output is unchanged; every retry is recorded.
+                    upstream = isinstance(exc, httpx.TransportError) or (
+                        str(exc) == "upstream_failure"
                     )
-                    self.send_header("Cache-Control", "no-store")
-                    self.send_header("Connection", "close")
-                    self.end_headers()
-                    sent_headers = True
-                    descriptor = os.open(
-                        state.records / f"{identifier}.response",
-                        os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-                        0o600,
+                    if sent_headers or not upstream or attempt + 1 == attempts:
+                        raise
+                    record["retried"] = (
+                        "transport"
+                        if isinstance(exc, httpx.TransportError)
+                        else "upstream_failure"
                     )
-                    with os.fdopen(descriptor, "wb") as output:
-                        for chunk in response.iter_raw():
-                            response_bytes += len(chunk)
-                            if response_bytes > legacy.RECORD_LIMIT:
-                                raise legacy.EvaluationError("response_limit")
-                            state.count_bytes(len(chunk))
-                            output.write(chunk)
-                            self.wfile.write(chunk)
-                            self.wfile.flush()
             record.update(
                 complete=True,
                 response_bytes=response_bytes,
@@ -370,8 +394,8 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
     gate_dir = legacy.private_directory(records / "gate")
     token = secrets.token_urlsafe(32)
     legacy.prepare_home(home, config, token, "A")
-    if REASONING_EFFORT:
-        enable_reasoning(home / "config/models.json")
+    if REASONING_EFFORT or CONTEXT_WINDOW != LEGACY_CONTEXT_WINDOW:
+        apply_model_profile(home / "config/models.json")
     legacy.write_json(
         records / "gate-config.json",
         {
@@ -380,6 +404,7 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             "model": config["model"],
             "agent_token": token,
             "reasoning_effort": REASONING_EFFORT,
+            "upstream_retry": GATE_UPSTREAM_RETRY,
         },
     )
     args = [
@@ -467,12 +492,14 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             remove_containers([agent_name, gate_name])
 
 
-def enable_reasoning(path: Path) -> None:
-    """Let pinned pi send the contract's reasoning_effort for this model."""
+def apply_model_profile(path: Path) -> None:
+    """Apply the contract's reasoning effort and context window to pi's profile."""
     models = json.loads(path.read_bytes())
     for model in models["providers"]["sediment"]["models"]:
-        model["reasoning"] = True
-        model["compat"]["supportsReasoningEffort"] = True
+        if REASONING_EFFORT:
+            model["reasoning"] = True
+            model["compat"]["supportsReasoningEffort"] = True
+        model["contextWindow"] = CONTEXT_WINDOW
     path.unlink()
     legacy.write_json(path, models)
 
@@ -823,7 +850,7 @@ def rule_source(selection_metrics: dict, items, family: str) -> str | None:
     if not carrying:
         return None
     detail = selection_metrics.get("selection", {})
-    if detail.get("decision") in {"keyword", "fallback"}:
+    if detail.get("decision") in {"keyword", "fallback", "full"}:
         return detail["decision"]
     initial = {legacy.encoded(ref) for ref in detail.get("initial", [])}
     return "initial" if any(legacy.encoded(r) in initial for r in carrying) else "jev"
@@ -904,8 +931,8 @@ def continuation(
                 records / "selection",
                 expected_history_sha256=manifest["history_sha256"],
                 expected_quarantine_revision=manifest["quarantine_revision"],
-                jev_api_key=key if arm == "J1" else None,
-                jev_transport_config=transport if arm == "J1" else None,
+                jev_api_key=key if arm in {"J1", "J2"} else None,
+                jev_transport_config=transport if arm in {"J1", "J2"} else None,
             )
         finally:
             latency["selection_seconds"] = time.monotonic() - phase
