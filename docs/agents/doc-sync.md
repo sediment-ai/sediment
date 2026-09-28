@@ -67,6 +67,13 @@ anything true.
 Point at a section with a real link, never with a `§` in prose. CI
 resolves an anchor and cannot resolve a `§`.
 
+`check_docs.py` resolves anchors with GitHub's heading rules. Published pages
+render through Mintlify, whose heading IDs differ for dotted numbers, slashes,
+and dashes. The documentation site's `docs` workflow checks each sync with the
+pinned Mintlify CLI before publication: links, anchors, redirects, and
+navigation. Its failure names the source file to fix. Its `freshness` job
+reports when the site trails `main`. Neither checks absolute URLs.
+
 ## Rules recap (from the playbooks)
 
 Citations are `path` or `path::symbol`, never `path:line`. No code fences
