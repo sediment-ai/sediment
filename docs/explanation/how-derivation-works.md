@@ -11,9 +11,10 @@ run, from the input snapshot to training export.
 
 ## The Derivation boundary
 
-The Fact store records what happened. It doesn't store a chosen Attribution,
-edit retention score, final Fate, Reward, or Rollout. Those interpretations
-belong to Derivations because they depend on policy.
+The Fact store records what happened, including vendor-supplied edit retention
+scores. It doesn't persist Sediment's derived Attribution, recomputed edit
+retention scores, final Fate, Reward, or Rollouts. Those interpretations belong
+to Derivations because they depend on policy.
 
 A bundle saves Derivation output as an immutable local artifact. It isn't
 service state and doesn't write results back to the Fact store. Deleting the

@@ -115,9 +115,9 @@ inference.
 Version 1 Evidence recipes preserve their eligibility rules and copy the
 selected sources into training metadata.
 [Factual outcomes and training evidence](../adr/0014-factual-outcomes-and-training-evidence.md)
-defines this distinction. Historical Attribution callers use captured
-Session-to-commit observations through their observation boundary. An explicit
-empty observation set doesn't authorize a read of live notes.
+defines this distinction. For legacy Pushes without repository identity,
+Attribution can still read live Git notes. Those notes don't establish factual
+Session outcomes.
 
 ## Concurrent marker capture
 
