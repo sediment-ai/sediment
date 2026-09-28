@@ -206,7 +206,7 @@ Request body — `VendorCIRequest` (`application/json`):
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `provider` | string | yes | The normalized CI system. The sender declares it from integration configuration; Sediment does not infer it from a URL; one of `github_actions`, `jenkins`, `gitlab_ci`, `circleci`, `buildkite`, `other` |
-| `run_id` | string | yes | The provider-issued pipeline-run id, unique within the deployment organization and provider namespace; pattern `^[^\u0000\uD800-\uDFFF]*$` |
+| `run_id` | string | yes | The CI provider's pipeline-run ID. Identified runs also carry a forge provider and host; run_attempt distinguishes attempts.; pattern `^[^\u0000\uD800-\uDFFF]*$` |
 | `run_attempt` | integer or null | no | minimum `1.0`; maximum `9.223372036854776e+18` |
 | `repo` | string | yes | pattern `^[^\u0000\uD800-\uDFFF]*$` |
 | `repository_provider` | string or null | no | one of `github` |

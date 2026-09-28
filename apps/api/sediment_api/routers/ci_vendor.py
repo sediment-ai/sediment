@@ -68,8 +68,8 @@ class VendorCIRequest(BaseModel):
     )
     run_id: NonEmptyId = Field(
         description=(
-            "The provider-issued pipeline-run id, unique within the deployment "
-            "organization and provider namespace"
+            "The CI provider's pipeline-run ID. Identified runs also carry a "
+            "forge provider and host; run_attempt distinguishes attempts."
         )
     )
     run_attempt: int | None = Field(default=None, ge=1, le=2**63 - 1, strict=True)

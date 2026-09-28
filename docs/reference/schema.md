@@ -481,7 +481,7 @@ Canonical schema: [JSON Schema, version 4](../../schemas/derived-artifacts/attri
 | `ci_outcomes` | array of [`CIOutcome`](#cioutcome) | The CI runs recorded for this commit. |
 | `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
 | `split` | `train` or `eval` | Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both. |
-| `abandonment` | [`SessionAbandonment`](#sessionabandonment) or null | The session-level abandonment evidence for an explicit-accept negative. Null on an attribution-evidence row. Exactly one evidence variant must be present. |
+| `abandonment` | [`SessionAbandonment`](#sessionabandonment) or null | Legacy Session-level abandonment evidence. The Fact-derived assembly doesn't produce this variant. Null on an Attribution-evidence row. |
 | `session_commit_observations` | array of [`SessionCommitObservation`](#sessioncommitobservation) | Captured Session-to-commit Facts matching this artifact, ordered by qualified edge, UTC capture time, and observation ID. Empty means no observed relationship; Attribution remains inferred. |
 | `repository_identity` | [`RepositoryIdentity`](#repositoryidentity) or null | Qualified provider, host, and repository ID; null for an unambiguous legacy repository. |
 | `source_push_id` | string or null | The Push that triggered this Git-note observation. |
@@ -624,7 +624,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/derived-artifacts/recov
 
 ### AcceptedSessionOutcome
 
-One accepted Session's terminal abandonment classification.
+Observation-backed status for an accepted Session.
 
 Canonical schema: [JSON Schema, version 2](../../schemas/derived-artifacts/accepted-session-outcome/v2.json). ID: `https://sediment.so/schemas/derived-artifacts/accepted-session-outcome/v2.json`.
 
@@ -634,14 +634,14 @@ Canonical schema: [JSON Schema, version 2](../../schemas/derived-artifacts/accep
 | `session_id` | string | The coding-agent session this belongs to (ADR 0002). |
 | `accepted_decisions` | integer | How many accepted Developer decisions this Session contains. |
 | `explicit_accepted_decisions` | integer | How many accepted decisions came from an explicit developer gesture. |
-| `last_decision_at` | string (RFC 3339) | The Session's newest decision time, which anchors the grace horizon. |
-| `as_of` | string (RFC 3339) | The newest timestamp in the Facts read by the Derivation. |
-| `status` | `committed` or `abandoned` or `in_flight` or `attribution_unavailable` | The Session's closed terminal classification: committed, abandoned, in_flight, or attribution_unavailable. |
+| `last_decision_at` | string (RFC 3339) | The latest occurred_at among the Session's visible Developer decisions. |
+| `as_of` | string (RFC 3339) | The Derivation's inclusive evidence boundary. |
+| `status` | `committed` or `abandoned` or `in_flight` or `attribution_unavailable` | The Derivation emits committed for a bound Session-to-commit observation or attribution_unavailable without one. The schema also accepts the legacy abandoned and in_flight values. |
 | `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
 
 ### SessionAbandonment
 
-One session whose accepted edits reached no commit.
+Legacy abandonment evidence retained for schema compatibility. Sediment's Derivation doesn't emit this shape: missing observations remain attribution_unavailable, regardless of the grace horizon.
 
 Canonical schema: [JSON Schema, version 1](../../schemas/derived-artifacts/session-abandonment/v1.json). ID: `https://sediment.so/schemas/derived-artifacts/session-abandonment/v1.json`.
 
@@ -650,9 +650,9 @@ Canonical schema: [JSON Schema, version 1](../../schemas/derived-artifacts/sessi
 | `org_id` | string | The deployment's tenant id, normalized. Bound to the server. |
 | `session_id` | string | The coding-agent session this belongs to (ADR 0002). |
 | `accepted_decisions` | integer | How many accepted edits this session had that never reached a commit. |
-| `explicit_accepted_decisions` | integer | How many of those accepts came from a real human gesture. Only a session with at least one explicit accept can emit a negative attributed completion. |
-| `last_decision_at` | string (RFC 3339) | The session's newest decision time — the anchor the grace horizon is measured back from. |
-| `as_of` | string (RFC 3339) | The newest timestamp anywhere in the facts this derivation read. The horizon is measured against this, never the wall clock, so the same facts always yield the same verdict. |
+| `explicit_accepted_decisions` | integer | Accepted decisions from an explicit developer gesture in this legacy record. |
+| `last_decision_at` | string (RFC 3339) | The latest decision time in this legacy record. |
+| `as_of` | string (RFC 3339) | The evidence boundary recorded by the legacy producer. |
 | `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
 
 ### Fate
@@ -727,7 +727,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/derived-artifacts/merge
 
 ### AbandonmentSummary
 
-One abandonment coverage summary.
+Compatibility counters for abandonment evidence. The Fact-derived assembly emits no abandoned Sessions or abandonment-based negative completions, so those counts are zero. Derivation skip counts and Provenance still describe the observed population.
 
 Canonical schema: [JSON Schema, version 1](../../schemas/derived-artifacts/abandonment-summary/v1.json). ID: `https://sediment.so/schemas/derived-artifacts/abandonment-summary/v1.json`.
 
@@ -869,7 +869,7 @@ Canonical schema: [JSON Schema, version 4](../../schemas/training-rows/dpo-metad
 | `ci_reliability` | number or null | Trust in the resolved CI evidence, separate from the categorical label. |
 | `confidence_margin` | number | Chosen confidence minus rejected. Can be negative when attribution discounts or configured confidence factors outweigh direction. |
 | `provenance` | [`DPOProvenance`](#dpoprovenance) | The structured provenance for this artifact. |
-| `split` | `train` or `eval` | Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both. |
+| `split` | `train` or `eval` | The evaluation partition wins if either source Session hashes to eval. A train-hashed Session can also contribute to an eval pair. |
 | `chosen_repository_identity` | [`RepositoryIdentity`](#repositoryidentity) or null | Qualified repository identity of the chosen member; null for an unambiguous legacy repository. |
 | `rejected_repository_identity` | [`RepositoryIdentity`](#repositoryidentity) or null | Qualified repository identity of the rejected member; independent of the chosen member. |
 | `chosen_attribution_source` | [`AttributionSource`](#attributionsource) or null | The selected preferred member's inferred Attribution method, or null without Attribution. |
@@ -1003,7 +1003,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/training-rows/recovery-
 | `failed_inference_call_ids` | array of string | Inference calls attributed to the failing commit. |
 | `fixed_inference_call_ids` | array of string | Inference calls attributed to the fixing commit. |
 | `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
-| `split` | `train` or `eval` | Which side of the deterministic eval split this row is on, hashed on `session_id` so a session never straddles both. |
+| `split` | `train` or `eval` | The evaluation partition wins if any Session captured in the Recovery evidence hashes to eval. Without captured Session evidence, the row uses train. |
 | `repository_identity` | [`RepositoryIdentity`](#repositoryidentity) or null | Qualified provider, host, and repository ID; null for an unambiguous legacy repository. |
 | `failed_attribution_evidence` | array of [`RecoveryAttributionEvidence`](#recoveryattributionevidence) | Failed-side enrichment sources retained from the Recovery sample; empty when absent. |
 | `fixed_attribution_evidence` | array of [`RecoveryAttributionEvidence`](#recoveryattributionevidence) | Fixed-side enrichment sources retained from the Recovery sample; empty when absent. |

@@ -1034,15 +1034,63 @@ def _describe(cls: type, name: str) -> str:
     )
 
 
+# Published JSON Schema annotations are immutable. These clarifications affect
+# the human reference without changing an existing wire-contract version.
+REFERENCE_FIELDS = {
+    "CIOutcome.run_id": (
+        "The CI provider's pipeline-run ID. Identified runs also carry a "
+        "forge provider and host; run_attempt distinguishes attempts."
+    ),
+    "SessionAbandonment.explicit_accepted_decisions": (
+        "Accepted decisions from an explicit developer gesture in this legacy record."
+    ),
+    "SessionAbandonment.last_decision_at": "The latest decision time in this legacy record.",
+    "SessionAbandonment.as_of": "The evidence boundary recorded by the legacy producer.",
+    "AcceptedSessionOutcome.last_decision_at": (
+        "The latest occurred_at among the Session's visible Developer decisions."
+    ),
+    "AcceptedSessionOutcome.as_of": "The Derivation's inclusive evidence boundary.",
+    "AcceptedSessionOutcome.status": (
+        "The Derivation emits committed for a bound Session-to-commit observation "
+        "or attribution_unavailable without one. The schema also accepts the "
+        "legacy abandoned and in_flight values."
+    ),
+    "AttributedCompletion.abandonment": (
+        "Legacy Session-level abandonment evidence. The Fact-derived assembly "
+        "doesn't produce this variant. Null on an Attribution-evidence row."
+    ),
+    "DPOMetadata.split": (
+        "The evaluation partition wins if either source Session hashes to eval. "
+        "A train-hashed Session can also contribute to an eval pair."
+    ),
+    "RecoveryRow.split": (
+        "The evaluation partition wins if any Session captured in the Recovery "
+        "evidence hashes to eval. Without captured Session evidence, the row uses train."
+    ),
+}
+
+REFERENCE_PURPOSES = {
+    "AcceptedSessionOutcome": "Observation-backed status for an accepted Session.",
+    "SessionAbandonment": (
+        "Legacy abandonment evidence retained for schema compatibility. "
+        "Sediment's Derivation doesn't emit this shape: missing observations "
+        "remain attribution_unavailable, regardless of the grace horizon."
+    ),
+    "AbandonmentSummary": (
+        "Compatibility counters for abandonment evidence. The Fact-derived "
+        "assembly emits no abandoned Sessions or abandonment-based negative "
+        "completions, so those counts are zero. Derivation skip counts and "
+        "Provenance still describe the observed population."
+    ),
+}
+
+
 def _reference_description(cls: type, name: str) -> str:
     """Clarify lookup prose without rewriting immutable schema annotations."""
     if name == "captured_at" and f"{cls.__name__}.{name}" not in FIELDS:
         return "When Sediment captured the Fact, stamped server-side."
-    if cls.__name__ == "CIOutcome" and name == "run_id":
-        return (
-            "The CI provider's pipeline-run ID. Identified runs also carry a "
-            "forge provider and host; run_attempt distinguishes attempts."
-        )
+    if description := REFERENCE_FIELDS.get(f"{cls.__name__}.{name}"):
+        return description
     return _describe(cls, name)
 
 
@@ -1086,7 +1134,7 @@ def render() -> str:
             lines += [
                 f"### {cls.__name__}",
                 "",
-                purpose,
+                REFERENCE_PURPOSES.get(cls.__name__, purpose),
                 "",
                 f"Canonical schema: [JSON Schema, version {contract.version}]"
                 f"(../../{contract.output_path.as_posix()}). "
