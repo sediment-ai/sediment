@@ -325,3 +325,49 @@ def test_cli_rejects_an_unknown_mode(monkeypatch) -> None:
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["proxy", "--upstream", "http://127.0.0.1:1"])
     assert exit_info.value.code == 2
+
+
+def test_connection_nominated_headers_stay_on_their_hop(upstream, proxy) -> None:
+    upstream.reply = (
+        200,
+        {"Connection": "X-Upstream-Hop", "X-Upstream-Hop": "a", "X-Kept": "b"},
+        b"{}",
+    )
+    proxy.request(
+        "GET",
+        "/v1/models",
+        headers={"Connection": "keep-alive, X-Agent-Hop", "X-Agent-Hop": "secret"},
+    )
+    response = proxy.getresponse()
+    response.read()
+    received = {name.lower() for name in upstream.requests[0][2]}
+    assert "x-agent-hop" not in received
+    assert response.getheader("X-Upstream-Hop") is None
+    assert response.getheader("X-Kept") == "b"
+
+
+def test_truncated_upstream_response_closes_the_agent_connection() -> None:
+    import socket
+
+    listener = socket.create_server(("127.0.0.1", 0))
+
+    def truncate() -> None:
+        connection, _ = listener.accept()
+        with connection:
+            connection.recv(65536)
+            connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nhello")
+
+    threading.Thread(target=truncate, daemon=True).start()
+    server = _proxy(f"http://127.0.0.1:{listener.getsockname()[1]}")
+    agent = http.client.HTTPConnection(*server.server_address, timeout=5)
+    try:
+        agent.request("GET", "/v1/models")
+        response = agent.getresponse()
+        with pytest.raises(http.client.IncompleteRead) as incomplete:
+            response.read()
+        assert incomplete.value.partial == b"hello"
+    finally:
+        agent.close()
+        server.shutdown()
+        server.server_close()
+        listener.close()

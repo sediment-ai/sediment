@@ -115,7 +115,7 @@ def test_read_superseded_by_later_edit_openai() -> None:
         "read it again if you need the current content]"
     )
     assert report == {
-        "policy_version": "1",
+        "policy_version": "2",
         "stubbed_results": 1,
         "bytes_removed": len(BIG) - len(pruned[3]["content"]),
     }
@@ -458,3 +458,18 @@ def test_prune_request_leaves_other_fields_and_provider_managed_context() -> Non
     quiet = {"model": "m", "messages": messages[:3]}
     assert prune_request(quiet, POLICY)[0] is quiet
     assert prune_request({"model": "m"}, POLICY) == ({"model": "m"}, None)
+
+
+def test_results_with_part_metadata_pass_through() -> None:
+    # A part's cache_control or unknown fields can't survive a rebuilt stub.
+    marked = [{"type": "text", "text": BIG, "cache_control": {"type": "ephemeral"}}]
+    messages = anthropic(
+        [
+            [("Read", {"file_path": "a.py"}, marked)],
+            [("Read", {"file_path": "a.py"}, BIG)],
+            *filler(2, "anthropic"),
+        ]
+    )
+    pruned, report = prune(messages, POLICY)
+    assert pruned[2] == messages[2]
+    assert report["stubbed_results"] == 0
