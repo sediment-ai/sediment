@@ -1,7 +1,8 @@
 # Context-minimal agents at the gateway
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
-Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
+Evidence: [Phase 2](2026-09-28-context-minimal-phase-2-design.md) and
+[Phase 3](2026-09-28-context-pointer-phase-3-design.md).
 
 ## Thesis
 
@@ -139,6 +140,82 @@ unchanged.
 E2 and the launch demo use the proxy: "point your agent at one URL" works with
 Claude Code without LiteLLM or a Sediment deployment.
 
+## Build (stage A.2): OpenAI Responses API and Codex CLI
+
+Codex CLI talks to the OpenAI Responses API (`POST /v1/responses`), not Chat
+Completions, so stages A and A.1 don't reach it. Stage A.2 adds a third
+wire-format adapter to the same core, and the matching proxy route. It lands
+after the stage A and A.1 PR.
+
+### Request shape
+
+A Responses request carries `input` as a list of typed items. The adapter maps
+them onto the core's normalized sequence:
+
+| Item | Treatment |
+| --- | --- |
+| `message` (any role) | Never changed, like user and assistant text elsewhere |
+| `reasoning`, including `encrypted_content` | Never changed; opaque to the proxy |
+| `function_call`, `local_shell_call` | Tool calls: never changed; they identify what each result was |
+| `function_call_output`, `local_shell_call_output` | Tool results: the only items `prune` may stub, keeping `call_id` pairing |
+| Any other item type | Never changed |
+
+A request that sets `previous_response_id` references server-side history
+instead of resending it. There is nothing to prune, so it passes through
+untouched and the report counts it.
+
+### Codex tool semantics
+
+Codex has no dedicated read tool. It reads files with shell commands and edits
+them with `apply_patch`. The adapter recognizes these conservatively:
+
+| Codex call | Normalized as |
+| --- | --- |
+| `apply_patch` (function or custom tool) | Edit or write of each path named by its `*** Add File:`, `*** Update File:`, `*** Delete File:`, or `*** Move to:` lines |
+| Shell command whose whole argument list is one of `cat P`, `nl -ba P`, `head P`, or `tail P`, with no pipes, redirects, or `&&` | Read of path P |
+| Shell command `sed -n '<range>p' P` | Partial read of P: superseded only by a later edit of P or the identical command, never by another partial read |
+| Any other shell command | Run of command C, compared by its exact argument list |
+
+A read recognized this way is superseded by a later edit of the same path (as
+the patch names it), by a later identical command, or, for full reads only, by a
+later full read of P. Paths are compared as written after joining with the
+call's `workdir`; the adapter never resolves symlinks or touches a filesystem. An
+unrecognized command form is treated as an opaque run, never as a read.
+
+### Proxy
+
+The proxy adds `POST /v1/responses` with the same pass-through guarantees:
+streamed server-sent events forwarded byte for byte, headers forwarded, no
+stored credentials, and unknown fields untouched. Codex is pointed at it with its
+base-URL override, for example `OPENAI_BASE_URL=http://127.0.0.1:8787/v1 codex`.
+
+### Before building
+
+1. Record real Codex traffic through the proxy in pass-through mode, with no
+   pruning: at least three multi-step Sessions. Confirm the item types above,
+   whether Codex resends full history (with `store: false`) or uses
+   `previous_response_id`, and how its shell and `apply_patch` calls appear on
+   the wire. If Codex uses `previous_response_id` by default, stage A.2 can't
+   prune its default traffic. Report that, and stop.
+2. Check whether a Codex CLI signed in with a ChatGPT account honors a custom
+   base URL, or whether only API-key sign-in does. Document the result; don't
+   work around it.
+
+### Tests
+
+The stage A tests apply unchanged: determinism, idempotence, monotonic prefix,
+pairing, text untouched, unknown items untouched, and the 4 KB threshold. Stage
+A.2 adds:
+- `previous_response_id` pass-through;
+- encrypted reasoning kept byte-identical;
+- each recognized read form, and a near-miss form (a pipe, a redirect, two
+  paths) that must not be treated as a read;
+- `apply_patch` path extraction for add, update, delete, and move;
+- partial reads not superseding one another.
+
+Fixtures come from the recorded Codex Sessions in step 1, redacted to synthetic
+content.
+
 ## Out of scope for stage A
 
 - **The decision model.** It's stage B, and runs only if stage A leaves a
@@ -165,6 +242,24 @@ The targets are fixed before any run. E1 reports priced tokens: uncached input,
 plus cached input at the provider's discount, plus output. E2 reports billed cost
 from the provider's actual prices.
 
+0. **E0, replay recorded requests (about half a day, no model calls).** Every
+   coding request in the issue #134 experiments was recorded in full by the
+   evaluation gate: about 1,500 requests across Phases 1–3, kept in the private
+   run archive, not in Git. Once `prune`
+   exists, run it over those recorded request bodies, in order within each
+   Session, and report per Session:
+   - input bytes before and after, and bytes removed per request as the
+     conversation grows;
+   - the positions where new stubs appear, which are where the cached prefix
+     would break;
+   - how often a stubbed file was read again later in the same Session;
+   - that the output is deterministic and preserves tool-call pairing on real
+     traffic.
+
+   Gate: if `prune` removes less than 20% of input bytes at the median across
+   long Sessions (Phase 3 sources and multi-call continuations), report that
+   and stop before E1. The replay estimates the opportunity only; it can't show
+   how an agent behaves with pruned input, so it never replaces E1.
 1. **E1, reuse the existing harness (about 2 days).** Run pi through the
    experiment gateway on long multi-step fixture tasks: several files to edit,
    checks rerun after each edit. Arms: passthrough and stage A. Two families × 3
@@ -193,7 +288,8 @@ from the provider's actual prices.
    plain pass-through run without compaction is a secondary diagnostic, not the
    comparison.
 
-If E1 misses its token target, stop before E2 and report it. Stage B starts only
+If E0 misses its gate, stop before E1. If E1 misses its token target, stop
+before E2 and report it. Stage B starts only
 if E1 or E2 shows that non-superseded tool output is still a large share of
 input.
 
@@ -204,6 +300,7 @@ input.
 | ADR 0027: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
 | Stage A core, both format adapters, the LiteLLM hook, and tests | 2–3 days |
 | Stage A.1 proxy and pass-through tests | 1–2 days |
+| Stage A.2 Responses API adapter, proxy route, Codex traffic recording, and tests | 2–3 days |
 | E1 | about 2 days |
 | E2 | about 1 week, plus model spend |
 
@@ -221,5 +318,10 @@ Risks:
   model received.
 - **Provider-native formats aren't covered** (Bedrock and Vertex wrappers) until
   there's demand.
+- **Codex reads files through shell commands.** Recognizing reads from command
+  text is heuristic. The adapter only recognizes a short list of single-file
+  forms, and anything else is an opaque run, so a missed read costs savings,
+  never correctness. If Codex relies on `previous_response_id`, stage A.2 has
+  nothing to prune.
 - **Open core.** The transform serves a single team's pipeline, so it's open
   source under ADR 0006.
