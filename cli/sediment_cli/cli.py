@@ -201,10 +201,16 @@ def cmd_db_check(args: argparse.Namespace) -> int:
 
     result = check_database(_database_url(args))
     heading = f'database check as "{result.identity}"'
+    schema = (
+        f"schema {result.revision.value}"
+        if result.revision is not None
+        else "schema unreadable as this identity; check as the migrator for "
+        "table grants"
+    )
     if not result.failures:
-        print(f"{heading}: passed (schema {result.revision.value})")
+        print(f"{heading}: passed ({schema})")
         return 0
-    print(f"{heading}: schema {result.revision.value}")
+    print(f"{heading}: {schema}")
     for failure in result.failures:
         print(f"  {failure}")
     count = len(result.failures)

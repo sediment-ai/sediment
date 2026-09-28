@@ -953,12 +953,35 @@ def _provisioning_failures(connection: Connection) -> Iterator[PrivilegeFailure]
     yield from _ownership_failures(connection)
 
 
+def _readable_revision(connection: Connection) -> RevisionState | None:
+    """The schema revision, or None when this identity can't read it.
+
+    The catalogs answer whether ``public.alembic_version`` exists without
+    the search path or ``USAGE`` on ``public``, which an administrator can
+    lack; only the migrator, runtime, and operator roles may read the table.
+    """
+    readable = connection.exec_driver_sql(
+        "SELECT has_schema_privilege(n.oid, 'USAGE') "
+        "AND has_table_privilege(c.oid, 'SELECT') FROM pg_class c "
+        "JOIN pg_namespace n ON n.oid=c.relnamespace "
+        "WHERE n.nspname='public' AND c.relname='alembic_version'"
+    ).scalar()
+    if readable is None:
+        return RevisionState.ABSENT
+    return inspect_connection_revision(connection).state if readable else None
+
+
 @dataclass(frozen=True)
 class DatabaseCheck:
-    """One read-only check of a dedicated database, as the connected identity."""
+    """One read-only check of a dedicated database, as the connected identity.
+
+    ``revision`` is None when the identity can't read the schema revision;
+    the check then skips Sediment's table coverage, which the migrator's
+    check covers.
+    """
 
     identity: str
-    revision: RevisionState
+    revision: RevisionState | None
     failures: tuple[PrivilegeFailure, ...]
 
 
@@ -980,7 +1003,7 @@ def check_database(database_url: str) -> DatabaseCheck:
                 failures += _provisioning_failures(connection)
             failures += _database_failures(connection)
             failures += _migrator_failures(connection)
-            revision = inspect_connection_revision(connection).state
+            revision = _readable_revision(connection)
             if revision in {RevisionState.BEHIND, RevisionState.AHEAD}:
                 failures.append(
                     PrivilegeFailure(

@@ -818,3 +818,38 @@ def test_check_on_a_behind_schema_names_only_the_revision(role_database):
         "0011_inference_call_aliases; "
         "fix: run `sediment db upgrade` with the release that supports this schema"
     ]
+
+
+def test_check_as_the_owning_administrator_reports_an_unreadable_schema(
+    role_database, managed_admin, capsys
+):
+    from sediment_cli.cli import main
+
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            f'ALTER DATABASE "{make_url(url).database}" OWNER TO {managed_admin}'
+        )
+    target = (
+        make_url(url)
+        .set(username=managed_admin, password=ADMIN_PASSWORD)
+        .render_as_string(hide_password=False)
+    )
+    try:
+        result = check(target)
+        # Only Sediment's roles may read alembic_version; the migrator's check
+        # covers table grants.
+        assert result.revision is None
+        assert all(
+            str(failure).startswith((f'administrator "{managed_admin}"', "role "))
+            for failure in result.failures
+        ), result.failures
+        main(["db", "check", "--database-url", target])
+        assert "schema unreadable as this identity" in capsys.readouterr().out
+    finally:
+        # The administrator fixture drops databases it owns; this one isn't.
+        with connect().begin() as connection:
+            connection.exec_driver_sql(
+                f'ALTER DATABASE "{make_url(url).database}" OWNER TO CURRENT_USER'
+            )
