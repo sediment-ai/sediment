@@ -86,8 +86,28 @@ def _sequence(connection: Connection) -> str:
 
 
 def _reconcile_roles(connection: Connection, passwords: dict[str, str]) -> None:
+    """Create or reconcile the roles, naming only attributes the caller may set.
+
+    PostgreSQL lets only a role that holds SUPERUSER, CREATEDB, REPLICATION,
+    or BYPASSRLS name that attribute. The preconditions already required each
+    unnamed attribute to be false; new roles start without all four.
+    """
     from psycopg import sql
 
+    administrator = (
+        connection.exec_driver_sql(
+            "SELECT rolsuper, rolcreatedb, rolreplication, rolbypassrls "
+            "FROM pg_roles WHERE rolname=current_user"
+        )
+        .mappings()
+        .one()
+    )
+    settable = [
+        name
+        for column, name in _ROLE_ATTRIBUTES
+        if column in administrator
+        and (administrator["rolsuper"] or administrator[column])
+    ]
     for role, password in passwords.items():
         identifier = sql.Identifier(role)
         exists = connection.execute(
@@ -101,9 +121,10 @@ def _reconcile_roles(connection: Connection, passwords: dict[str, str]) -> None:
         ).decode("ascii")
         _ddl(
             connection,
-            "ALTER ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE "
-            "NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD {} VALID UNTIL 'infinity'",
+            "ALTER ROLE {} WITH LOGIN NOCREATEROLE NOINHERIT {} "
+            "PASSWORD {} VALID UNTIL 'infinity'",
             identifier,
+            sql.SQL(" ").join(sql.SQL(f"NO{name}") for name in settable),
             sql.Literal(verifier),
         )
         _ddl(connection, "ALTER ROLE {} RESET ALL", identifier)
@@ -115,25 +136,24 @@ def _reconcile_roles(connection: Connection, passwords: dict[str, str]) -> None:
             sql.Identifier(database),
         )
         _ddl(connection, "ALTER ROLE {} SET search_path = public", identifier)
-        memberships = (
-            connection.execute(
-                text(
-                    "SELECT parent.rolname FROM pg_auth_members m "
-                    "JOIN pg_roles parent ON parent.oid=m.roleid "
-                    "JOIN pg_roles member ON member.oid=m.member "
-                    "WHERE member.rolname=:role"
-                ),
-                {"role": role},
-            )
-            .scalars()
-            .all()
-        )
-        for parent in memberships:
+        memberships = connection.execute(
+            text(
+                "SELECT parent.rolname, grantor.rolname FROM pg_auth_members m "
+                "JOIN pg_roles parent ON parent.oid=m.roleid "
+                "JOIN pg_roles member ON member.oid=m.member "
+                "JOIN pg_roles grantor ON grantor.oid=m.grantor "
+                "WHERE member.rolname=:role"
+            ),
+            {"role": role},
+        ).all()
+        for parent, grantor in memberships:
+            # Without GRANTED BY, REVOKE skips another grantor's grant silently.
             _ddl(
                 connection,
-                "REVOKE {} FROM {} CASCADE",
+                "REVOKE {} FROM {} GRANTED BY {} CASCADE",
                 sql.Identifier(parent),
                 identifier,
+                sql.Identifier(grantor),
             )
 
 
@@ -310,13 +330,8 @@ def provision_database(
                 "unsupported database provisioning URL options"
             )
         with engine.connect() as connection:
-            admin = connection.exec_driver_sql(
-                "SELECT rolsuper FROM pg_roles WHERE rolname=current_user"
-            ).scalar_one()
-            if (
-                not admin
-                or connection.exec_driver_sql("SELECT current_user").scalar_one()
-                in passwords
+            if connection.exec_driver_sql("SELECT current_user").scalar_one() in (
+                passwords
             ):
                 raise DatabasePrivilegeError(
                     "database provisioning requires the bootstrap administrator"
@@ -327,6 +342,13 @@ def provision_database(
                 raise DatabasePrivilegeError("database provisioning is already running")
             connection.commit()
             try:
+                # Every capability check runs before the first change.
+                failures = dict.fromkeys(_provisioning_failures(connection))
+                if failures:
+                    raise DatabasePrivilegeError("\n  ".join(map(str, failures)))
+                superuser = connection.exec_driver_sql(
+                    "SELECT rolsuper FROM pg_roles WHERE rolname=current_user"
+                ).scalar_one()
                 _reconcile_roles(connection, passwords)
                 database = connection.exec_driver_sql(
                     "SELECT current_database()"
@@ -360,7 +382,10 @@ def provision_database(
                     "GRANT CREATE ON SCHEMA public TO {}",
                     sql.Identifier(MIGRATOR_ROLE),
                 )
-                _transfer_known_tables(connection)
+                if superuser:
+                    # Adopting legacy tables needs a superuser; for any other
+                    # administrator the preconditions required migrator ownership.
+                    _transfer_known_tables(connection)
                 connection.commit()
                 migration_url = engine.url.set(
                     username=MIGRATOR_ROLE, password=migrator_password
@@ -858,13 +883,6 @@ def _provisioning_failures(connection: Connection) -> Iterator[PrivilegeFailure]
     database = connection.exec_driver_sql("SELECT current_database()").scalar_one()
     if administrator["rolsuper"]:
         return
-    # ponytail: the rolsuper gate stays until capability-based provisioning
-    # lands (ADR 0027, step 3); the checks after it are that step's contract.
-    yield PrivilegeFailure(
-        subject,
-        "isn't a superuser, which `sediment db provision` requires",
-        "provision as a superuser",
-    )
     if not administrator["rolcreaterole"]:
         yield PrivilegeFailure(
             subject,

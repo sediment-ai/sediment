@@ -206,11 +206,7 @@ def test_legacy_transfer_preserves_every_fact_and_unrelated_object(role_database
     role_module().validate_runtime_privileges(connect(ROLES[1]))
 
 
-@pytest.mark.parametrize("role", ROLES[1:])
-def test_fact_mutation_and_administration_fail(role_database, role):
-    url, connect = role_database
-    provision(url)
-    engine = connect(role)
+def mutation_statements(administrator, role):
     statements = [
         *(f'UPDATE "{table}" SET org_id=org_id' for table in FactTable),
         *(f'DELETE FROM "{table}"' for table in FactTable),
@@ -239,7 +235,7 @@ def test_fact_mutation_and_administration_fail(role_database, role):
         "SET ROLE pg_execute_server_program",
         "SET ROLE pg_read_server_files",
         "SET ROLE pg_write_server_files",
-        f'SET ROLE "{make_url(url).username}"',
+        f'SET ROLE "{administrator}"',
     ]
     if role == ROLES[1]:
         statements += [
@@ -251,7 +247,15 @@ def test_fact_mutation_and_administration_fail(role_database, role):
             f'INSERT INTO "{table}" DEFAULT VALUES'
             for table in [*FactTable, "sessions", "inference_call_aliases"]
         ]
-    for statement in statements:
+    return statements
+
+
+@pytest.mark.parametrize("role", ROLES[1:])
+def test_fact_mutation_and_administration_fail(role_database, role):
+    url, connect = role_database
+    provision(url)
+    engine = connect(role)
+    for statement in mutation_statements(make_url(url).username, role):
         denied(engine, statement)
 
 
@@ -588,8 +592,14 @@ ADMIN_PASSWORD = "admin-test-secret"
 
 @pytest.fixture
 def managed_admin(role_admin):
-    """A LOGIN CREATEROLE CREATEDB administrator that isn't a superuser."""
+    """A LOGIN CREATEROLE CREATEDB administrator that isn't a superuser.
+
+    Earlier tests leave superuser-created roles behind, which this
+    administrator could not manage; start without them.
+    """
     with role_admin.connect() as connection:
+        for role in ROLES:
+            connection.exec_driver_sql(f'DROP ROLE IF EXISTS "{role}"')
         connection.exec_driver_sql(
             f"CREATE ROLE {ADMIN} LOGIN CREATEROLE CREATEDB PASSWORD '{ADMIN_PASSWORD}'"
         )
@@ -742,7 +752,6 @@ def test_check_reports_provisioning_preconditions_for_an_administrator(
     )
     lines = failures(target)
     subject = f'administrator "{managed_admin}"'
-    assert any(line.startswith(f"{subject} isn't a superuser") for line in lines)
     assert any(
         line.startswith(f"{subject} lacks the privileges of the owner of database")
         for line in lines
@@ -919,3 +928,173 @@ def test_upgrade_refuses_another_identity_on_a_provisioned_database(role_databas
         role_module().migrate_database(url)
     # The refusal comes before Alembic takes the lock or changes anything.
     assert check(role_url(url, ROLES[0])).failures == ()
+
+
+@pytest.fixture
+def admin_database(role_admin, managed_admin):
+    """A dedicated database that the non-superuser administrator owns."""
+    name = f"sediment_admin_test_{uuid4().hex}"
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql(f'CREATE DATABASE "{name}" OWNER {managed_admin}')
+    url = role_admin.url.set(database=name).render_as_string(hide_password=False)
+    admin_url = (
+        make_url(url)
+        .set(username=managed_admin, password=ADMIN_PASSWORD)
+        .render_as_string(hide_password=False)
+    )
+    engines = []
+
+    def connect(role=None, password=None):
+        target = url
+        if role:
+            target = (
+                make_url(url)
+                .set(username=role, password=password or PASSWORDS[role])
+                .render_as_string(hide_password=False)
+            )
+        engine = create_engine(target, poolclass=NullPool)
+        engines.append(engine)
+        return engine
+
+    try:
+        yield admin_url, connect
+    finally:
+        for engine in engines:
+            engine.dispose()
+        with role_admin.connect() as connection:
+            connection.exec_driver_sql(f'DROP DATABASE "{name}" WITH (FORCE)')
+
+
+def rotated(passwords):
+    return {role: f"rotated-{secret}" for role, secret in passwords.items()}
+
+
+def logs_in(engine):
+    try:
+        with engine.connect() as connection:
+            connection.exec_driver_sql("SELECT 1")
+    except DBAPIError:
+        return False
+    return True
+
+
+def test_non_superuser_administrator_provisions_migrates_and_rotates(
+    admin_database, managed_admin
+):
+    admin_url, connect = admin_database
+    provision(admin_url)
+    assert check(role_url(admin_url, ROLES[0])).failures == ()
+    assert check(admin_url).failures == ()
+    runtime = connect(ROLES[1])
+    role_module().validate_runtime_privileges(runtime)
+    seed_every_fact(runtime)
+    for role in ROLES[1:]:
+        for statement in mutation_statements(managed_admin, role):
+            denied(connect(role), statement)
+    before = snapshot(connect(ROLES[2]))
+
+    fresh = rotated(PASSWORDS)
+    role_module().provision_database(
+        admin_url,
+        migrator_password=fresh[ROLES[0]],
+        runtime_password=fresh[ROLES[1]],
+        operator_password=fresh[ROLES[2]],
+    )
+    assert snapshot(connect(ROLES[2], fresh[ROLES[2]])) == before
+    for role in ROLES:
+        assert not logs_in(connect(role))
+        assert logs_in(connect(role, fresh[role]))
+    role_module().validate_runtime_privileges(connect(ROLES[1], fresh[ROLES[1]]))
+
+
+def test_provisioning_revokes_a_membership_granted_by_the_administrator(
+    admin_database, managed_admin
+):
+    admin_url, connect = admin_database
+    provision(admin_url)
+    with connect(managed_admin, ADMIN_PASSWORD).begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE ROLE sediment_test_parent; "
+            "GRANT sediment_test_parent TO sediment_runtime"
+        )
+    try:
+        provision(admin_url)
+        assert check(admin_url).failures == ()
+    finally:
+        with connect(managed_admin, ADMIN_PASSWORD).begin() as connection:
+            connection.exec_driver_sql("DROP ROLE sediment_test_parent")
+
+
+def test_provisioning_refuses_a_role_created_by_another_administrator(
+    admin_database, managed_admin, role_admin
+):
+    admin_url, connect = admin_database
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql("CREATE ROLE sediment_operator")
+    with pytest.raises(role_module().DatabasePrivilegeError) as failure:
+        provision(admin_url)
+    message = str(failure.value)
+    assert (
+        f'role "sediment_operator" doesn\'t grant administrator "{managed_admin}" '
+        f'the ADMIN option; fix: GRANT "sediment_operator" TO "{managed_admin}" '
+        "WITH ADMIN OPTION"
+    ) in message
+    assert "administrator-provisioned roles" in message
+    with role_admin.connect() as connection:
+        created = connection.execute(
+            text("SELECT rolname FROM pg_roles WHERE rolname = ANY(:roles)"),
+            {"roles": list(ROLES)},
+        ).scalars()
+        assert set(created) == {"sediment_operator"}, "changed roles before failing"
+
+
+def test_provisioning_refuses_a_membership_it_cannot_revoke(
+    admin_database, managed_admin, role_admin
+):
+    admin_url, connect = admin_database
+    provision(admin_url)
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql("GRANT pg_read_all_data TO sediment_runtime")
+    with pytest.raises(role_module().DatabasePrivilegeError) as failure:
+        role_module().provision_database(
+            admin_url,
+            **{
+                f"{role.removeprefix('sediment_')}_password": secret
+                for role, secret in rotated(PASSWORDS).items()
+            },
+        )
+    assert (
+        'role "sediment_runtime" is a member of "pg_read_all_data" through a grant '
+        f'by "postgres" that administrator "{managed_admin}" can\'t revoke'
+    ) in str(failure.value)
+    # Nothing changed: the old passwords still log in.
+    assert all(logs_in(connect(role)) for role in ROLES)
+
+
+def test_provisioning_refuses_a_database_the_administrator_does_not_own(
+    role_database, managed_admin
+):
+    url, connect = role_database
+    database = make_url(url).database
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            f'GRANT CONNECT ON DATABASE "{database}" TO {managed_admin}'
+        )
+    target = (
+        make_url(url)
+        .set(username=managed_admin, password=ADMIN_PASSWORD)
+        .render_as_string(hide_password=False)
+    )
+    with pytest.raises(
+        role_module().DatabasePrivilegeError,
+        match=(
+            f'lacks the privileges of the owner of database "{database}"; fix: '
+            f'ALTER DATABASE "{database}" OWNER TO "{managed_admin}"'
+        ),
+    ):
+        provision(target)
+    with connect().connect() as connection:
+        assert not connection.execute(
+            text("SELECT count(*) FROM pg_roles WHERE rolname = ANY(:roles)"),
+            {"roles": list(ROLES)},
+        ).scalar_one()
