@@ -42,10 +42,13 @@ def test_deadline_kills_process_group_before_slot_reuse(monkeypatch, tmp_path):
         "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
         "child = subprocess.Popen([sys.executable, '-c', "
         "'import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'])\n"
-        f"open({str(marker)!r}, 'w').write(f'{{os.getpid()}} {{child.pid}}')\n"
+        f"from pathlib import Path; t = Path({str(marker)!r} + '.tmp')\n"
+        "t.write_text(f'{os.getpid()} {child.pid}')\n"
+        f"t.replace({str(marker)!r})\n"
         "time.sleep(60)\n",
     )
-    monkeypatch.setattr(workers, "QUERY_BUDGET_SECONDS", 0.3)
+    # The budget outlasts startup, so the marker exists before the kill.
+    monkeypatch.setattr(workers, "QUERY_BUDGET_SECONDS", 1.0)
     monkeypatch.setattr(workers, "TERMINATION_GRACE_SECONDS", 0.1)
 
     async def check():
@@ -335,9 +338,10 @@ def test_dying_process_group_permission_race_is_rechecked(monkeypatch, tmp_path)
     marker = tmp_path / "pid"
     _command(
         monkeypatch,
-        f"import os,time; open({str(marker)!r},'w').write(str(os.getpid())); time.sleep(60)",
+        f"import os,time; from pathlib import Path; t=Path({str(marker)!r}+'.tmp'); t.write_text(str(os.getpid())); t.replace({str(marker)!r}); time.sleep(60)",
     )
-    monkeypatch.setattr(workers, "QUERY_BUDGET_SECONDS", 0.1)
+    # The budget outlasts startup, so the marker exists before the kill.
+    monkeypatch.setattr(workers, "QUERY_BUDGET_SECONDS", 1.0)
     signal_group = os.killpg
     raced = False
 
