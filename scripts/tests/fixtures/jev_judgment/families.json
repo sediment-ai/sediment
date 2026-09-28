@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "families": [
+    {
+      "name": "customer-totals",
+      "module": "totals.py",
+      "task": "Fix totals.py: customer_totals(text) must sum the amount column of a CSV per customer and return a dict of customer to total in cents.",
+      "rule": "Note from the billing owner: a row whose status is VOID must be excluded from every total, even when its amount is positive.",
+      "source": "def customer_totals(text):\n    totals = {}\n    for line in text.splitlines()[1:]:\n        customer, amount = line.split(',')[:2]\n        totals[customer] = totals.get(customer, 0) + amount\n    return totals\n",
+      "check": "FAIL: two customers: expected {'acme': 1250, 'zed': 300}, got TypeError\nFAIL: blank trailing line: expected {'acme': 100}, got ValueError\n\nCommand exited with code 1",
+      "distractor": "archive/report_v1.py:12: DeprecationWarning: legacy PDF exporter is unmaintained\nCommand exited with code 0"
+    },
+    {
+      "name": "temperature-readings",
+      "module": "readings.py",
+      "task": "Fix readings.py: to_celsius(text) must convert a reading such as 21.5C or 70F to a float in degrees Celsius, rounded to one decimal.",
+      "rule": "Note from the sensor team: a reading with no unit suffix comes from the lab probes and is in kelvin, so convert it from kelvin.",
+      "source": "def to_celsius(text):\n    value, unit = float(text[:-1]), text[-1]\n    return value if unit == 'C' else value - 32\n",
+      "check": "FAIL: fahrenheit: expected 21.1, got 38.0\nFAIL: surrounding spaces: expected 5.0, got ValueError\n\nCommand exited with code 1",
+      "distractor": "tools/plot_dashboard.py: font cache rebuilt (812 fonts)\nCommand exited with code 0"
+    },
+    {
+      "name": "version-compare",
+      "module": "versions.py",
+      "task": "Fix versions.py: compare(a, b) must compare dotted version strings numerically and return -1, 0, or 1.",
+      "rule": "Note from the release manager: a version with only major and minor parts, such as 2.1, is equal to the same version with patch 0.",
+      "source": "def compare(a, b):\n    return (a > b) - (a < b)\n",
+      "check": "FAIL: numeric parts: compare('1.10.0', '1.9.0') expected 1, got -1\nFAIL: equal versions: expected 0, got 0 (passed)\n\nCommand exited with code 1",
+      "distractor": "scripts/old_changelog.py: skipped 14 entries without dates\nCommand exited with code 0"
+    },
+    {
+      "name": "phone-numbers",
+      "module": "phones.py",
+      "task": "Fix phones.py: normalize(text) must remove spaces, dashes, and parentheses from a phone number and return the digits with an optional leading plus sign.",
+      "rule": "Note from the telephony owner: a number that starts with 00 is an international number; replace the leading 00 with a plus sign.",
+      "source": "def normalize(text):\n    return text.replace(' ', '')\n",
+      "check": "FAIL: dashes: expected '5551234', got '555-1234'\nFAIL: parentheses: expected '2125551234', got '(212)555-1234'\n\nCommand exited with code 1",
+      "distractor": "legacy/fax_gateway.py: connection pool size 4 (unchanged)\nCommand exited with code 0"
+    },
+    {
+      "name": "log-levels",
+      "module": "levels.py",
+      "task": "Fix levels.py: at_least(lines, level) must return the log lines whose level is at or above the given level, using the order DEBUG, INFO, WARN, ERROR.",
+      "rule": "Note from the platform owner: WARNING is an alias of WARN in older services, so treat both names as the same level.",
+      "source": "ORDER = ['DEBUG', 'INFO', 'WARN', 'ERROR']\n\ndef at_least(lines, level):\n    return [l for l in lines if l.split()[0] == level]\n",
+      "check": "FAIL: above threshold: expected 2 lines, got 1\nFAIL: case of level names: expected 1 line, got 0\n\nCommand exited with code 1",
+      "distractor": "infra/metrics_agent.py: exporter endpoint unreachable, buffering 20 samples\nCommand exited with code 0"
+    },
+    {
+      "name": "price-rounding",
+      "module": "prices.py",
+      "task": "Fix prices.py: apply_discount(cents, percent) must return the discounted price as an integer number of cents.",
+      "rule": "Note from finance: when the discounted price falls exactly halfway between two cents, round to the even cent, not up.",
+      "source": "def apply_discount(cents, percent):\n    return cents - cents * percent / 100\n",
+      "check": "FAIL: ten percent: expected 900, got 900.0\nFAIL: zero percent: expected 1999, got 1999.0\n\nCommand exited with code 1",
+      "distractor": "archive/tax_tables_2019.py: table checksum ok\nCommand exited with code 0"
+    },
+    {
+      "name": "short-dates",
+      "module": "dates.py",
+      "task": "Fix dates.py: parse(text) must parse a date written as DD/MM/YY or DD/MM/YYYY and return a datetime.date.",
+      "rule": "Note from the records owner: a two-digit year below 70 means 20xx and 70 or above means 19xx.",
+      "source": "import datetime\n\ndef parse(text):\n    d, m, y = text.split('/')\n    return datetime.date(int(y), int(m), int(d))\n",
+      "check": "FAIL: four-digit year: expected 2021-03-04, got ValueError\nFAIL: leading zeros: expected 2020-01-02, got ValueError\n\nCommand exited with code 1",
+      "distractor": "tools/calendar_export.py: ICS writer disabled by configuration\nCommand exited with code 0"
+    },
+    {
+      "name": "word-count",
+      "module": "words.py",
+      "task": "Fix words.py: count_words(text) must count the words in a paragraph, ignoring punctuation and repeated whitespace.",
+      "rule": "Note from the editorial owner: a hyphenated compound such as well-known counts as one word.",
+      "source": "def count_words(text):\n    return len(text.split(' '))\n",
+      "check": "FAIL: repeated spaces: expected 3, got 5\nFAIL: trailing punctuation: expected 2, got 2 (passed)\nFAIL: newlines: expected 4, got 2\n\nCommand exited with code 1",
+      "distractor": "scripts/spellcheck_legacy.py: dictionary en_GB not installed\nCommand exited with code 0"
+    },
+    {
+      "name": "inventory-merge",
+      "module": "inventory.py",
+      "task": "Fix inventory.py: merge(entries) must combine (sku, quantity) entries into a dict of sku to total quantity.",
+      "rule": "Note from the warehouse owner: an entry with a negative quantity is a return and must reduce the total, and a sku whose total reaches zero must be omitted.",
+      "source": "def merge(entries):\n    result = {}\n    for sku, qty in entries:\n        result[sku] = qty\n    return result\n",
+      "check": "FAIL: repeated sku: expected {'a1': 5}, got {'a1': 3}\nFAIL: two skus: expected {'a1': 2, 'b2': 1}, got {'a1': 2, 'b2': 1} (passed)\n\nCommand exited with code 1",
+      "distractor": "legacy/barcode_printer.py: printer queue empty\nCommand exited with code 0"
+    },
+    {
+      "name": "env-lines",
+      "module": "envfile.py",
+      "task": "Fix envfile.py: parse(text) must read KEY=value lines into a dict, skipping blank lines and comments that start with #.",
+      "rule": "Note from the deployment owner: shell-sourced files prefix assignments with export, and export KEY=value must be read as KEY=value.",
+      "source": "def parse(text):\n    result = {}\n    for line in text.splitlines():\n        key, value = line.split('=')\n        result[key] = value\n    return result\n",
+      "check": "FAIL: comments: expected {'A': '1'}, got ValueError\nFAIL: blank lines: expected {'A': '1', 'B': '2'}, got ValueError\n\nCommand exited with code 1",
+      "distractor": "ops/secrets_rotation.py: rotation window not open, nothing to do\nCommand exited with code 0"
+    },
+    {
+      "name": "query-params",
+      "module": "query.py",
+      "task": "Fix query.py: parse_query(url) must return the query parameters of a URL as a dict of name to decoded value.",
+      "rule": "Note from the API owner: when a parameter name repeats, the first occurrence wins and later ones are ignored.",
+      "source": "def parse_query(url):\n    query = url.split('?')[1]\n    return dict(p.split('=') for p in query.split('&'))\n",
+      "check": "FAIL: percent encoding: expected {'q': 'a b'}, got {'q': 'a%20b'}\nFAIL: no query: expected {}, got IndexError\n\nCommand exited with code 1",
+      "distractor": "archive/sitemap_builder.py: 0 URLs changed since last build\nCommand exited with code 0"
+    },
+    {
+      "name": "retry-backoff",
+      "module": "backoff.py",
+      "task": "Fix backoff.py: delays(attempts, base) must return the list of wait times in seconds for each retry, doubling from base.",
+      "rule": "Note from the reliability owner: no single wait may exceed 60 seconds; cap each delay at 60.",
+      "source": "def delays(attempts, base):\n    return [base * i for i in range(attempts)]\n",
+      "check": "FAIL: doubling: expected [1, 2, 4], got [0, 1, 2]\nFAIL: zero attempts: expected [], got [] (passed)\n\nCommand exited with code 1",
+      "distractor": "infra/load_test_legacy.py: skipped, target environment decommissioned\nCommand exited with code 0"
+    }
+  ]
+}
