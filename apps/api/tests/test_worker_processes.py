@@ -26,10 +26,11 @@ def _exists(pid: int) -> bool:
 
 
 async def _file(path: Path) -> str:
+    # The child creates the file before it writes, so wait for content.
     async with asyncio.timeout(5):
-        while not path.exists():
+        while not (path.exists() and (text := path.read_text())):
             await asyncio.sleep(0.01)
-    return path.read_text()
+    return text
 
 
 def test_deadline_kills_process_group_before_slot_reuse(monkeypatch, tmp_path):
