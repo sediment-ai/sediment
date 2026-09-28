@@ -166,6 +166,23 @@ The targets are fixed before any run. E1 reports priced tokens: uncached input,
 plus cached input at the provider's discount, plus output. E2 reports billed cost
 from the provider's actual prices.
 
+0. **E0, replay recorded requests (about half a day, no model calls).** Every
+   coding request in the issue #134 experiments was recorded in full by the
+   evaluation gate: several hundred requests across Phases 1–3. Once `prune`
+   exists, run it over those recorded request bodies, in order within each
+   Session, and report per Session:
+   - input bytes before and after, and bytes removed per request as the
+     conversation grows;
+   - the positions where new stubs appear, which are where the cached prefix
+     would break;
+   - how often a stubbed file was read again later in the same Session;
+   - that the output is deterministic and preserves tool-call pairing on real
+     traffic.
+
+   Gate: if `prune` removes less than 20% of input bytes at the median across
+   long Sessions (Phase 3 sources and multi-call continuations), report that
+   and stop before E1. The replay estimates the opportunity only; it can't show
+   how an agent behaves with pruned input, so it never replaces E1.
 1. **E1, reuse the existing harness (about 2 days).** Run pi through the
    experiment gateway on long multi-step fixture tasks: several files to edit,
    checks rerun after each edit. Arms: passthrough and stage A. Two families × 3
@@ -194,7 +211,8 @@ from the provider's actual prices.
    plain pass-through run without compaction is a secondary diagnostic, not the
    comparison.
 
-If E1 misses its token target, stop before E2 and report it. Stage B starts only
+If E0 misses its gate, stop before E1. If E1 misses its token target, stop
+before E2 and report it. Stage B starts only
 if E1 or E2 shows that non-superseded tool output is still a large share of
 input.
 
