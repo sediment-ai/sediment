@@ -26,7 +26,7 @@ unverified checks unchecked and describe the validation that ran.
       passes either way
 - [ ] Generated references pass `dump_openapi.py --check`,
       `gen_cli_docs.py --check`, `gen_api_docs.py --check`, and
-      `gen_schema_docs.py --check`
+      `gen_schema_docs.py --check`, and `gen_compatibility_docs.py --check`
 - [ ] Changes under `shims/pi/` pass `npm ci --no-audit --no-fund`,
       `npm run typecheck`, and `npm test`
 - [ ] Library and service code uses structured logging; operator CLIs and scripts may print

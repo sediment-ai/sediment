@@ -37,6 +37,11 @@
 
 ### Contributor checks
 
+- Generate CLI defaults and lookup indexes, API parameter constraints and
+  nested request types, and links to canonical schemas. Correct reference
+  descriptions of JSON values, capture timestamps, CI run identity, and
+  Quarantine revisions. The optional reference hook also refreshes consumer
+  compatibility when profile sources change.
 - Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
   comparison's exact version check and task-selection tests with the lockfile.
 - Centralize repository agent skills in `.skills/`, including release preparation

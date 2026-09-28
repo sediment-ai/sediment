@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Regenerate the committed artifacts a staged change invalidates — the CLI
-# reference, `openapi.yaml`, and the API reference rendered from it — and
+# references and `openapi.yaml` — and
 # stage the result. Opt-in, per developer — install the stub in
 # CONTRIBUTING.md §Mechanics, which resolves this file at commit time.
 #
@@ -23,14 +23,9 @@ set -eu
 # Only the surfaces the committed artifacts are generated from.
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 case "$staged" in
-    *cli/sediment_cli/*|*sediment_api/reports/*|*sediment_api/mirror_gc.py*|\
-*sediment_api/routers/*|*openapi.yaml*|*scripts/gen_cli_docs.py*|\
-*scripts/gen_api_docs.py*|*scripts/dump_openapi.py*|\
-*sediment_core/models.py*|*sediment_derive/attribution.py*|\
-*sediment_derive/rollout.py*|*sediment_derive/recovery.py*|\
-*sediment_export/attributed_completions.py*|*sediment_export/dpo.py*|\
-*sediment_export/sft.py*|*sediment_export/diff_sft.py*|\
-*sediment_export/recovery.py*|*scripts/gen_schema_docs.py*) ;;
+    *cli/sediment_cli/*|*apps/api/sediment_api/*|*packages/*|\
+*scripts/gen_*docs.py*|*scripts/dump_openapi.py*|*openapi.yaml*|\
+*docs/reference/*|*schemas/*|*pyproject.toml*|*uv.lock*) ;;
     *) exit 0 ;;
 esac
 
@@ -57,9 +52,10 @@ regen() {
     fi
 }
 
-# All four run whenever any source is staged: each is cheap next to a
+# All five run whenever any source is staged: each is cheap next to a
 # commit, and the spec goes first because the API reference renders from it.
 regen scripts/dump_openapi.py openapi.yaml
 regen scripts/gen_cli_docs.py docs/reference/cli.md
 regen scripts/gen_api_docs.py docs/reference/api.md
 regen scripts/gen_schema_docs.py docs/reference/schema.md
+regen scripts/gen_compatibility_docs.py docs/reference/compatibility.md

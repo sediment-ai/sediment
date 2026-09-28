@@ -47,6 +47,7 @@ your last commit.
 | New CLI subcommand, flag, or script | `docs/agents/api-and-operations.md`, then regenerate the reference: `uv run python scripts/gen_cli_docs.py` (CI runs `--check`) |
 | New/changed HTTP route, auth, or response shape | [Service invariants](api-and-operations.md#service-invariants-appsapi), then regenerate spec and reference: `uv run python scripts/dump_openapi.py && uv run python scripts/gen_api_docs.py` (CI runs `--check` on both). A new route also needs an auth-map entry in `scripts/dump_openapi.py` and a contract entry in `scripts/gen_api_docs.py` — both fail the run until it has one |
 | New/changed field on a Fact model, derived artifact, or training row | Regenerate the schemas, catalog, and schema reference: `uv run python scripts/gen_schema_docs.py` (CI runs `--check`). A new field needs a description in `scripts/gen_schema_docs.py`'s `COMMON` or `FIELDS` — the run fails until it has one |
+| New/changed consumer profile or supported dependency version | Regenerate `docs/reference/compatibility.md` with `uv run python scripts/gen_compatibility_docs.py` (CI runs `--check`). Update profile contract tests in the same PR |
 | Renamed/moved symbol a doc cites | Step 3's repo-wide `git grep` over `*.md` |
 | User-visible behavior change | A `CHANGELOG.md` entry |
 | New glossary-worthy term | CONTEXT.md entry in the house format (definition + `_Avoid:_`) |
