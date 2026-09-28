@@ -65,9 +65,10 @@ get there.
 
 ## Reference
 
-All three reference pages are generated — edit the source, never the page:
+All four reference pages are generated — edit the source, never the page:
 `docs/reference/cli.md` (the parsers), `docs/reference/api.md` (the routes),
-`docs/reference/schema.md` (the Fact models and row dataclasses).
+`docs/reference/schema.md` (canonical types), and
+`docs/reference/compatibility.md` (the consumer profile registry).
 
 - Structure mirrors the code. If the reader can hold both in one head,
   it is right.

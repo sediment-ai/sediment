@@ -1,4 +1,4 @@
-# ADR 0027 — Opt-in request transforms in the model request path
+# ADR 0028 — Opt-in request transforms in the model request path
 
 Status: accepted
 

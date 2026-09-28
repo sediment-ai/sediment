@@ -11,7 +11,7 @@
   generated environment already holds the endpoint and token. Configure local
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
-- Add opt-in context pruning (ADR 0027). With
+- Add opt-in context pruning (ADR 0028). With
   `SEDIMENT_CONTEXT_PRUNE=supersede`, the LiteLLM capture callback replaces
   superseded tool output with a one-line stub before each model call: a file
   read that a later read, edit, or write of the file replaced, and a command
@@ -38,6 +38,14 @@
   `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
   the generated environment files. See
   [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+- Fix the version-mismatch warning so that it prints the command that
+  installs the server's exact release instead of `uv tool upgrade
+  sediment-cli`, which kept a pinned client unchanged and could move an
+  unpinned client past an older server. The command handles upgrades,
+  downgrades, and release candidates. `sediment doctor` uses the same command.
+  A server version that isn't `X.Y.Z` or `X.Y.ZrcN` produces a fixed warning
+  that doesn't repeat the server's text, and an unreadable `/v1/me` response
+  stays silent.
 
 ### Deployment
 
@@ -55,12 +63,23 @@
 
 ### Contributor checks
 
+- Generate CLI defaults and lookup indexes, API parameter constraints and
+  nested request types, and links to canonical schemas. Correct reference
+  descriptions of JSON values, capture timestamps, CI run identity, and
+  Quarantine revisions. The optional reference hook also refreshes consumer
+  compatibility when profile sources change.
 - Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
   comparison's exact version check and task-selection tests with the lockfile.
 - Centralize repository agent skills in `.skills/`, including release preparation
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
   Require verification of the README PyPI badge during release closeout.
+- Run the complete installed release rehearsal once per pull request instead of
+  repeating it in the serial test pass. The rehearsal script checks the
+  installed module locations, identities, and hashes that the repeated test
+  checked, so tag releases enforce them too. Worker cleanup tests use a
+  controlled process tree plus one installed-server interruption, and runtime
+  failure tests share one validated build.
 
 ## 0.3.0 — 2026-09-27
 

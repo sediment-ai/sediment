@@ -172,7 +172,9 @@ jobs:
           docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
           uv run pytest -q scripts/tests/test_pilot_compose.py
       # Build and inspect all twelve distribution artifacts, then install and
-      # exercise the six wheels without publishing.
+      # exercise the six wheels without publishing. This is the pull request's
+      # one complete rehearsal; the test suite covers its failure paths at
+      # smaller boundaries instead of repeating it.
       - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
         if: steps.scope.outputs.full == 'true'
       # Manual draft validation scans the proposal from its common ancestor

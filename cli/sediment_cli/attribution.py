@@ -3425,19 +3425,14 @@ def _doctor_server(findings: list[Finding]) -> None:
         return
     detail = f"reachable, {authority} token valid (org {body.get('org_id')})"
     try:
-        from sediment_api import __version__ as client_version
+        from sediment_cli import __version__ as client_version
+        from sediment_cli import version_skew_advice
     except ImportError:  # standalone copied-file run — skew unknowable
-        client_version = None
-    server_version = body.get("version")
-    if server_version and client_version and server_version != client_version:
-        findings.append(
-            (
-                DOCTOR_INFO,
-                check,
-                f"{detail}; version skew: server {server_version}, client "
-                f"{client_version} — uv tool upgrade sediment-cli",
-            )
-        )
+        advice = None
+    else:
+        advice = version_skew_advice(body.get("version"), client_version)
+    if advice:
+        findings.append((DOCTOR_INFO, check, f"{detail}; {advice}"))
     else:
         findings.append((DOCTOR_OK, check, detail))
 

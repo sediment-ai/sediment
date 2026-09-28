@@ -265,6 +265,55 @@ def test_doctor_requires_operator_authority_for_saved_read_credentials(
 
 
 @pytest.mark.parametrize(
+    ("version", "expected"),
+    [
+        (None, None),
+        (
+            "0.2.0",
+            "server version 0.2.0 differs from client {client}; install the "
+            "server's version: uv tool install --python 3.12 --upgrade "
+            "'sediment-cli==0.2.0'",
+        ),
+        (
+            "0.2.0'; rm -rf ~; echo '",
+            "server reported an unrecognized version; client is {client}. "
+            "Install your deployment's release: uv tool install --python 3.12 "
+            "--upgrade 'sediment-cli==<version>'",
+        ),
+    ],
+    ids=["absent", "older-server", "shell-syntax"],
+)
+def test_doctor_names_the_servers_install_command(
+    tmp_path, monkeypatch, version, expected
+):
+    from sediment_cli import __version__ as client
+
+    configured_home(tmp_path, monkeypatch, {"token": OPERATOR})
+    body = {"org_id": "org", "authority": "operator", "client_id": "operator"}
+    if version is not None:
+        body["version"] = version
+    response = io.BytesIO(json.dumps(body).encode())
+    monkeypatch.setattr(
+        attribution.urllib.request,
+        "build_opener",
+        lambda *args: types.SimpleNamespace(open=lambda *a, **k: response),
+    )
+    findings = []
+    attribution._doctor_server(findings)
+    detail = "reachable, operator token valid (org org)"
+    if expected is None:
+        assert findings == [(attribution.DOCTOR_OK, findings[0][1], detail)]
+    else:
+        assert findings == [
+            (
+                attribution.DOCTOR_INFO,
+                findings[0][1],
+                f"{detail}; {expected.format(client=client)}",
+            )
+        ]
+
+
+@pytest.mark.parametrize(
     "body", [b"invalid private-response", b"x" * 8193], ids=["malformed", "oversized"]
 )
 def test_doctor_rejects_unreadable_identity_without_reproducing_response(

@@ -191,7 +191,7 @@ A long agent Session resends its whole conversation on every model call, and
 much of that input is tool output that later tool calls have made stale.
 Sediment can replace that output with one stub line before each call, through
 erode, an MIT-licensed package in `contrib/erode`. The rule is deterministic
-and off by default, as [ADR 0027](../adr/0027-opt-in-request-transforms.md)
+and off by default, as [ADR 0028](../adr/0028-opt-in-request-transforms.md)
 requires.
 
 A tool result is superseded when a later tool call in the same request makes it

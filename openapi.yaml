@@ -3185,8 +3185,8 @@ components:
           type: string
           pattern: ^[^\u0000\uD800-\uDFFF]*$
           title: Run Id
-          description: The provider-issued pipeline-run id, unique within the deployment
-            organization and provider namespace
+          description: The CI provider's pipeline-run ID. Identified runs also carry
+            a forge provider and host; run_attempt distinguishes attempts.
         run_attempt:
           anyOf:
           - type: integer

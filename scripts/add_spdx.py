@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Insert (or check) the SPDX header on first-party Python files. Idempotent.
 
-``contrib/erode`` is an MIT carve-out, like ``shims/`` (ADR 0027): its files
+``contrib/erode`` is an MIT carve-out, like ``shims/`` (ADR 0028): its files
 carry the MIT identifier instead.
 
 Usage:
