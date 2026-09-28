@@ -178,6 +178,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Start with a reviewed Derivation bundle, then export; compare policies and profile workloads | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
 | Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
 | Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
+| Qualify a managed PostgreSQL service before any compatibility claim | [Qualify a managed PostgreSQL service](CONTRIBUTING.md#qualify-a-managed-postgresql-service); `docs/adr/0027-postgresql-without-superuser.md` |
 | Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026 |
 | Synthetic scenarios | `sim/README.md` |
 
