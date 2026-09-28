@@ -1,0 +1,24 @@
+{
+  "order": "A-1043",
+  "items": [
+    {
+      "sku": "BOOT-42",
+      "grams": 1450,
+      "quantity": 1,
+      "title": "trail boot"
+    },
+    {
+      "sku": "SOCK-M",
+      "grams": 80,
+      "quantity": 3,
+      "title": "wool socks"
+    },
+    {
+      "sku": "LACE-RED",
+      "grams": 15,
+      "quantity": 2,
+      "title": "laces"
+    }
+  ],
+  "carrier": "ground"
+}

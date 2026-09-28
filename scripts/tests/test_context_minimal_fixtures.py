@@ -17,6 +17,18 @@ LABELS = json.loads((ROOT / "evaluation/labels.json").read_bytes())
 PROFILES = ("missing", "redundant", "correction")
 
 REFERENCE = {
+    "shipping-weight": """def total_grams(items):
+    return sum(
+        item["grams"] * item["quantity"]
+        for item in items
+        if not item["sku"].startswith("DIGI-")
+    )
+""",
+    "score-average": """def average(scores):
+    if len(scores) >= 3:
+        scores = sorted(scores)[1:]
+    return round(sum(scores) / len(scores), 1) if scores else 0.0
+""",
     "ledger-balance": """def balances(rows):
     result = {}
     for row in rows:
@@ -50,6 +62,42 @@ def normalize(tags):
 }
 # (old, new, behavior_pass, constraint_pass, visible_checks_pass)
 MUTATIONS = {
+    "shipping-weight": {
+        "no_rule": (
+            '        if not item["sku"].startswith("DIGI-")\n',
+            "",
+            True,
+            False,
+            True,
+        ),
+        "obsolete_rule": (
+            'item["grams"] * item["quantity"]\n        for item in items\n'
+            '        if not item["sku"].startswith("DIGI-")\n',
+            '(1 if item["sku"].startswith("DIGI-") else item["grams"])'
+            ' * item["quantity"]\n        for item in items\n',
+            True,
+            False,
+            True,
+        ),
+        "ordinary_behavior": (' * item["quantity"]', "", False, False, False),
+    },
+    "score-average": {
+        "no_rule": (
+            "    if len(scores) >= 3:\n        scores = sorted(scores)[1:]\n",
+            "",
+            True,
+            False,
+            True,
+        ),
+        "obsolete_rule": (
+            "sorted(scores)[1:]",
+            "sorted(scores)[:-1]",
+            True,
+            False,
+            True,
+        ),
+        "ordinary_behavior": (" if scores else 0.0", "", False, True, False),
+    },
     "ledger-balance": {
         "no_rule": (
             '        if row["status"] == "pending":\n            continue\n',

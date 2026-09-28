@@ -23,16 +23,21 @@ ROOT = Path(__file__).resolve().parent
 FIXTURES = ROOT / "tests/fixtures/context_minimal"
 ARMS = ("FULL", "K", "J2")
 SETS = {
-    "heldout": {"families": ("ledger-balance", "tag-normalize"), "repetitions": 2},
+    # Version 4 spent ledger-balance and tag-normalize (stopped at slot 5).
+    "heldout": {"families": ("shipping-weight", "score-average"), "repetitions": 2},
     "development": {"families": ("sensor-window",), "repetitions": 1},
 }
+PROTOCOL_VERSION = 5
 TARGETS = {
-    "validity": "every slot recorded, measured, and complete; no instrument failure",
-    "rule_delivery": "J2 delivers the rule in every missing and correction run",
-    "quality": "J2 both-check passes >= FULL both-check passes - 1",
-    "tokens": "J2 combined tokens <= 0.60 x FULL over complete triples",
+    "validity": "every slot recorded; no instrument failure; at least 10 of 12 "
+    "tasks have all three arms measured with complete usage",
+    "rule_delivery": "J2 delivers the rule in every measured missing and "
+    "correction run",
+    "quality": "over complete triples, J2 both-check passes >= FULL's - 1",
+    "tokens": "over complete triples, J2 combined tokens <= 0.60 x FULL's",
     "supported": "all four targets hold",
 }
+MIN_COMPLETE_TRIPLES = 10
 
 
 def run_order(task_set: str = "heldout") -> list[dict]:
@@ -96,6 +101,9 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
             "tokens_total": sum(known) if len(known) == len(rows) else None,
             "tokens_median": statistics.median(known) if known else None,
             "context_bytes_median": statistics.median(context) if context else None,
+            "upstream_unavailable": sum(
+                bool(r.get("upstream_unavailable")) for r in rows
+            ),
             "rule_delivered": sum(
                 bool((r.get("evidence_hits") or {}).get("rule")) for r in rows
             ),
@@ -125,22 +133,32 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
     triples: dict = {}
     for row in records:
         key = (row.get("family"), row.get("profile"), row.get("repetition"))
-        triples.setdefault(key, {})[row.get("arm")] = _tokens(row)
-    complete = [t for t in triples.values() if all(t.get(a) is not None for a in ARMS)]
-    totals = {a: sum(t[a] for t in complete) for a in ARMS} if complete else None
+        triples.setdefault(key, {})[row.get("arm")] = row
+    complete = [
+        t
+        for t in triples.values()
+        if all(a in t and _tokens(t[a]) is not None for a in ARMS)
+    ]
+    totals = (
+        {a: sum(_tokens(t[a]) for t in complete) for a in ARMS} if complete else None
+    )
+    both = {a: sum(_both(t[a]) for t in complete) for a in ARMS}
     j2_needed = [
         r
         for r in records
-        if r.get("arm") == "J2" and r.get("profile") in {"missing", "correction"}
+        if r.get("arm") == "J2"
+        and r.get("profile") in {"missing", "correction"}
+        and r.get("measured")
     ]
-    valid = len(records) == len(schedule) and all(
-        r.get("measurement_complete") and not r.get("instrument_failure")
-        for r in records
+    valid = (
+        len(records) == len(schedule)
+        and not any(r.get("instrument_failure") for r in records)
+        and len(complete) >= MIN_COMPLETE_TRIPLES
     )
     rule = bool(j2_needed) and all(
         (r.get("evidence_hits") or {}).get("rule") for r in j2_needed
     )
-    quality = arms["J2"]["both_checks"] >= arms["FULL"]["both_checks"] - 1
+    quality = bool(complete) and both["J2"] >= both["FULL"] - 1
     ratio = totals["J2"] / totals["FULL"] if totals and totals["FULL"] else None
     tokens_met = ratio is not None and ratio <= 0.60
     return {
@@ -150,6 +168,7 @@ def summarize(records: list[dict], task_set: str = "heldout") -> dict:
         "recorded_runs": len(records),
         "arms": arms,
         "complete_triples": len(complete),
+        "complete_triple_both_checks": both,
         "triple_token_totals": totals,
         "j2_to_full_token_ratio": round(ratio, 4) if ratio is not None else None,
         "j2_to_k_token_ratio": round(totals["J2"] / totals["K"], 4)
@@ -175,7 +194,9 @@ def configure() -> None:
     run.SETS = SETS
     run.run_order = run_order
     run.summarize = summarize
-    run.GATE_UPSTREAM_RETRY = True
+    run.GATE_UPSTREAM_RETRY = False
+    run.PI_IDLE_TIMEOUT_MS = 840_000
+    run.EXCLUDE_UPSTREAM_UNAVAILABLE = True
     run.CONTEXT_WINDOW = 65536
     identity = run.protocol_identity
 
@@ -183,7 +204,7 @@ def configure() -> None:
         value = identity(config, task_set, transport_label)
         value.update(
             experiment="context-minimal-phase-2",
-            protocol_version=4,
+            protocol_version=PROTOCOL_VERSION,
             phase2_driver_sha256=run.legacy.digest(Path(__file__).read_bytes()),
             arms=list(ARMS),
             targets=TARGETS,

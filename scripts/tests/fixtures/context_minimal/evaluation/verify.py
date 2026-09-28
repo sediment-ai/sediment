@@ -66,7 +66,51 @@ WINDOW_CONSTRAINTS = (
     (([2, None, 2, 5], 3), [3.0]),
 )
 
+
+def _item(sku, grams, quantity, **extra):
+    return {"sku": sku, "grams": grams, "quantity": quantity, **extra}
+
+
+SHIPPING_BEHAVIOR = (
+    ([_item("A", 100, 3)], 300),
+    ([_item("A", 10, 1, title="x"), _item("B", 5, 4)], 30),
+    ([_item("A", 50, 0)], 0),
+    ([_item("digi-note", 20, 2)], 40),
+    ([_item("BOOK-DIGI-1", 7, 1)], 7),
+    ([], 0),
+)
+SHIPPING_CONSTRAINTS = (
+    ([_item("DIGI-EBOOK", 300, 2), _item("A", 10, 1)], 10),
+    ([_item("DIGI-KEY", 5, 1)], 0),
+    ([_item("A", 1, 1), _item("DIGI-", 9, 9), _item("B", 2, 2)], 5),
+    ([_item("DIGI-X", 0, 4), _item("DIGI-Y", 250, 1)], 0),
+)
+
+SCORE_BEHAVIOR = (
+    ([80, 91], 85.5),
+    ([70], 70.0),
+    ([0, 100], 50.0),
+    ([33, 34], 33.5),
+    ([], 0.0),
+)
+SCORE_CONSTRAINTS = (
+    ([70, 80, 90, 85], 85.0),
+    ([1, 2, 3, 4], 3.0),
+    ([90, 10, 20], 55.0),
+    ([100, 99, 98, 0], 99.0),
+    ([0, 10, 10, 11], 10.3),
+    ([5, 5, 5], 5.0),
+)
+
 FAMILIES = {
+    "shipping-weight": (
+        "shipping.py",
+        "total_grams",
+        False,
+        SHIPPING_BEHAVIOR,
+        SHIPPING_CONSTRAINTS,
+    ),
+    "score-average": ("scores.py", "average", False, SCORE_BEHAVIOR, SCORE_CONSTRAINTS),
     "ledger-balance": (
         "ledger.py",
         "balances",

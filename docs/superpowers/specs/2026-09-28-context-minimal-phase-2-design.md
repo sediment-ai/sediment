@@ -53,7 +53,8 @@ workspace, and cut token usage substantially without lowering task quality?
 ## Fixtures and protocol
 
 - One development family (`sensor-window`) and two held-out families
-  (`ledger-balance`, `tag-normalize`) in `scripts/tests/fixtures/context_minimal/`.
+  (version 5: `shipping-weight`, `score-average`) in
+  `scripts/tests/fixtures/context_minimal/`.
   They use the Phase 1 profiles: missing, redundant, and correction.
 - Each source Session reads a long README, the module, and a sample file, runs the
   visible check, and runs an unrelated archived diagnostic. The visible task
@@ -69,16 +70,42 @@ workspace, and cut token usage substantially without lowering task quality?
 - `scripts/context_minimal_eval.py` points the Phase 1 runner at these inputs.
   Its protocol identity is version 4.
 
-## Targets (fixed before any development or held-out run)
+## Version 4 stop and version 5 repair
+
+The version 4 held-out matrix (families `ledger-balance` and `tag-normalize`)
+stopped at slot 5 of 36 with `capture_incomplete`. Ollama cloud held one coding
+request in its queue ("timed out waiting for a concurrent request slot") until
+pi's 300-second idle timeout abandoned it. The provider then returned HTTP 429,
+and Sediment captured the failed request as a fourth call, so the captured
+count no longer matched the three completed calls. Those two families are spent;
+their five recorded slots are reported, never rerun, and not pooled with
+version 5.
+
+Version 5 changes only the instrument and uses fresh held-out families
+(`shipping-weight` and `score-average`):
+
+- pi's HTTP idle timeout is 840 seconds, so the agent doesn't abandon a request
+  before the gate's 300-second read limit decides it.
+- The gate doesn't retry. A failed attempt still becomes a captured call, so a
+  retry can't keep capture counts exact.
+- A run whose model request failed upstream (a non-200 response, or a gate
+  forward failure) is recorded as `upstream_unavailable`. It isn't an
+  instrument failure: the matrix continues, the workspace is still validated,
+  and the run is excluded from measurement and counted per arm.
+- Quality and tokens are compared over complete triples: tasks where all three
+  arms were measured with complete usage.
+
+
 
 | Target | Criterion |
 | --- | --- |
-| Validity | All 36 slots recorded, measured, and complete; no instrument failure |
-| Rule delivery | J2 delivers the rule in every missing and correction run |
-| Quality | J2 passes both checks in at least as many runs as FULL, minus one |
-| Tokens | J2 uses at most 60% of FULL's combined coding and JEV tokens across complete triples |
+| Validity | Every slot recorded; no instrument failure; at least 10 of 12 tasks with all three arms measured and complete |
+| Rule delivery | J2 delivers the rule in every measured missing and correction run |
+| Quality | Over complete triples, J2 passes both checks in at least as many runs as FULL, minus one |
+| Tokens | Over complete triples, J2 uses at most 60% of FULL's combined coding and JEV tokens |
 
-The thesis is supported only when all four hold. A correctly measured negative
+The thresholds are unchanged from version 4; version 5 adds only the
+complete-triple basis. The thesis is supported only when all four hold. A correctly measured negative
 result completes the experiment.
 
 ## Limits

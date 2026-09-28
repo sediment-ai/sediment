@@ -3,7 +3,7 @@
   "note": "Evaluation labels. Never part of a coding-agent or selector input.",
   "families": {
     "ledger-balance": {
-      "set": "heldout",
+      "set": "spent-heldout-v4",
       "module": "ledger.py",
       "function": "balances",
       "rule": "must not change any balance",
@@ -11,12 +11,28 @@
       "distractor": "optional_statement_renderer unavailable"
     },
     "tag-normalize": {
-      "set": "heldout",
+      "set": "spent-heldout-v4",
       "module": "tags.py",
       "function": "normalize",
       "rule": "is a removal marker",
       "obsolete": "kept literally in the output",
       "distractor": "optional_tag_cloud_renderer unavailable"
+    },
+    "shipping-weight": {
+      "set": "heldout",
+      "module": "shipping.py",
+      "function": "total_grams",
+      "rule": "is a digital good that ships nothing",
+      "obsolete": "weighs exactly 1 gram per unit",
+      "distractor": "optional_label_printer unavailable"
+    },
+    "score-average": {
+      "set": "heldout",
+      "module": "scores.py",
+      "function": "average",
+      "rule": "the single lowest score is dropped",
+      "obsolete": "the single highest score is dropped",
+      "distractor": "optional_gradebook_exporter unavailable"
     },
     "sensor-window": {
       "set": "development",

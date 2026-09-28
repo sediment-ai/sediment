@@ -605,7 +605,9 @@ def test_nonloopback_proxy_is_refused_before_any_request(tmp_path, monkeypatch, 
     assert not (tmp_path / "out").exists()
 
 
-def fake_continuation(run, monkeypatch, tmp_path, *, stopped=None, calls=3, fail=None):
+def fake_continuation(
+    run, monkeypatch, tmp_path, *, stopped=None, calls=3, fail=None, upstream=None
+):
     """Drive one continuation with recorded gate files and no containers."""
     import bounded_evidence_selection as selector
     import budgeted_resumption_eval as earlier
@@ -658,7 +660,12 @@ def fake_continuation(run, monkeypatch, tmp_path, *, stopped=None, calls=3, fail
                     "request_bytes": 10,
                     "response_bytes": 20,
                     "sampling": {"max_tokens": 2048},
-                },
+                }
+                | (
+                    {"complete": False, "status": None, "error": upstream}
+                    if upstream and index == calls - 1
+                    else {}
+                ),
             )
             (gate / f"{index}.response").write_bytes(
                 b'data: {"usage":{"prompt_tokens":5,"completion_tokens":1}}\n'
@@ -842,3 +849,21 @@ def test_gate_retries_once_only_before_the_agent_receives_bytes(gate):
     upstream.statuses = [503, 503]
     assert post().status_code == 502
     assert server.state.stopped == "upstream_failure"
+
+
+@pytest.mark.parametrize("excluded", [True, False])
+def test_upstream_failure_is_excluded_only_when_the_protocol_says_so(
+    tmp_path, monkeypatch, excluded
+):
+    run = module()
+    monkeypatch.setattr(run, "EXCLUDE_UPSTREAM_UNAVAILABLE", excluded)
+    row, validated = fake_continuation(
+        run, monkeypatch, tmp_path, stopped="forward_failed", upstream="forward_failed"
+    )
+    assert validated == ["event-rollup"]
+    if excluded:
+        assert row["status"] == "upstream_unavailable"
+        assert row["upstream_unavailable"] is True
+        assert row["instrument_failure"] is False and row["measured"] is False
+    else:
+        assert row["instrument_failure"] is True

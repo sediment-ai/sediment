@@ -27,6 +27,7 @@ def _row(slot, tokens, both=True, rule=True):
     return {
         **slot,
         "status": "settled",
+        "measured": True,
         "measurement_complete": True,
         "instrument_failure": False,
         "behavior_pass": True,
@@ -69,6 +70,8 @@ def test_configure_points_the_runner_at_phase_2(monkeypatch, tmp_path):
         "run_order",
         "summarize",
         "GATE_UPSTREAM_RETRY",
+        "PI_IDLE_TIMEOUT_MS",
+        "EXCLUDE_UPSTREAM_UNAVAILABLE",
         "CONTEXT_WINDOW",
         "protocol_identity",
     ):
@@ -87,8 +90,35 @@ def test_configure_points_the_runner_at_phase_2(monkeypatch, tmp_path):
     }
     identity = run.protocol_identity(config, "heldout", "direct")
     assert identity["experiment"] == "context-minimal-phase-2"
-    assert identity["protocol_version"] == 4
+    assert identity["protocol_version"] == 5
     assert identity["generation"]["context_window"] == 65536
-    assert identity["generation"]["gate_upstream_retry"] is True
+    assert identity["generation"]["gate_upstream_retry"] is False
+    assert identity["generation"]["exclude_upstream_unavailable"] is True
+    assert identity["generation"]["pi_idle_timeout_ms"] == 840_000
     assert len(identity["run_order"]) == 36
     assert set(identity["fixture_hashes"]) >= {"evaluation/verify.py"}
+
+
+def test_upstream_unavailable_runs_are_tolerated_up_to_two_tasks(monkeypatch):
+    monkeypatch.setattr(run, "SETS", phase2.SETS)
+    rows = [
+        _row(s, {"FULL": 100, "K": 80, "J2": 50}[s["arm"]]) for s in phase2.run_order()
+    ]
+    for row in rows[:2]:  # the first task loses two arms; row 3 fails the second
+        row.update(
+            status="upstream_unavailable",
+            measured=False,
+            measurement_complete=False,
+            upstream_unavailable=True,
+        )
+    rows[3].update(
+        rows[0]
+        | {k: rows[3][k] for k in ("slot", "arm", "family", "profile", "repetition")}
+    )
+    result = phase2.summarize(rows)
+    assert result["complete_triples"] == 10 and result["acceptance"]["validity"]
+    rows[6].update(
+        rows[0]
+        | {k: rows[6][k] for k in ("slot", "arm", "family", "profile", "repetition")}
+    )
+    assert phase2.summarize(rows)["acceptance"]["validity"] is False

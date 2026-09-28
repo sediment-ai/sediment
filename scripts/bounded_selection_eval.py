@@ -46,6 +46,14 @@ GATE_READ_SECONDS = 300
 # Opt-in (Phase 2, version 4): one gate retry when the upstream fails before the
 # agent receives any byte. Phase 1 runs never set it.
 GATE_UPSTREAM_RETRY = False
+# Opt-in (Phase 2, version 5). A failed attempt still becomes a captured call,
+# so a gate retry can't keep capture counts exact. Instead, pi waits longer than
+# the gate, and a run whose model request failed upstream (non-200 or a gate
+# forward failure) is recorded as upstream_unavailable: excluded and counted,
+# not an instrument failure. Phase 1 runs never set these.
+PI_IDLE_TIMEOUT_MS: int | None = None
+EXCLUDE_UPSTREAM_UNAVAILABLE = False
+UPSTREAM_ERRORS = frozenset({"upstream_failure", "forward_failed"})
 REASONING_EFFORTS = ("low", "medium", "high")
 # Set once from --reasoning-effort, like legacy.MODEL; None keeps the legacy
 # profile (reasoning off, no reasoning_effort parameter).
@@ -130,6 +138,8 @@ def generation_contract() -> dict:
         "coding_model_calls": legacy.MODEL_CALL_LIMIT,
         "gate_read_seconds": GATE_READ_SECONDS,
         "gate_upstream_retry": GATE_UPSTREAM_RETRY,
+        "pi_idle_timeout_ms": PI_IDLE_TIMEOUT_MS,
+        "exclude_upstream_unavailable": EXCLUDE_UPSTREAM_UNAVAILABLE,
         "selection_and_coding_seconds": legacy.RUN_SECONDS,
         "compaction": False,
         "automatic_retries": False,
@@ -396,6 +406,11 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
     legacy.prepare_home(home, config, token, "A")
     if REASONING_EFFORT or CONTEXT_WINDOW != LEGACY_CONTEXT_WINDOW:
         apply_model_profile(home / "config/models.json")
+    if PI_IDLE_TIMEOUT_MS is not None:
+        settings = json.loads((home / "config/settings.json").read_bytes())
+        settings["httpIdleTimeoutMs"] = PI_IDLE_TIMEOUT_MS
+        (home / "config/settings.json").unlink()
+        legacy.write_json(home / "config/settings.json", settings)
     legacy.write_json(
         records / "gate-config.json",
         {
@@ -980,6 +995,11 @@ def continuation(
             complete = [
                 r for r in models if r.get("complete") and r.get("status") == 200
             ]
+            if EXCLUDE_UPSTREAM_UNAVAILABLE and any(
+                r.get("error") in UPSTREAM_ERRORS for r in models
+            ):
+                # The provider failed the request; capture counts can't match.
+                raise legacy.EvaluationError("upstream_unavailable")
             if row["status"] == "budget_exhausted" and (
                 len(complete) != legacy.MODEL_CALL_LIMIT
                 or health["budget"]["model"]["forwarded"] != legacy.MODEL_CALL_LIMIT
@@ -1098,12 +1118,16 @@ def continuation(
         "total_seconds": round(time.monotonic() - started, 6),
     }
     row["measured"] = row["status"] in MEASURED_STATUSES
-    row["instrument_failure"] = not row["measured"] or (
-        row["coding_launched"]
-        and not (
-            row["capture_verified"]
-            and row["context_delivery_verified"]
-            and row["verification_error"] is None
+    row["upstream_unavailable"] = row["status"] == "upstream_unavailable"
+    row["instrument_failure"] = not row["upstream_unavailable"] and (
+        not row["measured"]
+        or (
+            row["coding_launched"]
+            and not (
+                row["capture_verified"]
+                and row["context_delivery_verified"]
+                and row["verification_error"] is None
+            )
         )
     )
     selector_known = _usage_known(
