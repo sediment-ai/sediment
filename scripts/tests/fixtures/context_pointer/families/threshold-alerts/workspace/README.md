@@ -14,7 +14,7 @@ alerts(readings, limit) must return the zero-based positions of readings strictl
 - `sample_readings.json`: a representative input from staging.
 - `helpers.py`, `config.toml`: report formatting and settings, unrelated to the
   contract.
-- `CHANGELOG.md`, `docs/operations.md`: history and runbook notes.
+- CHANGELOG.md and docs/operations.md: history and runbook notes.
 
 ## Style
 

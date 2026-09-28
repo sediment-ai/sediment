@@ -14,7 +14,7 @@ subtotal(lines) must return the invoice subtotal in integer cents. Each line is 
 - `sample_invoice.json`: a representative input from staging.
 - `helpers.py`, `config.toml`: report formatting and settings, unrelated to the
   contract.
-- `CHANGELOG.md`, `docs/operations.md`: history and runbook notes.
+- CHANGELOG.md and docs/operations.md: history and runbook notes.
 
 ## Style
 

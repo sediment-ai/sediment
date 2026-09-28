@@ -14,7 +14,7 @@ valid(name) must return True when a username is acceptable and False otherwise. 
 - `sample_signups.json`: a representative input from staging.
 - `helpers.py`, `config.toml`: report formatting and settings, unrelated to the
   contract.
-- `CHANGELOG.md`, `docs/operations.md`: history and runbook notes.
+- CHANGELOG.md and docs/operations.md: history and runbook notes.
 
 ## Style
 
