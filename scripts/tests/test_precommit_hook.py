@@ -11,9 +11,12 @@ surfaces.
 from __future__ import annotations
 
 import fnmatch
+import inspect
 import os
 import subprocess
 from pathlib import Path
+
+from sediment_export.schema_contracts import CONTRACTS
 
 REPO_ROOT = Path(__file__).parents[2]
 HOOK = REPO_ROOT / "scripts" / "hooks" / "pre-commit"
@@ -45,10 +48,14 @@ GENERATOR_SOURCES = [
     "packages/export/sediment_export/diff_sft.py",
     "packages/export/sediment_export/recovery.py",
     "scripts/gen_schema_docs.py",
+    "scripts/gen_compatibility_docs.py",
+    "packages/export/sediment_export/compatibility.py",
+    "packages/export/sediment_export/schema_contracts.py",
+    "packages/export/sediment_export/schema_identity.py",
 ]
 
 UNRELATED = [
-    "packages/core/sediment_core/store.py",
+    "packages/core/tests/test_store.py",
     "packages/derive/sediment_derive/mirror.py",
     "docs/quickstart.md",
     "README.md",
@@ -72,9 +79,15 @@ def test_hook_is_executable() -> None:
 
 def test_filter_covers_every_generator_source() -> None:
     patterns = _patterns()
-    for path in GENERATOR_SOURCES:
+    schema_sources = {
+        Path(inspect.getfile(contract.python_type_object))
+        .relative_to(REPO_ROOT)
+        .as_posix()
+        for contract in CONTRACTS
+    }
+    for path in set(GENERATOR_SOURCES) | schema_sources:
         assert any(fnmatch.fnmatch(path, p) for p in patterns), (
-            f"{path} feeds docs/reference/cli.md but no hook pattern matches it"
+            f"{path} feeds a generated reference but no hook pattern matches it"
         )
 
 

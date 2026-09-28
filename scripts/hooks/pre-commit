@@ -20,10 +20,24 @@
 
 set -eu
 
-# Only the surfaces the committed artifacts are generated from.
+# Only the surfaces the committed artifacts are generated from. The registry
+# coverage test checks every canonical type's defining module against this list.
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 case "$staged" in
-    *cli/sediment_cli/*|*apps/api/sediment_api/*|*packages/*|\
+    *cli/sediment_cli/*|*sediment_api/reports/*|*sediment_api/routers/*|\
+*sediment_api/mirror_gc.py*|*sediment_api/main.py*|*sediment_api/deps.py*|\
+*sediment_core/models.py*|*sediment_core/store.py*|\
+*sediment_derive/abandonment.py*|*sediment_derive/attribution.py*|\
+*sediment_derive/ci_resolution.py*|*sediment_derive/merge_retention.py*|\
+*sediment_derive/provenance.py*|*sediment_derive/recovery.py*|\
+*sediment_derive/repository_identity.py*|*sediment_derive/rollout.py*|\
+*sediment_derive/survival.py*|*sediment_export/accepted_work_lifecycle.py*|\
+*sediment_export/attributed_completions.py*|*sediment_export/compatibility.py*|\
+*sediment_export/derived_bundle.py*|*sediment_export/diff_sft.py*|\
+*sediment_export/dpo.py*|*sediment_export/price_manifest.py*|\
+*sediment_export/recovery.py*|*sediment_export/rlvr.py*|\
+*sediment_export/schema_contracts.py*|*sediment_export/schema_identity.py*|\
+*sediment_export/sft.py*|*sediment_export/trainer.py*|\
 *scripts/gen_*docs.py*|*scripts/dump_openapi.py*|*openapi.yaml*|\
 *docs/reference/*|*schemas/*|*pyproject.toml*|*uv.lock*) ;;
     *) exit 0 ;;
