@@ -122,3 +122,37 @@ def test_check_fails_on_a_stale_page(tmp_path, monkeypatch, capsys) -> None:
 def test_committed_page_is_current() -> None:
     # The same assertion CI makes; fails here first, with the fix named.
     assert mod.main(["--check"]) == 0
+
+
+def test_lookup_index_includes_nested_commands_and_global_options() -> None:
+    page = mod.render()
+    index = page.split("## sediment facts")[0]
+    for command in ("evidence fetch", "export dpo", "report model"):
+        assert f"[`sediment {command}`](#sediment-{command.replace(' ', '-')})" in index
+    assert "`--version`" in index
+    assert "`--help`" in index
+
+
+def test_defaults_follow_parser_values_without_machine_paths() -> None:
+    page = mod.render()
+    server = _command_section(page, ("server",))
+    assert "| `--port` | `8000` |" in server
+    assert "| `--host` | `127.0.0.1` |" in server
+    assert "| `--root` | `~/.sediment/server` |" in server
+    assert str(Path.home()) not in page
+
+
+def test_usage_preserves_exclusive_groups_and_expands_help() -> None:
+    parser = argparse.ArgumentParser(prog="example")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--left", action="store_true")
+    group.add_argument("--right", action="store_true")
+    parser.add_argument(
+        "--count", type=int, default=7, help="count (default: %(default)s)"
+    )
+    parser.add_argument("--format", help="a | b")
+    section = "\n".join(mod._render(parser, ("example",)))
+    assert "(--left | --right)" in section
+    assert "count (default: 7)" in section
+    assert "%(default)s" not in section
+    assert "a &#124; b" in section
