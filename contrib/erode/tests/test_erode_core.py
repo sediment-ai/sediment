@@ -18,7 +18,10 @@ SMALL = "z" * 400  # under the 512-byte floor
 
 
 def openai(turns: list[list[tuple]]) -> list[dict]:
-    """OpenAI chat (pi): one assistant message per turn, then role tool results."""
+    """OpenAI chat (pi): one assistant message per turn, then role tool results.
+
+    erode skips this format; the builder exists to prove it.
+    """
     messages: list[dict] = [
         {"role": "system", "content": "You are a coding agent."},
         {"role": "user", "content": "Fix the failing test in src/app.py."},
@@ -77,19 +80,14 @@ def anthropic(turns: list[list[tuple]]) -> list[dict]:
     return messages
 
 
-def filler(n: int, fmt: str = "openai") -> list[list[tuple]]:
-    name = "bash" if fmt == "openai" else "Bash"
-    return [[(name, {"command": f"echo {i}"}, "ok")] for i in range(n)]
+def filler(n: int) -> list[list[tuple]]:
+    return [[("Bash", {"command": f"echo {i}"}, "ok")] for i in range(n)]
 
 
 def stubbed(messages: list[dict]) -> list[str]:
-    """Tool-call ids whose results are stubs, in either format."""
+    """Tool-use ids whose results are stubs."""
     ids = []
     for message in messages:
-        if message.get("role") == "tool" and str(message["content"]).startswith(
-            STUB_PREFIX
-        ):
-            ids.append(message["tool_call_id"])
         if message.get("role") == "user" and isinstance(message["content"], list):
             for block in message["content"]:
                 content = block.get("content")
@@ -100,24 +98,25 @@ def stubbed(messages: list[dict]) -> list[str]:
     return ids
 
 
-def test_read_superseded_by_later_edit_openai() -> None:
-    messages = openai(
+def test_read_superseded_by_later_edit() -> None:
+    messages = anthropic(
         [
-            [("read", {"path": "src/app.py"}, BIG)],
-            [("edit", {"path": "src/app.py", "oldText": "a", "newText": "b"}, "ok")],
+            [("Read", {"file_path": "src/app.py"}, BIG)],
+            [("Edit", {"file_path": "src/app.py", "old_string": "a"}, "ok")],
             *filler(2),
         ]
     )
     pruned, report = prune(messages, POLICY)
-    assert stubbed(pruned) == ["call_1"]
-    assert pruned[3]["content"] == (
+    assert stubbed(pruned) == ["toolu_1"]
+    stub = pruned[2]["content"][0]["content"]
+    assert stub == (
         "[erode: superseded by step 2 (edit of src/app.py); "
         "read it again if you need the current content]"
     )
     assert report == {
-        "policy_version": "3",
+        "policy_version": "4",
         "stubbed_results": 1,
-        "bytes_removed": len(BIG) - len(pruned[3]["content"]),
+        "bytes_removed": len(BIG) - len(stub),
     }
 
 
@@ -127,7 +126,7 @@ def test_read_superseded_by_later_read_and_write_anthropic() -> None:
             [("Read", {"file_path": "/r/a.py"}, BIG)],
             [("Read", {"file_path": "/r/a.py"}, BIG)],
             [("Write", {"file_path": "/r/a.py", "content": "new"}, "ok")],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     pruned, report = prune(messages, POLICY)
@@ -138,17 +137,17 @@ def test_read_superseded_by_later_read_and_write_anthropic() -> None:
 
 
 def test_run_superseded_only_by_identical_command() -> None:
-    messages = openai(
+    messages = anthropic(
         [
-            [("bash", {"command": "pytest -q"}, BIG)],
-            [("bash", {"command": "pytest -q tests/a.py"}, BIG)],
-            [("bash", {"command": "pytest -q"}, BIG)],
+            [("Bash", {"command": "pytest -q"}, BIG)],
+            [("Bash", {"command": "pytest -q tests/a.py"}, BIG)],
+            [("Bash", {"command": "pytest -q"}, BIG)],
             *filler(2),
         ]
     )
     pruned, _ = prune(messages, POLICY)
-    assert stubbed(pruned) == ["call_1"]
-    assert "(bash of pytest -q); run it again" in pruned[3]["content"]
+    assert stubbed(pruned) == ["toolu_1"]
+    assert "(bash of pytest -q); run it again" in pruned[2]["content"][0]["content"]
 
 
 def test_edit_does_not_supersede_a_command() -> None:
@@ -156,42 +155,42 @@ def test_edit_does_not_supersede_a_command() -> None:
         [
             [("Bash", {"command": "cat src/app.py"}, BIG)],
             [("Edit", {"file_path": "src/app.py", "old_string": "a"}, "ok")],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     assert stubbed(prune(messages, POLICY)[0]) == []
 
 
 def test_partial_read_supersedes_only_the_same_range() -> None:
-    partial = {"path": "a.py", "offset": 10, "limit": 5}
-    kept = openai(
+    partial = {"file_path": "a.py", "offset": 10, "limit": 5}
+    kept = anthropic(
         [
-            [("read", {"path": "a.py"}, BIG)],
-            [("read", partial, SMALL)],
+            [("Read", {"file_path": "a.py"}, BIG)],
+            [("Read", partial, SMALL)],
             *filler(2),
         ]
     )
     assert stubbed(prune(kept, POLICY)[0]) == []
-    superseded = openai(
+    superseded = anthropic(
         [
-            [("read", partial, BIG)],
-            [("read", partial, SMALL)],
-            [("read", {"path": "a.py"}, SMALL)],
+            [("Read", partial, BIG)],
+            [("Read", partial, SMALL)],
+            [("Read", {"file_path": "a.py"}, SMALL)],
             *filler(2),
         ]
     )
-    assert stubbed(prune(superseded, POLICY)[0]) == ["call_1"]
+    assert stubbed(prune(superseded, POLICY)[0]) == ["toolu_1"]
 
 
 def test_last_two_turns_are_protected() -> None:
     turns = [
         *filler(1),
-        [("read", {"path": "a.py"}, BIG)],
-        [("read", {"path": "a.py"}, BIG)],
+        [("Read", {"file_path": "a.py"}, BIG)],
+        [("Read", {"file_path": "a.py"}, BIG)],
     ]
-    # call_2 is in the second-to-last turn.
-    assert stubbed(prune(openai(turns), POLICY)[0]) == []
-    assert stubbed(prune(openai([*turns, *filler(1)]), POLICY)[0]) == ["call_2"]
+    # toolu_2 is in the second-to-last turn.
+    assert stubbed(prune(anthropic(turns), POLICY)[0]) == []
+    assert stubbed(prune(anthropic([*turns, *filler(1)]), POLICY)[0]) == ["toolu_2"]
 
 
 def test_small_and_error_results_are_never_stubbed() -> None:
@@ -201,7 +200,7 @@ def test_small_and_error_results_are_never_stubbed() -> None:
             [("Bash", {"command": "make"}, (BIG, True))],
             [("Read", {"file_path": "a.py"}, SMALL)],
             [("Bash", {"command": "make"}, BIG)],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     assert stubbed(prune(messages, POLICY)[0]) == []
@@ -212,32 +211,22 @@ def test_errored_edit_does_not_supersede() -> None:
         [
             [("Read", {"file_path": "a.py"}, BIG)],
             [("Edit", {"file_path": "a.py"}, ("String not found", True))],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     assert stubbed(prune(messages, POLICY)[0]) == []
 
 
 def test_unknown_tools_pass_through() -> None:
-    oa = openai(
-        [
-            [("grep", {"path": "src", "pattern": "x"}, BIG)],
-            [("grep", {"path": "src", "pattern": "x"}, BIG)],
-            [("Read", {"file_path": "a.py"}, BIG)],
-            [("Read", {"file_path": "a.py"}, BIG)],
-            *filler(2),
-        ]
-    )
-    assert prune(oa, POLICY)[0] == oa
     an = anthropic(
         [
             [("Glob", {"pattern": "**/*.py"}, BIG)],
             [("Glob", {"pattern": "**/*.py"}, BIG)],
-            [("read", {"path": "a.py"}, BIG)],
-            [("read", {"path": "a.py"}, BIG)],
+            [("Grep", {"path": "a.py", "pattern": "x"}, BIG)],
+            [("Grep", {"path": "a.py", "pattern": "x"}, BIG)],
             [("NotebookEdit", {"notebook_path": "n.ipynb"}, BIG)],
             [("NotebookEdit", {"notebook_path": "n.ipynb"}, BIG)],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     assert prune(an, POLICY)[0] == an
@@ -245,55 +234,39 @@ def test_unknown_tools_pass_through() -> None:
 
 def test_threshold_batches_new_stubs() -> None:
     one = [
-        [("read", {"path": "a.py"}, MID)],
-        [("read", {"path": "a.py"}, SMALL)],
+        [("Read", {"file_path": "a.py"}, MID)],
+        [("Read", {"file_path": "a.py"}, SMALL)],
         *filler(2),
     ]
     # 3000 superseded bytes stay below the 4 KB threshold.
-    assert stubbed(prune(openai(one), POLICY)[0]) == []
+    assert stubbed(prune(anthropic(one), POLICY)[0]) == []
     two = [
-        [("read", {"path": "a.py"}, MID)],
-        [("read", {"path": "a.py"}, SMALL)],
-        [("read", {"path": "b.py"}, MID)],
-        [("read", {"path": "b.py"}, SMALL)],
+        [("Read", {"file_path": "a.py"}, MID)],
+        [("Read", {"file_path": "a.py"}, SMALL)],
+        [("Read", {"file_path": "b.py"}, MID)],
+        [("Read", {"file_path": "b.py"}, SMALL)],
         *filler(2),
     ]
     # The second 3000 bytes cross it, and both stubs land in one batch.
-    assert stubbed(prune(openai(two), POLICY)[0]) == ["call_1", "call_3"]
+    assert stubbed(prune(anthropic(two), POLICY)[0]) == ["toolu_1", "toolu_3"]
     # A lower threshold applies each stub as soon as it's eligible.
     eager = PrunePolicy(policy_version="test", min_new_bytes=0)
-    assert stubbed(prune(openai(one), eager)[0]) == ["call_1"]
+    assert stubbed(prune(anthropic(one), eager)[0]) == ["toolu_1"]
 
 
-def test_pairing_and_text_are_preserved_in_both_formats() -> None:
-    oa = openai(
-        [
-            [("read", {"path": "a.py"}, BIG), ("bash", {"command": "ls"}, BIG)],
-            [("read", {"path": "a.py"}, BIG), ("bash", {"command": "ls"}, MID)],
-            *filler(2),
-        ]
-    )
-    pruned, _ = prune(oa, POLICY)
-    assert stubbed(pruned) == ["call_1", "call_2"]
-    assert len(pruned) == len(oa)
-    for before, after in zip(oa, pruned, strict=True):
-        if before["role"] == "tool":
-            assert after.keys() == before.keys()
-            assert after["tool_call_id"] == before["tool_call_id"]
-        else:
-            assert after == before  # system, user, assistant text and tool calls
-
+def test_pairing_and_text_are_preserved() -> None:
     an = anthropic(
         [
-            [("Read", {"file_path": "a.py"}, BIG)],
-            [("Read", {"file_path": "a.py"}, BIG)],
-            *filler(2, "anthropic"),
+            [("Read", {"file_path": "a.py"}, BIG), ("Bash", {"command": "ls"}, BIG)],
+            [("Read", {"file_path": "a.py"}, BIG), ("Bash", {"command": "ls"}, MID)],
+            *filler(2),
         ]
     )
     an[2]["content"][0]["cache_control"] = {"type": "ephemeral"}
     an[2]["content"].append({"type": "text", "text": "User note beside a result."})
     pruned, _ = prune(an, POLICY)
-    assert stubbed(pruned) == ["toolu_1"]
+    assert stubbed(pruned) == ["toolu_1", "toolu_2"]
+    assert len(pruned) == len(an)
     for before, after in zip(an, pruned, strict=True):
         if before["role"] == "assistant":
             assert after == before
@@ -314,7 +287,7 @@ def test_list_content_keeps_its_shape() -> None:
         [
             [("Read", {"file_path": "a.py"}, [{"type": "text", "text": BIG}])],
             [("Read", {"file_path": "a.py"}, BIG)],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     content = prune(messages, POLICY)[0][2]["content"][0]["content"]
@@ -331,10 +304,10 @@ def test_list_content_keeps_its_shape() -> None:
         None,
         "not a list",
         [],
-        [None, 3, {"role": "assistant", "tool_calls": "x"}],
+        [None, 3, {"role": "assistant", "content": "x"}],
         [
-            {"role": "assistant", "tool_calls": [{"function": {"arguments": "{"}}]},
-            {"role": "tool", "tool_call_id": None, "content": BIG},
+            {"role": "assistant", "content": [{"type": "tool_use", "name": "Read"}]},
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": 7}]},
             {"role": "assistant", "content": [{"type": "tool_use", "input": 7}]},
             {"role": "user", "content": [{"type": "tool_result", "content": 5}]},
         ],
@@ -347,62 +320,57 @@ def test_unknown_shapes_pass_through(messages) -> None:
     assert report["stubbed_results"] == 0
 
 
-# Property checks over seeded synthetic Sessions in both formats.
+# Property checks over seeded synthetic Sessions.
 
 PATHS = ["a.py", "b.py", "c.py"]
 COMMANDS = ["pytest -q", "git status"]
 SIZES = [100, 700, 2500, 6000]
 
 
-def session(seed: int, fmt: str, turns: int = 30) -> list[dict]:
+def session(seed: int, turns: int = 30) -> list[dict]:
     rng = random.Random(seed)
-    names = (
-        {"read": "read", "edit": "edit", "write": "write", "run": "bash"}
-        if fmt == "openai"
-        else {"read": "Read", "edit": "Edit", "write": "Write", "run": "Bash"}
-    )
-    key = "path" if fmt == "openai" else "file_path"
+    names = {"read": "Read", "edit": "Edit", "write": "Write", "run": "Bash"}
     plan = []
     for _ in range(turns):
         turn = []
         for _ in range(rng.choice([1, 1, 2])):
             kind = rng.choice(["read", "read", "edit", "write", "run", "unknown"])
             text = f"{rng.random()}" + "q" * rng.choice(SIZES)
-            if fmt == "anthropic" and rng.random() < 0.1:
+            if rng.random() < 0.1:
                 text = (text, True)
             if kind == "run":
                 turn.append((names[kind], {"command": rng.choice(COMMANDS)}, text))
             elif kind == "unknown":
                 turn.append(("find", {"path": rng.choice(PATHS)}, text))
             else:
-                turn.append((names[kind], {key: rng.choice(PATHS)}, text))
+                turn.append((names[kind], {"file_path": rng.choice(PATHS)}, text))
         plan.append(turn)
-    return (openai if fmt == "openai" else anthropic)(plan)
+    return anthropic(plan)
 
 
-CASES = [(seed, fmt) for seed in range(12) for fmt in ("openai", "anthropic")]
+SEEDS = range(24)
 
 
-@pytest.mark.parametrize(("seed", "fmt"), CASES)
-def test_determinism_and_no_input_mutation(seed: int, fmt: str) -> None:
-    messages = session(seed, fmt)
+@pytest.mark.parametrize("seed", SEEDS)
+def test_determinism_and_no_input_mutation(seed: int) -> None:
+    messages = session(seed)
     before = copy.deepcopy(messages)
     first = prune(messages, POLICY)
     assert messages == before
     assert prune(copy.deepcopy(before), POLICY) == first
 
 
-@pytest.mark.parametrize(("seed", "fmt"), CASES)
-def test_idempotence(seed: int, fmt: str) -> None:
-    once, _ = prune(session(seed, fmt), POLICY)
+@pytest.mark.parametrize("seed", SEEDS)
+def test_idempotence(seed: int) -> None:
+    once, _ = prune(session(seed), POLICY)
     twice, report = prune(once, POLICY)
     assert twice == once
     assert report["stubbed_results"] == 0
 
 
-@pytest.mark.parametrize(("seed", "fmt"), CASES)
-def test_monotonic_prefix_across_appended_turns(seed: int, fmt: str) -> None:
-    messages = session(seed, fmt)
+@pytest.mark.parametrize("seed", SEEDS)
+def test_monotonic_prefix_across_appended_turns(seed: int) -> None:
+    messages = session(seed)
     ends = [i for i, m in enumerate(messages) if m["role"] == "assistant"]
     ends = [*ends[1:], len(messages)]  # each request ends before the next turn
     fired = 0
@@ -427,8 +395,6 @@ def test_monotonic_prefix_across_appended_turns(seed: int, fmt: str) -> None:
 
 def _result(messages: list[dict], call_id: str) -> str:
     for message in messages:
-        if message.get("tool_call_id") == call_id:
-            return message["content"]
         if message["role"] == "user" and isinstance(message["content"], list):
             for block in message["content"]:
                 if block.get("tool_use_id") == call_id:
@@ -441,7 +407,7 @@ def test_prune_request_leaves_other_fields_and_provider_managed_context() -> Non
         [
             [("Read", {"file_path": "a.py"}, BIG)],
             [("Read", {"file_path": "a.py"}, BIG)],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     request = {"model": "m", "system": "S", "messages": messages, "extra": [1]}
@@ -467,9 +433,52 @@ def test_results_with_part_metadata_pass_through() -> None:
         [
             [("Read", {"file_path": "a.py"}, marked)],
             [("Read", {"file_path": "a.py"}, BIG)],
-            *filler(2, "anthropic"),
+            *filler(2),
         ]
     )
     pruned, report = prune(messages, POLICY)
     assert pruned[2] == messages[2]
     assert report["stubbed_results"] == 0
+
+
+def test_openai_chat_requests_are_skipped_and_counted() -> None:
+    # pi's tool messages carry no error flag: this "edit" failed, but nothing on
+    # the wire says so, and stubbing the read would hide content the model needs.
+    messages = openai(
+        [
+            [("read", {"path": "src/app.py"}, BIG)],
+            [("edit", {"path": "src/app.py"}, "Error: oldText not found")],
+            [("read", {"path": "src/app.py"}, BIG)],
+            *[[("bash", {"command": f"echo {i}"}, "ok")] for i in range(2)],
+        ]
+    )
+    before = copy.deepcopy(messages)
+    pruned, report = prune(messages, POLICY)
+    assert pruned is messages and messages == before
+    assert report == {
+        "policy_version": "4",
+        "stubbed_results": 0,
+        "bytes_removed": 0,
+        "skipped": "openai_chat",
+    }
+    request = {"model": "m", "messages": messages}
+    assert prune_request(request, POLICY) == (request, report)
+
+
+def test_pi_over_anthropic_messages_is_pruned() -> None:
+    # pi's provider in the gateway docs uses anthropic-messages, which carries
+    # is_error, so its lowercase tools get the same rules as Claude Code's.
+    messages = anthropic(
+        [
+            [("read", {"path": "src/app.py"}, BIG)],
+            [("edit", {"path": "src/app.py"}, ("oldText not found", True))],
+            [("bash", {"command": "pytest -q"}, BIG)],
+            [("bash", {"command": "pytest -q"}, BIG)],
+            *filler(2),
+        ]
+    )
+    pruned, report = prune(messages, POLICY)
+    # The errored edit supersedes nothing; the repeated run is stubbed.
+    assert stubbed(pruned) == ["toolu_3"]
+    assert "(bash of pytest -q)" in pruned[6]["content"][0]["content"]
+    assert "skipped" not in report

@@ -4,9 +4,10 @@ The erode proxy: a standard-library HTTP pass-through around ``prune_request``.
 
 Run it with ``erode proxy --upstream <url>`` and point an agent at it, for
 example ``ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude``. The proxy prunes
-``POST /v1/chat/completions``, ``POST /v1/messages``, and ``POST /v1/responses``
-bodies. Every other request, and any body that isn't a JSON object with a
-``messages`` or ``input`` list, is forwarded unchanged. With pruning off, the proxy is a pure pass-through.
+``POST /v1/messages`` and ``POST /v1/responses`` bodies and logs
+``POST /v1/chat/completions`` bodies as skipped. Every other request, and any
+body that isn't a JSON object with a ``messages`` or ``input`` list, is
+forwarded unchanged. With pruning off, the proxy is a pure pass-through.
 
 The proxy forwards the agent's headers, including its credentials, and stores
 nothing. It adds no retries, streams the upstream response as it arrives, and

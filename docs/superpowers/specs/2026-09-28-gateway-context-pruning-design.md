@@ -29,8 +29,7 @@ is added only where the deterministic rule leaves a measured gap.
 
 ## Build (stage A): deterministic supersession, per request
 
-The contract is the wire format (OpenAI chat and Anthropic Messages), not the
-gateway. Stage A has two parts:
+The contract is the wire format (Anthropic Messages), not the gateway. Stage A has two parts:
 
 1. **A pure core** in one stdlib-only module (planned: sediment_context.py in the
    litellm directory). It imports nothing from LiteLLM:
@@ -86,10 +85,15 @@ Two small adapters map each wire format onto it:
 
 | Harness | Wire format | Read | Edit or write | Run |
 | --- | --- | --- | --- | --- |
-| pi (evaluation harness) | OpenAI chat: `tool_calls`, role `tool` | `read` | `edit`, `write` | `bash` |
+| pi (evaluation harness) | Anthropic Messages: `tool_use`, `tool_result` | `read` | `edit`, `write` | `bash` |
 | Claude Code (launch demo) | Anthropic Messages: `tool_use`, `tool_result` | `Read` | `Edit`, `MultiEdit`, `Write` | `Bash` |
 
-An unknown tool is never pruned.
+An unknown tool is never pruned. An OpenAI chat request (`tool_calls`, role
+`tool`) passes through unpruned, and the report counts it as skipped: its tool
+results carry no error flag, so a failed edit is indistinguishable from a
+successful one and would supersede a read the model still needs. pi 0.87.1
+sets `is_error` on Anthropic Messages tool results, so pi keeps pruning through
+its `anthropic-messages` provider.
 
 ### Capture
 
@@ -105,7 +109,8 @@ unpruned conversation.
 - Idempotence: `prune(prune(x)) == prune(x)`.
 - Monotonic prefix: appending a turn never changes an earlier stub unless the
   4 KB threshold newly fires.
-- Tool-call pairing is preserved in both formats.
+- Tool-call pairing is preserved.
+- OpenAI chat requests pass through unpruned and are counted as skipped.
 - User and assistant text are never altered.
 - Unknown tools pass through untouched.
 
@@ -117,7 +122,8 @@ the agent calling the provider directly. Stage A.1 reaches them with a small
 stdlib HTTP pass-through around the same core:
 
 - It accepts OpenAI chat (`POST /v1/chat/completions`) and Anthropic Messages
-  (`POST /v1/messages`) requests, applies `prune`, and forwards them to one
+  (`POST /v1/messages`) requests, applies `prune` (which counts OpenAI chat
+  requests as skipped), and forwards them to one
   configured upstream URL: the customer's gateway, another gateway, or the
   provider.
 - It streams responses byte for byte without buffering, and forwards the agent's
@@ -343,12 +349,17 @@ from the provider's actual prices.
    - that the output is deterministic and preserves tool-call pairing on real
      traffic.
 
+   `prune` counts OpenAI chat requests as skipped. If the recorded requests
+   are OpenAI chat, E0 reports the skip count and measures nothing else; record
+   pi's `anthropic-messages` traffic instead.
+
    Gate: if `prune` removes less than 20% of input bytes at the median across
    long Sessions (Phase 3 sources and multi-call continuations), report that
    and stop before E1. The replay estimates the opportunity only; it can't show
    how an agent behaves with pruned input, so it never replaces E1.
-1. **E1, reuse the existing harness (about 2 days).** Run pi through the
-   experiment gateway on long multi-step fixture tasks: several files to edit,
+1. **E1, reuse the existing harness (about 2 days).** Run pi, with its
+   `anthropic-messages` provider, through the experiment gateway on long
+   multi-step fixture tasks: several files to edit,
    checks rerun after each edit. Arms: passthrough and stage A. Two families × 3
    profiles × 2 repetitions × 2 arms = 24 runs. Targets: priced input cost at
    least 30% lower, and both-check passes no more than one below passthrough.
