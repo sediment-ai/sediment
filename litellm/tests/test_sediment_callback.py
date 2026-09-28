@@ -462,23 +462,34 @@ def test_unsafe_raw_capture_never_writes_but_delivery_continues(
 def _superseded_request() -> dict:
     content = "x" * 5000
     messages: list[dict] = [{"role": "user", "content": "Fix a.py."}]
-    for step, name in enumerate(["read", "read", "bash", "bash"], start=1):
-        arguments = {"path": "a.py"} if name == "read" else {"command": f"ls {step}"}
+    for step, name in enumerate(["Read", "Read", "Bash", "Bash"], start=1):
+        arguments = (
+            {"file_path": "a.py"} if name == "Read" else {"command": f"ls {step}"}
+        )
         messages.append(
             {
                 "role": "assistant",
-                "content": None,
-                "tool_calls": [
+                "content": [
                     {
-                        "id": f"call_{step}",
-                        "type": "function",
-                        "function": {"name": name, "arguments": json.dumps(arguments)},
+                        "type": "tool_use",
+                        "id": f"toolu_{step}",
+                        "name": name,
+                        "input": arguments,
                     }
                 ],
             }
         )
         messages.append(
-            {"role": "tool", "tool_call_id": f"call_{step}", "content": content}
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": f"toolu_{step}",
+                        "content": content,
+                    }
+                ],
+            }
         )
     return {"model": "claude-test", "messages": messages}
 
@@ -562,3 +573,27 @@ def test_prune_hook_leaves_provider_managed_context_alone(monkeypatch) -> None:
     del data["litellm_logging_obj"]
     assert data == before
     assert logging_obj.model_call_details == {}
+
+
+def test_prune_hook_records_openai_chat_as_skipped(monkeypatch) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
+    messages: list[dict] = [{"role": "user", "content": "Fix a.py."}]
+    for step in (1, 2):
+        call = {
+            "id": f"call_{step}",
+            "type": "function",
+            "function": {"name": "read", "arguments": json.dumps({"path": "a.py"})},
+        }
+        messages.append({"role": "assistant", "content": None, "tool_calls": [call]})
+        messages.append(
+            {"role": "tool", "tool_call_id": f"call_{step}", "content": "x" * 5000}
+        )
+    data = {"model": "m", "messages": messages}
+    before = json.loads(json.dumps(data))
+    data["litellm_logging_obj"] = logging_obj = _LoggingObject()
+    assert _hook(data) is data
+    del data["litellm_logging_obj"]
+    assert data == before
+    assert logging_obj.model_call_details["sediment_context"]["skipped"] == (
+        "openai_chat"
+    )

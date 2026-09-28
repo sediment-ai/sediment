@@ -208,8 +208,12 @@ Sediment never changes the following parts of a request:
 - Tool calls and their arguments.
 - Results in the last two turns.
 - Results under 512 bytes, and error results.
-- Output of any tool other than pi's `read`, `edit`, `write`, and `bash`, or
-  Claude Code's `Read`, `Edit`, `MultiEdit`, `Write`, and `Bash`.
+- Output of any tool other than Claude Code's `Read`, `Edit`, `MultiEdit`,
+  `Write`, and `Bash`, or pi's `read`, `edit`, `write`, and `bash`, in the
+  Anthropic Messages format. The [pi provider](#pi) uses that format.
+- A request in the OpenAI chat format. Its tool results carry no error flag, so
+  erode can't tell a failed edit from a successful one. The `sediment_context`
+  report records the request as skipped.
 - Any field outside tool results, including Anthropic `cache_control`
   breakpoints.
 - A request that carries Anthropic `context_management`, which hands context

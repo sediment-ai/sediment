@@ -4,7 +4,8 @@ The erode proxy: a standard-library HTTP pass-through around ``prune_request``.
 
 Run it with ``erode proxy --upstream <url>`` and point an agent at it, for
 example ``ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude``. The proxy prunes
-``POST /v1/chat/completions`` and ``POST /v1/messages`` bodies. Every other
+``POST /v1/messages`` bodies and logs ``POST /v1/chat/completions`` bodies as
+skipped. Every other
 request, and any body that isn't a JSON object with a ``messages`` list, is
 forwarded unchanged. With pruning off, the proxy is a pure pass-through.
 
@@ -73,10 +74,11 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
     if report is None:
         return body
     logger.info(
-        "erode_prune policy_version=%s stubbed_results=%d bytes_removed=%d",
+        "erode_prune policy_version=%s stubbed_results=%d bytes_removed=%d skipped=%s",
         report["policy_version"],
         report["stubbed_results"],
         report["bytes_removed"],
+        report.get("skipped", "none"),
     )
     if not report["stubbed_results"]:
         return body

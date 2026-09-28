@@ -6,7 +6,6 @@ from __future__ import annotations
 import asyncio
 import copy
 import importlib
-import json
 import sys
 import types
 
@@ -19,23 +18,34 @@ from erode.core import PrunePolicy, prune
 def _request() -> dict:
     content = "x" * 5000
     messages: list[dict] = [{"role": "user", "content": "Fix a.py."}]
-    for step, name in enumerate(["read", "read", "bash", "bash"], start=1):
-        arguments = {"path": "a.py"} if name == "read" else {"command": f"ls {step}"}
+    for step, name in enumerate(["Read", "Read", "Bash", "Bash"], start=1):
+        arguments = (
+            {"file_path": "a.py"} if name == "Read" else {"command": f"ls {step}"}
+        )
         messages.append(
             {
                 "role": "assistant",
-                "content": None,
-                "tool_calls": [
+                "content": [
                     {
-                        "id": f"call_{step}",
-                        "type": "function",
-                        "function": {"name": name, "arguments": json.dumps(arguments)},
+                        "type": "tool_use",
+                        "id": f"toolu_{step}",
+                        "name": name,
+                        "input": arguments,
                     }
                 ],
             }
         )
         messages.append(
-            {"role": "tool", "tool_call_id": f"call_{step}", "content": content}
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": f"toolu_{step}",
+                        "content": content,
+                    }
+                ],
+            }
         )
     return {"model": "claude-test", "messages": messages}
 

@@ -36,9 +36,12 @@ erode never changes the following parts of a request:
 - Tool calls and their arguments.
 - Results in the last two turns.
 - Results under 512 bytes, and error results.
-- Output of any tool other than pi's `read`, `edit`, `write`, and `bash` (OpenAI
-  chat format), or Claude Code's `Read`, `Edit`, `MultiEdit`, `Write`, and `Bash`
-  (Anthropic Messages format).
+- Output of any tool other than Claude Code's `Read`, `Edit`, `MultiEdit`,
+  `Write`, and `Bash`, or pi's `read`, `edit`, `write`, and `bash`, in the
+  Anthropic Messages format.
+- A request in the OpenAI chat format. Its tool results carry no error flag, so
+  a failed edit looks like a successful one and would supersede a read the model
+  still needs. The report counts the request as skipped.
 - Any field outside tool results, including Anthropic `cache_control`
   breakpoints.
 - A request that carries Anthropic `context_management`, which hands context
@@ -55,8 +58,8 @@ billed cost and task outcomes with erode on and off before you rely on it.
 
 ## Run the proxy
 
-The proxy prunes `POST /v1/chat/completions` and `POST /v1/messages` requests
-and forwards every request to one upstream URL. It forwards the agent's
+The proxy prunes `POST /v1/messages` requests, logs `POST /v1/chat/completions`
+requests as skipped, and forwards every request to one upstream URL. It forwards the agent's
 headers, including its credentials, unchanged. It stores nothing, adds no
 retries, and streams each response as it arrives.
 
@@ -81,7 +84,7 @@ retries, and streams each response as it arrives.
    ```
 
 The proxy logs a count-only report for each chat request:
-`erode_prune policy_version=2 stubbed_results=3 bytes_removed=48210`.
+`erode_prune policy_version=3 stubbed_results=3 bytes_removed=48210 skipped=none`.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |
