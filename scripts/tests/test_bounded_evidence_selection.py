@@ -764,9 +764,9 @@ def test_j2_judges_text_only_and_qualifies_on_new_or_conflict(monkeypatch, tmp_p
 
 
 @pytest.mark.parametrize(
-    "failures,decision,attempts", [(1, "jev", 2), (2, "fallback", 2)]
+    "failures,decision,attempts", [(1, "jev", 2), (2, "jev", 3), (3, "fallback", 3)]
 )
-def test_j2_retries_once_when_no_valid_answer_arrives(
+def test_j2_retries_only_when_no_valid_answer_arrives(
     monkeypatch, tmp_path, failures, decision, attempts
 ):
     seen = []
@@ -783,12 +783,17 @@ def test_j2_retries_once_when_no_valid_answer_arrives(
     mod, config, digest, calls, _ = setup(
         monkeypatch, scores=scores, transform=transform
     )
+    waits = []
+    monkeypatch.setattr(mod.time, "sleep", waits.append)
     keyword = run(mod, config, digest, tmp_path / "k", "K")
     result = run(mod, config, digest, tmp_path / "j2", "J2", jev_api_key="k" * 24)
     metrics = record(tmp_path / "j2")["metrics"]
     assert metrics["selection"]["decision"] == decision
-    assert metrics["selection"]["first_attempt_error"] == "jev_http_error"
     assert metrics["jev"]["attempted_calls"] == attempts == len(seen)
+    assert waits == list(mod.J2_RETRY_WAITS[: attempts - 1])
+    assert metrics["selection"]["attempt_errors"] == ["jev_http_error"] * min(
+        failures, 2
+    )
     if decision == "jev":
         assert contents(result) == ["alpha beta gamma delta: requirement R"]
         assert metrics["usage"]["input_tokens"] == 900

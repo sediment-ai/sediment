@@ -43,8 +43,12 @@ workspace, and cut token usage substantially without lowering task quality?
 4. Qualifying parts are delivered in conversation order within the eight-part,
    8,192-byte envelope, then re-read and verified through the factual read
    route. An empty result is a judgment, not a gap.
-5. If no valid answer arrives, J2 sends the same request once more. If that also
-   fails, it falls back to K and the run is reported as a fallback.
+5. If no valid answer arrives, J2 sends the same request again, up to three
+   attempts of 20 seconds each, waiting 10 and then 20 seconds between them. If
+   every attempt fails, it falls back to K and the run is reported as a fallback.
+   The development run showed why: JEV failed about one call in ten (gateway
+   errors and stalls), and one development run fell back after two 35-second
+   timeouts.
 
 ## Fixtures and protocol
 

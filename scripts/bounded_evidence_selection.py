@@ -49,6 +49,11 @@ J2_POLICY_VERSION = 2
 J2_CANDIDATE_LIMIT = 12
 J2_ROLES = frozenset({"user", "assistant"})
 FULL_CONTEXT_BYTES = base.CATALOG_BYTES_LIMIT + 1024
+# JEV failed about one call in ten during development (gateway errors and
+# stalls; answers normally arrive in under two seconds). Three short attempts
+# with waits stay inside the 120-second selection deadline.
+J2_ATTEMPT_SECONDS = 20
+J2_RETRY_WAITS = (10, 20)
 # Provider failures after dispatch fall back to K's bounded output. Everything
 # else (authority, Quarantine, source identity, credentials, deadline) refuses.
 FALLBACK_REASONS = frozenset(
@@ -111,7 +116,9 @@ def policy() -> dict:
             "qualify": "new_information >= 0.60 or conflict >= 0.60",
             "delivery": "qualifying parts in conversation order within the "
             "eight-part, 8,192-byte envelope",
-            "jev_attempts": "two when no valid answer arrives, then K",
+            "jev_attempts": f"{len(J2_RETRY_WAITS) + 1} of {J2_ATTEMPT_SECONDS} s "
+            f"with waits {list(J2_RETRY_WAITS)} s when no valid answer arrives, "
+            "then K",
         },
         "full": {"context_bytes": FULL_CONTEXT_BYTES, "excludes": ["reasoning"]},
     }
@@ -166,7 +173,7 @@ def transport_identity(transport: dict | None) -> str:
     return "loopback_proxy" if transport and transport.get("proxy") else "direct"
 
 
-def _jev_client(transport: dict | None) -> httpx.Client:
+def _jev_client(transport: dict | None, seconds: float = 35) -> httpx.Client:
     transport = jev_transport(transport)
     verify: ssl.SSLContext | bool = True
     if transport["ca_bundle"]:
@@ -174,7 +181,7 @@ def _jev_client(transport: dict | None) -> httpx.Client:
     return httpx.Client(
         trust_env=False,
         follow_redirects=False,
-        timeout=httpx.Timeout(35, connect=5),
+        timeout=httpx.Timeout(seconds, connect=5),
         proxy=transport["proxy"],
         verify=verify,
     )
@@ -683,34 +690,34 @@ def j2_qualifies(scores: dict) -> bool:
     )
 
 
-def _decide_twice(body, included, key, transport, metrics, records):
-    """At most two attempts, only when no valid answer arrived; both are counted."""
-    try:
-        with _jev_client(transport) as client:
-            return _decide(client, body, included, key, metrics, records)
-    except BoundedSelectionError as exc:
-        if exc.reason not in FALLBACK_REASONS:
-            raise
-        metrics["selection"]["first_attempt_error"] = exc.reason
-    # The base transport allows one JEV call per metrics object, so the second
-    # attempt keeps its own counters and records, then merges them.
-    retry = _metrics("J2")
-    try:
-        with _jev_client(transport) as client:
-            return _decide(
-                client,
-                body,
-                included,
-                key,
-                retry,
-                base.private_directory(records / "retry"),
-            )
-    finally:
-        for name in ("attempted_calls", "request_bytes", "response_bytes"):
-            metrics["jev"][name] += retry["jev"][name]
-        # A failed attempt returned no valid usage; it stays flagged, not guessed.
-        metrics["usage"].update(retry["usage"])
-        metrics["calls"].extend(retry["calls"])
+def _decide_retrying(body, included, key, transport, metrics, records):
+    """Retry only when no valid answer arrived; every attempt is counted."""
+    for attempt, wait in enumerate((None, *J2_RETRY_WAITS)):
+        if wait:
+            time.sleep(wait)
+        # The base transport allows one JEV call per metrics object, so each
+        # retry keeps its own counters and records, then merges them.
+        current = metrics if attempt == 0 else _metrics("J2")
+        directory = (
+            records
+            if attempt == 0
+            else base.private_directory(records / f"retry-{attempt}")
+        )
+        try:
+            with _jev_client(transport, J2_ATTEMPT_SECONDS) as client:
+                return _decide(client, body, included, key, current, directory)
+        except BoundedSelectionError as exc:
+            if exc.reason not in FALLBACK_REASONS or attempt == len(J2_RETRY_WAITS):
+                raise
+            metrics["selection"].setdefault("attempt_errors", []).append(exc.reason)
+        finally:
+            if attempt:
+                for name in ("attempted_calls", "request_bytes", "response_bytes"):
+                    metrics["jev"][name] += current["jev"][name]
+                # A failed attempt returned no valid usage; it stays flagged.
+                metrics["usage"].update(current["usage"])
+                metrics["calls"].extend(current["calls"])
+    raise AssertionError("unreachable")
 
 
 def _select_j2(catalog, query, keyword, key, transport, metrics, records):
@@ -742,7 +749,7 @@ def _select_j2(catalog, query, keyword, key, transport, metrics, records):
     selection["jev_request_body_bytes"] = len(body)
     phase = time.monotonic()
     try:
-        scores = _decide_twice(body, included, key, transport, metrics, records)
+        scores = _decide_retrying(body, included, key, transport, metrics, records)
     except BoundedSelectionError as exc:
         if exc.reason not in FALLBACK_REASONS:
             raise
