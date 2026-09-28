@@ -1,7 +1,8 @@
 # Context-minimal agents at the gateway
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
-Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
+Evidence: [Phase 2](2026-09-28-context-minimal-phase-2-design.md) and
+[Phase 3](2026-09-28-context-pointer-phase-3-design.md).
 
 ## Thesis
 
@@ -161,8 +162,9 @@ digest. User and assistant text stay out of scope.
 
 ## Evaluation
 
-The targets are fixed before any run. Every saving is reported in priced tokens:
-uncached input, plus cached input at the provider's discount, plus output.
+The targets are fixed before any run. E1 reports priced tokens: uncached input,
+plus cached input at the provider's discount, plus output. E2 reports billed cost
+from the provider's actual prices.
 
 1. **E1, reuse the existing harness (about 2 days).** Run pi through the
    experiment gateway on long multi-step fixture tasks: several files to edit,
@@ -170,12 +172,27 @@ uncached input, plus cached input at the provider's discount, plus output.
    profiles × 2 repetitions × 2 arms = 24 runs. Targets: priced input cost at
    least 30% lower, and both-check passes no more than one below passthrough.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
-   random 50-instance subset of SWE-bench Verified, run with one agent through
-   the stage A.1 proxy: pass-through against pruning, with the same model and
-   settings. Report resolve rate, priced tokens, cache hits, calls, and latency
-   per instance. Targets: priced input at least 30% lower, and resolved
-   instances within 2 of passthrough. Publish the harness, subset, and raw
-   counts.
+   random 50-instance subset of SWE-bench Verified, run with Claude Code on a
+   frontier model through the stage A.1 proxy. The comparison is against what
+   the agent already does by default:
+
+   | Arm | Setup |
+   | --- | --- |
+   | Default | The agent as shipped: provider prompt caching and its own automatic compaction on; the proxy forwards unchanged |
+   | Pruned | The same agent and settings, with the proxy applying stage A |
+
+   The same model, settings, subset, and seed apply to both arms. Report per
+   instance:
+   - resolved or not;
+   - **billed cost**, taken from the provider's usage fields (uncached input,
+     cache writes, cache reads, and output), each at the provider's published
+     price on the run date, with the price list recorded;
+   - calls, compactions, and latency.
+
+   Targets: billed cost at least 30% lower than Default, and resolved instances
+   within 2 of Default. Publish the harness, subset, prices, and raw counts. A
+   plain pass-through run without compaction is a secondary diagnostic, not the
+   comparison.
 
 If E1 misses its token target, stop before E2 and report it. Stage B starts only
 if E1 or E2 shows that non-superseded tool output is still a large share of
