@@ -449,3 +449,115 @@ def test_unsafe_raw_capture_never_writes_but_delivery_continues(
     assert not (directory / "fallback_payload.json").exists()
     if unsafe == "file_mode":
         assert target.read_text() == "unchanged"
+
+
+# The context-pruning pre-call hook (ADR 0027).
+
+
+def _superseded_request() -> dict:
+    content = "x" * 5000
+    messages: list[dict] = [{"role": "user", "content": "Fix a.py."}]
+    for step, name in enumerate(["read", "read", "bash", "bash"], start=1):
+        arguments = {"path": "a.py"} if name == "read" else {"command": f"ls {step}"}
+        messages.append(
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": f"call_{step}",
+                        "type": "function",
+                        "function": {"name": name, "arguments": json.dumps(arguments)},
+                    }
+                ],
+            }
+        )
+        messages.append(
+            {"role": "tool", "tool_call_id": f"call_{step}", "content": content}
+        )
+    return {"model": "claude-test", "messages": messages}
+
+
+class _LoggingObject:
+    """The two members of LiteLLM's logging object the hook touches."""
+
+    def __init__(self) -> None:
+        self.model_call_details: dict = {}
+        self.messages = None
+
+    def update_messages(self, messages) -> None:
+        self.messages = messages
+        self.model_call_details["messages"] = messages
+
+
+def _hook(data):
+    return asyncio.run(
+        sediment_callback.handler.async_pre_call_hook(None, None, data, "acompletion")
+    )
+
+
+@pytest.mark.parametrize("mode", ["", "off", "Supersede"])
+def test_prune_hook_is_inert_unless_enabled(monkeypatch, mode) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", mode)
+    data = _superseded_request()
+    before = json.loads(json.dumps(data))
+    data["litellm_logging_obj"] = logging_obj = _LoggingObject()
+    assert _hook(data) is None
+    del data["litellm_logging_obj"]
+    assert data == before
+    assert logging_obj.model_call_details == {}
+
+
+def test_prune_hook_rewrites_messages_and_records_report(monkeypatch) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
+    data = _superseded_request()
+    expected, report = sediment_callback.sediment_context.prune(
+        data["messages"], sediment_callback.sediment_context.PrunePolicy()
+    )
+    assert report["stubbed_results"] == 1
+    data["litellm_logging_obj"] = logging_obj = _LoggingObject()
+    assert _hook(data) is data
+    assert data["messages"] == expected
+    # Logged input is the pruned request, and the report rides along.
+    assert logging_obj.model_call_details == {
+        "messages": expected,
+        "sediment_context": report,
+    }
+
+
+def test_prune_hook_failure_forwards_request_unchanged(monkeypatch) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
+
+    def broken(messages, policy):
+        raise RuntimeError("synthetic")
+
+    monkeypatch.setattr(sediment_callback.sediment_context, "prune", broken)
+    data = _superseded_request()
+    before = json.loads(json.dumps(data))
+    assert _hook(data) is None
+    assert data == before
+
+
+def test_prune_hook_restores_messages_when_logging_update_fails(monkeypatch) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
+
+    class Broken(_LoggingObject):
+        def update_messages(self, messages) -> None:
+            raise RuntimeError("synthetic")
+
+    data = _superseded_request()
+    original = data["messages"]
+    data["litellm_logging_obj"] = Broken()
+    assert _hook(data) is None
+    assert data["messages"] is original
+
+
+def test_prune_report_is_carried_into_raw(monkeypatch) -> None:
+    slo = {"litellm_call_id": "call-9", "model": "m", "messages": []}
+    report = {"policy_version": "1", "stubbed_results": 2, "bytes_removed": 9000}
+    calls = _fire(
+        {"standard_logging_object": slo, "sediment_context": report}, monkeypatch
+    )
+    assert calls[0][1]["payload"] == {**slo, "sediment_context": report}
+    fallback = _fire({"sediment_context": report}, monkeypatch)
+    assert fallback[0][1]["payload"]["sediment_context"] == report
