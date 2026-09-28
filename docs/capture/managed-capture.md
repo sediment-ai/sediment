@@ -209,6 +209,14 @@ Sediment never changes the following parts of a request:
 - Results under 512 bytes, and error results.
 - Output of any tool other than pi's `read`, `edit`, `write`, and `bash`, or
   Claude Code's `Read`, `Edit`, `MultiEdit`, `Write`, and `Bash`.
+- Any field outside tool results, including Anthropic `cache_control`
+  breakpoints.
+- A request that carries Anthropic `context_management`, which hands context
+  editing or compaction to the provider.
+
+An agent's own compaction request, such as Claude Code's automatic compaction,
+is an ordinary Messages request. Nothing in its wire shape identifies it, so
+Sediment prunes it like any other request.
 
 Sediment applies new stubs only when they remove at least 4 KB, so the
 provider's cached prefix breaks rarely. A stub names the step that superseded

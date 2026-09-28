@@ -438,3 +438,29 @@ def _result(messages: list[dict], call_id: str) -> str:
                 if block.get("tool_use_id") == call_id:
                     return block["content"]
     raise KeyError(call_id)
+
+
+def test_prune_request_leaves_other_fields_and_provider_managed_context() -> None:
+    from sediment_context import prune_request
+
+    messages = anthropic(
+        [
+            [("Read", {"file_path": "a.py"}, BIG)],
+            [("Read", {"file_path": "a.py"}, BIG)],
+            *filler(2, "anthropic"),
+        ]
+    )
+    request = {"model": "m", "system": "S", "messages": messages, "extra": [1]}
+    pruned, report = prune_request(request, POLICY)
+    assert report["stubbed_results"] == 1
+    assert {k: v for k, v in pruned.items() if k != "messages"} == {
+        k: v for k, v in request.items() if k != "messages"
+    }
+    assert request["messages"] is messages  # the input isn't mutated
+    # Provider-side context editing or compaction: never pruned.
+    managed = {**request, "context_management": {"edits": [{"type": "x"}]}}
+    assert prune_request(managed, POLICY) == (managed, None)
+    # Nothing to stub: the same request object comes back.
+    quiet = {"model": "m", "messages": messages[:3]}
+    assert prune_request(quiet, POLICY)[0] is quiet
+    assert prune_request({"model": "m"}, POLICY) == ({"model": "m"}, None)

@@ -561,3 +561,15 @@ def test_prune_report_is_carried_into_raw(monkeypatch) -> None:
     assert calls[0][1]["payload"] == {**slo, "sediment_context": report}
     fallback = _fire({"sediment_context": report}, monkeypatch)
     assert fallback[0][1]["payload"]["sediment_context"] == report
+
+
+def test_prune_hook_leaves_provider_managed_context_alone(monkeypatch) -> None:
+    monkeypatch.setattr(sediment_callback, "CONTEXT_PRUNE", "supersede")
+    data = _superseded_request()
+    data["context_management"] = {"edits": [{"type": "compact_20260112"}]}
+    before = json.loads(json.dumps(data))
+    data["litellm_logging_obj"] = logging_obj = _LoggingObject()
+    assert _hook(data) is None
+    del data["litellm_logging_obj"]
+    assert data == before
+    assert logging_obj.model_call_details == {}

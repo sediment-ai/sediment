@@ -22,6 +22,13 @@ stub first appears. New stubs are applied in batches of at least
 ``min_new_bytes`` of superseded output to keep those breaks rare. The batches
 are replayed from the request itself: boundary m is the request that holds the
 first m assistant messages.
+
+``prune_request`` is the entry point for a whole request body. A request that
+carries Anthropic ``context_management`` hands context editing or compaction to
+the provider, so it passes through untouched. A client-side compaction request,
+such as Claude Code's, is an ordinary Messages request with a summarization
+prompt; nothing in its wire shape identifies it reliably, so it is pruned like
+any other request.
 """
 
 from __future__ import annotations
@@ -245,3 +252,19 @@ def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
         report["stubbed_results"] += 1
         report["bytes_removed"] += size - len(stub.encode("utf-8"))
     return result, report
+
+
+def prune_request(request: Any, policy: PrunePolicy) -> tuple[Any, dict | None]:
+    """Prune a request body's messages; None when the request isn't prunable.
+
+    Returns the request itself when nothing changes, else a shallow copy with
+    new messages. Every other field, ``cache_control`` included, is untouched.
+    """
+    if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
+        return request, None
+    if "context_management" in request:
+        return request, None  # the provider manages this request's context
+    messages, report = prune(request["messages"], policy)
+    if not report["stubbed_results"]:
+        return request, report
+    return {**request, "messages": messages}, report

@@ -267,3 +267,55 @@ def test_unreachable_upstream_is_a_502() -> None:
 def test_rejects_an_upstream_that_is_not_a_url() -> None:
     with pytest.raises(ValueError):
         sediment_prune_proxy.make_server("api.anthropic.com", port=0)
+
+
+def _cached_request() -> dict:
+    """Claude Code's shape: cache_control breakpoints on tools, system, and
+    message blocks, including the tool result that gets stubbed."""
+    ephemeral = {"type": "ephemeral"}
+    request = _request()
+    for index, message in enumerate(request["messages"]):
+        for block in message["content"] if isinstance(message["content"], list) else []:
+            if block.get("type") == "tool_result":
+                block["content"] = f"result {index} " + "x" * 5000
+    request["messages"][2]["content"][0]["cache_control"] = {
+        "type": "ephemeral",
+        "ttl": "1h",
+    }
+    request["messages"][-1]["content"].append(
+        {"type": "text", "text": "Continue. ünïcode ✓", "cache_control": ephemeral}
+    )
+    request["tools"] = [
+        {"name": "Read", "input_schema": {"type": "object"}, "cache_control": ephemeral}
+    ]
+    return request
+
+
+def test_cache_control_bytes_survive_outside_stubbed_results(upstream, proxy) -> None:
+    upstream.first_event_read.set()
+    request = _cached_request()
+    # JSON.stringify's compact form, which Claude Code sends.
+    body = json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode()
+    proxy.request("POST", "/v1/messages", body=body)
+    proxy.getresponse().read()
+    forwarded = upstream.requests[0][3]
+    stubbed = request["messages"][2]["content"][0]["content"]
+    expected, report = sediment_context.prune(
+        request["messages"], sediment_context.PrunePolicy()
+    )
+    assert report["stubbed_results"] == 1
+    stub = expected[2]["content"][0]["content"]
+    # The only byte change is the stubbed result's content string.
+    old, new = json.dumps(stubbed), json.dumps(stub, ensure_ascii=False)
+    assert body.count(old.encode()) == 1
+    assert forwarded == body.replace(old.encode(), new.encode())
+    assert forwarded.count(b'"cache_control":') == body.count(b'"cache_control":')
+
+
+def test_provider_managed_context_passes_through(upstream, proxy) -> None:
+    upstream.first_event_read.set()
+    request = {**_request(), "context_management": {"edits": [{"type": "x"}]}}
+    body = json.dumps(request).encode()
+    proxy.request("POST", "/v1/messages", body=body)
+    proxy.getresponse().read()
+    assert upstream.requests[0][3] == body

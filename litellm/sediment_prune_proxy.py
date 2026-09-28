@@ -64,14 +64,14 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
         request = json.loads(body)
     except ValueError:
         return body
-    if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
-        return body
     try:
-        messages, report = sediment_context.prune(
-            request["messages"], sediment_context.PrunePolicy()
+        pruned, report = sediment_context.prune_request(
+            request, sediment_context.PrunePolicy()
         )
     except Exception:  # noqa: BLE001 — pruning must never fail a model call
         logger.warning("sediment_context_prune reason=prune_failed")
+        return body
+    if report is None:
         return body
     logger.info(
         "sediment_context_prune policy_version=%s stubbed_results=%d bytes_removed=%d",
@@ -81,8 +81,9 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
     )
     if not report["stubbed_results"]:
         return body
-    request["messages"] = messages
-    return json.dumps(request, ensure_ascii=False).encode("utf-8")
+    # Compact separators match JavaScript's JSON.stringify, which agents such
+    # as Claude Code send, so bytes outside the stubbed results don't change.
+    return json.dumps(pruned, ensure_ascii=False, separators=(",", ":")).encode()
 
 
 class PruneProxyHandler(BaseHTTPRequestHandler):

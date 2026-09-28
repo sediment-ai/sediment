@@ -237,18 +237,16 @@ class SedimentCallback(CustomLogger):
 
     async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
         """Stub superseded tool output; any failure forwards the request as is."""
-        if (
-            CONTEXT_PRUNE != "supersede"
-            or sediment_context is None
-            or not isinstance(data, dict)
-            or not isinstance(data.get("messages"), list)
-        ):
+        if CONTEXT_PRUNE != "supersede" or sediment_context is None:
             return None
-        original = data["messages"]
+        original = data.get("messages") if isinstance(data, dict) else None
         try:
-            messages, report = sediment_context.prune(
-                original, sediment_context.PrunePolicy()
+            pruned, report = sediment_context.prune_request(
+                data, sediment_context.PrunePolicy()
             )
+            if report is None:
+                return None
+            messages = pruned["messages"]
             data["messages"] = messages
             # The logging object's details become this callback's success
             # kwargs, so logged input is exactly what the model received.
