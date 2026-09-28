@@ -87,12 +87,15 @@ def inspect_connection_revision(connection: Connection) -> RevisionInspection:
 def upgrade_database(
     database_url: str,
     *,
+    before_upgrade: Callable[[Connection], None] | None = None,
     after_upgrade: Callable[[Connection], None] | None = None,
 ) -> None:
     """Upgrade to head under the migration lock.
 
-    ``after_upgrade`` runs on the same connection before the lock is released,
-    and its work commits only when it returns.
+    Both hooks run on the connection that holds the lock: ``before_upgrade``
+    before Alembic, ``after_upgrade`` after it. Alembic commits each revision
+    itself, so a failing ``after_upgrade`` leaves the schema at head and rolls
+    back only its own work.
     """
     engine = None
     try:
@@ -111,6 +114,11 @@ def upgrade_database(
                     "database migration lock is held by another process"
                 )
             try:
+                if before_upgrade is not None:
+                    before_upgrade(connection)
+                    # Alembic starts each revision's transaction on a clean
+                    # connection, as it did before this hook existed.
+                    connection.commit()
                 config = _alembic_config()
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")

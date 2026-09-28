@@ -991,37 +991,36 @@ def migrate_database(database_url: str) -> bool:
     upgrades a single-owner database, one that grants no Sediment role any
     access, with Alembic alone; the API refuses that layout in production. On
     a database provisioned for Sediment's roles, another identity would create
-    objects that the migrator doesn't own, so it's refused.
+    objects that the migrator doesn't own, so it's refused before Alembic.
     """
-    engine = create_postgres_engine(database_url)
-    try:
-        with engine.connect() as connection:
-            identity = connection.exec_driver_sql("SELECT current_user").scalar_one()
-            provisioned = connection.execute(
-                text(
-                    "SELECT EXISTS(SELECT 1 FROM pg_database d CROSS JOIN LATERAL "
-                    "aclexplode(d.datacl) a JOIN pg_roles r ON r.oid=a.grantee "
-                    "WHERE d.datname=current_database() AND r.rolname = ANY(:roles))"
-                ),
-                {"roles": list(ROLES)},
-            ).scalar_one()
-    except (DatabaseOperationError, DatabaseURLValidationError):
-        raise
-    except Exception:
-        raise database_operation_error("inspect database roles", database_url) from None
-    finally:
-        engine.dispose()
-    if identity == MIGRATOR_ROLE:
-        upgrade_database(database_url, after_upgrade=_grant_and_validate)
-        return True
-    if provisioned:
-        raise DatabasePrivilegeError(
-            f"database grants Sediment roles, so {_quote(identity)} can't migrate "
-            f"it; fix: run `sediment db upgrade` as {_quote(MIGRATOR_ROLE)}, "
-            "which owns every Sediment object"
-        )
-    upgrade_database(database_url)
-    return False
+    migrator = False
+
+    def gate(connection: Connection) -> None:
+        nonlocal migrator
+        identity = connection.exec_driver_sql("SELECT current_user").scalar_one()
+        migrator = identity == MIGRATOR_ROLE
+        if migrator:
+            return
+        if connection.execute(
+            text(
+                "SELECT EXISTS(SELECT 1 FROM pg_database d CROSS JOIN LATERAL "
+                "aclexplode(d.datacl) a JOIN pg_roles r ON r.oid=a.grantee "
+                "WHERE d.datname=current_database() AND r.rolname = ANY(:roles))"
+            ),
+            {"roles": list(ROLES)},
+        ).scalar_one():
+            raise DatabasePrivilegeError(
+                f"database grants Sediment roles, so {_quote(identity)} can't "
+                f"migrate it; fix: run `sediment db upgrade` as "
+                f"{_quote(MIGRATOR_ROLE)}, which owns every Sediment object"
+            )
+
+    def grant(connection: Connection) -> None:
+        if migrator:
+            _grant_and_validate(connection)
+
+    upgrade_database(database_url, before_upgrade=gate, after_upgrade=grant)
+    return migrator
 
 
 @dataclass(frozen=True)
