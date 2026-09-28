@@ -192,6 +192,21 @@ def scratch_database(database_url: str):
             engine.dispose()
 
 
+def _server_version(database_url: str) -> str:
+    """Read the version independently of the installed worker's own report."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    engine = create_engine(database_url, poolclass=NullPool)
+    try:
+        with engine.connect() as connection:
+            return connection.exec_driver_sql("SHOW server_version").scalar_one()
+    except Exception:
+        raise RuntimeError("runtime rehearsal: server version read failed") from None
+    finally:
+        engine.dispose()
+
+
 def validate_pipeline_report(report: dict) -> list[str]:
     """Require the fixed corpus's observed stage results before claiming success."""
     errors = []
@@ -250,6 +265,114 @@ def validate_pipeline_receipts(receipts: list[dict]) -> bool:
     return sorted(json.dumps(item, sort_keys=True) for item in receipts) == sorted(
         json.dumps(item, sort_keys=True) for item in expected
     )
+
+
+INSTALLED_ENTRY_POINTS = (
+    "sediment transcript --agent claude-code",
+    "GET /v1/reports/model-outcomes",
+    "GET /v1/reports/accepted-work-lifecycle",
+    "POST /ingest/github/repository",
+    "GET /query/commit/{sha}",
+)
+
+
+def validate_installed_evidence(
+    report: dict, *, venv: Path, release_version: str, server_version: str
+) -> list[str]:
+    """Require the installed runtime, identities, and hashes behind the stage counts.
+
+    The required rehearsal owns these checks so the pull-request and tag runs
+    both enforce them; the stage counts alone can't show where code loaded.
+    """
+
+    def sha256(value) -> bool:
+        return (
+            isinstance(value, str) and re.fullmatch("[0-9a-f]{64}", value) is not None
+        )
+
+    def installed() -> bool:
+        root = venv.resolve()
+        modules = report["installed_modules"]
+        return (
+            Path(report["venv"]) == root
+            and len(modules) > len(FIRST_PARTY)
+            and all(Path(path).is_relative_to(root) for path in modules.values())
+        )
+
+    def reports() -> bool:
+        model, lifecycle = (
+            report["stages"][name] for name in ("model_report", "lifecycle_report")
+        )
+        return model["scope"] == lifecycle["scope"] and all(
+            sha256(stage["sha256_before"])
+            and stage["sha256_before"] == stage["sha256_after"]
+            for stage in (model, lifecycle)
+        )
+
+    def delivery() -> bool:
+        stage = report["stages"]["delivery"]
+        return (
+            stage["helper_version"] == report["runtime_versions"]["sediment-cli"]
+            and stage["callback_runtime"] == "synthetic CustomLogger import stand-in"
+            and stage["configuration"]["max_active_bytes"] == 256 * 1024 * 1024
+            and stage["configuration"]["replay_window_seconds"] == 24 * 60 * 60
+            and len(stage["receipts"]) == 6
+        )
+
+    def batch() -> bool:
+        stage = report["stages"]["transcript_batch"]
+        return (
+            stage["call_ids"] == [f"rehearsal-batch-{index:02d}" for index in range(32)]
+            and len(set(stage["fact_ids"])) == 32
+            and len(stage["request_sha256"]) == 2
+            and all(sha256(value) for value in stage["request_sha256"])
+        )
+
+    checks = {
+        "runtime versions": lambda: (
+            report["runtime_versions"]
+            == dict.fromkeys(sorted(FIRST_PARTY), release_version)
+        ),
+        "installed modules": installed,
+        "Python version": lambda: report["python_version"].startswith("3.12."),
+        "PostgreSQL version": lambda: report["postgresql_version"] == server_version,
+        "entry points": lambda: (
+            set(INSTALLED_ENTRY_POINTS) <= set(report["entry_points"])
+        ),
+        "source hashes": lambda: all(
+            sha256(report["source_sha256"][source])
+            for source in ("callback", "delivery_helper")
+        ),
+        "authority": lambda: (
+            report["stages"]["authority"] == PIPELINE_EXPECTATIONS["authority"]
+        ),
+        "lost acknowledgment": lambda: (
+            report["stages"]["lost_acknowledgment"]
+            == PIPELINE_EXPECTATIONS["lost_acknowledgment"]
+        ),
+        "repository slugs": lambda: (
+            report["stages"]["repository_identity"]["observed_repo_slugs"]
+            == ["synthetic/rehearsal", "synthetic/renamed-rehearsal"]
+        ),
+        "operational report bytes": reports,
+        "delivery receipts": delivery,
+        "transcript batch identities": batch,
+        "row identities": lambda: bool(
+            report["stages"]["capture"]["gateway_ids"]
+            and report["stages"]["training"]["row_ids"]
+        ),
+    }
+    errors = []
+    for label, check in checks.items():
+        try:
+            passed = check() is True
+        except (AttributeError, KeyError, TypeError, ValueError):
+            passed = False
+        if not passed:
+            errors.append(
+                f"runtime rehearsal: {label} evidence absent or contradictory"
+            )
+    return errors
 
 
 def exercise_installed_pipeline(
@@ -2357,6 +2480,23 @@ def _run_installed_worker(
             worker.stderr.close()
 
 
+def _run_installed_pipeline(
+    command: list[str], *, cwd: Path, env: dict[str, str]
+) -> tuple[dict, list[str]]:
+    """Run the bounded worker and require one successful, complete stage report."""
+    try:
+        result = _run_installed_worker(command, cwd=cwd, env=env)
+    except RuntimeError as exc:
+        return {}, [str(exc)]
+    try:
+        report = json.loads(result.stdout)
+    except (ValueError, TypeError):
+        return {}, ["runtime rehearsal: installed pipeline produced no report"]
+    if result.returncode != 0:
+        return {}, [report.get("error", "runtime rehearsal: installed pipeline failed")]
+    return report, validate_pipeline_report(report)
+
+
 def rehearse(
     root: Path,
     database_url: str,
@@ -2378,185 +2518,217 @@ def rehearse(
         preserved_artifacts_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="sediment-release-") as raw_temp:
         temp = Path(raw_temp)
-        artifacts_dir = preserved_artifacts_dir or temp / "dist"
-        wheel_build = subprocess.run(
-            [
-                "uv",
-                "build",
-                "--all-packages",
-                "--wheel",
-                "--out-dir",
-                str(artifacts_dir),
-            ],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
+        venv, wheels, errors = build_and_install(
+            root, preserved_artifacts_dir or temp / "dist", temp, release_version
         )
-        if wheel_build.returncode != 0:
-            return [f"wheel build failed with exit code {wheel_build.returncode}"]
-        sdist_build = subprocess.run(
-            [
-                "uv",
-                "build",
-                "--all-packages",
-                "--sdist",
-                "--out-dir",
-                str(artifacts_dir),
-            ],
-            cwd=root,
-            check=False,
-            capture_output=True,
-            text=True,
+        if errors:
+            return errors
+        return exercise_installed_release(
+            venv, wheels, release_version, database_url, temp
         )
-        if sdist_build.returncode != 0:
-            return [
+
+
+def build_and_install(
+    root: Path, artifacts_dir: Path, temp: Path, release_version: str
+) -> tuple[Path | None, list[Path], list[str]]:
+    """Build and inspect all twelve artifacts, then install the wheels in *temp*."""
+    wheel_build = subprocess.run(
+        [
+            "uv",
+            "build",
+            "--all-packages",
+            "--wheel",
+            "--out-dir",
+            str(artifacts_dir),
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if wheel_build.returncode != 0:
+        return None, [], [f"wheel build failed with exit code {wheel_build.returncode}"]
+    sdist_build = subprocess.run(
+        [
+            "uv",
+            "build",
+            "--all-packages",
+            "--sdist",
+            "--out-dir",
+            str(artifacts_dir),
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if sdist_build.returncode != 0:
+        return (
+            None,
+            [],
+            [
                 "source distribution build failed with exit code "
                 f"{sdist_build.returncode}"
-            ]
-        wheels = sorted(artifacts_dir.glob("*.whl"))
-        sdists = sorted(artifacts_dir.glob("*.tar.gz"))
-        errors = validate_wheels(wheels, release_version)
-        errors.extend(validate_sdists(sdists, release_version))
-        if errors:
-            return errors
-        rebuilt_wheels, errors = rebuild_wheels_from_sdists(
-            sdists, temp / "rebuilt", temp
+            ],
         )
-        if errors:
-            return errors
-        errors = validate_wheels(rebuilt_wheels, release_version)
-        if errors:
-            return [f"source distribution rebuild: {error}" for error in errors]
+    wheels = sorted(artifacts_dir.glob("*.whl"))
+    sdists = sorted(artifacts_dir.glob("*.tar.gz"))
+    errors = validate_wheels(wheels, release_version)
+    errors.extend(validate_sdists(sdists, release_version))
+    if errors:
+        return None, [], errors
+    rebuilt_wheels, errors = rebuild_wheels_from_sdists(sdists, temp / "rebuilt", temp)
+    if errors:
+        return None, [], errors
+    errors = validate_wheels(rebuilt_wheels, release_version)
+    if errors:
+        return None, [], [f"source distribution rebuild: {error}" for error in errors]
 
-        venv = temp / "venv"
-        create_venv = subprocess.run(
-            ["uv", "venv", "--python", "3.12", str(venv)],
-            cwd=temp,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if create_venv.returncode != 0:
-            return [
+    venv = temp / "venv"
+    create_venv = subprocess.run(
+        ["uv", "venv", "--python", "3.12", str(venv)],
+        cwd=temp,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if create_venv.returncode != 0:
+        return (
+            None,
+            [],
+            [
                 f"isolated environment creation failed with exit code "
                 f"{create_venv.returncode}"
-            ]
-        python = venv / "bin" / "python"
-        install = subprocess.run(
-            [
-                "uv",
-                "pip",
-                "install",
-                "--python",
-                str(python),
-                *[str(wheel) for wheel in wheels],
             ],
-            cwd=temp,
-            check=False,
-            capture_output=True,
-            text=True,
         )
-        if install.returncode != 0:
-            return [f"wheel installation failed with exit code {install.returncode}"]
-
-        sediment = venv / "bin" / "sediment"
-        home = temp / "home"
-        (home / ".claude").mkdir(parents=True)
-        repo = temp / "repo"
-        git_init = subprocess.run(
-            ["git", "init", str(repo)],
-            cwd=temp,
-            check=False,
-            capture_output=True,
-            text=True,
+    python = venv / "bin" / "python"
+    install = subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            *[str(wheel) for wheel in wheels],
+        ],
+        cwd=temp,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if install.returncode != 0:
+        return (
+            None,
+            [],
+            [f"wheel installation failed with exit code {install.returncode}"],
         )
-        if git_init.returncode != 0:
-            return [f"runtime rehearsal: git init exited {git_init.returncode}"]
-        inherited_path = os.environ.get("PATH", "/usr/bin:/bin")
-        isolated_env = {
-            **{
-                key: value
-                for key, value in os.environ.items()
-                if key not in {"PYTHONPATH", "VIRTUAL_ENV"}
-                and not key.startswith(("SEDIMENT_", "OTEL_"))
-            },
-            "HOME": str(home),
-            "CODEX_HOME": str(home / ".codex"),
-            "PATH": f"{venv / 'bin'}{os.pathsep}{inherited_path}",
-            "SEDIMENT_DEV_MODE": "false",
-            "SEDIMENT_ORG_ID": "release-rehearsal",
-        }
+    return venv, wheels, []
 
-        try:
-            with scratch_database(database_url) as runtime_url:
-                isolated_env["SEDIMENT_DATABASE_URL"] = runtime_url
-                isolated_env["SEDIMENT_TEST_DATABASE_URL"] = runtime_url
-                commands = (
-                    ("help", [str(sediment), "--help"]),
-                    ("version", [str(sediment), "--version"]),
-                    (
-                        "db upgrade",
-                        [
-                            str(sediment),
-                            "db",
-                            "upgrade",
-                        ],
-                    ),
-                    (
-                        "db status",
-                        [
-                            str(sediment),
-                            "db",
-                            "status",
-                        ],
-                    ),
-                    (
-                        "facts",
-                        [str(sediment), "facts"],
-                    ),
-                    (
-                        "transcript install",
-                        [
-                            str(sediment),
-                            "install",
-                            str(repo),
-                            "--transcripts",
-                            "--no-agents",
-                            "--no-env",
-                        ],
-                    ),
+
+def exercise_installed_release(
+    venv: Path,
+    wheels: list[Path],
+    release_version: str,
+    database_url: str,
+    temp: Path,
+) -> list[str]:
+    """Run the installed commands and synthetic pipeline on a scratch database."""
+    python = venv / "bin" / "python"
+    sediment = venv / "bin" / "sediment"
+    home = temp / "home"
+    (home / ".claude").mkdir(parents=True)
+    repo = temp / "repo"
+    git_init = subprocess.run(
+        ["git", "init", str(repo)],
+        cwd=temp,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if git_init.returncode != 0:
+        return [f"runtime rehearsal: git init exited {git_init.returncode}"]
+    inherited_path = os.environ.get("PATH", "/usr/bin:/bin")
+    isolated_env = {
+        **{
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "VIRTUAL_ENV"}
+            and not key.startswith(("SEDIMENT_", "OTEL_"))
+        },
+        "HOME": str(home),
+        "CODEX_HOME": str(home / ".codex"),
+        "PATH": f"{venv / 'bin'}{os.pathsep}{inherited_path}",
+        "SEDIMENT_DEV_MODE": "false",
+        "SEDIMENT_ORG_ID": "release-rehearsal",
+    }
+
+    try:
+        with scratch_database(database_url) as runtime_url:
+            isolated_env["SEDIMENT_DATABASE_URL"] = runtime_url
+            isolated_env["SEDIMENT_TEST_DATABASE_URL"] = runtime_url
+            commands = (
+                ("help", [str(sediment), "--help"]),
+                ("version", [str(sediment), "--version"]),
+                (
+                    "db upgrade",
+                    [
+                        str(sediment),
+                        "db",
+                        "upgrade",
+                    ],
+                ),
+                (
+                    "db status",
+                    [
+                        str(sediment),
+                        "db",
+                        "status",
+                    ],
+                ),
+                (
+                    "facts",
+                    [str(sediment), "facts"],
+                ),
+                (
+                    "transcript install",
+                    [
+                        str(sediment),
+                        "install",
+                        str(repo),
+                        "--transcripts",
+                        "--no-agents",
+                        "--no-env",
+                    ],
+                ),
+            )
+            results: dict[str, subprocess.CompletedProcess[str]] = {}
+            for label, command in commands:
+                result = subprocess.run(
+                    command,
+                    cwd=temp,
+                    env=isolated_env,
+                    check=False,
+                    capture_output=True,
+                    text=True,
                 )
-                results: dict[str, subprocess.CompletedProcess[str]] = {}
-                for label, command in commands:
-                    result = subprocess.run(
-                        command,
-                        cwd=temp,
-                        env=isolated_env,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-                    results[label] = result
-                    if result.returncode != 0:
-                        return [
-                            f"runtime rehearsal: {label} exited {result.returncode}"
-                        ]
-                if results["version"].stdout.strip() != f"sediment {release_version}":
-                    return [
-                        "runtime rehearsal: version output "
-                        f"{results['version'].stdout.strip()!r} != sediment {release_version}"
-                    ]
-                if "at_head" not in results["db status"].stdout:
-                    return ["runtime rehearsal: database status didn't report at_head"]
-                if "inference_calls" not in results["facts"].stdout:
-                    return ["runtime rehearsal: facts output omitted inference_calls"]
-                errors = validate_installed_hooks(
-                    home / ".claude" / "settings.json", sediment
-                )
-                if errors:
-                    return errors
-                child_code = """import json, runpy, sys
+                results[label] = result
+                if result.returncode != 0:
+                    return [f"runtime rehearsal: {label} exited {result.returncode}"]
+            if results["version"].stdout.strip() != f"sediment {release_version}":
+                return [
+                    "runtime rehearsal: version output "
+                    f"{results['version'].stdout.strip()!r} != sediment {release_version}"
+                ]
+            if "at_head" not in results["db status"].stdout:
+                return ["runtime rehearsal: database status didn't report at_head"]
+            if "inference_calls" not in results["facts"].stdout:
+                return ["runtime rehearsal: facts output omitted inference_calls"]
+            errors = validate_installed_hooks(
+                home / ".claude" / "settings.json", sediment
+            )
+            if errors:
+                return errors
+            child_code = """import json, runpy, sys
 from pathlib import Path
 owner = runpy.run_path(sys.argv[1])
 try:
@@ -2566,40 +2738,37 @@ except AssertionError as exc:
     sys.exit(1)
 print(json.dumps(report, sort_keys=True))
 """
-                result = _run_installed_worker(
-                    [
-                        str(python),
-                        "-I",
-                        "-c",
-                        child_code,
-                        str(Path(__file__).resolve()),
-                        str(temp / "pipeline"),
-                        str(sediment),
-                        release_version,
-                    ],
-                    cwd=temp,
-                    env=isolated_env,
-                )
-                try:
-                    report = json.loads(result.stdout)
-                except (ValueError, TypeError):
-                    return ["runtime rehearsal: installed pipeline produced no report"]
-                if result.returncode != 0:
-                    return [
-                        report.get(
-                            "error", "runtime rehearsal: installed pipeline failed"
-                        )
-                    ]
-                errors = validate_pipeline_report(report)
-                if errors:
-                    return errors
-                report["wheel_sha256"] = {
-                    wheel.name: hashlib.sha256(wheel.read_bytes()).hexdigest()
-                    for wheel in wheels
-                }
-                print("pipeline acceptance: " + json.dumps(report, sort_keys=True))
-        except RuntimeError as exc:
-            return [str(exc)]
+            report, errors = _run_installed_pipeline(
+                [
+                    str(python),
+                    "-I",
+                    "-c",
+                    child_code,
+                    str(Path(__file__).resolve()),
+                    str(temp / "pipeline"),
+                    str(sediment),
+                    release_version,
+                ],
+                cwd=temp,
+                env=isolated_env,
+            )
+            if errors:
+                return errors
+            errors = validate_installed_evidence(
+                report,
+                venv=venv,
+                release_version=release_version,
+                server_version=_server_version(runtime_url),
+            )
+            if errors:
+                return errors
+            report["wheel_sha256"] = {
+                wheel.name: hashlib.sha256(wheel.read_bytes()).hexdigest()
+                for wheel in wheels
+            }
+            print("pipeline acceptance: " + json.dumps(report, sort_keys=True))
+    except RuntimeError as exc:
+        return [str(exc)]
     return []
 
 

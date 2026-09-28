@@ -43,6 +43,12 @@
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
   Require verification of the README PyPI badge during release closeout.
+- Run the complete installed release rehearsal once per pull request instead of
+  repeating it in the serial test pass. The rehearsal script checks the
+  installed module locations, identities, and hashes that the repeated test
+  checked, so tag releases enforce them too. Worker cleanup tests use a
+  controlled process tree plus one installed-server interruption, and runtime
+  failure tests share one validated build.
 
 ## 0.3.0 — 2026-09-27
 
