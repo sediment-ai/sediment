@@ -85,7 +85,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
   Pipes, `NO_COLOR`, and `TERM=dumb` retain byte-identical plain text. Direct script and fleet invocations of `attribution.py` use plain output.
   `--version` shows the static knot in the terminal's own text color, followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
-  The banner adds no dependency or network request. Help names the full installed command path.
+  The banner adds no dependency or network request. Help names the full installed command path. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works
   without a valid `SEDIMENT_ORG_ID`. `export dpo` defaults to `dpo_human`;
   `export sft` and `export diff-sft` default to `sft_curated`. Operators must
