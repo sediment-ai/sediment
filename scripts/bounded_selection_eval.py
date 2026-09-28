@@ -53,6 +53,9 @@ GATE_UPSTREAM_RETRY = False
 # not an instrument failure. Phase 1 runs never set these.
 PI_IDLE_TIMEOUT_MS: int | None = None
 EXCLUDE_UPSTREAM_UNAVAILABLE = False
+# Source Sessions only (Phase 3's multi-turn inspections exceed 12 calls).
+# Continuations always keep the contract's legacy.MODEL_CALL_LIMIT.
+SOURCE_MODEL_CALL_LIMIT: int | None = None
 UPSTREAM_ERRORS = frozenset({"upstream_failure", "forward_failed"})
 REASONING_EFFORTS = ("low", "medium", "high")
 # Set once from --reasoning-effort, like legacy.MODEL; None keeps the legacy
@@ -136,6 +139,7 @@ def generation_contract() -> dict:
         ),
         "context_window": CONTEXT_WINDOW,
         "coding_model_calls": legacy.MODEL_CALL_LIMIT,
+        "source_model_calls": SOURCE_MODEL_CALL_LIMIT or legacy.MODEL_CALL_LIMIT,
         "gate_read_seconds": GATE_READ_SECONDS,
         "gate_upstream_retry": GATE_UPSTREAM_RETRY,
         "pi_idle_timeout_ms": PI_IDLE_TIMEOUT_MS,
@@ -387,13 +391,18 @@ class BoundedGateHandler(legacy.GateHandler):
 
 
 def make_gate_server(config: dict, records: Path, *, port: int = legacy.GATE_PORT):
+    # The gate runs in its own container process, so this sets only its budget.
+    if config.get("model_call_limit"):
+        legacy.MODEL_CALL_LIMIT = config["model_call_limit"]
     server = legacy.GateServer(("127.0.0.1", port), BoundedGateHandler)
     server.state = legacy.GateState(config=config, records=records)
     return server
 
 
 @contextmanager
-def isolated_agent(config: dict, records: Path, workspace: Path):
+def isolated_agent(
+    config: dict, records: Path, workspace: Path, call_limit: int | None = None
+):
     """Legacy isolation with this experiment's gate; no retrieval route exists."""
     identifier = uuid.uuid4().hex[:12]
     gate_name = f"sediment-bounded-gate-{identifier}"
@@ -420,6 +429,7 @@ def isolated_agent(config: dict, records: Path, workspace: Path):
             "agent_token": token,
             "reasoning_effort": REASONING_EFFORT,
             "upstream_retry": GATE_UPSTREAM_RETRY,
+            "model_call_limit": call_limit,
         },
     )
     args = [
@@ -653,7 +663,7 @@ def capture_source(config: dict, family: str, profile: str, output: Path) -> dic
     records = legacy.private_directory(output / "source-run")
     prompts = source_prompts(family, profile)
     started = time.monotonic()
-    with isolated_agent(config, records, workspace) as rpc:
+    with isolated_agent(config, records, workspace, SOURCE_MODEL_CALL_LIMIT) as rpc:
         session = legacy.initialize_rpc(rpc)
         for prompt in prompts:
             rpc.request("prompt", message=prompt)

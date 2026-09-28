@@ -31,6 +31,8 @@ SETS = {
 CATALOG_PART_LIMIT = 96
 CATALOG_BYTES_LIMIT = 131_072
 EVIDENCE_CALL_LIMIT = 12
+# Five inspection turns plus notes need more than the 12-call continuation limit.
+SOURCE_MODEL_CALL_LIMIT = 40
 TARGETS = {
     "validity": "every slot recorded; no instrument failure; at least 10 of 12 "
     "tasks have all three arms measured with complete usage",
@@ -50,6 +52,7 @@ def configure() -> None:
     phase2.EXPERIMENT, phase2.TARGETS = "context-pointer-phase-3", TARGETS
     phase2.PROTOCOL_VERSION = 6
     phase2.configure()
+    run.SOURCE_MODEL_CALL_LIMIT = SOURCE_MODEL_CALL_LIMIT
     base = selector.base
     base.CATALOG_PART_LIMIT = CATALOG_PART_LIMIT
     base.CATALOG_BYTES_LIMIT = CATALOG_BYTES_LIMIT

@@ -20,6 +20,7 @@ RUNNER = (
     "PI_IDLE_TIMEOUT_MS",
     "EXCLUDE_UPSTREAM_UNAVAILABLE",
     "CONTEXT_WINDOW",
+    "SOURCE_MODEL_CALL_LIMIT",
     "protocol_identity",
 )
 PHASE2 = (
@@ -62,5 +63,7 @@ def test_configure_binds_phase_3_arms_limits_and_identity(monkeypatch, tmp_path)
     assert identity["protocol_version"] == 6
     assert identity["arms"] == list(phase3.ARMS)
     assert identity["limits"]["catalog_bytes"] == 131_072
+    assert identity["generation"]["source_model_calls"] == 40
+    assert identity["generation"]["coding_model_calls"] == 12
     assert "evaluation/verify.py" in identity["fixture_hashes"]
     assert run.summarize([], "heldout")["candidate"] == "J2P"

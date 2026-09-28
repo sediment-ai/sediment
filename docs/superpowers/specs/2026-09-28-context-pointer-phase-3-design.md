@@ -31,6 +31,8 @@ re-exploration enough to reach the Phase 2 token target on longer Sessions?
 - Long catalogs exceed the Phase 1 limits, so Phase 3 raises them to 96 parts and
   128 KB, allows 12 evidence calls per selection, and chunks each factual read at
   the API's limit of 32 references.
+- Source Sessions may make up to 40 model calls, since five inspection turns
+  exceed the 12-call continuation limit. Continuations keep 12.
 - Everything else follows the Phase 2 version 5 protocol: gemma4:31b on Ollama
   cloud, a 65,536-token window, an 840-second pi idle timeout, no gate retry, and
   `upstream_unavailable` runs excluded and counted. The schedule is 2 families ×

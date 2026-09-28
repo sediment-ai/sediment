@@ -867,3 +867,16 @@ def test_upstream_failure_is_excluded_only_when_the_protocol_says_so(
         assert row["instrument_failure"] is False and row["measured"] is False
     else:
         assert row["instrument_failure"] is True
+
+
+def test_gate_budget_follows_its_config_only(gate, monkeypatch):
+    run, server, upstream, records, post = gate
+    monkeypatch.setattr(legacy, "MODEL_CALL_LIMIT", legacy.MODEL_CALL_LIMIT)
+    config = {**server.state.config, "model_call_limit": 2}
+    limited = run.make_gate_server(config, records, port=0)
+    assert legacy.MODEL_CALL_LIMIT == 2
+    assert limited.state.budget.reserve("model") and limited.state.budget.reserve(
+        "model"
+    )
+    assert not limited.state.budget.reserve("model")
+    limited.server_close()
