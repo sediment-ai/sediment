@@ -306,6 +306,7 @@ def render_deployment(root: Path = ROOT) -> dict:
         "SEDIMENT_ENABLE_DOCS": "false",
         "SEDIMENT_DELIVERY_DIR": "",
         "SEDIMENT_CAPTURE_DIR": "",
+        "SEDIMENT_CONTEXT_PRUNE": "",
         "ANTHROPIC_API_KEY": "assurance-provider-secret",
         "LITELLM_MASTER_KEY": "sk-assurance-gateway-key",
         "SEDIMENT_DOMAIN": "sediment.example.com",
@@ -503,6 +504,10 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                 (
                     str((root / "litellm/sediment_callback.py").resolve()),
                     "/app/sediment_callback.py",
+                ),
+                (
+                    str((root / "contrib/erode/src/erode").resolve()),
+                    "/app/erode",
                 ),
                 (
                     str((root / "cli/sediment_cli/delivery.py").resolve()),
