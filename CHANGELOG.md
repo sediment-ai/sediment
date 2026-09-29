@@ -33,6 +33,18 @@
 
 ### Command line
 
+- Let `sediment db provision` run as an administrator that isn't a
+  superuser: one with `CREATEROLE` that owns the dedicated database, as on
+  managed PostgreSQL services. Capability checks replace the superuser
+  requirement and report every missing capability before the first change.
+  An existing Sediment role that doesn't grant the administrator the `ADMIN`
+  option fails with both fixes: grant `ADMIN` to this administrator, or switch
+  to administrator-provisioned roles. Provisioning names only the role
+  attributes that the administrator may set, and revokes each membership from
+  its grantor, so a revoke never skips a grant silently. Only a superuser
+  adopts tables that predate the role model
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)). No managed
+  service is qualified yet.
 - Extend `sediment db upgrade`. Connected as `sediment_migrator`, it verifies
   columns after Alembic, applies the owner's table, column, and sequence
   grants, and validates the database, its `public` schema, and all three
