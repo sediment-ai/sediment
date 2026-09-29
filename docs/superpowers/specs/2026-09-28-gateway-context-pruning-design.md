@@ -369,9 +369,11 @@ provider's actual prices.
    5 Sessions).** This replaces the original E1, which reran the issue #134
    harness and fixtures: E0 showed that their tool output is too small to prune.
    - **Record.** Run Claude Code on a frontier model, with its default settings,
-     on SWE-bench Verified instances drawn with E2's seed procedure but outside
-     E2's 50-instance subset, so E2 stays held out. Route each run through a
-     recorder: `erode.proxy.make_server(upstream, prune=False)`, wrapped to save
+     on SWE-bench Verified instances outside E2's 50-instance subset, so E2
+     stays held out. `scripts/erode_eval_instances.json` lists both, drawn by
+     `scripts/swe_bench_subset.py` with seed 20260929: E2's subset, then E1's
+     candidates in the order E1 uses them. Route each run through
+     `scripts/erode_record.py`, the erode proxy with pruning off, which saves
      each `POST /v1/messages` body before forwarding it, as the stage A.2 Codex
      recordings were made. The proxy changes nothing, so the traffic is the
      agent's own. Keep the recordings private: they hold prompts and repository
@@ -415,7 +417,8 @@ provider's actual prices.
    estimates the opportunity only; it can't show how the agent behaves with
    pruned input, so it never replaces E2.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
-   random 50-instance subset of SWE-bench Verified, run with Claude Code on a
+   random 50-instance subset of SWE-bench Verified, listed under `e2` in
+   `scripts/erode_eval_instances.json`, run with Claude Code on a
    frontier model through the stage A.1 proxy. The comparison is against what
    the agent already does by default:
 
