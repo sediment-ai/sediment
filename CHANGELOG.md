@@ -11,6 +11,25 @@
   generated environment already holds the endpoint and token. Configure local
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
+- Add opt-in context pruning (ADR 0028). With
+  `SEDIMENT_CONTEXT_PRUNE=supersede`, the LiteLLM capture callback replaces
+  superseded tool output with a one-line stub before each model call: a file
+  read that a later read, edit, or write of the file replaced, and a command
+  run that a later identical run replaced. Captured Inference calls record the
+  pruned request and carry a count-only `sediment_context` report on `raw`.
+  OpenAI chat requests pass through unpruned, and the report counts them as
+  skipped, because their tool results carry no error flag. The rule lives in erode, an MIT-licensed, stdlib-only package in
+  `contrib/erode` that is meant to move to its own repository. The bundled
+  gateway mounts it and passes the variable through. For other gateways, or
+  agents that call a provider directly, run `erode proxy`. See
+  [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+- Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
+  Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
+  strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
+  reads and `apply_patch` edits, and stubs individual results inside a bundled
+  output. Any other call shape passes through unchanged. Three recorded Codex
+  Sessions are the test fixtures. See
+  [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
 
 ### Command line
 
