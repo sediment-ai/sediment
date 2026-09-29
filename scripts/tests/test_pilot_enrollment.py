@@ -892,13 +892,16 @@ def test_delivery_doctor_observes_real_worker_without_writes(enrollment, tmp_pat
     try:
         import time
 
+        # The worker holds worker.lock before its first batch creates
+        # enqueue.lock, so wait for both before the snapshot.
         deadline = time.monotonic() + 3
         while (
             not delivery.status(directory)["worker_running"]
-            and time.monotonic() < deadline
-        ):
+            or not (directory / "enqueue.lock").exists()
+        ) and time.monotonic() < deadline:
             time.sleep(0.01)
         assert delivery.status(directory)["worker_running"]
+        assert (directory / "enqueue.lock").exists()
         before = {
             path.name: (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_mode)
             for path in directory.iterdir()

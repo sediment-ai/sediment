@@ -113,6 +113,7 @@ def test_compose_passes_each_secret_only_to_the_process_that_uses_it(
         "SEDIMENT_API_BEARER_TOKEN",
         "SEDIMENT_INGEST_URL",
         "SEDIMENT_DELIVERY_DIR",
+        "SEDIMENT_CONTEXT_PRUNE",
     }
 
     for service in ("postgres", "migrate", "api", "operator"):
