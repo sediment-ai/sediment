@@ -12,7 +12,7 @@ for the binding storage decision.
 | `postgres_schema.py` | Complete SQLAlchemy Core metadata for Facts and Sessions |
 | `postgres_engine.py` | Homebrew libpq discovery and bounded synchronous psycopg 3 pool; API-only statement, lock, and idle-transaction limits |
 | `postgres_migrations.py` + `alembic/` | Advisory-locked upgrades and read-only revision inspection |
-| `postgres_roles.py` | Fixed deployment roles, legacy ownership adoption, and runtime privilege validation |
+| `postgres_roles.py` | Fixed deployment roles, legacy ownership adoption, the read-only deployment check, and runtime privilege validation |
 | `store.py` | FactStore, projected reads, and repeatable-read snapshot |
 
 ## Physical schema
@@ -29,7 +29,7 @@ Alembic revisions: `0001_postgresql_baseline` freezes the schema;
 
 ## Migration operations
 
-`sediment db upgrade` runs migrations under a PostgreSQL advisory lock. `sediment db status` performs read-only inspection and reports `absent`, `behind`, `at_head`, or `ahead`. Both commands read `SEDIMENT_DATABASE_URL` or `--database-url`. Expected connection, authentication, permission, lock, and migration failures print a credential-free error and exit 1.
+`sediment db upgrade` runs migrations under a PostgreSQL advisory lock. `sediment db status` performs read-only inspection and reports `absent`, `behind`, `at_head`, or `ahead`. `sediment db check` reports every failed role, database, `public` schema, and grant check with the statement that fixes it, and changes nothing; connected as a non-Sediment identity, it also checks provisioning preconditions for that administrator (ADR 0027). An absent schema passes, and table coverage waits for the migration. All three commands read `SEDIMENT_DATABASE_URL` or `--database-url`. Expected connection, authentication, permission, lock, and migration failures print a credential-free error and exit 1.
 
 `sediment db provision` reads `SEDIMENT_BOOTSTRAP_DATABASE_URL`, `SEDIMENT_MIGRATOR_PASSWORD`, `SEDIMENT_RUNTIME_PASSWORD`, and `SEDIMENT_OPERATOR_PASSWORD`. The URL requires an explicit host and database. Passwords must differ, including from bootstrap. Stop services before provisioning or rotating credentials. Client-side SCRAM verifiers keep plaintext passwords out of SQL.
 
@@ -37,7 +37,7 @@ Alembic revisions: `0001_postgresql_baseline` freezes the schema;
 
 Runtime reads and appends regular Facts and physical call aliases; operator can read the aliases. The source foreign key cascades sanctioned wholesale deletion, and its primary key indexes source lookup. Neither service role can mutate physical aliases. Session UPDATE covers only `first_observed_at`, `last_observed_at`, `user_id`, and `user_id_conflict`. Operator reads and appends quarantine records with sequence usage. Migrator owns application objects. Runtime and operator cannot change Facts, create objects, write Alembic state, or assume other roles.
 
-`postgres_roles.py::validate_runtime_privileges` checks an engine without writes. Production startup calls it after revision validation; only explicit development configuration bypasses it. The validator rejects privileged attributes, memberships, ownership, excess table/column grants, grant options, unexpected accessible objects/functions, and missing schema/grant coverage. `DatabasePrivilegeError` carries a credential-free diagnostic.
+`postgres_roles.py::validate_runtime_privileges` checks an engine without writes. Production startup calls it after revision validation; only explicit development configuration bypasses it. The validator rejects privileged attributes, memberships, ownership, excess table/column grants, grant options, unexpected accessible objects/functions, and missing schema/grant coverage. `DatabasePrivilegeError` carries a credential-free diagnostic that names the subject and its fix; `_privilege_failures` yields every departure, `_validate_privileges` raises the first, and the policy is the same for both.
 
 `sediment server` owns a native PostgreSQL 17 process for local use; its private root retains the cluster across restarts. It provisions through the same role boundary before starting the API. An explicit `SEDIMENT_BOOTSTRAP_DATABASE_URL` keeps database lifecycle under the caller's control. See [Operator CLI](api-and-operations.md#operator-cli-clisediment_cliclipy).
 Compose pins PostgreSQL 17 by digest. The one-shot `migrate` service waits for

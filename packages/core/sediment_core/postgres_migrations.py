@@ -13,7 +13,7 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from alembic.util import CommandError
 from sqlalchemy import inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 
 from .postgres_engine import (
     DatabaseOperationError,
@@ -61,11 +61,14 @@ def inspect_revision(database_url: str) -> RevisionInspection:
 def inspect_engine_revision(engine: Engine) -> RevisionInspection:
     """Inspect the revision through a borrowed process-owned engine."""
     with engine.connect() as connection:
-        if not inspect(connection).has_table("alembic_version"):
-            return RevisionInspection(RevisionState.ABSENT, None)
-        database_revision = MigrationContext.configure(
-            connection
-        ).get_current_revision()
+        return inspect_connection_revision(connection)
+
+
+def inspect_connection_revision(connection: Connection) -> RevisionInspection:
+    """Inspect the revision inside the caller's transaction without writes."""
+    if not inspect(connection).has_table("alembic_version"):
+        return RevisionInspection(RevisionState.ABSENT, None)
+    database_revision = MigrationContext.configure(connection).get_current_revision()
     if database_revision is None:
         return RevisionInspection(RevisionState.BEHIND, None)
     if database_revision == HEAD_REVISION:

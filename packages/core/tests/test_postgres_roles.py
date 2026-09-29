@@ -580,3 +580,276 @@ def test_validator_does_not_exclude_user_schemas_with_pg_prefix(role_database):
         )
     with pytest.raises(role_module().DatabasePrivilegeError):
         role_module().validate_runtime_privileges(connect(ROLES[1]))
+
+
+ADMIN = "sediment_test_admin"
+ADMIN_PASSWORD = "admin-test-secret"
+
+
+@pytest.fixture
+def managed_admin(role_admin):
+    """A LOGIN CREATEROLE CREATEDB administrator that isn't a superuser."""
+    with role_admin.connect() as connection:
+        connection.exec_driver_sql(
+            f"CREATE ROLE {ADMIN} LOGIN CREATEROLE CREATEDB PASSWORD '{ADMIN_PASSWORD}'"
+        )
+    try:
+        yield ADMIN
+    finally:
+        with role_admin.connect() as connection:
+            for database in (
+                connection.exec_driver_sql(
+                    "SELECT datname FROM pg_database "
+                    f"WHERE datdba=(SELECT oid FROM pg_roles WHERE rolname='{ADMIN}')"
+                )
+                .scalars()
+                .all()
+            ):
+                connection.exec_driver_sql(f'DROP DATABASE "{database}" WITH (FORCE)')
+            connection.exec_driver_sql(f"DROP OWNED BY {ADMIN}")
+            connection.exec_driver_sql(f"DROP ROLE {ADMIN}")
+
+
+def check(url):
+    return role_module().check_database(url)
+
+
+def failures(url):
+    return [str(failure) for failure in check(url).failures]
+
+
+def test_check_passes_for_every_identity_after_provisioning(role_database):
+    url, _ = role_database
+    before = check(url)
+    assert before.identity == make_url(url).username
+    assert before.revision.value == "absent"
+    # A fresh database grants PUBLIC CONNECT and TEMPORARY until provisioning.
+    assert any(
+        str(failure).startswith(f'database "{make_url(url).database}" grants PUBLIC')
+        for failure in before.failures
+    )
+    provision(url)
+    for target in (url, *(role_url(url, role) for role in ROLES)):
+        result = check(target)
+        assert result.failures == (), result.failures
+        assert result.revision.value == "at_head"
+
+
+@pytest.mark.parametrize(
+    ("fault", "expected"),
+    [
+        (
+            'REVOKE CONNECT ON DATABASE "{database}" FROM sediment_runtime',
+            'doesn\'t grant "sediment_runtime" CONNECT; fix: GRANT CONNECT ON '
+            'DATABASE "{database}" TO "sediment_runtime"',
+        ),
+        (
+            "REVOKE CREATE ON SCHEMA public FROM sediment_migrator",
+            'schema public doesn\'t grant "sediment_migrator" CREATE; fix: GRANT '
+            'CREATE ON SCHEMA public TO "sediment_migrator"',
+        ),
+        (
+            'GRANT TEMPORARY ON DATABASE "{database}" TO PUBLIC',
+            'database "{database}" grants PUBLIC TEMPORARY; fix: REVOKE ALL ON '
+            'DATABASE "{database}" FROM PUBLIC',
+        ),
+        (
+            "GRANT pg_read_all_data TO sediment_runtime",
+            'role "sediment_runtime" is a member of "pg_read_all_data"; fix: REVOKE '
+            '"pg_read_all_data" FROM "sediment_runtime" GRANTED BY',
+        ),
+        (
+            "ALTER ROLE sediment_migrator CREATEDB",
+            'role "sediment_migrator" holds CREATEDB; fix: ALTER ROLE '
+            '"sediment_migrator" NOCREATEDB',
+        ),
+        (
+            "ALTER TABLE pushes OWNER TO {administrator}",
+            'table "public"."pushes" is owned by "{administrator}", not '
+            '"sediment_migrator"; fix: ALTER TABLE "public"."pushes" OWNER TO '
+            '"sediment_migrator"',
+        ),
+    ],
+    ids=["connect", "schema-create", "public-temp", "membership", "createdb", "owner"],
+)
+def test_check_names_each_missing_required_state_and_its_fix(
+    role_database, fault, expected
+):
+    url, connect = role_database
+    provision(url)
+    names = {
+        "database": make_url(url).database,
+        "administrator": make_url(url).username,
+    }
+    with connect().begin() as connection:
+        connection.exec_driver_sql(fault.format(**names))
+    try:
+        for target in (url, role_url(url, ROLES[0])):
+            assert any(expected.format(**names) in line for line in failures(target))
+        # Read-only: the check reports the fault and leaves it in place.
+        assert any(expected.format(**names) in line for line in failures(url))
+    finally:
+        with connect().begin() as connection:
+            connection.exec_driver_sql(
+                "ALTER ROLE sediment_migrator NOCREATEDB; "
+                "REVOKE pg_read_all_data FROM sediment_runtime"
+            )
+
+
+def test_check_reports_every_failure_including_a_provider_membership(role_database):
+    url, connect = role_database
+    provision(url)
+    provider = "sediment_test_rds_iam"
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            f"CREATE ROLE {provider}; GRANT {provider} TO sediment_runtime; "
+            "ALTER ROLE sediment_operator CREATEROLE; "
+            "GRANT UPDATE (raw) ON inference_calls TO sediment_runtime"
+        )
+    try:
+        lines = failures(role_url(url, ROLES[0]))
+        assert any(f'is a member of "{provider}"' in line for line in lines)
+        assert any(
+            line.startswith('role "sediment_operator" holds CREATEROLE')
+            for line in lines
+        )
+        assert any(
+            'holds UPDATE on columns ("raw") of "public"."inference_calls"' in line
+            for line in lines
+        )
+        with pytest.raises(role_module().DatabasePrivilegeError, match=provider):
+            role_module().validate_runtime_privileges(connect(ROLES[1]))
+    finally:
+        with connect().begin() as connection:
+            connection.exec_driver_sql(
+                f"DROP ROLE {provider}; ALTER ROLE sediment_operator NOCREATEROLE"
+            )
+
+
+def test_check_reports_provisioning_preconditions_for_an_administrator(
+    role_database, managed_admin
+):
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            f'GRANT CONNECT ON DATABASE "{make_url(url).database}" TO {managed_admin}'
+        )
+    target = (
+        make_url(url)
+        .set(username=managed_admin, password=ADMIN_PASSWORD)
+        .render_as_string(hide_password=False)
+    )
+    lines = failures(target)
+    subject = f'administrator "{managed_admin}"'
+    assert any(line.startswith(f"{subject} isn't a superuser") for line in lines)
+    assert any(
+        line.startswith(f"{subject} lacks the privileges of the owner of database")
+        for line in lines
+    )
+    for role in ROLES:
+        assert any(
+            line.startswith(
+                f'role "{role}" doesn\'t grant {subject} the ADMIN option; fix: '
+                f'GRANT "{role}" TO "{managed_admin}" WITH ADMIN OPTION'
+            )
+            and "administrator-provisioned roles" in line
+            for line in lines
+        )
+
+
+def test_cli_check_reports_failures_without_credentials(role_database, capsys):
+    from sediment_cli.cli import main
+
+    url, connect = role_database
+    provision(url)
+    migrator = role_url(url, ROLES[0])
+    assert main(["db", "check", "--database-url", migrator]) == 0
+    assert capsys.readouterr().out == (
+        'database check as "sediment_migrator": passed (schema at_head)\n'
+    )
+    with connect().begin() as connection:
+        connection.exec_driver_sql("GRANT DELETE ON pushes TO sediment_operator")
+    assert main(["db", "check", "--database-url", migrator]) == 1
+    captured = capsys.readouterr()
+    assert (
+        '  role "sediment_operator" holds DELETE on "public"."pushes"; '
+        "fix: run `sediment db provision`\n"
+    ) in captured.out
+    assert captured.err.endswith("1 database check failed\n")
+    assert PASSWORDS[ROLES[0]] not in captured.out + captured.err
+
+
+def test_check_before_migration_reports_reachable_unrelated_relations(role_database):
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        # Back to an unmigrated database whose roles and grants exist.
+        for table in [*metadata.tables, "alembic_version"]:
+            connection.exec_driver_sql(f'DROP TABLE "{table}" CASCADE')
+        connection.exec_driver_sql(
+            "CREATE TABLE stray (id int); GRANT SELECT ON stray TO PUBLIC"
+        )
+    result = check(role_url(url, ROLES[0]))
+    assert result.revision.value == "absent"
+    assert [str(failure) for failure in result.failures] == [
+        line
+        for role in ROLES[1:]
+        for line in (
+            f'role "{role}" holds SELECT on "public"."stray"; fix: REVOKE ALL ON '
+            f'TABLE "public"."stray" FROM PUBLIC, "{role}"',
+            f'role "{role}" holds SELECT on columns ("id") of "public"."stray"; '
+            f'fix: REVOKE ALL ("id") ON TABLE "public"."stray" FROM PUBLIC, "{role}"',
+        )
+    ]
+
+
+def test_check_on_a_behind_schema_names_only_the_revision(role_database):
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE alembic_version SET version_num='0010_repository_identity'"
+        )
+    result = check(role_url(url, ROLES[0]))
+    assert result.revision.value == "behind"
+    assert [str(failure) for failure in result.failures] == [
+        "database schema revision is behind; the supported head is "
+        "0011_inference_call_aliases; "
+        "fix: run `sediment db upgrade` with the release that supports this schema"
+    ]
+
+
+def test_check_as_the_owning_administrator_reports_an_unreadable_schema(
+    role_database, managed_admin, capsys
+):
+    from sediment_cli.cli import main
+
+    url, connect = role_database
+    provision(url)
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            f'ALTER DATABASE "{make_url(url).database}" OWNER TO {managed_admin}'
+        )
+    target = (
+        make_url(url)
+        .set(username=managed_admin, password=ADMIN_PASSWORD)
+        .render_as_string(hide_password=False)
+    )
+    try:
+        result = check(target)
+        # Only Sediment's roles may read alembic_version; the migrator's check
+        # covers table grants.
+        assert result.revision is None
+        assert all(
+            str(failure).startswith((f'administrator "{managed_admin}"', "role "))
+            for failure in result.failures
+        ), result.failures
+        main(["db", "check", "--database-url", target])
+        assert "schema unreadable as this identity" in capsys.readouterr().out
+    finally:
+        # The administrator fixture drops databases it owns; this one isn't.
+        with connect().begin() as connection:
+            connection.exec_driver_sql(
+                f'ALTER DATABASE "{make_url(url).database}" OWNER TO CURRENT_USER'
+            )

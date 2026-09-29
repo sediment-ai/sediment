@@ -34,6 +34,7 @@ Global options:
 - [`sediment db`](#sediment-db)
 - [`sediment db status`](#sediment-db-status)
 - [`sediment db upgrade`](#sediment-db-upgrade)
+- [`sediment db check`](#sediment-db-check)
 - [`sediment db provision`](#sediment-db-provision)
 - [`sediment quarantine`](#sediment-quarantine)
 - [`sediment release`](#sediment-release)
@@ -183,6 +184,20 @@ upgrade the schema under an advisory lock
 
 ```text
 sediment db upgrade [-h] [--database-url DATABASE_URL]
+```
+
+Options:
+
+| Name | Default | Description |
+|---|---|---|
+| `--database-url` | — | PostgreSQL URL (default: SEDIMENT_DATABASE_URL) |
+
+### sediment db check
+
+report every failed role and grant check without changing anything
+
+```text
+sediment db check [-h] [--database-url DATABASE_URL]
 ```
 
 Options:
