@@ -35,6 +35,9 @@ PgBouncer executable and its unused libevent dependency, and rejects
 Anthropic routes retain the same provider boundary.
 
 The Dockerfile records pinned input images and direct dependency updates.
+The OAuthLib override uses 4.0.0 to fix CVE-2026-49264 and CVE-2026-49265.
+Image tests reject the removed JSONP revocation option and exercise the
+authorization-code clients in FastAPI SSO and requests-oauthlib.
 Image labels record removed packages and source patches. The final software
 bill of materials records the resolved components. The guarded source patch
 removes unused database retry decorators and imports. When Prisma is absent,

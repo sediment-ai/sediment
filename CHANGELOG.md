@@ -105,6 +105,10 @@
 
 ### Deployment
 
+- Update the supplied gateway to OAuthLib 4.0.0 to fix CVE-2026-49264 and
+  CVE-2026-49265. Image tests cover its OAuth client compatibility.
+- Review FastAPI 0.142.0 and OpenTelemetry API 1.45.0 for resolved client
+  installations so the security gate accepts these maintained releases.
 - Document PostgreSQL without a superuser. Deploy Sediment on your own host
   replaces its superuser requirement with two ways to create the database
   roles: `sediment db provision` with an administrator that owns the

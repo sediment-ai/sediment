@@ -302,6 +302,54 @@ print('protocol consumers interoperate')
     assert "protocol consumers interoperate" in result.stdout
 
 
+def test_gateway_oauth_clients_work_without_jsonp_revocation() -> None:
+    result = docker(
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        r"""
+import asyncio
+from urllib.parse import parse_qs, urlsplit
+from oauthlib.oauth2 import RequestValidator, RevocationEndpoint
+from fastapi_sso.sso.google import GoogleSSO
+from requests_oauthlib import OAuth2Session
+
+# The vulnerable JSONP option must be unavailable even when explicitly enabled.
+try:
+    RevocationEndpoint(RequestValidator(), enable_jsonp=True)
+except TypeError:
+    pass
+else:
+    raise AssertionError('unsafe JSONP revocation remains available')
+
+# Both installed consumers retain their authorization-code client interface.
+async def check_clients():
+    async with GoogleSSO('client-id', 'client-secret', 'https://client.example/callback') as client:
+        assert client.oauth_client.client_id == 'client-id'
+        session = OAuth2Session(client=client.oauth_client, redirect_uri=client.redirect_uri)
+        url, state = session.authorization_url('https://provider.example/authorize', state='state')
+        query = parse_qs(urlsplit(url).query)
+        assert query['client_id'] == ['client-id']
+        assert query['redirect_uri'] == ['https://client.example/callback']
+        assert query['response_type'] == ['code']
+        assert query['state'] == [state] == ['state']
+        token = client.oauth_client.parse_request_body_response(
+            '{"access_token":"test-token","token_type":"Bearer"}'
+        )
+        assert token['access_token'] == 'test-token'
+
+asyncio.run(check_clients())
+print('OAuth clients interoperate without JSONP revocation')
+""",
+    )
+    assert "OAuth clients interoperate without JSONP revocation" in result.stdout
+
+
 def test_gateway_tokenizers_and_hub2_download_and_count_tokens() -> None:
     result = docker(
         "run",
