@@ -269,7 +269,7 @@ def provision_database(
     runtime_password: str,
     operator_password: str,
 ) -> None:
-    """Reconcile roles, adopt known legacy tables, migrate, then grant access.
+    """Reconcile roles, adopt known legacy tables, then run the migrate step.
 
     The caller stops services before provisioning. Only this one-shot operation
     receives the bootstrap credential. Repeating it also rotates role passwords.
@@ -365,12 +365,7 @@ def provision_database(
                 migration_url = engine.url.set(
                     username=MIGRATOR_ROLE, password=migrator_password
                 ).render_as_string(hide_password=False)
-                upgrade_database(migration_url)
-                _verify_known_columns(connection)
-                _apply_grants(connection)
-                _validate_privileges(connection, RUNTIME_ROLE)
-                _validate_privileges(connection, OPERATOR_ROLE)
-                connection.commit()
+                migrate_database(migration_url)
             finally:
                 connection.rollback()
                 connection.execute(
@@ -402,7 +397,8 @@ _ROLE_ATTRIBUTES = (
     ("rolbypassrls", "BYPASSRLS"),
 )
 # Grants on migrator-owned objects come only from the owner's grant pass.
-_REGRANT = "run `sediment db provision`"
+_REGRANT = "run `sediment db upgrade` as the migrator"
+_PROVISION = "run `sediment db provision`"
 
 
 def _role_failures(connection: Connection, role: str) -> Iterator[PrivilegeFailure]:
@@ -420,7 +416,7 @@ def _role_failures(connection: Connection, role: str) -> Iterator[PrivilegeFailu
         .one_or_none()
     )
     if attributes is None:
-        yield PrivilegeFailure(subject, "does not exist", _REGRANT)
+        yield PrivilegeFailure(subject, "does not exist", _PROVISION)
         return
     held = [name for column, name in _ROLE_ATTRIBUTES if attributes[column]]
     if held:
@@ -969,6 +965,62 @@ def _readable_revision(connection: Connection) -> RevisionState | None:
     if readable is None:
         return RevisionState.ABSENT
     return inspect_connection_revision(connection).state if readable else None
+
+
+def _grant_and_validate(connection: Connection) -> None:
+    """The migrator's post-migration pass: columns, the owner's grants, validation."""
+    _verify_known_columns(connection)
+    _apply_grants(connection)
+    failures = dict.fromkeys(
+        [
+            *_database_failures(connection),
+            *_migrator_failures(connection),
+            *_privilege_failures(connection, RUNTIME_ROLE),
+            *_privilege_failures(connection, OPERATOR_ROLE),
+        ]
+    )
+    if failures:
+        raise DatabasePrivilegeError("\n  ".join(map(str, failures)))
+
+
+def migrate_database(database_url: str) -> bool:
+    """Run the migrate step; return whether it granted and validated the roles.
+
+    As the migrator, Alembic, column verification, the owner's grants, and
+    validation of all three roles share one migration lock. Any other identity
+    upgrades a single-owner database, one that grants no Sediment role any
+    access, with Alembic alone; the API refuses that layout in production. On
+    a database provisioned for Sediment's roles, another identity would create
+    objects that the migrator doesn't own, so it's refused before Alembic.
+    """
+    migrator = False
+
+    def gate(connection: Connection) -> None:
+        nonlocal migrator
+        identity = connection.exec_driver_sql("SELECT current_user").scalar_one()
+        migrator = identity == MIGRATOR_ROLE
+        if migrator:
+            return
+        if connection.execute(
+            text(
+                "SELECT EXISTS(SELECT 1 FROM pg_database d CROSS JOIN LATERAL "
+                "aclexplode(d.datacl) a JOIN pg_roles r ON r.oid=a.grantee "
+                "WHERE d.datname=current_database() AND r.rolname = ANY(:roles))"
+            ),
+            {"roles": list(ROLES)},
+        ).scalar_one():
+            raise DatabasePrivilegeError(
+                f"database grants Sediment roles, so {_quote(identity)} can't "
+                f"migrate it; fix: run `sediment db upgrade` as "
+                f"{_quote(MIGRATOR_ROLE)}, which owns every Sediment object"
+            )
+
+    def grant(connection: Connection) -> None:
+        if migrator:
+            _grant_and_validate(connection)
+
+    upgrade_database(database_url, before_upgrade=gate, after_upgrade=grant)
+    return migrator
 
 
 @dataclass(frozen=True)

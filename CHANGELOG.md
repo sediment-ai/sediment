@@ -33,6 +33,15 @@
 
 ### Command line
 
+- Extend `sediment db upgrade`. Connected as `sediment_migrator`, it verifies
+  columns after Alembic, applies the owner's table, column, and sequence
+  grants, and validates the database, its `public` schema, and all three
+  roles, all under the migration lock. A validation failure names every
+  failed check and its fix. `sediment db provision` runs the same step
+  through the migrator credential instead of granting as the administrator.
+  Another identity can still upgrade a single-owner database that grants no
+  Sediment role access, and is refused on a provisioned one
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
 - Add `sediment db check`, a read-only command that reports every failed
   database role and grant check at once, each with the statement that fixes
   it. It checks the migrator role, the dedicated database and its `public`

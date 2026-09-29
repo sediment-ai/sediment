@@ -180,7 +180,7 @@ Options:
 
 ### sediment db upgrade
 
-upgrade the schema under an advisory lock
+upgrade the schema under an advisory lock; as the migrator, also grant and validate the roles
 
 ```text
 sediment db upgrade [-h] [--database-url DATABASE_URL]

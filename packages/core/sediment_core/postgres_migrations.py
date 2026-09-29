@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -83,7 +84,19 @@ def inspect_connection_revision(connection: Connection) -> RevisionInspection:
     return RevisionInspection(state, database_revision)
 
 
-def upgrade_database(database_url: str) -> None:
+def upgrade_database(
+    database_url: str,
+    *,
+    before_upgrade: Callable[[Connection], None] | None = None,
+    after_upgrade: Callable[[Connection], None] | None = None,
+) -> None:
+    """Upgrade to head under the migration lock.
+
+    Both hooks run on the connection that holds the lock: ``before_upgrade``
+    before Alembic, ``after_upgrade`` after it. Alembic commits each revision
+    itself, so a failing ``after_upgrade`` leaves the schema at head and rolls
+    back only its own work.
+    """
     engine = None
     try:
         engine = create_postgres_engine(database_url)
@@ -101,9 +114,20 @@ def upgrade_database(database_url: str) -> None:
                     "database migration lock is held by another process"
                 )
             try:
+                if before_upgrade is not None:
+                    before_upgrade(connection)
+                    # Alembic starts each revision's transaction on a clean
+                    # connection, as it did before this hook existed.
+                    connection.commit()
                 config = _alembic_config()
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")
+                if after_upgrade is not None:
+                    after_upgrade(connection)
+                    connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
             finally:
                 connection.execute(
                     text("SELECT pg_advisory_unlock(:key)"),

@@ -774,7 +774,7 @@ def test_cli_check_reports_failures_without_credentials(role_database, capsys):
     captured = capsys.readouterr()
     assert (
         '  role "sediment_operator" holds DELETE on "public"."pushes"; '
-        "fix: run `sediment db provision`\n"
+        "fix: run `sediment db upgrade` as the migrator\n"
     ) in captured.out
     assert captured.err.endswith("1 database check failed\n")
     assert PASSWORDS[ROLES[0]] not in captured.out + captured.err
@@ -853,3 +853,69 @@ def test_check_as_the_owning_administrator_reports_an_unreadable_schema(
             connection.exec_driver_sql(
                 f'ALTER DATABASE "{make_url(url).database}" OWNER TO CURRENT_USER'
             )
+
+
+def test_upgrade_as_migrator_grants_a_table_that_alembic_left_ungranted(
+    role_database, capsys
+):
+    """Alembic creates a table without grants; the API refuses until the
+    migrate step grants it. Revoking as the owner stands in for that new table,
+    because the head revision is forward-only."""
+    from sediment_cli.cli import main
+
+    url, connect = role_database
+    provision(url)
+    migrator = role_url(url, ROLES[0])
+    with connect(ROLES[0]).begin() as connection:
+        connection.exec_driver_sql(
+            "REVOKE ALL ON inference_call_aliases "
+            "FROM sediment_runtime, sediment_operator"
+        )
+    with pytest.raises(
+        role_module().DatabasePrivilegeError, match="inference_call_aliases"
+    ):
+        role_module().validate_runtime_privileges(connect(ROLES[1]))
+    assert main(["db", "upgrade", "--database-url", migrator]) == 0
+    assert capsys.readouterr().out.endswith("grants applied and roles validated\n")
+    role_module().validate_runtime_privileges(connect(ROLES[1]))
+    assert check(migrator).failures == ()
+
+
+def test_upgrade_as_migrator_names_every_state_that_grants_cannot_fix(
+    role_database, capsys
+):
+    from sediment_cli.cli import main
+
+    url, connect = role_database
+    provision(url)
+    database = make_url(url).database
+    with connect().begin() as connection:
+        connection.exec_driver_sql(
+            "GRANT pg_read_all_data TO sediment_runtime; "
+            f'REVOKE CONNECT ON DATABASE "{database}" FROM sediment_operator'
+        )
+    try:
+        with pytest.raises(role_module().DatabasePrivilegeError) as failure:
+            role_module().migrate_database(role_url(url, ROLES[0]))
+        message = str(failure.value)
+        assert 'role "sediment_runtime" is a member of "pg_read_all_data"' in message
+        assert f'GRANT CONNECT ON DATABASE "{database}" TO "sediment_operator"' in (
+            message
+        )
+        assert main(["db", "upgrade", "--database-url", role_url(url, ROLES[0])]) == 1
+        assert "pg_read_all_data" in capsys.readouterr().err
+    finally:
+        with connect().begin() as connection:
+            connection.exec_driver_sql("REVOKE pg_read_all_data FROM sediment_runtime")
+
+
+def test_upgrade_refuses_another_identity_on_a_provisioned_database(role_database):
+    url, connect = role_database
+    provision(url)
+    with pytest.raises(
+        role_module().DatabasePrivilegeError,
+        match='run `sediment db upgrade` as "sediment_migrator"',
+    ):
+        role_module().migrate_database(url)
+    # The refusal comes before Alembic takes the lock or changes anything.
+    assert check(role_url(url, ROLES[0])).failures == ()
