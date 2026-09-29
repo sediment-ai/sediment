@@ -1,8 +1,9 @@
 # Context-minimal agents at the gateway
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
-Evidence: [Phase 2](2026-09-28-context-minimal-phase-2-design.md) and
-[Phase 3](2026-09-28-context-pointer-phase-3-design.md).
+Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
+Status: stage A, A.1, and A.2 are built. E0 failed its gate on the issue #134
+recordings; see [E0 result](#e0-result-fails-its-gate).
 
 ## Thesis
 
@@ -30,8 +31,7 @@ is added only where the deterministic rule leaves a measured gap.
 
 ## Build (stage A): deterministic supersession, per request
 
-The contract is the wire format (OpenAI chat and Anthropic Messages), not the
-gateway. Stage A has two parts:
+The contract is the wire format (Anthropic Messages), not the gateway. Stage A has two parts:
 
 1. **A pure core** in one stdlib-only module (planned: sediment_context.py in the
    litellm directory). It imports nothing from LiteLLM:
@@ -87,10 +87,15 @@ Two small adapters map each wire format onto it:
 
 | Harness | Wire format | Read | Edit or write | Run |
 | --- | --- | --- | --- | --- |
-| pi (evaluation harness) | OpenAI chat: `tool_calls`, role `tool` | `read` | `edit`, `write` | `bash` |
+| pi (evaluation harness) | Anthropic Messages: `tool_use`, `tool_result` | `read` | `edit`, `write` | `bash` |
 | Claude Code (launch demo) | Anthropic Messages: `tool_use`, `tool_result` | `Read` | `Edit`, `MultiEdit`, `Write` | `Bash` |
 
-An unknown tool is never pruned.
+An unknown tool is never pruned. An OpenAI chat request (`tool_calls`, role
+`tool`) passes through unpruned, and the report counts it as skipped: its tool
+results carry no error flag, so a failed edit is indistinguishable from a
+successful one and would supersede a read the model still needs. pi 0.87.1
+sets `is_error` on Anthropic Messages tool results, so pi keeps pruning through
+its `anthropic-messages` provider.
 
 ### Capture
 
@@ -106,7 +111,8 @@ unpruned conversation.
 - Idempotence: `prune(prune(x)) == prune(x)`.
 - Monotonic prefix: appending a turn never changes an earlier stub unless the
   4 KB threshold newly fires.
-- Tool-call pairing is preserved in both formats.
+- Tool-call pairing is preserved.
+- OpenAI chat requests pass through unpruned and are counted as skipped.
 - User and assistant text are never altered.
 - Unknown tools pass through untouched.
 
@@ -118,7 +124,8 @@ the agent calling the provider directly. Stage A.1 reaches them with a small
 stdlib HTTP pass-through around the same core:
 
 - It accepts OpenAI chat (`POST /v1/chat/completions`) and Anthropic Messages
-  (`POST /v1/messages`) requests, applies `prune`, and forwards them to one
+  (`POST /v1/messages`) requests, applies `prune` (which counts OpenAI chat
+  requests as skipped), and forwards them to one
   configured upstream URL: the customer's gateway, another gateway, or the
   provider.
 - It streams responses byte for byte without buffering, and forwards the agent's
@@ -147,74 +154,162 @@ Completions, so stages A and A.1 don't reach it. Stage A.2 adds a third
 wire-format adapter to the same core, and the matching proxy route. It lands
 after the stage A and A.1 PR.
 
+### Recorded Codex traffic
+
+Three multi-step Codex CLI 0.158.0 Sessions, recorded through the proxy in
+pass-through mode, fix the adapter's shape. The redacted request bodies and
+their findings are in `contrib/erode/tests/fixtures/codex/`.
+
+- Every request resends the full history in `input` with `store: false`. No
+  request sets `previous_response_id`.
+- Top-level `input` items are `additional_tools`, `message` (developer, user,
+  and assistant), `reasoning` with `encrypted_content`, `custom_tool_call`, and
+  `custom_tool_call_output`. No request contains `function_call`,
+  `function_call_output`, `local_shell_call`, or `local_shell_call_output`.
+- Every tool call is a `custom_tool_call` named `exec` whose `input` is
+  JavaScript. Shell commands appear as
+  `text(await tools.exec_command({cmd:"<command>", ...}));` with `cmd` as one
+  string. Patches appear as `text(await tools.apply_patch("<patch>"));`. One
+  call can bundle several commands and patches.
+- A `custom_tool_call_output` carries the same `call_id` and an `output` array
+  of `input_text` parts. The first part is a script header (`Script
+  completed ...`). Each later part is the result of one `text(...)` statement,
+  in order. A command result is a JSON object with `exit_code` and `output`. A
+  successful patch result is `{}`.
+- Commands carry no `workdir`. The working directory is the `<cwd>` element of
+  the user message that holds `<environment_context>`. Reads use relative paths,
+  and patches use absolute paths.
+- Codex ignored `OPENAI_BASE_URL` in every checked configuration. An explicit
+  model provider with `base_url` and `env_key = "OPENAI_API_KEY"` worked. A
+  Codex signed in with a ChatGPT account and only `OPENAI_BASE_URL` sent no
+  request to the proxy. A ChatGPT sign-in with an explicit provider wasn't
+  checked.
+
 ### Request shape
 
-A Responses request carries `input` as a list of typed items. The adapter maps
-them onto the core's normalized sequence:
+The adapter maps `input` items onto the core's normalized sequence:
 
 | Item | Treatment |
 | --- | --- |
-| `message` (any role) | Never changed, like user and assistant text elsewhere |
+| `message` (any role), `additional_tools` | Never changed |
 | `reasoning`, including `encrypted_content` | Never changed; opaque to the proxy |
-| `function_call`, `local_shell_call` | Tool calls: never changed; they identify what each result was |
-| `function_call_output`, `local_shell_call_output` | Tool results: the only items `prune` may stub, keeping `call_id` pairing |
-| Any other item type | Never changed |
+| `custom_tool_call` named `exec` | Never changed; its statements identify what each result part was |
+| `custom_tool_call_output` | Only its recognized result parts may be stubbed; `call_id`, the header part, and every other part stay unchanged |
+| Any other item type, including `function_call`, `function_call_output`, `local_shell_call`, and `local_shell_call_output` | Never changed |
+
+Decision: stage A.2 doesn't recognize the `function_call` or
+`local_shell_call` families. No recorded Codex traffic uses them, and a rule
+for a shape nobody has recorded would be guessed. A later stage adds them from
+a recording of the client that sends them.
 
 A request that sets `previous_response_id` references server-side history
 instead of resending it. There is nothing to prune, so it passes through
 untouched and the report counts it.
 
+### Recognizing an exec call
+
+The adapter parses an `exec` call's `input` with a strict grammar and never
+evaluates it. The whole `input`, ignoring blank lines and leading or trailing
+whitespace on each line, must be a sequence of lines, each exactly one of:
+
+- `text(await tools.exec_command({<arguments>}));`
+- `text(await tools.apply_patch(<string>));`
+
+`<arguments>` is a comma-separated list of `key:value` pairs. Each key is an
+unquoted identifier, and each value is a JSON string, number, `true`, or
+`false`. `exec_command` needs a `cmd` string. `<string>` is a JSON string
+literal; a JavaScript-only escape such as `\'` or `\x41` fails to parse. Any
+other line fails the whole call: variables, `Promise.allSettled`, loops,
+template literals, single-quoted strings, or another tool.
+
+A call that fails the grammar is opaque, and none of its result parts are ever
+stubbed. An output whose part count isn't one more than the call's statement
+count is also opaque. Two of the 18 recorded calls use `Promise.allSettled` and
+stay opaque.
+
 ### Codex tool semantics
 
-Codex has no dedicated read tool. It reads files with shell commands and edits
-them with `apply_patch`. The adapter recognizes these conservatively:
+Each statement in a recognized call is one normalized tool call, in statement
+order, with the matching output part as its result:
 
-| Codex call | Normalized as |
+| Statement | Normalized as |
 | --- | --- |
-| `apply_patch` (function or custom tool) | Edit or write of each path named by its `*** Add File:`, `*** Update File:`, `*** Delete File:`, or `*** Move to:` lines |
-| Shell command whose whole argument list is one of `cat P`, `nl -ba P`, `head P`, or `tail P`, with no pipes, redirects, or `&&` | Read of path P |
-| Shell command `sed -n '<range>p' P` | Partial read of P: superseded only by a later edit of P or the identical command, never by another partial read |
-| Any other shell command | Run of command C, compared by its exact argument list |
+| `apply_patch` | Edit or write of each path named by its `*** Add File:`, `*** Update File:`, `*** Delete File:`, or `*** Move to:` lines |
+| `exec_command` whose `cmd` is `cat P` or `nl -ba P` | Read of path P |
+| `exec_command` whose `cmd` is `head P`, `tail P`, or `sed -n '<range>p' P` | Partial read of P: superseded only by a later edit of P or the identical command, never by another read |
+| Any other `exec_command` | Run of command C, compared by its exact `cmd` string and other arguments |
 
-A read recognized this way is superseded by a later edit of the same path (as
-the patch names it), by a later identical command, or, for full reads only, by a
-later full read of P. Paths are compared as written after joining with the
-call's `workdir`; the adapter never resolves symlinks or touches a filesystem. An
-unrecognized command form is treated as an opaque run, never as a read.
+A read form must split, with POSIX shell quoting rules, into exactly the tokens
+shown and one path. It must contain none of `|`, `&`, `;`, `<`, `>`, `` ` ``,
+`$`, `(`, `)`, `*`, `?`, `[`, or a newline outside the `sed` range. Any other
+form, including `cat` with two paths, is an opaque run, never a read.
+
+A read is superseded by a later edit of the same path, by a later identical
+statement (same `cmd` and same other arguments, such as `max_output_tokens`),
+or, for full reads only, by a later full read of P with the same other
+arguments. A run is superseded only by a later identical statement.
+
+Paths are compared lexically. A relative path joins the command's `workdir`
+argument when it has one, itself joined to the `<cwd>` of the latest environment
+context before the call when relative. Without a `workdir`, a relative path
+joins that `<cwd>`. Both paths are then normalized
+without touching a filesystem or resolving symlinks. If no `<cwd>` precedes a
+call, its relative paths are compared as written, so they never match an
+absolute path.
+
+The core's rules for results apply to each part:
+
+- A command result is an error when its part isn't a JSON object with an
+  integer `exit_code`, or when a read's `exit_code` isn't 0. A run with a
+  nonzero `exit_code`, such as a failing test suite, is an ordinary result.
+- A patch counts as an edit, and supersedes anything, only when its result
+  part is exactly `{}`.
+- A stubbed part keeps its position and type. Only its `text` becomes the stub
+  line. The 512-byte floor and the 4 KB threshold count part bytes.
 
 ### Proxy
 
 The proxy adds `POST /v1/responses` with the same pass-through guarantees:
 streamed server-sent events forwarded byte for byte, headers forwarded, no
-stored credentials, and unknown fields untouched. Codex is pointed at it with its
-base-URL override, for example `OPENAI_BASE_URL=http://127.0.0.1:8787/v1 codex`.
+stored credentials, and unknown fields untouched. Point Codex at it with an
+explicit model provider, because Codex ignores `OPENAI_BASE_URL`:
 
-### Before building
+```sh
+codex -c 'model_provider="erode"' \
+  -c 'model_providers.erode={name="erode",base_url="http://127.0.0.1:8787/v1",wire_api="responses",env_key="OPENAI_API_KEY"}'
+```
 
-1. Record real Codex traffic through the proxy in pass-through mode, with no
-   pruning: at least three multi-step Sessions. Confirm the item types above,
-   whether Codex resends full history (with `store: false`) or uses
-   `previous_response_id`, and how its shell and `apply_patch` calls appear on
-   the wire. If Codex uses `previous_response_id` by default, stage A.2 can't
-   prune its default traffic. Report that, and stop.
-2. Check whether a Codex CLI signed in with a ChatGPT account honors a custom
-   base URL, or whether only API-key sign-in does. Document the result; don't
-   work around it.
+Document that this routing needs an API key, and that ChatGPT sign-in routing
+is unverified. Don't work around it.
 
 ### Tests
 
 The stage A tests apply unchanged: determinism, idempotence, monotonic prefix,
 pairing, text untouched, unknown items untouched, and the 4 KB threshold. Stage
 A.2 adds:
+
+- recorded Sessions passing through unchanged with pruning off, and pruned
+  output that differs only in stubbed part text;
 - `previous_response_id` pass-through;
 - encrypted reasoning kept byte-identical;
-- each recognized read form, and a near-miss form (a pipe, a redirect, two
-  paths) that must not be treated as a read;
-- `apply_patch` path extraction for add, update, delete, and move;
-- partial reads not superseding one another.
+- each recognized read form, and near-miss forms that must stay runs: a pipe, a
+  redirect, `&&`, two paths, and a glob;
+- grammar failures that make a call opaque: `Promise.allSettled` (recorded), a
+  template literal, a single-quoted string, a JavaScript-only escape, and a
+  part-count mismatch;
+- `apply_patch` path extraction for add, update, delete, and move, and a failed
+  patch that supersedes nothing;
+- relative reads matched to absolute patch paths through `<cwd>`, and no match
+  without one;
+- a read with a nonzero `exit_code` never stubbed and never superseding;
+- partial reads not superseding one another, and differing `max_output_tokens`
+  blocking supersession between reads.
 
-Fixtures come from the recorded Codex Sessions in step 1, redacted to synthetic
-content.
+Fixtures are the recorded Codex requests in `contrib/erode/tests/fixtures/codex/`.
+Each recorded result is under the 4 KB threshold, so the tests that must stub
+use `min_new_bytes=0` or hand-written fixtures. Hand-written fixtures cover only
+the near-miss and edge cases in this list that the recordings don't contain,
+and their names mark them as hand-written.
 
 ## Out of scope for stage A
 
@@ -256,12 +351,17 @@ from the provider's actual prices.
    - that the output is deterministic and preserves tool-call pairing on real
      traffic.
 
+   `prune` counts OpenAI chat requests as skipped. If the recorded requests
+   are OpenAI chat, E0 reports the skip count and measures nothing else; record
+   pi's `anthropic-messages` traffic instead.
+
    Gate: if `prune` removes less than 20% of input bytes at the median across
    long Sessions (Phase 3 sources and multi-call continuations), report that
    and stop before E1. The replay estimates the opportunity only; it can't show
    how an agent behaves with pruned input, so it never replaces E1.
-1. **E1, reuse the existing harness (about 2 days).** Run pi through the
-   experiment gateway on long multi-step fixture tasks: several files to edit,
+1. **E1, reuse the existing harness (about 2 days).** Run pi, with its
+   `anthropic-messages` provider, through the experiment gateway on long
+   multi-step fixture tasks: several files to edit,
    checks rerun after each edit. Arms: passthrough and stage A. Two families × 3
    profiles × 2 repetitions × 2 arms = 24 runs. Targets: priced input cost at
    least 30% lower, and both-check passes no more than one below passthrough.
@@ -293,11 +393,40 @@ before E2 and report it. Stage B starts only
 if E1 or E2 shows that non-superseded tool output is still a large share of
 input.
 
+### E0 result: fails its gate
+
+E0 ran on 2026-09-29 over the 1,466 recorded coding requests; no model calls
+were made. Issue #134 records the counts.
+
+- **As specified.** pi sent every recorded request as OpenAI chat
+  (`openai-completions`). `prune` on `main` (e6303f6) skipped 1,200 as OpenAI
+  chat. The other 266 were each Session's first request, with no tool calls yet.
+  It applied no stubs and measured nothing else.
+- **Upper bound.** A what-if replay used the core from `6ad9007^`, the last
+  revision that pruned OpenAI chat, with the shipped policy. Without an error
+  flag, a failed call counts as a superseder, so every figure is an upper bound.
+  Across the 127 long Sessions (10 Phase 3 source Sessions and 117
+  continuations with at least 2 calls), it removed 0.00% of input bytes at the
+  median and at the maximum. It applied no stubs, so there are no cache-break
+  positions and no re-read rate. Output was deterministic, and tool-call pairing
+  was preserved, in all 1,466 requests.
+- **Why.** The median tool result was 165 bytes. Only 23 results of at least 512
+  bytes were ever superseded, about 18.8 KB across all long Sessions. With no
+  thresholds and no protected turns, the median was 0.36% (maximum 6.58%). Tool
+  results were 17.3% of input bytes, so stubbing all of them would still miss
+  the 20% gate. User messages, where the harness delivers context, were 45.8%.
+
+Following the gate, the evaluation stops before E1. Recording the same
+fixtures in the `anthropic-messages` format wouldn't change the result, since the
+traffic would look the same. These are small synthetic workspaces of about
+18 KB, so the result says nothing about real long Sessions with large file
+reads. Measuring the opportunity again needs recordings of such Sessions.
+
 ## Effort, debt, and risk
 
 | Item | Estimate |
 | --- | --- |
-| ADR 0027: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
+| ADR 0028: Sediment may transform requests in the request path (the LiteLLM hook and the proxy), opt-in, with captured input equal to model input | 1 day |
 | Stage A core, both format adapters, the LiteLLM hook, and tests | 2–3 days |
 | Stage A.1 proxy and pass-through tests | 1–2 days |
 | Stage A.2 Responses API adapter, proxy route, Codex traffic recording, and tests | 2–3 days |
@@ -318,10 +447,14 @@ Risks:
   model received.
 - **Provider-native formats aren't covered** (Bedrock and Vertex wrappers) until
   there's demand.
-- **Codex reads files through shell commands.** Recognizing reads from command
-  text is heuristic. The adapter only recognizes a short list of single-file
-  forms, and anything else is an opaque run, so a missed read costs savings,
-  never correctness. If Codex relies on `previous_response_id`, stage A.2 has
-  nothing to prune.
+- **Codex reads files through shell commands inside JavaScript.** Recognizing
+  reads from command text is heuristic. The adapter parses one strict statement
+  grammar and a short list of single-file read forms. Any other call is opaque
+  and any other command is a run, so a missed read costs savings, never
+  correctness.
+- **Codex's wire format is version-specific.** Codex CLI 0.158.0 wraps every
+  tool call in a JavaScript `exec` call. A later version can change that shape,
+  and the grammar then fails closed: the adapter stubs nothing. Record each
+  supported Codex version before claiming savings for it.
 - **Open core.** The transform serves a single team's pipeline, so it's open
   source under ADR 0006.
