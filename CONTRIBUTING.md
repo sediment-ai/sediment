@@ -605,6 +605,15 @@ Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
 source, or scanner error blocks the gate. Keep failed evidence for investigation.
 
+The gate also compares each Python, Node, PostgreSQL, libpq, and OpenSSL
+runtime with the latest upstream patch on its release line. Packagers such as
+Wolfi, `cryptography`, and uv's managed Python builds need time to ship an
+upstream patch. The gate fails 14 days after upstream tags the first patch that
+is newer than the installed runtime. Until then, the scan passes, and the
+`*.runtime-upstream.json` evidence records the pending patch and its deadline.
+Update the pins when a packaged build ships. A fix that a vulnerability scanner
+reports gets no such window.
+
 Automatic security runs check lint, formatting, review dates, and review
 digests before building. If a review expires, run the workflow manually to
 collect evidence, then review or remove the disposition. Manual and release

@@ -89,6 +89,12 @@
   checked, so tag releases enforce them too. Worker cleanup tests use a
   controlled process tree plus one installed-server interruption, and runtime
   failure tests share one validated build.
+- Give packagers 14 days to ship an upstream runtime patch before the security
+  gate fails. The OpenSSL 3.5.9, 3.6.5, and 4.0.3 releases on 2026-09-29 failed
+  every client and gateway scan while no Wolfi, `cryptography`, or uv build
+  carried them. The window starts at the first patch that is newer than the
+  installed runtime, and the runtime evidence records each pending patch and its
+  deadline. Fixes that a vulnerability scanner reports still fail at once.
 
 ## 0.3.0 — 2026-09-27
 
