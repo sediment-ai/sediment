@@ -241,23 +241,26 @@ def test_loaded_host_libpq_is_reviewed_and_latest_patch_is_still_required(
     entry = catalog["runtimes"]["libpq"][major]
     assert entry["end_of_support"] == end_of_support
     commands = []
-    monkeypatch.setattr(
-        scan,
-        "run",
-        lambda args: (
-            commands.append(args)
-            or json.dumps([{"ref": f"refs/tags/REL_{version.replace('.', '_')}"}])
-        ),
-    )
-    assert (
-        scan.live_runtime_maintenance({"libpq": version}, tmp_path / "runtime.json")
-        == []
-    )
+    sha = "c" * 40
+
+    def run(args):
+        commands.append(args)
+        if args[-1] == f"repos/postgres/postgres/git/commits/{sha}":
+            return json.dumps({"committer": {"date": "2026-08-13T12:00:00Z"}})
+        tag = f"refs/tags/REL_{version.replace('.', '_')}"
+        return json.dumps([{"ref": tag, "object": {"type": "commit", "sha": sha}}])
+
+    monkeypatch.setattr(scan, "run", run)
+    today = date(2026, 9, 29)
+    out = tmp_path / "runtime.json"
+    assert scan.live_runtime_maintenance({"libpq": version}, out, today) == []
     assert (
         commands[0][-1]
         == f"repos/postgres/postgres/git/matching-refs/tags/REL_{major}_"
     )
-    assert scan.live_runtime_maintenance({"libpq": stale}, tmp_path / "runtime.json")
+    assert scan.live_runtime_maintenance({"libpq": stale}, out, today) == [
+        f"libpq {stale}: a later upstream patch is available"
+    ]
 
 
 def test_native_probe_hashes_physical_files_and_omits_unknown_release_versions(

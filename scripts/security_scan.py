@@ -701,8 +701,34 @@ def live_maintenance(components: list[dict], catalog: dict, out: Path) -> list[s
     return errors
 
 
-def live_runtime_maintenance(runtimes: dict[str, str], out: Path) -> list[str]:
-    """Require the latest released patch on a separately reviewed support line."""
+# ponytail: one window for every runtime line; per-line windows in
+# security/maintenance.json if one packager's lag needs its own review.
+RUNTIME_PATCH_GRACE = timedelta(days=14)
+
+
+def _released_on(record: dict, repository: str | None) -> date:
+    """Date an upstream patch from its Node index entry or its git tag."""
+    if repository is None:
+        return date.fromisoformat(record["date"])
+    kind, sha = record["object"]["type"], record["object"]["sha"]
+    if kind not in {"tag", "commit"} or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("unrecognized upstream tag object")
+    detail = json.loads(run(["gh", "api", f"repos/{repository}/git/{kind}s/{sha}"]))
+    stamp = detail["tagger" if kind == "tag" else "committer"]["date"]
+    return datetime.fromisoformat(stamp).astimezone(UTC).date()
+
+
+def live_runtime_maintenance(
+    runtimes: dict[str, str], out: Path, today: date
+) -> list[str]:
+    """Require the latest released patch on a separately reviewed support line.
+
+    Packagers ship an upstream patch after it's tagged: Wolfi packages OpenSSL,
+    and the cryptography wheels and uv's managed Python bundle it. A missed
+    patch fails RUNTIME_PATCH_GRACE after upstream tags the first patch newer
+    than the installed one, so an older missed patch still fails at once.
+    Scanner-reported fixes get no window; check_vulnerabilities fails them.
+    """
     errors, evidence = [], []
     for name, installed in sorted(runtimes.items()):
         if name not in {
@@ -724,6 +750,7 @@ def live_runtime_maintenance(runtimes: dict[str, str], out: Path) -> list[str]:
                 records = _json_url("https://nodejs.org/dist/index.json")
                 candidates = [r["version"].removeprefix("v") for r in records]
                 source = "https://nodejs.org/dist/index.json"
+                repository = None
                 width = 1
             else:
                 repository, prefix, replacement = {
@@ -752,22 +779,37 @@ def live_runtime_maintenance(runtimes: dict[str, str], out: Path) -> list[str]:
                 ]
                 source = f"https://api.github.com/{path}"
                 width = 1 if upstream_name == "postgresql" else 2
-            stable = [
-                tuple(map(int, v.split(".")))
-                for v in candidates
+            stable = {
+                tuple(map(int, v.split("."))): record
+                for v, record in zip(candidates, records)
                 if re.fullmatch(r"\d+(?:\.\d+){1,2}", v)
-            ]
-            stable = [v for v in stable if v[:width] == version[:width]]
+            }
+            stable = {v: r for v, r in stable.items() if v[:width] == version[:width]}
             latest = max(stable)
-            evidence.append(
-                {
-                    "runtime": name,
-                    "installed": installed,
-                    "latest": ".".join(map(str, latest)),
-                    "source": source,
+            item = {
+                "runtime": name,
+                "installed": installed,
+                "latest": ".".join(map(str, latest)),
+                "source": source,
+            }
+            newer = [v for v in stable if v > version]
+            if newer:
+                first = min(newer)
+                released_on = _released_on(stable[first], repository)
+                deadline = released_on + RUNTIME_PATCH_GRACE
+                item["pending"] = {
+                    "version": ".".join(map(str, first)),
+                    "released_on": released_on.isoformat(),
+                    "deadline": deadline.isoformat(),
                 }
-            )
-            if version != latest:
+            evidence.append(item)
+            if newer and today <= deadline:
+                print(
+                    f"{name} {installed}: upstream patch {item['pending']['version']}"
+                    f" is pending until {deadline}",
+                    file=sys.stderr,
+                )
+            elif version != latest:
                 errors.append(
                     f"{name} {installed}: a later upstream patch is available"
                 )
@@ -892,6 +934,7 @@ def evaluate(
                 inventory["runtimes"],
                 out
                 / f"{inventory['artifact']}-{inventory['architecture']}.runtime-upstream.json",
+                today,
             )
         )
     return errors
