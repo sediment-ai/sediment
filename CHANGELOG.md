@@ -23,6 +23,12 @@
   gateway mounts it and passes the variable through. For other gateways, or
   agents that call a provider directly, run `erode proxy`. See
   [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+- Add the recorder and instance draw for evaluation E1 of the context-pruning
+  spec. `scripts/erode_record.py` runs the erode proxy with pruning off and
+  saves each `POST /v1/messages` body, in send order, as private numbered files.
+  `scripts/swe_bench_subset.py` draws E2's 50 SWE-bench Verified instances and
+  E1's candidates outside them; `scripts/erode_eval_instances.json` holds the
+  result.
 - Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
   Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
   strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
