@@ -1,0 +1,186 @@
+"""E0 what-if replay: pre-skip erode (6ad9007^) over the recorded #134 requests.
+
+Upper bound only: OpenAI chat tool results carry no error flag, so a failed
+edit or read counts as a superseder here. Not committed.
+"""
+
+import copy
+import glob
+import json
+import os
+import re
+import statistics
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent / "erode_preskip"))
+import core_preskip as core  # noqa: E402
+
+ROOT = Path("/root/bounded-private")
+POLICY = core.PrunePolicy()
+OUT = Path(__file__).parent / "out"
+OUT.mkdir(exist_ok=True)
+ERRORish = re.compile(
+    r"(?i)^(error\b|.{0,40}\b(no such file|not found|could not find|failed|"
+    r"exit code [1-9]|command exited with (?:code )?[1-9]|traceback))"
+)
+
+
+def size(obj) -> int:
+    return len(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode())
+
+
+def classify(gate_dir: Path) -> tuple[str, str]:
+    rel = gate_dir.relative_to(ROOT).parts
+    top = rel[0]
+    if top.startswith("p3-") and "source" in top:
+        group = "phase3-source"
+    elif top.startswith(("p3-",)) and "matrix" in top:
+        group = "phase3-continuation"
+    elif top.startswith(("p2", "gemma-matrix")) and "matrix" in top:
+        group = "p2-continuation" if top.startswith("p2") else "p1-continuation"
+    elif "source" in top:
+        group = "other-source"
+    else:
+        group = "other"  # preflights, diagnostics, screening
+    return group, "/".join(rel[:-1])
+
+
+def ordered_requests(gate_dir: Path):
+    items = []
+    for req in gate_dir.glob("*.request.json"):
+        meta = req.with_name(req.name.replace(".request.json", ".meta.json"))
+        started = None
+        if meta.exists():
+            started = json.loads(meta.read_text()).get("started_unix")
+        items.append((started if started is not None else os.stat(req).st_mtime, req))
+    items.sort()
+    return [r for _, r in items]
+
+
+def stub_positions(messages):
+    """Message indices whose tool content is a stub."""
+    out = set()
+    for i, m in enumerate(messages):
+        if m.get("role") == "tool":
+            t = core._text(m.get("content"))
+            if t is not None and t.startswith(core.STUB_PREFIX):
+                out.add(i)
+    return out
+
+
+def pairing_ok(before, after) -> bool:
+    if len(before) != len(after):
+        return False
+    for b, a in zip(before, after):
+        if b.get("role") != a.get("role"):
+            return False
+        if b.get("tool_calls") != a.get("tool_calls"):
+            return False
+        if b.get("tool_call_id") != a.get("tool_call_id"):
+            return False
+        if b.get("role") != "tool" and b != a:
+            return False  # only tool results may change
+        if b.get("role") == "tool" and b != a:
+            if {k for k in b if k != "content"} != {k for k in a if k != "content"}:
+                return False
+    return True
+
+
+def first_diff(a, b) -> int | None:
+    for i, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            return i
+    return None
+
+
+sessions = []
+checks = dict(requests=0, deterministic=0, pairing=0, stub_regressions=0,
+              raw_prefix_breaks=0, pruned_prefix_breaks_without_new_stub=0)
+for gate in sorted({p.parent for p in ROOT.glob("**/gate/*.request.json")}):
+    group, name = classify(gate)
+    reqs = ordered_requests(gate)
+    rows = []
+    prev_raw = prev_pruned = None
+    prev_stubs: set = set()
+    stub_first_seen = {}  # message index -> request ordinal
+    by_of = {}  # message index -> superseder call
+    suspicious = set()
+    for k, path in enumerate(reqs, 1):
+        body = json.loads(path.read_text())
+        out1, rep1 = core.prune_request(copy.deepcopy(body), POLICY)
+        out2, rep2 = core.prune_request(copy.deepcopy(body), POLICY)
+        checks["requests"] += 1
+        checks["deterministic"] += out1 == out2 and rep1 == rep2
+        msgs, pmsgs = body["messages"], out1["messages"]
+        checks["pairing"] += pairing_ok(msgs, pmsgs)
+        stubs = stub_positions(pmsgs)
+        new = sorted(stubs - prev_stubs)
+        if prev_stubs - stubs:
+            checks["stub_regressions"] += 1
+        # Cache prefix: does request k extend request k-1 (raw and pruned)?
+        break_at = None
+        if prev_raw is not None:
+            if first_diff(prev_raw, msgs) is not None:
+                checks["raw_prefix_breaks"] += 1
+            d = first_diff(prev_pruned, pmsgs[: len(prev_pruned)])
+            if d is not None and (not new or d < new[0]):
+                checks["pruned_prefix_breaks_without_new_stub"] += 1
+            break_at = d
+        if new:
+            calls, _ = core._calls(msgs)
+            by_msg = {c.where[0]: c for c in calls if c.where}
+            for i in new:
+                stub_first_seen[i] = k
+                call = by_msg.get(i)
+                # the superseder named in the stub text
+                step = int(re.search(r"by step (\d+)", core._text(pmsgs[i]["content"])).group(1))
+                sup = calls[step - 1]
+                by_of[i] = (call, sup)
+                sup_text = sup.text if sup.text is not None else ""
+                if ERRORish.search(sup_text.strip()[:200]):
+                    suspicious.add(i)
+        before, after = size(body), size(out1)
+        prefix_bytes = size(msgs[: new[0]]) if new else None
+        rows.append(dict(k=k, before=before, after=after,
+                         removed=before - after, new_stubs=len(new),
+                         first_new_msg=new[0] if new else None,
+                         messages=len(msgs), prefix_bytes_kept=prefix_bytes))
+        prev_raw, prev_pruned, prev_stubs = msgs, pmsgs, stubs
+
+    # Re-reads: after a stub first appears at request k, does the agent read
+    # (or run) the same target again in a call issued at request >= k?
+    rereads = 0
+    if stub_first_seen and reqs:
+        last = json.loads(reqs[-1].read_text())["messages"]
+        calls, _ = core._calls(last)
+        asst = [i for i, m in enumerate(last) if m.get("role") == "assistant"]
+        # request j produced the assistant message at index len(messages_j)
+        produced_by = {r["messages"]: r["k"] for r in rows}
+        for i, k in stub_first_seen.items():
+            call, sup = by_of[i]
+            later = []
+            for c in calls:
+                if c.target != call.target or c.kind is None or c.step <= sup.step:
+                    continue
+                same = (c.kind == core.RUN) if call.kind == core.RUN else (c.kind == core.READ)
+                j = produced_by.get(asst[c.turn]) if c.turn < len(asst) else None
+                if same and j is not None and j >= k:
+                    later.append(c)
+            rereads += bool(later)
+    total_before = sum(r["before"] for r in rows)
+    total_after = sum(r["after"] for r in rows)
+    sessions.append(dict(
+        session=name, group=group, requests=len(rows),
+        bytes_before=total_before, bytes_after=total_after,
+        removed_frac=(total_before - total_after) / total_before if total_before else 0,
+        last_before=rows[-1]["before"], last_after=rows[-1]["after"],
+        stubs=len(stub_first_seen), rereads=rereads,
+        stubs_superseded_by_errorish=len(suspicious),
+        breaks=[(r["k"], r["first_new_msg"], r["messages"], r["new_stubs"])
+                for r in rows if r["new_stubs"]],
+        per_request=rows))
+
+(OUT / "sessions.json").write_text(json.dumps(sessions, indent=1))
+(OUT / "checks.json").write_text(json.dumps(checks, indent=1))
+print(json.dumps(checks))
