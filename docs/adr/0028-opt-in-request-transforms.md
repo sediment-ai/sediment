@@ -44,7 +44,7 @@ become one stub line each.
 
 Decision: erode is MIT-licensed, like the `shims/` carve-out. The proxy and the
 hook run in front of other people's agents and inside other people's gateways,
-where AGPL blocks adoption. erode holds the core, the wire-format adapter,
+where AGPL blocks adoption. erode holds the core, the wire-format adapters,
 the LiteLLM hook, and the proxy. It imports nothing from Sediment and depends
 on nothing outside the Python standard library; the hook subclasses LiteLLM's
 `CustomLogger` only when LiteLLM is its host process.

@@ -114,7 +114,7 @@ def test_read_superseded_by_later_edit() -> None:
         "read it again if you need the current content]"
     )
     assert report == {
-        "policy_version": "3",
+        "policy_version": "4",
         "stubbed_results": 1,
         "bytes_removed": len(BIG) - len(stub),
     }
@@ -456,7 +456,7 @@ def test_openai_chat_requests_are_skipped_and_counted() -> None:
     pruned, report = prune(messages, POLICY)
     assert pruned is messages and messages == before
     assert report == {
-        "policy_version": "3",
+        "policy_version": "4",
         "stubbed_results": 0,
         "bytes_removed": 0,
         "skipped": "openai_chat",

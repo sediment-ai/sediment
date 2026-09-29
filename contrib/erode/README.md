@@ -38,7 +38,9 @@ erode never changes the following parts of a request:
 - Results under 512 bytes, and error results.
 - Output of any tool other than Claude Code's `Read`, `Edit`, `MultiEdit`,
   `Write`, and `Bash`, or pi's `read`, `edit`, `write`, and `bash`, in the
-  Anthropic Messages format.
+  Anthropic Messages format, or the Codex CLI `exec` calls described in
+  [Use erode with Codex CLI](#use-erode-with-codex-cli) (OpenAI Responses
+  format).
 - A request in the OpenAI chat format. Its tool results carry no error flag, so
   a failed edit looks like a successful one and would supersede a read the model
   still needs. The report counts the request as skipped.
@@ -46,6 +48,8 @@ erode never changes the following parts of a request:
   breakpoints.
 - A request that carries Anthropic `context_management`, which hands context
   editing or compaction to the provider.
+- A Responses request that sets `previous_response_id`, which keeps its history
+  on the server. The report counts it as skipped.
 
 erode applies new stubs only when they remove at least 4 KB, and the output is
 a pure function of the request. Each request reproduces the stubs of the
@@ -58,8 +62,9 @@ billed cost and task outcomes with erode on and off before you rely on it.
 
 ## Run the proxy
 
-The proxy prunes `POST /v1/messages` requests, logs `POST /v1/chat/completions`
-requests as skipped, and forwards every request to one upstream URL. It forwards the agent's
+The proxy prunes `POST /v1/messages` and `POST /v1/responses` requests, logs
+`POST /v1/chat/completions` requests as skipped, and forwards every request to
+one upstream URL. It forwards the agent's
 headers, including its credentials, unchanged. It stores nothing, adds no
 retries, and streams each response as it arrives.
 
@@ -84,7 +89,7 @@ retries, and streams each response as it arrives.
    ```
 
 The proxy logs a count-only report for each chat request:
-`erode_prune policy_version=3 stubbed_results=3 bytes_removed=48210 skipped=none`.
+`erode_prune policy_version=4 stubbed_results=3 bytes_removed=48210 skipped=none`.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |
@@ -99,6 +104,44 @@ a pass-through baseline to compare against.
 The proxy has no authentication of its own and relays whatever credentials an
 agent sends. If you bind it to an address other than loopback, restrict who can
 reach that address.
+
+## Use erode with Codex CLI
+
+Codex CLI 0.158.0 sends every tool call as a Responses `custom_tool_call` named
+`exec`, whose `input` is JavaScript that calls `tools.exec_command` and
+`tools.apply_patch`. erode parses that JavaScript with a strict line grammar
+and never runs it:
+
+- Each line must be exactly `text(await tools.exec_command({...}));` or
+  `text(await tools.apply_patch("..."));`, with JSON string, number, or boolean
+  values. Any other line makes the whole call opaque, and erode never stubs its
+  output.
+- `cat P` and `nl -ba P` are full reads of P. `head P`, `tail P`, and
+  `sed -n '<range>p' P` are partial reads, which only an edit of P or the
+  identical command supersedes. A form with a pipe, a redirect, `&&`, two paths,
+  a glob, or a variable is an ordinary command run.
+- Each path an `apply_patch` names in an `*** Add File:`, `*** Update File:`,
+  `*** Delete File:`, or `*** Move to:` line is an edit. A patch counts only when
+  its result is `{}`.
+- Relative paths join the command's `workdir` when it has one, and otherwise the
+  working directory from Codex's environment context. erode compares paths as
+  text and never touches the filesystem.
+- erode stubs individual results inside a bundled output and leaves the rest of
+  the output unchanged.
+
+Codex ignores `OPENAI_BASE_URL`, so point it at the proxy with an explicit model
+provider:
+
+```bash
+erode proxy --upstream https://api.openai.com
+codex -c 'model_provider="erode"' \
+  -c 'model_providers.erode={name="erode",base_url="http://127.0.0.1:8787/v1",wire_api="responses",env_key="OPENAI_API_KEY"}'
+```
+
+This routing needs an OpenAI API key in `OPENAI_API_KEY`. Routing a Codex that
+is signed in with a ChatGPT account through erode isn't verified. A Codex
+version that changes the `exec` shape fails closed: erode forwards its requests
+without stubs.
 
 ## Use the LiteLLM hook
 

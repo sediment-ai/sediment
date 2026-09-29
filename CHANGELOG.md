@@ -23,6 +23,13 @@
   gateway mounts it and passes the variable through. For other gateways, or
   agents that call a provider directly, run `erode proxy`. See
   [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+- Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
+  Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
+  strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
+  reads and `apply_patch` edits, and stubs individual results inside a bundled
+  output. Any other call shape passes through unchanged. Three recorded Codex
+  Sessions are the test fixtures. See
+  [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
 
 ### Command line
 

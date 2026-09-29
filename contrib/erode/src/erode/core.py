@@ -11,7 +11,7 @@ of command C by a later run of the identical command. A superseded result
 keeps its message and its tool-call pairing; its content becomes one stub
 line. Everything else passes through untouched: system, user, and assistant
 text, tool calls, the last two turns, small results, error results, and tools
-the adapter doesn't know.
+the adapters don't know.
 
 OpenAI chat requests pass through unpruned, and the report counts them as
 skipped. A role ``tool`` message carries no error flag, so a failed read or
@@ -26,6 +26,11 @@ stub first appears. New stubs are applied in batches of at least
 are replayed from the request itself: boundary m is the request that holds the
 first m assistant messages.
 
+``prune_input`` does the same for an OpenAI Responses ``input`` list, with the
+adapter for Codex CLI's ``exec`` calls: JavaScript that the adapter parses with
+a strict line grammar and never evaluates. A call outside that grammar is
+opaque, so a missed read costs savings, never correctness.
+
 ``prune_request`` is the entry point for a whole request body. A request that
 carries Anthropic ``context_management`` hands context editing or compaction to
 the provider, so it passes through untouched. A client-side compaction request,
@@ -36,6 +41,11 @@ any other request.
 
 from __future__ import annotations
 
+import html
+import json
+import posixpath
+import re
+import shlex
 from dataclasses import dataclass
 from typing import Any
 
@@ -58,10 +68,24 @@ ANTHROPIC_TOOLS = {
 }
 _TARGET_CHARS = 160  # keeps every stub far below min_result_bytes
 
+# Codex CLI (Responses API): every tool call is a custom_tool_call named exec,
+# one statement per line. Anything else on a line makes the call opaque.
+# Statements are parsed with string operations and JSON decoding, never a
+# backtracking pattern: the input is agent-controlled.
+_STATEMENT_HEADS = {
+    "exec_command": "text(await tools.exec_command(",
+    "apply_patch": "text(await tools.apply_patch(",
+}
+_STATEMENT_TAIL = "));"
+_PATCH_PATH = re.compile(r"^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$", re.M)
+_CWD = re.compile(r"<cwd>([^<]*)</cwd>")
+_SHELL_META = frozenset("|&;<>`$()*?[\n")
+_SED_RANGE = re.compile(r"\d+(?:,\d+)?p")
+
 
 @dataclass(frozen=True)
 class PrunePolicy:
-    policy_version: str = "3"
+    policy_version: str = "4"
     min_result_bytes: int = 512
     min_new_bytes: int = 4096
     protected_turns: int = 2
@@ -74,10 +98,11 @@ class _Call:
     name: str
     kind: str | None
     target: str | None
-    span: tuple[Any, Any] = (None, None)  # a read's (offset, limit)
-    where: tuple[int, int | None] | None = None  # result (message, block)
+    span: tuple = (None, None)  # which part of the target a read covers
+    where: tuple | None = None  # result (message, block, part)
     text: str | None = None  # result text, when its shape is prunable
     error: bool = False
+    shown: str | None = None  # the target as a stub names it, if not target
 
 
 def _text(content: Any) -> str | None:
@@ -142,8 +167,220 @@ def _calls(messages: list) -> tuple[list[_Call], int]:
                     continue
                 call = by_id.get(str(block.get("tool_use_id")))
                 if call is not None and call.where is None:
-                    call.where, call.text = (i, j), _text(block.get("content"))
+                    call.where = (i, j, None)
+                    call.text = _text(block.get("content"))
                     call.error = block.get("is_error") is True
+    return calls, turn + 1
+
+
+def _statements(source: Any) -> list[tuple[str, Any]] | None:
+    """Parse a Codex exec call's JavaScript, or None when it's opaque."""
+    if not isinstance(source, str):
+        return None
+    statements: list[tuple[str, Any]] = []
+    for line in source.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        found = _statement(line)
+        if found is None:
+            return None
+        tool, argument = found
+        try:
+            if tool == "apply_patch":
+                value = json.loads(argument)
+                if not isinstance(value, str):
+                    return None
+            else:
+                value = _arguments(argument)
+                if value is None or not isinstance(value.get("cmd"), str):
+                    return None
+        except ValueError:  # a JavaScript-only escape, for example
+            return None
+        statements.append((tool, value))
+    return statements or None
+
+
+def _statement(line: str) -> tuple[str, str] | None:
+    """(tool, argument source) for one recognized statement line, else None."""
+    if not line.endswith(_STATEMENT_TAIL):
+        return None
+    for tool, head in _STATEMENT_HEADS.items():
+        if line.startswith(head):
+            return tool, line[len(head) : -len(_STATEMENT_TAIL)]
+    return None
+
+
+def _arguments(source: str) -> dict | None:
+    """``{key:value, ...}`` with identifier keys and JSON scalar values."""
+    source = source.strip()
+    if not (source.startswith("{") and source.endswith("}")):
+        return None
+    body, arguments, position = source[1:-1], {}, 0
+    decoder = json.JSONDecoder(parse_constant=_reject)
+    while True:
+        colon = body.find(":", position)
+        if colon < 0:
+            return None if body[position:].strip() else arguments
+        key = body[position:colon].strip()
+        if not (key.isascii() and key.replace("$", "_").isidentifier()):
+            return None
+        if key in arguments:
+            return None
+        start = colon + 1
+        while start < len(body) and body[start].isspace():
+            start += 1
+        value, end = decoder.raw_decode(body, start)
+        if isinstance(value, (dict, list)) or value is None:
+            return None
+        arguments[key] = value
+        while end < len(body) and body[end].isspace():
+            end += 1
+        if end == len(body):
+            return arguments
+        if body[end] != ",":
+            return None
+        position = end + 1
+
+
+def _reject(constant: str) -> None:
+    raise ValueError(constant)  # NaN and Infinity aren't JSON
+
+
+def _codex_path(path: str, cwd: str | None) -> str:
+    """Join a relative path to cwd and normalize it, lexically only."""
+    if cwd is not None and not path.startswith("/"):
+        path = posixpath.join(cwd, path)
+    return posixpath.normpath(path) if path.startswith("/") else path
+
+
+def _codex_read(cmd: str, cwd: str | None) -> tuple[str, str] | None:
+    """(path, "full" or "partial") for a recognized read form, else None."""
+    try:
+        tokens = shlex.split(cmd)
+    except ValueError:
+        return None
+    if len(tokens) == 4 and tokens[:2] == ["sed", "-n"]:
+        if not _SED_RANGE.fullmatch(tokens[2]):
+            return None
+        form, path = "partial", tokens[3]
+    elif len(tokens) == 2 and tokens[0] in ("head", "tail"):
+        form, path = "partial", tokens[1]  # the first or last lines only
+    elif len(tokens) == 2 and tokens[0] == "cat":
+        form, path = "full", tokens[1]
+    elif len(tokens) == 3 and tokens[:2] == ["nl", "-ba"]:
+        form, path = "full", tokens[2]
+    else:
+        return None
+    if _SHELL_META & set(cmd) or path.startswith("-"):
+        return None
+    return _codex_path(path, cwd), form
+
+
+def _codex_calls(
+    step: int, turn: int, statements: list[tuple[str, Any]], cwd: str | None
+) -> list[list[_Call]]:
+    """Normalized calls per statement; a patch yields one call per path."""
+    result = []
+    for tool, value in statements:
+        step += 1
+        if tool == "apply_patch":
+            paths = [
+                _codex_path(p.rstrip("\r"), cwd) for p in _PATCH_PATH.findall(value)
+            ]
+            result.append([_Call(step, turn, tool, WRITE, p) for p in paths])
+            continue
+        cmd = value["cmd"]
+        others = json.dumps(
+            {k: v for k, v in value.items() if k != "cmd"}, sort_keys=True
+        )
+        # A call's workdir, absolute or relative to cwd, is where it runs.
+        workdir = value.get("workdir", cwd)
+        if "workdir" in value and (not isinstance(workdir, str) or not workdir):
+            read = None  # an unreadable workdir: treat the command as a run
+        else:
+            base = workdir if cwd is None else posixpath.join(cwd, workdir)
+            read = _codex_read(cmd, base)
+        if read is None:
+            call = _Call(step, turn, tool, RUN, cmd + "\x00" + others, shown=cmd)
+        else:
+            path, form = read
+            span = ("full", others) if form == "full" else ("partial", cmd, others)
+            call = _Call(step, turn, tool, READ, path, span)
+        result.append([call])
+    return result
+
+
+def _part_result(call: _Call, text: str) -> None:
+    """Record one output part as a call's result, with its error state."""
+    call.text = text
+    if text.startswith(STUB_PREFIX):
+        return  # stubbed by an earlier pass: it was a valid result
+    if call.kind == WRITE:
+        call.error = text != "{}"
+        return
+    try:
+        result = json.loads(text)
+    except ValueError:
+        result = None
+    code = result.get("exit_code") if isinstance(result, dict) else None
+    call.error = (
+        not isinstance(code, int)
+        or isinstance(code, bool)
+        or (call.kind == READ and code != 0)
+    )
+
+
+def _input_side(item: dict) -> bool:
+    kind = item.get("type")
+    if kind == "message":
+        return item.get("role") != "assistant"
+    return kind == "additional_tools" or str(kind).endswith("_output")
+
+
+def _responses_calls(items: list) -> tuple[list[_Call], int]:
+    """Normalize a Responses input list, as Codex CLI sends it."""
+    calls: list[_Call] = []
+    pending: dict[str, list[list[_Call]]] = {}
+    steps, turn, after_input, cwd = 0, -1, True, None
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        side = _input_side(item)
+        if not side and after_input:
+            turn += 1  # a turn is one model response's run of output items
+        after_input = side
+        kind = item.get("type")
+        if kind == "message" and item.get("role") == "user":
+            for part in item.get("content") or []:
+                text = part.get("text") if isinstance(part, dict) else None
+                if isinstance(text, str) and "<environment_context>" in text:
+                    found = _CWD.search(text)
+                    if found is not None:
+                        cwd = html.unescape(found.group(1))
+        elif kind == "custom_tool_call" and item.get("name") == "exec":
+            statements = _statements(item.get("input"))
+            call_id = str(item.get("call_id"))
+            if statements is None or call_id in pending:
+                continue
+            grouped = _codex_calls(steps, turn, statements, cwd)
+            steps += len(grouped)
+            pending[call_id] = grouped
+        elif kind == "custom_tool_call_output":
+            grouped = pending.pop(str(item.get("call_id")), None)
+            parts = item.get("output")
+            if grouped is None or not isinstance(parts, list):
+                continue
+            texts = [p.get("text") if isinstance(p, dict) else None for p in parts]
+            if len(parts) != len(grouped) + 1 or not all(
+                isinstance(t, str) for t in texts
+            ):
+                continue  # opaque: the parts don't map onto the statements
+            for k, group in enumerate(grouped, start=1):
+                for call in group:
+                    call.where = (i, None, k)
+                    _part_result(call, texts[k])
+                calls += group
     return calls, turn + 1
 
 
@@ -160,7 +397,7 @@ def _supersedes(later: _Call, earlier: _Call) -> bool:
 
 
 def _stub(by: _Call) -> str:
-    target = by.target or ""
+    target = by.shown or by.target or ""
     if len(target) > _TARGET_CHARS:
         target = target[: _TARGET_CHARS - 1] + "…"
     again = "run it again" if by.kind == RUN else "read it again"
@@ -175,6 +412,14 @@ def _replace(content: Any, stub: str) -> Any:
     return stub if isinstance(content, str) else [{"type": "text", "text": stub}]
 
 
+def _report(policy: PrunePolicy) -> dict:
+    return {
+        "policy_version": policy.policy_version,
+        "stubbed_results": 0,
+        "bytes_removed": 0,
+    }
+
+
 def _openai_chat(messages: list) -> bool:
     return any(
         isinstance(m, dict) and (m.get("role") == "tool" or bool(m.get("tool_calls")))
@@ -184,18 +429,26 @@ def _openai_chat(messages: list) -> bool:
 
 def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
     """Return the messages the model sees and a count-only report."""
-    report = {
-        "policy_version": policy.policy_version,
-        "stubbed_results": 0,
-        "bytes_removed": 0,
-    }
     if not isinstance(messages, list):
-        return messages, report
+        return messages, _report(policy)
     if _openai_chat(messages):
         # No error flag on OpenAI chat tool results: nothing here is provably
         # superseded, but it's counted.
-        return messages, {**report, "skipped": "openai_chat"}
-    calls, turns = _calls(messages)
+        return messages, {**_report(policy), "skipped": "openai_chat"}
+    return _prune(messages, *_calls(messages), policy)
+
+
+def prune_input(items: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
+    """Return the Responses ``input`` items the model sees and a report."""
+    if not isinstance(items, list):
+        return items, _report(policy)
+    return _prune(items, *_responses_calls(items), policy)
+
+
+def _prune(
+    messages: list, calls: list[_Call], turns: int, policy: PrunePolicy
+) -> tuple[list, dict]:
+    report = _report(policy)
 
     by_target: dict[tuple[str, str], list[_Call]] = {}
     for call in calls:
@@ -243,9 +496,13 @@ def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
     result = list(messages)
     for call, by, size in applied:
         stub = _stub(by)
-        i, j = call.where
+        i, j, k = call.where
         message = dict(result[i])
-        if j is None:
+        if k is not None:
+            parts = list(message["output"])
+            parts[k] = dict(parts[k], text=stub)
+            message["output"] = parts
+        elif j is None:
             message["content"] = _replace(message.get("content"), stub)
         else:
             blocks = list(message["content"])
@@ -260,16 +517,26 @@ def prune(messages: list[dict], policy: PrunePolicy) -> tuple[list[dict], dict]:
 
 
 def prune_request(request: Any, policy: PrunePolicy) -> tuple[Any, dict | None]:
-    """Prune a request body's messages; None when the request isn't prunable.
+    """Prune a request body; the report is None when it isn't prunable.
 
-    Returns the request itself when nothing changes, else a shallow copy with
-    new messages. Every other field, ``cache_control`` included, is untouched.
+    Chat and Messages requests carry ``messages``; Responses requests carry an
+    ``input`` list. Returns the request itself when nothing changes, else a
+    shallow copy with the new list. Every other field, ``cache_control``
+    included, is untouched.
     """
-    if not isinstance(request, dict) or not isinstance(request.get("messages"), list):
-        return request, None
-    if "context_management" in request:
+    if not isinstance(request, dict) or "context_management" in request:
         return request, None  # the provider manages this request's context
-    messages, report = prune(request["messages"], policy)
+    if isinstance(request.get("messages"), list):
+        key = "messages"
+        pruned, report = prune(request[key], policy)
+    elif isinstance(request.get("input"), list):
+        if request.get("previous_response_id") is not None:
+            # Server-side history: nothing here to prune, but it's counted.
+            return request, {**_report(policy), "skipped": "previous_response_id"}
+        key = "input"
+        pruned, report = prune_input(request[key], policy)
+    else:
+        return request, None
     if not report["stubbed_results"]:
         return request, report
-    return {**request, "messages": messages}, report
+    return {**request, key: pruned}, report

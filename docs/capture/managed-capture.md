@@ -210,7 +210,8 @@ Sediment never changes the following parts of a request:
 - Results under 512 bytes, and error results.
 - Output of any tool other than Claude Code's `Read`, `Edit`, `MultiEdit`,
   `Write`, and `Bash`, or pi's `read`, `edit`, `write`, and `bash`, in the
-  Anthropic Messages format. The [pi provider](#pi) uses that format.
+  Anthropic Messages format, or the Codex CLI `exec` calls that the erode README
+  describes. The [pi provider](#pi) uses the Anthropic Messages format.
 - A request in the OpenAI chat format. Its tool results carry no error flag, so
   erode can't tell a failed edit from a successful one. The `sediment_context`
   report records the request as skipped.
@@ -274,10 +275,10 @@ Each captured Inference call keeps the request that the model received. Its
 ### Run the pruning proxy
 
 The pruning proxy is the `erode proxy` command. It prunes
-`POST /v1/chat/completions` and `POST /v1/messages` requests and forwards
-every request to one upstream URL. It forwards the agent's headers, including
-its credentials, unchanged. It stores nothing, adds no retries, and streams
-each response as it arrives.
+`POST /v1/chat/completions`, `POST /v1/messages`, and `POST /v1/responses`
+requests and forwards every request to one upstream URL. It forwards the
+agent's headers, including its credentials, unchanged. It stores nothing, adds
+no retries, and streams each response as it arrives.
 
 1. On a host with Python 3.12, install erode from a Sediment checkout:
 
@@ -298,6 +299,10 @@ each response as it arrives.
    ```bash
    ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude
    ```
+
+   Codex CLI ignores `OPENAI_BASE_URL` and needs an explicit model provider
+   and an OpenAI API key; see
+   [Use erode with Codex CLI](../../contrib/erode/README.md#use-erode-with-codex-cli).
 
 To chain the proxy in front of a gateway, pass the gateway's URL as
 `--upstream`, and route agents to the proxy with the settings in

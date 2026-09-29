@@ -4,9 +4,9 @@ The erode proxy: a standard-library HTTP pass-through around ``prune_request``.
 
 Run it with ``erode proxy --upstream <url>`` and point an agent at it, for
 example ``ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude``. The proxy prunes
-``POST /v1/messages`` bodies and logs ``POST /v1/chat/completions`` bodies as
-skipped. Every other
-request, and any body that isn't a JSON object with a ``messages`` list, is
+``POST /v1/messages`` and ``POST /v1/responses`` bodies and logs
+``POST /v1/chat/completions`` bodies as skipped. Every other request, and any
+body that isn't a JSON object with a ``messages`` or ``input`` list, is
 forwarded unchanged. With pruning off, the proxy is a pure pass-through.
 
 The proxy forwards the agent's headers, including its credentials, and stores
@@ -27,7 +27,7 @@ from erode.core import PrunePolicy, prune_request
 
 logger = logging.getLogger("erode.proxy")
 
-PRUNED_ROUTES = frozenset({"/v1/chat/completions", "/v1/messages"})
+PRUNED_ROUTES = frozenset({"/v1/chat/completions", "/v1/messages", "/v1/responses"})
 # Connection-scoped headers (RFC 9110 section 7.6.1) belong to one hop only.
 HOP_BY_HOP = frozenset(
     {
