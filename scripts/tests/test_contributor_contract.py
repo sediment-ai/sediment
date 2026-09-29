@@ -30,6 +30,45 @@ def _frontmatter(relative: str) -> tuple[dict, str]:
     return parsed, body
 
 
+def test_managed_postgres_url_helper_keeps_passwords_out_of_process_arguments():
+    helpers = next(
+        block
+        for block in re.findall(r"```bash\n(.*?)```", _read("CONTRIBUTING.md"), re.S)
+        if "db_url()" in block
+    )
+    # Observe Python's argument boundary, then run the documented encoder.
+    guard = """
+python3() {
+  for argument; do
+    case "$argument" in
+      *synthetic-master*) echo 'password reached Python arguments' >&2; return 91 ;;
+    esac
+  done
+  command python3 "$@"
+}
+"""
+    result = subprocess.run(
+        ["bash"],
+        input=guard + helpers + "\ndb_url admin 'synthetic-master:/?@' qualification\n",
+        env={
+            **os.environ,
+            "PGHOST": "db.example.test",
+            "PGPORT": "5432",
+            "PGSSLROOTCERT": "/tmp/certificate bundle.pem",
+        },
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    assert result.stdout == (
+        "postgresql+psycopg://admin:synthetic-master%3A%2F%3F%40"
+        "@db.example.test:5432/qualification?sslmode=verify-full"
+        "&sslrootcert=%2Ftmp%2Fcertificate%20bundle.pem"
+    )
+
+
 def test_contributor_markdown_is_visible_in_a_clean_clone_and_status(tmp_path) -> None:
     clone = tmp_path / "clone"
     subprocess.run(

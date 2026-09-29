@@ -1279,7 +1279,10 @@ end. Post the record in the service's qualification issue.
 
    ```bash
    secret() { openssl rand -hex 32; }
-   encode() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"; }
+   encode() {
+     printf '%s' "$1" | python3 -c \
+       'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=""))'
+   }
    # db_url ROLE PASSWORD DATABASE prints a Sediment URL that verifies TLS.
    db_url() {
      printf 'postgresql+psycopg://%s:%s@%s:%s/%s?sslmode=verify-full&sslrootcert=%s' \
