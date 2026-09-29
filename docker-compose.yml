@@ -181,12 +181,14 @@ services:
       SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN: http://api:8000
       SEDIMENT_API_BEARER_TOKEN: "${SEDIMENT_GATEWAY_INGEST_TOKEN:-}"
       SEDIMENT_DELIVERY_DIR: "${SEDIMENT_DELIVERY_DIR:-}"
+      SEDIMENT_CONTEXT_PRUNE: "${SEDIMENT_CONTEXT_PRUNE:-}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:-}"
       PYTHONPATH: /app
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
       - ./litellm/sediment_callback.py:/app/sediment_callback.py:ro
+      - ./contrib/erode/src/erode:/app/erode:ro
       - ./cli/sediment_cli/delivery.py:/app/sediment_delivery.py:ro
       - sediment-delivery:/data/delivery
     tmpfs: ["/tmp:size=512m,mode=1777"]
