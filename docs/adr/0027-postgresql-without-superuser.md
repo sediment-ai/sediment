@@ -1,7 +1,9 @@
 # ADR 0027 — Run on PostgreSQL without a superuser
 
-Status: accepted, implementation pending
-([#191](https://github.com/sediment-ai/sediment/issues/191)). Design:
+Status: accepted, implemented
+([#191](https://github.com/sediment-ai/sediment/issues/191)); managed-service
+qualification pending
+([#199](https://github.com/sediment-ai/sediment/issues/199)). Design:
 [#185](https://github.com/sediment-ai/sediment/issues/185).
 
 Amends [ADR 0012](0012-postgresql-fact-store.md)'s migration and startup
@@ -182,10 +184,12 @@ an explicit host.
 - **Backup.** Provider snapshots and point-in-time recovery are the primary
   backup for a managed service. A logical backup runs `pg_dump` as the
   migrator, which can read every object, including the identity sequence.
-- **Restore.** Prepare an empty database with the provision step or the
-  administrator's SQL, run `pg_restore --no-owner --no-privileges` as the
-  migrator, then start or run `sediment db upgrade`. The restored objects belong to the migrator, so
-  restoration doesn't need `_transfer_known_tables`. That adoption path stays
+- **Restore.** Prepare an empty database with the administrator's SQL, run
+  `pg_restore --no-owner --no-privileges` as the migrator, then start or run
+  `sediment db upgrade`. The provision step can't prepare a restore target,
+  because it also runs the migrate step, which creates the schema. The
+  restored objects belong to the migrator, so restoration doesn't need
+  `_transfer_known_tables`. That adoption path stays
   for superuser provisioning of databases that predate the role model.
 
 ### Qualification before compatibility claims
