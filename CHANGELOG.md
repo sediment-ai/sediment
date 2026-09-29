@@ -30,6 +30,10 @@
   output. Any other call shape passes through unchanged. Three recorded Codex
   Sessions are the test fixtures. See
   [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
+- Add `scripts/erode_replay.py`, the offline replay for evaluation E1 of the
+  context-pruning spec. It reads recorded Anthropic Messages request bodies
+  from a directory, groups them into Sessions, replays each request through
+  erode's `prune`, and writes a counts-only JSON report with E1's gate ratio.
 
 ### Command line
 

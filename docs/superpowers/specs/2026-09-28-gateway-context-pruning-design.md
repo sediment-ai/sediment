@@ -386,8 +386,9 @@ provider's actual prices.
      until at least 3 Sessions are long. None of E0's Sessions reached 20; the
      longest had 16.
    - **Replay.** Run each Session's requests, in order, through `prune` with the
-     default `PrunePolicy`. The replay tool reads request bodies from a
-     directory given on the command line and writes counts only. It reports
+     default `PrunePolicy`. The replay tool, `scripts/erode_replay.py`, reads
+     request bodies from a directory given on the command line and writes
+     counts only. It reports
      E0's measures, plus:
      - each Session's input bytes by part: user messages, tool results, tool
        schema, system prompt, and assistant turns;
