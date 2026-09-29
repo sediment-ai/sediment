@@ -3,7 +3,8 @@
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
 Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
 Status: stage A, A.1, and A.2 are built. E0 failed its gate on the issue #134
-recordings; see [E0 result](#e0-result-fails-its-gate).
+recordings; see [E0 result](#e0-result-fails-its-gate). E1 now replays recorded
+real Sessions instead of rerunning the issue #134 harness.
 
 ## Thesis
 
@@ -28,6 +29,11 @@ is added only where the deterministic rule leaves a measured gap.
 - 80% to 90% of coding input was provider cache reads. Any change to an earlier
   message breaks the cached prefix from that point, so a saving must be measured
   in priced tokens, not raw tokens.
+- The resent history in these experiments was mostly context the harness
+  delivered in user messages, not stale tool output. In E0's long Sessions, user
+  messages were 45.8% of input bytes and tool results 17.3%, with a median tool
+  result of 165 bytes. So issue #134 shows that resending dominates, but not
+  that superseded tool output does; E1 tests that on real Sessions.
 
 ## Build (stage A): deterministic supersession, per request
 
@@ -333,9 +339,9 @@ digest. User and assistant text stay out of scope.
 
 ## Evaluation
 
-The targets are fixed before any run. E1 reports priced tokens: uncached input,
-plus cached input at the provider's discount, plus output. E2 reports billed cost
-from the provider's actual prices.
+The targets are fixed before any run. E0 and E1 replay recorded requests, so
+they report input bytes. E2 runs the agent, so it reports billed cost from the
+provider's actual prices.
 
 0. **E0, replay recorded requests (about half a day, no model calls).** Every
    coding request in the issue #134 experiments was recorded in full by the
@@ -359,12 +365,28 @@ from the provider's actual prices.
    long Sessions (Phase 3 sources and multi-call continuations), report that
    and stop before E1. The replay estimates the opportunity only; it can't show
    how an agent behaves with pruned input, so it never replaces E1.
-1. **E1, reuse the existing harness (about 2 days).** Run pi, with its
-   `anthropic-messages` provider, through the experiment gateway on long
-   multi-step fixture tasks: several files to edit,
-   checks rerun after each edit. Arms: passthrough and stage A. Two families × 3
-   profiles × 2 repetitions × 2 arms = 24 runs. Targets: priced input cost at
-   least 30% lower, and both-check passes no more than one below passthrough.
+1. **E1, replay recorded real Sessions (about 1 day, plus model spend for 3 to
+   5 Sessions).** This replaces the original E1, which reran the issue #134
+   harness and fixtures: E0 showed that their tool output is too small to prune.
+   - **Record.** Run Claude Code on a frontier model, with its default settings,
+     on SWE-bench Verified instances drawn with E2's seed procedure but outside
+     E2's 50-instance subset, so E2 stays held out. Route each Session through a
+     recorder: `erode.proxy.make_server(upstream, prune=False)`, wrapped to save
+     each `POST /v1/messages` body before forwarding it, as the stage A.2 Codex
+     recordings were made. The proxy changes nothing, so the traffic is the
+     agent's own. Record until at least 3 Sessions have 20 or more model
+     requests; those are the long Sessions.
+   - **Keep the recordings private.** They hold prompts and repository content.
+     Reports carry counts only.
+   - **Replay.** Run each Session's requests, in order, through `prune` with the
+     default `PrunePolicy`. Report E0's measures, plus each Session's input bytes
+     by part (user messages, tool results, tool schema, system prompt, and
+     assistant turns), as E0's result does.
+
+   Gate: E1 passes when `prune` removes at least 20% of input bytes at the median
+   across the long Sessions. Like E0, the replay estimates the opportunity only;
+   it can't show how the agent behaves with pruned input, so it never replaces
+   E2.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
    random 50-instance subset of SWE-bench Verified, run with Claude Code on a
    frontier model through the stage A.1 proxy. The comparison is against what
@@ -388,9 +410,8 @@ from the provider's actual prices.
    plain pass-through run without compaction is a secondary diagnostic, not the
    comparison.
 
-If E0 misses its gate, stop before E1. If E1 misses its token target, stop
-before E2 and report it. Stage B starts only
-if E1 or E2 shows that non-superseded tool output is still a large share of
+If E1 misses its gate, stop before E2 and report it. Stage B starts only if
+E1 or E2 shows that non-superseded tool output is still a large share of
 input.
 
 ### E0 result: fails its gate
@@ -416,11 +437,13 @@ were made. Issue #134 records the counts.
   results were 17.3% of input bytes, so stubbing all of them would still miss
   the 20% gate. User messages, where the harness delivers context, were 45.8%.
 
-Following the gate, the evaluation stops before E1. Recording the same
+Following the gate, the evaluation stopped before the original E1, which
+reran the same harness and fixtures. Recording the same
 fixtures in the `anthropic-messages` format wouldn't change the result, since the
 traffic would look the same. These are small synthetic workspaces of about
 18 KB, so the result says nothing about real long Sessions with large file
-reads. Measuring the opportunity again needs recordings of such Sessions.
+reads. Measuring the opportunity again needs recordings of such Sessions, which
+the revised E1 makes.
 
 ## Effort, debt, and risk
 
@@ -430,7 +453,7 @@ reads. Measuring the opportunity again needs recordings of such Sessions.
 | Stage A core, both format adapters, the LiteLLM hook, and tests | 2–3 days |
 | Stage A.1 proxy and pass-through tests | 1–2 days |
 | Stage A.2 Responses API adapter, proxy route, Codex traffic recording, and tests | 2–3 days |
-| E1 | about 2 days |
+| E1 | about 1 day, plus model spend for 3 to 5 recorded Sessions |
 | E2 | about 1 week, plus model spend |
 
 Risks:
@@ -440,7 +463,7 @@ Risks:
 - **Harness message formats change.** Adapters are small, and unknown shapes
   pass through untouched.
 - **An agent may re-read a stubbed file.** That's acceptable: the stub states how
-  to fetch the current content, and E1 counts the extra calls.
+  to fetch the current content, and E2 counts the extra calls.
 - **The gateway stops being passive capture.** The capture docs promise "Sediment
   stays out of the LLM request path". Both delivery modes must stay opt-in, the
   ADR must amend that statement, and captured input must remain exactly what the
