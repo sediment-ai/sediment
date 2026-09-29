@@ -208,11 +208,18 @@ Options:
 
 ### sediment db provision
 
-Read SEDIMENT_BOOTSTRAP_DATABASE_URL, SEDIMENT_MIGRATOR_PASSWORD, SEDIMENT_RUNTIME_PASSWORD, and SEDIMENT_OPERATOR_PASSWORD from the environment. Stop services before provisioning.
+Read SEDIMENT_BOOTSTRAP_DATABASE_URL, SEDIMENT_MIGRATOR_PASSWORD, SEDIMENT_RUNTIME_PASSWORD, and SEDIMENT_OPERATOR_PASSWORD from the environment. SEDIMENT_MIGRATOR_ROLE, SEDIMENT_RUNTIME_ROLE, and SEDIMENT_OPERATOR_ROLE name the roles. Stop services before provisioning.
 
 ```text
-sediment db provision [-h]
+sediment db provision [-h] [--print-sql] [--database DATABASE]
 ```
+
+Options:
+
+| Name | Default | Description |
+|---|---|---|
+| `--print-sql` | `false` | print the SQL that an administrator runs to provision the roles instead, without connecting |
+| `--database` | — | database for --print-sql (default: the database in SEDIMENT_MIGRATOR_DATABASE_URL or SEDIMENT_DATABASE_URL) |
 
 ## sediment quarantine
 

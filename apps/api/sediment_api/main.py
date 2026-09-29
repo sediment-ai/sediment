@@ -22,7 +22,7 @@ from sediment_core.postgres_migrations import (
     RevisionState,
     inspect_engine_revision,
 )
-from sediment_core.postgres_roles import validate_runtime_privileges
+from sediment_core.postgres_roles import RoleNames, validate_runtime_privileges
 from sqlalchemy.exc import (
     DisconnectionError,
     InterfaceError,
@@ -67,6 +67,10 @@ for _warning in settings.config_warnings():
 async def lifespan(application: FastAPI):
     """Own one PostgreSQL engine and verify the exact schema before traffic."""
     database_url = settings.database_url.get_secret_value()
+    # Invalid role names fail here, with their own message, before any I/O.
+    roles = RoleNames.configured(
+        settings.migrator_role, settings.runtime_role, settings.operator_role
+    )
     engine = None
     workers = None
     try:
@@ -82,7 +86,7 @@ async def lifespan(application: FastAPI):
                 f"{HEAD_REVISION}, found {inspection.state.value}"
             )
         if not settings.dev_mode:
-            validate_runtime_privileges(engine)
+            validate_runtime_privileges(engine, roles)
         application.state.database_engine = engine
         application.state.fact_store = FactStore(engine)
         application.state.database_target = sanitized_database_target(database_url)

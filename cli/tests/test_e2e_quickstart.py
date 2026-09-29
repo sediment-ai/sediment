@@ -10,6 +10,7 @@ README's missing OTEL_LOGS_EXPORTER and the hook path rot)."""
 from __future__ import annotations
 
 import json
+import secrets
 import os
 import socket
 import subprocess
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy.engine import make_url
 
 import sediment_cli.client as api_client
 from sediment_cli import cli
@@ -51,7 +53,34 @@ def quickstart_server(tmp_path, postgres_database_url):
     home.mkdir()
     env = {k: v for k, v in os.environ.items() if not k.startswith("SEDIMENT_")}
     env["HOME"] = str(home)
-    env["SEDIMENT_BOOTSTRAP_DATABASE_URL"] = postgres_database_url
+    # Provision once as the administrator; the server then migrates as the
+    # migrator and serves as the runtime role (ADR 0027).
+    passwords = {
+        role: secrets.token_hex(16) for role in ("migrator", "runtime", "operator")
+    }
+    subprocess.run(
+        [sys.executable, "-m", "sediment_cli.cli", "db", "provision"],
+        cwd=tmp_path,
+        env={
+            **env,
+            "SEDIMENT_BOOTSTRAP_DATABASE_URL": postgres_database_url,
+            **{
+                f"SEDIMENT_{role.upper()}_PASSWORD": value
+                for role, value in passwords.items()
+            },
+        },
+        check=True,
+        capture_output=True,
+    )
+    for variable, role in (
+        ("SEDIMENT_MIGRATOR_DATABASE_URL", "migrator"),
+        ("SEDIMENT_DATABASE_URL", "runtime"),
+    ):
+        env[variable] = (
+            make_url(postgres_database_url)
+            .set(username=f"sediment_{role}", password=passwords[role])
+            .render_as_string(hide_password=False)
+        )
     proc = subprocess.Popen(
         [sys.executable, "-m", "sediment_cli.cli", "server", "--port", str(port)],
         cwd=tmp_path,  # a stray checkout .env must not leak into Settings
@@ -77,14 +106,14 @@ def quickstart_server(tmp_path, postgres_database_url):
         token = dict(
             line.split("=", 1) for line in server_env.read_text().splitlines()
         )["SEDIMENT_API_BEARER_TOKEN"]
-        yield url, token, home, postgres_database_url
+        yield url, token, home, postgres_database_url, passwords
     finally:
         proc.terminate()
         proc.wait(timeout=10)
 
 
 def test_quickstart_end_to_end(quickstart_server, tmp_path, monkeypatch, capsys):
-    url, token, home, bootstrap_url = quickstart_server
+    url, token, home, bootstrap_url, passwords = quickstart_server
 
     # sediment login — against the real subprocess server, exactly as
     # docs/quickstart.md §3 spells it: the bare loopback URL, nothing
@@ -140,17 +169,13 @@ def test_quickstart_end_to_end(quickstart_server, tmp_path, monkeypatch, capsys)
     row = next(line for line in out.splitlines() if "developer_decisions" in line)
     assert row.split() == ["developer_decisions", "1", "1"]
 
-    # The Compose operator command needs database/org settings only. The same
-    # role created by the local provisioning path has quarantine read authority.
+    # The Compose operator command needs database/org settings only. The
+    # operator role that provisioning created has quarantine read authority.
     from sqlalchemy.engine import make_url
 
-    credentials = cli._load_server_env(home / ".sediment/server/server.env")
     operator_url = (
         make_url(bootstrap_url)
-        .set(
-            username="sediment_operator",
-            password=credentials["SEDIMENT_OPERATOR_PASSWORD"],
-        )
+        .set(username="sediment_operator", password=passwords["operator"])
         .render_as_string(hide_password=False)
     )
     operator_env = {

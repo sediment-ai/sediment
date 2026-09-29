@@ -33,6 +33,32 @@
 
 ### Command line
 
+- Change `sediment server` against an external database: it migrates at
+  start instead of provisioning. Set `SEDIMENT_MIGRATOR_DATABASE_URL` and
+  `SEDIMENT_DATABASE_URL`; each start runs the migrate step as the migrator,
+  removes the migrator credential from its environment, and serves as the
+  runtime role, as `coder server` does. The server refuses
+  `SEDIMENT_BOOTSTRAP_DATABASE_URL`, so the administrator credential never
+  reaches it. To upgrade a deployment that starts the server with the
+  bootstrap URL, run `sediment db provision` once with that URL and the three
+  role passwords from `server.env`, then replace the bootstrap URL with the
+  two role URLs. The server without a database URL keeps managing and
+  provisioning its private PostgreSQL cluster
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
+- Wait up to two minutes for the migration lock, then fail with a
+  diagnostic. `sediment db upgrade` and replicas starting together used to
+  fail at once when another process held it.
+- Add `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
+  `SEDIMENT_OPERATOR_ROLE` to name the three database roles. They default to
+  `sediment_migrator`, `sediment_runtime`, and `sediment_operator`. Each
+  database URL's user must match its role, and every check uses the
+  configured names, so two deployments can share one PostgreSQL instance
+  without sharing roles. `sediment db upgrade` reads
+  `SEDIMENT_MIGRATOR_DATABASE_URL` before `SEDIMENT_DATABASE_URL`.
+- Add `sediment db provision --print-sql`, which prints the SQL that a
+  database administrator runs to create the roles and grant database access,
+  for the configured role names and database, without connecting. Provisioning
+  runs the same statements, and `sediment db check` verifies their result.
 - Let `sediment db provision` run as an administrator that isn't a
   superuser: one with `CREATEROLE` that owns the dedicated database, as on
   managed PostgreSQL services. Capability checks replace the superuser

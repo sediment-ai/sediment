@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # PostgreSQL is the sole active fact store. SecretStr prevents settings
     # representations and validation diagnostics from echoing credentials.
     database_url: SecretStr
+    # Operator-named database roles (ADR 0027); empty means the default name.
+    # The lifespan validates them, keeping postgres_roles out of workers.
+    migrator_role: str = ""
+    runtime_role: str = ""
+    operator_role: str = ""
 
     # Raw git substrate: base dir for the per-(org, repo) bare mirrors.
     # None (unset) disables mirror refresh entirely — facts still flow;
