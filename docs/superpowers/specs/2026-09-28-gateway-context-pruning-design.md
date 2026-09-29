@@ -2,6 +2,8 @@
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
 Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
+Status: stage A, A.1, and A.2 are built. E0 failed its gate on the issue #134
+recordings; see [E0 result](#e0-result-fails-its-gate).
 
 ## Thesis
 
@@ -390,6 +392,35 @@ If E0 misses its gate, stop before E1. If E1 misses its token target, stop
 before E2 and report it. Stage B starts only
 if E1 or E2 shows that non-superseded tool output is still a large share of
 input.
+
+### E0 result: fails its gate
+
+E0 ran on 2026-09-29 over the 1,466 recorded coding requests; no model calls
+were made. Issue #134 records the counts.
+
+- **As specified.** pi sent every recorded request as OpenAI chat
+  (`openai-completions`). `prune` on `main` (e6303f6) skipped 1,200 as OpenAI
+  chat. The other 266 were each Session's first request, with no tool calls yet.
+  It applied no stubs and measured nothing else.
+- **Upper bound.** A what-if replay used the core from `6ad9007^`, the last
+  revision that pruned OpenAI chat, with the shipped policy. Without an error
+  flag, a failed call counts as a superseder, so every figure is an upper bound.
+  Across the 127 long Sessions (10 Phase 3 source Sessions and 117
+  continuations with at least 2 calls), it removed 0.00% of input bytes at the
+  median and at the maximum. It applied no stubs, so there are no cache-break
+  positions and no re-read rate. Output was deterministic, and tool-call pairing
+  was preserved, in all 1,466 requests.
+- **Why.** The median tool result was 165 bytes. Only 23 results of at least 512
+  bytes were ever superseded, about 18.8 KB across all long Sessions. With no
+  thresholds and no protected turns, the median was 0.36% (maximum 6.58%). Tool
+  results were 17.3% of input bytes, so stubbing all of them would still miss
+  the 20% gate. User messages, where the harness delivers context, were 45.8%.
+
+Following the gate, the evaluation stops before E1. Recording the same
+fixtures in the `anthropic-messages` format wouldn't change the result, since the
+traffic would look the same. These are small synthetic workspaces of about
+18 KB, so the result says nothing about real long Sessions with large file
+reads. Measuring the opportunity again needs recordings of such Sessions.
 
 ## Effort, debt, and risk
 
