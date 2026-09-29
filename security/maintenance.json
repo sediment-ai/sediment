@@ -95,48 +95,54 @@
       ]
     },
     "apk/glibc-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/glibc-2.44-locale-posix": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-locale-posix-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/ld-linux-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ld-linux-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/libbz2-1": {
@@ -155,18 +161,20 @@
       ]
     },
     "apk/libcrypt1-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/libcrypt1-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/libcrypto3": {
