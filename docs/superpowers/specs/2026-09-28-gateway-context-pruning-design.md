@@ -370,23 +370,50 @@ provider's actual prices.
    harness and fixtures: E0 showed that their tool output is too small to prune.
    - **Record.** Run Claude Code on a frontier model, with its default settings,
      on SWE-bench Verified instances drawn with E2's seed procedure but outside
-     E2's 50-instance subset, so E2 stays held out. Route each Session through a
+     E2's 50-instance subset, so E2 stays held out. Route each run through a
      recorder: `erode.proxy.make_server(upstream, prune=False)`, wrapped to save
      each `POST /v1/messages` body before forwarding it, as the stage A.2 Codex
      recordings were made. The proxy changes nothing, so the traffic is the
-     agent's own. Record until at least 3 Sessions have 20 or more model
-     requests; those are the long Sessions.
-   - **Keep the recordings private.** They hold prompts and repository content.
-     Reports carry counts only.
+     agent's own. Keep the recordings private: they hold prompts and repository
+     content, and reports carry counts only.
+   - **Group requests into Sessions.** One run through the proxy interleaves
+     the main agent's conversation with subagent (`Task`) conversations, small
+     side requests, and compaction requests. A Session is one main-agent
+     conversation in which each request's `messages` extends the previous
+     request's. A compaction starts a new segment of the same Session.
+     Subagent conversations and side requests are reported separately and don't
+     count toward the gate. A long Session has at least 20 requests. Record
+     until at least 3 Sessions are long. None of E0's Sessions reached 20; the
+     longest had 16.
    - **Replay.** Run each Session's requests, in order, through `prune` with the
-     default `PrunePolicy`. Report E0's measures, plus each Session's input bytes
-     by part (user messages, tool results, tool schema, system prompt, and
-     assistant turns), as E0's result does.
+     default `PrunePolicy`. The replay tool reads request bodies from a
+     directory given on the command line and writes counts only. It reports
+     E0's measures, plus:
+     - each Session's input bytes by part: user messages, tool results, tool
+       schema, system prompt, and assistant turns;
+     - tool-result bytes by tool name. Only `Read`, `Bash`, `Edit`,
+       `MultiEdit`, and `Write` are prunable, so results from `Grep`, `Glob`,
+       `Task`, and other tools are the share stage B would target;
+     - where each tool result drops out of the rules: unrecognized tool, under
+       512 bytes, never superseded, superseded but inside the protected turns,
+       superseded but held back by the 4 KB threshold, not prunable in shape
+       (such as a part that carries `cache_control`), or stubbed;
+     - the same replay with no batch threshold, and with no thresholds and no
+       protected turns, which tells a strict policy apart from nothing to
+       prune;
+     - errored superseders: stubs whose superseder has `is_error`, which must
+       be 0, and superseders skipped because they errored;
+     - prefix continuity: raw prefix breaks, compactions, and breaks of the
+       pruned prefix without a new stub.
 
-   Gate: E1 passes when `prune` removes at least 20% of input bytes at the median
-   across the long Sessions. Like E0, the replay estimates the opportunity only;
-   it can't show how the agent behaves with pruned input, so it never replaces
-   E2.
+   Gate: for each long Session, divide the bytes removed, summed over all its
+   requests, by the input bytes sent, summed over all its requests. This is the
+   cost-relevant measure, because every request resends the prefix; it is also
+   the measure E0 used. E1 passes when the median of this ratio across the long
+   Sessions is at least 20%. Report every long Session's ratio as well as the
+   median, because a median of 3 to 5 values is fragile. Like E0, the replay
+   estimates the opportunity only; it can't show how the agent behaves with
+   pruned input, so it never replaces E2.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
    random 50-instance subset of SWE-bench Verified, run with Claude Code on a
    frontier model through the stage A.1 proxy. The comparison is against what
