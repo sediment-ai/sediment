@@ -93,5 +93,15 @@ Release scans cover Sediment's packages and images. They don't cover your
 operating system, PostgreSQL, reverse proxy, Traefik, or gateway. Keep those
 patched through their own channels.
 
+The supplied API and PostgreSQL images retain Debian OpenSSL
+`3.0.22-1~deb12u1`, which has no Bookworm fix for CVE-2026-84782 as of
+2026-09-30. The affected Datagram Transport Layer Security (DTLS) handshake
+path can disclose process memory or crash the process. The supplied services
+use stream transports and do not configure DTLS. The time-bounded disposition
+requires the reviewed image inputs and measured deployment confinement. It
+doesn't repair OpenSSL or cover added DTLS callers, native extensions, custom
+commands, or changed deployment settings. Apply a distribution fix when
+available. See the [Debian advisory](https://security-tracker.debian.org/tracker/CVE-2026-84782).
+
 Maintainers follow
 [Security verification and release policy](../../CONTRIBUTING.md#security-verification-and-release-policy).
