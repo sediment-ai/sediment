@@ -20,6 +20,9 @@ whose last request its ``messages`` extend. The main agent's threads are the
 segments of one Session: a new segment whose history is shorter than the
 previous one's is counted as a compaction. Every other agent's thread is a
 subagent or side conversation, reported separately and outside the gate.
+The gate stays unevaluated until at least three main Sessions have 20 requests.
+OpenAI chat requests count as skipped. Provider-managed Messages requests
+retain their input cost and report the ``context_management`` pruning bypass.
 
 Usage:
     uv run python scripts/erode_replay.py RECORDINGS_DIR [--output report.json]
@@ -42,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "contrib/erode/src"
 from erode import core  # noqa: E402
 
 LONG_SESSION_REQUESTS = 20
+MIN_LONG_SESSIONS = 3
 GATE_RATIO = 0.20
 SUBAGENT_TOOLS = frozenset({"Task", "Agent"})
 POLICIES = {
@@ -52,6 +56,7 @@ POLICIES = {
     ),
 }
 DROP_OUTS = (
+    "context_management",
     "unrecognized_tool",
     "edit_or_write",
     "not_prunable_shape",
@@ -145,6 +150,8 @@ def group(run: list[tuple[str, dict | None]]) -> tuple[list[dict], Counter]:
             skipped["unreadable"] += 1
         elif not isinstance(body.get("messages"), list):
             skipped["not_messages"] += 1
+        elif core._openai_chat(body["messages"]):
+            skipped["openai_chat"] += 1
         else:
             agents.setdefault(signature(body), []).append(body)
     main = [s for s, b in agents.items() if tool_names(b[0]) & SUBAGENT_TOOLS]
@@ -266,7 +273,9 @@ def drop_outs(body: dict, pruned: dict, policy: core.PrunePolicy) -> dict:
             continue
         i, j, _ = call.where
         n = size(messages[i]["content"][j])
-        if call.kind is None:
+        if "context_management" in body:
+            fate = "context_management"
+        elif call.kind is None:
             fate = "unrecognized_tool"
         elif call.kind == core.WRITE:
             fate = "edit_or_write"
@@ -350,6 +359,7 @@ CHECKS = (
 
 def replay(conversation: dict) -> dict:
     checks = dict.fromkeys(CHECKS, 0)
+    prune_skips: Counter = Counter()
     totals = {name: [0, 0] for name in POLICIES}
     by_part: Counter = Counter()
     cache_breaks = []
@@ -372,7 +382,9 @@ def replay(conversation: dict) -> dict:
             before = size(body)
             outputs = {}
             for name, policy in POLICIES.items():
-                out, _ = core.prune_request(copy.deepcopy(body), policy)
+                out, pruning = core.prune_request(copy.deepcopy(body), policy)
+                if name == "default" and pruning is None:
+                    prune_skips["context_management"] += 1
                 outputs[name] = out
                 totals[name][0] += before
                 totals[name][1] += before - size(out)
@@ -455,6 +467,7 @@ def replay(conversation: dict) -> dict:
         cache_breaks=cache_breaks,
         stubbed_targets_read_again=reread,
         checks=checks,
+        prune_skips=dict(prune_skips),
         per_request=per_request,
     )
 
@@ -474,11 +487,12 @@ def report(root: Path) -> dict:
         policy_version=core.PrunePolicy().policy_version,
         gate=dict(
             long_session_requests=LONG_SESSION_REQUESTS,
+            minimum_long_sessions=MIN_LONG_SESSIONS,
             threshold=GATE_RATIO,
             long_sessions=len(long),
             long_session_ratios=ratios,
             median_ratio=median,
-            passed=None if median is None else median >= GATE_RATIO,
+            passed=None if len(long) < MIN_LONG_SESSIONS else median >= GATE_RATIO,
         ),
         requests_not_replayed=dict(skipped),
         sessions=sessions,

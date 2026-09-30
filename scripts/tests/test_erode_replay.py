@@ -10,6 +10,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 SCRIPT = Path(__file__).parent.parent / "erode_replay.py"
 MARKER = "SYNTHETIC-CONTENT-MARKER"
 
@@ -158,6 +160,7 @@ def test_replay_groups_sessions_and_reports_counts(tmp_path):
 
     funnel = session["drop_outs"]
     assert funnel["results"] == {
+        "context_management": 0,
         "unrecognized_tool": 1,
         "edit_or_write": 2,
         "not_prunable_shape": 0,
@@ -189,7 +192,7 @@ def test_replay_groups_sessions_and_reports_counts(tmp_path):
     assert gate["long_sessions"] == 1 and gate["long_session_ratios"] == [
         session["ratio"]
     ]
-    assert gate["passed"] == (session["ratio"] >= 0.20)
+    assert gate["passed"] is None
     assert MARKER not in json.dumps(result)
     assert "a.py" not in json.dumps(result) and "pytest" not in json.dumps(result)
 
@@ -237,3 +240,70 @@ def test_moving_cache_control_marker_keeps_one_thread():
     assert [len(t) for t in replay.threads(bodies)] == [4]
     # Without the marker handling, every request would start a new thread.
     assert bodies[0]["messages"] != bodies[1]["messages"][:1]
+
+
+@pytest.mark.parametrize("run_count", [0, 1, 2, 3])
+@pytest.mark.parametrize("result_bytes", [10, 20_000])
+def test_gate_requires_three_long_sessions(tmp_path, run_count, result_bytes):
+    bodies = _requests(
+        "main",
+        MAIN_TOOLS,
+        "task",
+        [_step("Read", {"file_path": "a.py"}, "x" * result_bytes)] * 19,
+    )
+    for run in range(run_count):
+        directory = tmp_path / str(run)
+        directory.mkdir()
+        for n, body in enumerate(bodies):
+            (directory / f"{n:04d}.json").write_text(json.dumps(body))
+    gate = replay.report(tmp_path)["gate"]
+    assert gate["long_sessions"] == run_count
+    assert len(gate["long_session_ratios"]) == run_count
+    if run_count < 3:
+        assert gate["passed"] is None
+    else:
+        assert gate["passed"] is (result_bytes == 20_000)
+
+
+def test_openai_chat_is_counted_as_skipped(tmp_path):
+    messages = [{"role": "user", "content": "task"}]
+    for n in range(21):
+        messages += [
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": str(n),
+                        "type": "function",
+                        "function": {"name": "read", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": str(n), "content": "x" * 1000},
+        ]
+        body = {"model": "m", "messages": messages}
+        (tmp_path / f"{n:04d}.json").write_text(json.dumps(body))
+    result = replay.report(tmp_path)
+    assert result["requests_not_replayed"] == {"openai_chat": 21}
+    assert result["sessions"] == []
+    assert result["gate"]["passed"] is None
+
+
+def test_provider_managed_request_keeps_cost_and_reports_bypass(tmp_path):
+    bodies = _requests(
+        "main",
+        MAIN_TOOLS,
+        "task",
+        [_step("Read", {"file_path": "a.py"}, "x" * 20_000)] * 20,
+    )
+    bodies[-1]["context_management"] = {"edits": []}
+    for n, body in enumerate(bodies):
+        (tmp_path / f"{n:04d}.json").write_text(json.dumps(body))
+    session = replay.report(tmp_path)["sessions"][0]
+    assert session["prune_skips"] == {"context_management": 1}
+    assert session["requests"] == len(bodies)
+    assert session["input_bytes"] == sum(replay.size(body) for body in bodies)
+    assert session["per_request"][-1]["bytes_removed"] == 0
+    assert session["bytes_removed"] > 0
+    assert session["drop_outs"]["results"]["context_management"] == 20
+    assert session["drop_outs"]["results"]["held_back_by_threshold"] == 0

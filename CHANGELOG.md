@@ -34,6 +34,8 @@
   context-pruning spec. It reads recorded Anthropic Messages request bodies
   from a directory, groups them into Sessions, replays each request through
   erode's `prune`, and writes a counts-only JSON report with E1's gate ratio.
+  The gate requires three long Sessions. The report counts OpenAI chat skips
+  and provider-managed context bypasses; the latter retain their input cost.
 
 ### Command line
 

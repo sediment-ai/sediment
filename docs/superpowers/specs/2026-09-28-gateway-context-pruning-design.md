@@ -388,7 +388,10 @@ provider's actual prices.
    - **Replay.** Run each Session's requests, in order, through `prune` with the
      default `PrunePolicy`. The replay tool, `scripts/erode_replay.py`, reads
      request bodies from a directory given on the command line and writes
-     counts only. It reports
+     counts only. It counts OpenAI chat requests as `openai_chat` skips outside
+     the replay. Messages requests with `context_management` retain their input
+     cost and report that pruning bypass in `prune_skips` and the final-request
+     drop-out counts. It reports
      E0's measures, plus:
      - each Session's input bytes by part: user messages, tool results, tool
        schema, system prompt, and assistant turns;
@@ -411,7 +414,9 @@ provider's actual prices.
    requests, by the input bytes sent, summed over all its requests. This is the
    cost-relevant measure, because every request resends the prefix; it is also
    the measure E0 used. E1 passes when the median of this ratio across the long
-   Sessions is at least 20%. Report every long Session's ratio as well as the
+   Sessions is at least 20%, with at least three long Sessions. With fewer than
+   three, the report keeps the ratios and median but leaves `gate.passed` null.
+   Report every long Session's ratio as well as the
    median, because a median of 3 to 5 values is fragile. Like E0, the replay
    estimates the opportunity only; it can't show how the agent behaves with
    pruned input, so it never replaces E2.
