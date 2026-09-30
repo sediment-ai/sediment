@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-30
+
+### Upgrade notes
+
+- If your server uses `SEDIMENT_BOOTSTRAP_DATABASE_URL`, follow
+  [Move off the bootstrap URL](docs/operate/maintain.md#move-off-the-bootstrap-url)
+  before restarting it. External-database startup requires migrator and runtime
+  credentials; local managed PostgreSQL keeps its existing startup path.
+- If capture installation uses `--gateway-url` or `--gateway-key`, remove those
+  flags and distribute routing through
+  [managed settings](docs/capture/managed-capture.md#distribute-gateway-routing).
+- This release supplies the dependency fixes missing from retained v0.1.0–v0.3.0
+  artifact inventories. Follow [Upgrade Sediment](docs/operate/maintain.md#upgrade-sediment).
+  Historical artifact findings remain visible in issue #225. The scoped
+  OpenSSL mitigation remains limited to the documented deployment conditions
+  and expires on 2026-10-12; see [Secure a deployment](docs/operate/security.md).
+
 ### Capture
 
 - Restructure the Capture docs. Capture pi work moves out of Agent
