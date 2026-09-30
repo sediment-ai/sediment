@@ -36,7 +36,10 @@ _PACKAGES = {
         "b7a1ba6bae6499d8296e3e81b0171eecfd1766ca9aaa0057e41ad3e844e5e2e0",
     ),
 }
-_EXTERNAL = "Set SEDIMENT_BOOTSTRAP_DATABASE_URL to use external PostgreSQL."
+_EXTERNAL = (
+    "Set SEDIMENT_MIGRATOR_DATABASE_URL and SEDIMENT_DATABASE_URL to use external "
+    "PostgreSQL."
+)
 
 
 @contextmanager

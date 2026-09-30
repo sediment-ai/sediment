@@ -285,6 +285,9 @@ def test_rehearsal_exposes_shared_release_validators() -> None:
     assert callable(getattr(rehearsal, "validate_sdists", None))
     assert callable(getattr(rehearsal, "rebuild_wheels_from_sdists", None))
     assert callable(getattr(rehearsal, "validate_installed_hooks", None))
+    assert callable(getattr(rehearsal, "validate_installed_evidence", None))
+    assert callable(getattr(rehearsal, "build_and_install", None))
+    assert callable(getattr(rehearsal, "exercise_installed_release", None))
     assert callable(getattr(rehearsal, "rehearse", None))
 
 
@@ -634,12 +637,35 @@ def test_rehearsal_fails_before_building_when_source_contract_is_invalid(
     assert any("tag" in error for error in errors), errors
 
 
-def test_rehearsal_does_not_report_success_when_runtime_check_fails() -> None:
-    errors = _load_rehearsal().rehearse(
-        REPO_ROOT,
-        "postgresql+psycopg://postgres:postgres@127.0.0.1:9/postgres",
+@pytest.fixture(scope="module")
+def installed_release(tmp_path_factory):
+    """One validated build and installation for the installed failure paths.
+
+    Failure tests only read the installed environment; each one gets its own
+    workspace, home directory, and scratch database. CI's explicit
+    `release_rehearsal.py` step remains the required complete build.
+    """
+    temp = tmp_path_factory.mktemp("installed-release")
+    version = _project(REPO_ROOT / "pyproject.toml")["version"]
+    venv, wheels, errors = _load_rehearsal().build_and_install(
+        REPO_ROOT, temp / "dist", temp, version
     )
-    assert any("runtime rehearsal" in error for error in errors), errors
+    assert errors == []
+    return venv, wheels, version
+
+
+def test_rehearsal_does_not_report_success_when_runtime_check_fails(
+    installed_release, tmp_path
+) -> None:
+    venv, wheels, version = installed_release
+    errors = _load_rehearsal().exercise_installed_release(
+        venv,
+        wheels,
+        version,
+        "postgresql+psycopg://postgres:postgres@127.0.0.1:9/postgres",
+        tmp_path,
+    )
+    assert errors == ["runtime rehearsal: scratch database creation failed"]
 
 
 @pytest.mark.skipif(sys.platform != "darwin", reason="Homebrew library discovery")
@@ -880,140 +906,160 @@ def test_rehearsal_cannot_pass_with_missing_pipeline_stage(stage):
     ]
 
 
-def test_installed_rehearsal_executes_and_reports_every_pipeline_stage(
+def _installed_report(rehearsal, venv: Path) -> dict:
+    """A report carrying every identity the installed evidence check requires."""
+    from copy import deepcopy
+
+    stages = deepcopy(rehearsal.PIPELINE_EXPECTATIONS)
+    digest = "a" * 64
+    stages["repository_identity"]["observed_repo_slugs"] = [
+        "synthetic/rehearsal",
+        "synthetic/renamed-rehearsal",
+    ]
+    for name in ("model_report", "lifecycle_report"):
+        stages[name].update(
+            scope={"org_id": "release-rehearsal"},
+            sha256_before=digest,
+            sha256_after=digest,
+        )
+    stages["delivery"].update(
+        helper_version="0.1.0",
+        callback_runtime="synthetic CustomLogger import stand-in",
+        configuration={
+            "max_active_bytes": 256 * 1024 * 1024,
+            "replay_window_seconds": 24 * 60 * 60,
+        },
+        receipts=[{}] * 6,
+    )
+    stages["transcript_batch"].update(
+        call_ids=[f"rehearsal-batch-{index:02d}" for index in range(32)],
+        fact_ids=[f"fact-{index}" for index in range(32)],
+        request_sha256=[digest, "b" * 64],
+    )
+    stages["capture"]["gateway_ids"] = ["call-1"]
+    stages["training"]["row_ids"] = ["row-1"]
+    return {
+        "fixture_version": rehearsal.PIPELINE_FIXTURE_VERSION,
+        "runtime_versions": dict.fromkeys(sorted(FIRST_PARTY), "0.1.0"),
+        "installed_modules": {
+            f"module_{index}": str(venv / "lib" / f"module_{index}.py")
+            for index in range(len(FIRST_PARTY) + 1)
+        },
+        "venv": str(venv),
+        "python_version": "3.12.14",
+        "postgresql_version": "17.11",
+        "entry_points": list(rehearsal.INSTALLED_ENTRY_POINTS),
+        "source_sha256": {"callback": digest, "delivery_helper": digest},
+        "stages": stages,
+    }
+
+
+def test_installed_evidence_accepts_a_complete_installed_report(tmp_path):
+    rehearsal = _load_rehearsal()
+    report = _installed_report(rehearsal, tmp_path.resolve())
+    assert rehearsal.validate_pipeline_report(report) == []
+    assert (
+        rehearsal.validate_installed_evidence(
+            report, venv=tmp_path, release_version="0.1.0", server_version="17.11"
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "path", "value"),
+    [
+        ("runtime versions", ("runtime_versions", "sediment-core"), "9.9.9"),
+        ("installed modules", ("installed_modules", "module_0"), "/checkout/x.py"),
+        ("installed modules", ("venv",), "/elsewhere"),
+        ("Python version", ("python_version",), "3.13.0"),
+        ("PostgreSQL version", ("postgresql_version",), "16.4"),
+        ("entry points", ("entry_points",), ["sediment server"]),
+        ("source hashes", ("source_sha256", "callback"), "not-a-digest"),
+        ("authority", ("stages", "authority", "extra"), True),
+        ("lost acknowledgment", ("stages", "lost_acknowledgment", "extra"), 1),
+        (
+            "repository slugs",
+            ("stages", "repository_identity", "observed_repo_slugs"),
+            ["synthetic/rehearsal"],
+        ),
+        ("operational report bytes", ("stages", "model_report", "sha256_after"), ""),
+        ("operational report bytes", ("stages", "lifecycle_report", "scope"), {}),
+        ("delivery receipts", ("stages", "delivery", "helper_version"), "9.9.9"),
+        ("delivery receipts", ("stages", "delivery", "receipts"), []),
+        (
+            "transcript batch identities",
+            ("stages", "transcript_batch", "fact_ids"),
+            ["duplicate"] * 32,
+        ),
+        ("row identities", ("stages", "training", "row_ids"), []),
+        ("row identities", ("stages", "capture"), None),
+    ],
+)
+def test_installed_evidence_names_each_absent_or_contradictory_identity(
+    tmp_path, label, path, value
+):
+    rehearsal = _load_rehearsal()
+    report = _installed_report(rehearsal, tmp_path.resolve())
+    target = report
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    assert rehearsal.validate_installed_evidence(
+        report, venv=tmp_path, release_version="0.1.0", server_version="17.11"
+    ) == [f"runtime rehearsal: {label} evidence absent or contradictory"]
+
+
+@pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="Linux CI runs this complete rehearsal once as its own required step",
+)
+def test_complete_rehearsal_finds_homebrew_libpq_without_pg_config(
     capsys, postgres_admin_url, monkeypatch
 ):
-    from sqlalchemy import create_engine
-
-    if sys.platform == "darwin":
-        monkeypatch.setenv(
-            "PATH",
-            os.pathsep.join(
-                entry
-                for entry in os.environ["PATH"].split(os.pathsep)
-                if not (Path(entry) / "pg_config").exists()
-            ),
-        )
-    rehearsal = _load_rehearsal()
-    errors = rehearsal.rehearse(REPO_ROOT, postgres_admin_url)
-    assert errors == []
+    # Homebrew's keg-only libpq stays off PATH. This complete run proves the
+    # installed runtime still finds it; `validate_installed_evidence` owns
+    # the report assertions that every platform's rehearsal enforces.
+    monkeypatch.setenv(
+        "PATH",
+        os.pathsep.join(
+            entry
+            for entry in os.environ["PATH"].split(os.pathsep)
+            if not (Path(entry) / "pg_config").exists()
+        ),
+    )
+    assert _load_rehearsal().rehearse(REPO_ROOT, postgres_admin_url) == []
     reports = [
-        line.removeprefix("pipeline acceptance: ")
+        line
         for line in capsys.readouterr().out.splitlines()
         if line.startswith("pipeline acceptance: ")
     ]
     assert len(reports) == 1, "installed pipeline acceptance never ran"
-    report = json.loads(reports[0])
-    assert rehearsal.validate_pipeline_report(report) == []
-    assert set(report["runtime_versions"]) == FIRST_PARTY
-    assert len(report["wheel_sha256"]) == len(FIRST_PARTY)
-    # The report names the server the rehearsal ran against, not a pinned major.
-    engine = create_engine(postgres_admin_url)
-    try:
-        with engine.connect() as connection:
-            server_version = connection.exec_driver_sql(
-                "SHOW server_version"
-            ).scalar_one()
-    finally:
-        engine.dispose()
-    assert report["postgresql_version"] == server_version
-    assert report["stages"]["authority"] == {
-        "operator_identity": "operator",
-        "capture_identity": "legacy",
-        "ingest_reads_denied": True,
-        "operator_reads_allowed": True,
-        "capture_files_ingest_only": True,
-        "capture_files_private": True,
-        "api_database_role": "sediment_runtime",
-        "production_validation": True,
-    }
-    assert report["python_version"].startswith("3.12.")
-    assert "sediment transcript --agent claude-code" in report["entry_points"]
-    for route in ("model-outcomes", "accepted-work-lifecycle"):
-        assert f"GET /v1/reports/{route}" in report["entry_points"]
-    identity = report["stages"]["repository_identity"]
-    assert all(
-        identity[key] == value
-        for key, value in rehearsal.PIPELINE_EXPECTATIONS["repository_identity"].items()
-    )
-    assert identity["observed_repo_slugs"] == [
-        "synthetic/rehearsal",
-        "synthetic/renamed-rehearsal",
-    ]
-    assert "POST /ingest/github/repository" in report["entry_points"]
-    assert "GET /query/commit/{sha}" in report["entry_points"]
-    model = report["stages"]["model_report"]
-    assert model["completions"] == 4
-    assert model["explicit_accepts"] == 3
-    assert model["attributed_inference_calls"] == 2
-    assert model["ci_linked"] == model["ci_passed"] == 1
-    lifecycle = report["stages"]["lifecycle_report"]
-    assert lifecycle["accepted_calls"] == lifecycle["observed_accepts"] == 2
-    assert lifecycle["attributed"] == lifecycle["edit_observations"] == 1
-    assert lifecycle["pull_request_membership"] == lifecycle["ci_linked"] == 0
-    assert lifecycle["missing_pull_request_membership"] == 1
-    for stage in (model, lifecycle):
-        assert stage["authenticated"] is stage["bytes_equal"] is True
-        assert stage["sha256_before"] == stage["sha256_after"]
-        assert re.fullmatch("[0-9a-f]{64}", stage["sha256_before"])
-    assert model["scope"] == lifecycle["scope"]
-    delivery = report["stages"]["delivery"]
-    assert delivery["gateway_queued"] == 4
-    assert delivery["otlp_queued"] == 2
-    assert delivery["terminal_receipts"] == 6
-    assert delivery["pending"] == 0
-    for proof in (
-        "sender_restarted",
-        "callback_worker_stopped",
-        "source_bytes_preserved",
-        "capture_instants_preserved",
-        "transcript_file_changed",
-    ):
-        assert delivery[proof] is True
-    assert delivery["helper_version"] == report["runtime_versions"]["sediment-cli"]
-    batch = report["stages"]["transcript_batch"]
-    assert batch["requests"] == 2
-    assert batch["edit_observations"] == 32
-    assert batch["pending"] == 0
-    assert batch["source_changed"] is batch["transcript_removed"] is True
-    assert batch["prepared_bytes_replayed"] is batch["fact_ids_retained"] is True
-    assert batch["call_ids"] == [f"rehearsal-batch-{index:02d}" for index in range(32)]
-    assert len(set(batch["fact_ids"])) == 32
-    assert len(batch["request_sha256"]) == 2
-    assert all(re.fullmatch("[0-9a-f]{64}", value) for value in batch["request_sha256"])
-    assert delivery["callback_runtime"] == "synthetic CustomLogger import stand-in"
-    assert delivery["configuration"]["max_active_bytes"] == 256 * 1024 * 1024
-    assert delivery["configuration"]["replay_window_seconds"] == 24 * 60 * 60
-    assert len(delivery["receipts"]) == 6
-    assert report["stages"]["lost_acknowledgment"] == {
-        "committed_before_retry": True,
-        "retained_fact_id": True,
-        "gateway_duplicates": 1,
-        "inference_calls": 4,
-    }
-    for source in ("callback", "delivery_helper"):
-        assert re.fullmatch("[0-9a-f]{64}", report["source_sha256"][source])
-    assert report["stages"]["capture"]["gateway_ids"]
-    assert report["stages"]["training"]["row_ids"]
-    assert "installed_modules" in report, "full imported-module proof absent"
-    assert len(report["installed_modules"]) > len(FIRST_PARTY)
-    assert all(
-        Path(path).is_relative_to(report["venv"])
-        for path in report["installed_modules"].values()
-    )
 
 
-@pytest.mark.parametrize("interruption", ["timeout", "interrupt", "worker_exit"])
-def test_installed_rehearsal_stops_owned_server_when_worker_stops(
-    monkeypatch, interruption, postgres_admin_url
-):
-    import selectors
-    import signal
-    import time
+# A controlled worker owns the same process shapes as the installed pipeline:
+# a server child outside the worker's output pipes and a descendant that
+# ignores SIGTERM. It reports both before the parent interrupts it.
+_WORKER_TREE = """
+import json, subprocess, sys, threading
+server = subprocess.Popen(
+    [sys.executable, "-c", "import threading; threading.Event().wait()"],
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+)
+stubborn = subprocess.Popen(
+    [sys.executable, "-c",
+     "import signal, threading; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+     "print('ready', flush=True); threading.Event().wait()"],
+    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+)
+assert stubborn.stdout.readline() == "ready\\n"
+print(json.dumps({"server_pid": server.pid, "stubborn_pid": stubborn.pid}), flush=True)
+threading.Event().wait()
+"""
 
-    owned = {}
-    real_popen = subprocess.Popen
-    prelude = """
+# Injected into the real installed worker: record the installed server and add
+# the same SIGTERM-ignoring descendant at the first gateway capture.
+_INSTALLED_PRELUDE = """
 import httpx, subprocess, sys, threading
 owned = {}
 original_popen = subprocess.Popen
@@ -1041,83 +1087,143 @@ subprocess.Popen = track_server
 httpx.post = pause_capture
 """
 
+_INTERRUPTION_ERRORS = {
+    "timeout": "runtime rehearsal: installed pipeline timed out",
+    "interrupt": "runtime rehearsal: installed pipeline interrupted",
+    "worker_exit": "runtime rehearsal: installed pipeline produced no report",
+}
+
+
+def _running(pid: int) -> bool:
+    status = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "stat="],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    return bool(status) and not status.startswith("Z")
+
+
+def _interrupt_worker(monkeypatch, interruption: str, owned: dict, prelude=None):
+    """Interrupt the bounded worker once it reports the processes it owns."""
+    import selectors
+
+    real_popen = subprocess.Popen
+
     def instrument_worker(args, *a, **kw):
-        pipeline = "-I" in args and "-c" in args
-        if pipeline:
+        # Match the worker by its command, then require the process group
+        # cleanup depends on; a missing group fails here without spawning.
+        worker = "-c" in args
+        if worker:
+            assert kw.get("start_new_session") is True, "worker needs its own group"
+        if worker and prelude is not None:
             args = list(args)
             index = args.index("-c") + 1
             assert "exercise_installed_pipeline" in args[index]
             args[index] = args[index].replace("try:\n", prelude + "\ntry:\n", 1)
         process = real_popen(args, *a, **kw)
-        if pipeline:
-            communicate = process.communicate
-            triggered = False
+        if not worker:
+            return process
+        communicate = process.communicate
+        triggered = False
 
-            def interrupt(input=None, timeout=None):
-                nonlocal triggered
-                if not triggered:
-                    triggered = True
-                    with selectors.DefaultSelector() as ready:
-                        ready.register(process.stdout, selectors.EVENT_READ)
-                        assert ready.select(timeout=20), "installed server not ready"
-                    receipt = json.loads(process.stdout.readline())
-                    owned.update(receipt, worker_pid=process.pid)
-                    assert running(owned["server_pid"]), (
-                        "cleanup test did not reach a running installed server"
-                    )
-                    if interruption == "interrupt":
-                        raise KeyboardInterrupt
-                    if interruption == "worker_exit":
-                        process.kill()
-                    else:
-                        # Expire the real deadline only after the server handshake.
-                        return communicate(input=input, timeout=0)
-                return communicate(input=input, timeout=timeout)
+        def interrupt(input=None, timeout=None):
+            nonlocal triggered
+            if not triggered:
+                triggered = True
+                with selectors.DefaultSelector() as ready:
+                    ready.register(process.stdout, selectors.EVENT_READ)
+                    assert ready.select(timeout=20), "worker never reported"
+                receipt = json.loads(process.stdout.readline())
+                assert set(receipt) == {"server_pid", "stubborn_pid"}, receipt
+                owned.update(receipt, worker_pid=process.pid)
+                assert _running(owned["server_pid"]), "server was not running"
+                if interruption == "interrupt":
+                    raise KeyboardInterrupt
+                if interruption == "worker_exit":
+                    process.kill()
+                else:
+                    # Expire the real deadline only after the handshake.
+                    return communicate(input=input, timeout=0)
+            return communicate(input=input, timeout=timeout)
 
-            process.communicate = interrupt
+        process.communicate = interrupt
         return process
 
-    def running(pid):
-        status = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "stat="],
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout.strip()
-        return bool(status) and not status.startswith("Z")
+    monkeypatch.setattr(subprocess, "Popen", instrument_worker)
 
-    peer = real_popen(
+
+def _assert_owned_processes_stopped(owned: dict, peer) -> None:
+    import time
+
+    assert owned, "worker never reported its processes"
+    deadline = time.monotonic() + 3
+    while any(_running(pid) for pid in owned.values()) and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not any(_running(pid) for pid in owned.values()), (
+        "owned process survived worker cleanup"
+    )
+    assert peer.poll() is None, "cleanup stopped an unrelated process"
+
+
+def _stop(owned: dict, peer) -> None:
+    import signal
+
+    # Preserve ownership even while a regression is red.
+    for pid in owned.values():
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    peer.terminate()
+    peer.wait(timeout=5)
+
+
+@pytest.mark.parametrize("interruption", ["timeout", "interrupt", "worker_exit"])
+def test_worker_cleanup_stops_its_process_group_and_reports_the_cause(
+    monkeypatch, tmp_path, interruption
+):
+    owned = {}
+    peer = subprocess.Popen(
         [sys.executable, "-c", "import threading; threading.Event().wait()"],
         start_new_session=True,
     )
-    monkeypatch.setattr(subprocess, "Popen", instrument_worker)
+    _interrupt_worker(monkeypatch, interruption, owned)
     try:
         try:
-            errors = _load_rehearsal().rehearse(REPO_ROOT, postgres_admin_url)
+            _, errors = _load_rehearsal()._run_installed_pipeline(
+                [sys.executable, "-c", _WORKER_TREE],
+                cwd=tmp_path,
+                env=dict(os.environ),
+            )
         except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
             errors = [type(exc).__name__]
-        assert owned, "worker never reached the installed server"
-        deadline = time.monotonic() + 3
-        while (
-            any(running(pid) for pid in owned.values()) and time.monotonic() < deadline
-        ):
-            time.sleep(0.01)
-        assert not any(running(pid) for pid in owned.values()), (
-            "owned process survived worker cleanup"
-        )
-        assert peer.poll() is None, "cleanup stopped an unrelated process"
-        reason = {
-            "timeout": "installed pipeline timed out",
-            "interrupt": "installed pipeline interrupted",
-            "worker_exit": "installed pipeline produced no report",
-        }[interruption]
-        assert errors == [f"runtime rehearsal: {reason}"]
+        _assert_owned_processes_stopped(owned, peer)
+        assert errors == [_INTERRUPTION_ERRORS[interruption]]
     finally:
-        # Preserve ownership even while the regression is red.
-        for pid in owned.values():
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        peer.terminate()
-        peer.wait(timeout=5)
+        _stop(owned, peer)
+
+
+def test_installed_rehearsal_stops_owned_server_when_worker_times_out(
+    monkeypatch, installed_release, postgres_admin_url, tmp_path
+):
+    # The installed pipeline must start its server inside the worker's
+    # process group; a detached server would survive the parent's cleanup.
+    venv, wheels, version = installed_release
+    owned = {}
+    peer = subprocess.Popen(
+        [sys.executable, "-c", "import threading; threading.Event().wait()"],
+        start_new_session=True,
+    )
+    _interrupt_worker(monkeypatch, "timeout", owned, prelude=_INSTALLED_PRELUDE)
+    try:
+        try:
+            errors = _load_rehearsal().exercise_installed_release(
+                venv, wheels, version, postgres_admin_url, tmp_path
+            )
+        except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+            errors = [type(exc).__name__]
+        _assert_owned_processes_stopped(owned, peer)
+        assert errors == [_INTERRUPTION_ERRORS["timeout"]]
+    finally:
+        _stop(owned, peer)

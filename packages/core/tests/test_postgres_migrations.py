@@ -255,7 +255,9 @@ def test_postgres_revision_inspection_does_not_mutate_absent_database(
 
 def test_postgres_upgrade_fails_when_advisory_lock_is_held(
     postgres_database_factory,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setattr(postgres_migrations, "MIGRATION_LOCK_WAIT_SECONDS", 0.2)
     database_url = postgres_database_factory(migrated=False)
     engine = create_engine(database_url)
     try:
@@ -266,7 +268,10 @@ def test_postgres_upgrade_fails_when_advisory_lock_is_held(
             try:
                 upgrade_database(database_url)
             except MigrationError as exc:
-                assert str(exc) == "database migration lock is held by another process"
+                assert str(exc) == (
+                    "database migration lock is held by another process after "
+                    "waiting 0.2 seconds"
+                )
             else:  # pragma: no cover - assertion branch
                 raise AssertionError("upgrade acquired an advisory lock twice")
     finally:

@@ -110,24 +110,24 @@
       "description": "The five capture signals, their data paths, attribution, edit survival, and privacy boundaries."
     },
     {
+      "source": "docs/operate/run-derivations.md",
+      "destination": "derive/run-derivations",
+      "description": "Start here: prepare inputs, build one bundle, review its evidence, and export training rows."
+    },
+    {
       "source": "docs/explanation/how-derivation-works.md",
       "destination": "derive/how-derivation-works",
-      "description": "Facts, snapshots, resolved policy, cohort selection, and the canonical derived bundle."
+      "description": "Follow Facts through snapshots, policy, canonical artifacts, cohort selection, and training projection."
     },
     {
       "source": "docs/explanation/attribution.md",
       "destination": "derive/attribution",
-      "description": "Git notes and jaccard fallback join commits to inference calls."
-    },
-    {
-      "source": "docs/operate/run-derivations.md",
-      "destination": "derive/run-derivations",
-      "description": "Run, scope, inspect, recompute, and export a derivation."
+      "description": "How Git notes and similarity match Inference calls to commit files, and where the evidence is uncertain."
     },
     {
       "source": "docs/exports/training-exports.md",
       "destination": "exports/training-exports",
-      "description": "Choose a training objective, prepare its evidence, and audit the output."
+      "description": "Start with an objective and reviewed evidence, then export and audit training rows."
     },
     {
       "source": "docs/exports/dpo.md",
@@ -147,7 +147,7 @@
     {
       "source": "docs/exports/rlvr-export.md",
       "destination": "exports/rlvr-export",
-      "description": "Verifiable task specifications and reward-labeled trajectories: tasks.jsonl, rollouts.jsonl, and the taskset manifest."
+      "description": "Choose an RLVR target, prepare its inputs, and inspect tasks, trajectories, and CI evidence."
     },
     {
       "source": "docs/exports/consumer-compatibility.md",

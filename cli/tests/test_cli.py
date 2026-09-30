@@ -451,18 +451,98 @@ def test_server_rejects_invalid_external_database_before_mutating_its_root(
     tmp_path, monkeypatch, capsys
 ) -> None:
     root = tmp_path / "server-root"
-    monkeypatch.delenv("SEDIMENT_DATABASE_URL", raising=False)
-    monkeypatch.setenv(
-        "SEDIMENT_BOOTSTRAP_DATABASE_URL", "https://example.com/unwanted"
-    )
+    monkeypatch.delenv("SEDIMENT_BOOTSTRAP_DATABASE_URL", raising=False)
+    monkeypatch.setenv("SEDIMENT_MIGRATOR_DATABASE_URL", "https://example.com/unwanted")
 
     assert main(["server", "--root", str(root)]) == 1
 
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == (
-        "error: bootstrap URL must name an explicit PostgreSQL host and database\n"
+        "error: SEDIMENT_MIGRATOR_DATABASE_URL must name an explicit PostgreSQL "
+        "host and database\n"
     )
+    assert not root.exists()
+
+
+@pytest.mark.parametrize(
+    ("variables", "message"),
+    [
+        (
+            {
+                "SEDIMENT_BOOTSTRAP_DATABASE_URL": (
+                    "postgresql://admin:private-admin@localhost/sediment"
+                )
+            },
+            "sediment server doesn't provision an external database",
+        ),
+        (
+            {
+                "SEDIMENT_MIGRATOR_DATABASE_URL": (
+                    "postgresql://someone:private-migrator@localhost/sediment"
+                ),
+                "SEDIMENT_DATABASE_URL": (
+                    "postgresql://sediment_runtime:private-runtime@localhost/sediment"
+                ),
+            },
+            "SEDIMENT_MIGRATOR_DATABASE_URL must connect as the configured role "
+            "sediment_migrator",
+        ),
+        (
+            {
+                "SEDIMENT_MIGRATOR_DATABASE_URL": (
+                    "postgresql://sediment_migrator:private-migrator@localhost/a"
+                ),
+                "SEDIMENT_DATABASE_URL": (
+                    "postgresql://sediment_runtime:private-runtime@localhost/b"
+                ),
+            },
+            "must name the same host, port, and database",
+        ),
+        (
+            {
+                "SEDIMENT_MIGRATOR_DATABASE_URL": (
+                    "postgresql://sediment_migrator:private-migrator@localhost/a"
+                    "?user=postgres"
+                ),
+                "SEDIMENT_DATABASE_URL": (
+                    "postgresql://sediment_runtime:private-runtime@localhost/a"
+                ),
+            },
+            "SEDIMENT_MIGRATOR_DATABASE_URL may carry only TLS options",
+        ),
+        (
+            {
+                "SEDIMENT_MIGRATOR_DATABASE_URL": (
+                    "postgresql://sediment_migrator:private-migrator@localhost/a"
+                ),
+                "SEDIMENT_DATABASE_URL": (
+                    "postgresql://sediment_runtime:private-runtime@localhost/a"
+                ),
+                "SEDIMENT_RUNTIME_ROLE": "pg_runtime",
+            },
+            "database role names must be",
+        ),
+    ],
+)
+def test_server_refuses_administrator_or_mismatched_database_credentials(
+    tmp_path, monkeypatch, capsys, variables, message
+) -> None:
+    root = tmp_path / "server-root"
+    for name in (
+        "SEDIMENT_BOOTSTRAP_DATABASE_URL",
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
+        "SEDIMENT_DATABASE_URL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in variables.items():
+        monkeypatch.setenv(name, value)
+
+    assert main(["server", "--root", str(root)]) == 1
+
+    captured = capsys.readouterr()
+    assert message in captured.err
+    assert "private-" not in captured.out + captured.err
     assert not root.exists()
 
 
@@ -1396,13 +1476,17 @@ def local_server_stub(monkeypatch):
         },
     )
     monkeypatch.setenv(
-        "SEDIMENT_BOOTSTRAP_DATABASE_URL",
-        "postgresql://bootstrap:private-bootstrap@localhost/sediment",
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
+        "postgresql://sediment_migrator:private-migrator@localhost/sediment",
+    )
+    monkeypatch.setenv(
+        "SEDIMENT_DATABASE_URL",
+        "postgresql://sediment_runtime:private-runtime@localhost/sediment",
     )
     monkeypatch.setitem(
         sys.modules, "uvicorn", types.SimpleNamespace(run=lambda *a, **k: None)
     )
-    monkeypatch.setattr(roles, "provision_database", lambda *a, **k: None)
+    monkeypatch.setattr(roles, "migrate_database", lambda *a, **k: True)
 
 
 def test_server_never_generates_a_shadow_token_over_env(
@@ -1439,8 +1523,8 @@ def test_server_second_run_names_the_env_file_not_the_environment(
     ):
         os.environ.pop(name, None)
     monkeypatch.setenv(
-        "SEDIMENT_BOOTSTRAP_DATABASE_URL",
-        "postgresql://bootstrap:private-bootstrap@localhost/sediment",
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
+        "postgresql://sediment_migrator:private-migrator@localhost/sediment",
     )
     assert main(["server", "--root", str(root)]) == 0
     assert f"Using credentials from {root / 'server.env'}" in capsys.readouterr().out
@@ -1452,7 +1536,8 @@ def test_server_keeps_generated_tokens_out_of_output_and_logs(
 ) -> None:
     import secrets
 
-    tokens = [f"generated-private-secret-{index}" for index in range(6)]
+    # An external database takes no generated role passwords.
+    tokens = [f"generated-private-secret-{index}" for index in range(3)]
     generated = iter(tokens)
     monkeypatch.setattr(secrets, "token_hex", lambda _size: next(generated))
     root = tmp_path / "server-root"
@@ -1812,3 +1897,13 @@ def test_guide_resolves_relative_links_and_preserves_external_links(
         "v2.0.0rc1/docs/capture/local-capture.md#install-capture)\n"
         "[External](https://example.com/page#anchor)\n"
     )
+
+
+def test_server_treats_a_missing_port_as_the_default(
+    tmp_path, monkeypatch, local_server_stub
+) -> None:
+    monkeypatch.setenv(
+        "SEDIMENT_MIGRATOR_DATABASE_URL",
+        "postgresql://sediment_migrator:private-migrator@localhost:5432/sediment",
+    )
+    assert main(["server", "--root", str(tmp_path / "server-root")]) == 0

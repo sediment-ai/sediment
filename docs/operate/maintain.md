@@ -28,8 +28,10 @@ Upgrade the server before developer machines.
 4. Stop Sediment.
 5. Rerun the install command from your deploy page with the target version.
    Keep `~/.sediment/server`.
-6. Start Sediment. On start, it applies any migrations. After a migration,
-   don't start an older version against the database.
+6. If the server's environment sets `SEDIMENT_BOOTSTRAP_DATABASE_URL`,
+   [move off the bootstrap URL](#move-off-the-bootstrap-url) first. Then start
+   Sediment. On start, it applies any migrations. After a migration, don't
+   start an older version against the database.
 7. Check `/health`, and check that `sediment db status` shows `at_head` and
    `sediment facts` shows the earlier counts.
 8. On each developer machine, stop any sender replay worker. Then rerun the
@@ -38,23 +40,96 @@ Upgrade the server before developer machines.
    same version, rerun `sediment install` with the same options, and restart
    the worker.
 
+If a `sediment` command warns that the server version differs from the client,
+run the `uv tool install` command in the warning. It installs the server's exact
+release, which upgrades or downgrades the CLI as needed. A release candidate's
+command also pins the other five Sediment distributions. If you installed with
+the installer's `pipx` method, run `pipx install --force 'sediment-cli==<version>'`
+with the server's version instead; rerunning the installer leaves an existing
+`pipx` installation unchanged. If you used the `pip` method, rerun the installer
+with `--method pip` and the server's version.
+
+### Move off the bootstrap URL
+
+Releases before ADR 0027 provisioned the database on every start with
+`SEDIMENT_BOOTSTRAP_DATABASE_URL`. The server now refuses that variable, so
+that the administrator credential never reaches it. It needs the migrator and
+runtime URLs instead. With Sediment stopped and the new version installed:
+
+1. Copy the three role passwords that the server generated into a private
+   file. On EC2, run this from `~/sediment-deploy`; on your own host, from
+   `~/.sediment`:
+
+   ```bash
+   (
+     umask 077
+     set -o noclobber
+     grep -E '^SEDIMENT_(MIGRATOR|RUNTIME|OPERATOR)_PASSWORD=' \
+       ~/.sediment/server/server.env > database-roles.env
+   )
+   ```
+
+2. Provision once with the administrator. On EC2, run step 5 of
+   [Configure PostgreSQL and Traefik](deploy-ec2.md#configure-postgresql-and-traefik).
+   On your own host, run step 3 of
+   [Create the database roles](deploy.md#create-the-database-roles).
+3. In the server's private environment, replace `SEDIMENT_BOOTSTRAP_DATABASE_URL`
+   with `SEDIMENT_MIGRATOR_DATABASE_URL` and `SEDIMENT_DATABASE_URL`. On EC2,
+   run this from `~/sediment-deploy`:
+
+   ```bash
+   (
+     set -eu
+     umask 077
+     . ./database-roles.env
+     grep -v '^SEDIMENT_BOOTSTRAP_DATABASE_URL=' server.env > server.env.new
+     cat >> server.env.new <<EOF_URLS
+   SEDIMENT_MIGRATOR_DATABASE_URL=postgresql+psycopg://sediment_migrator:$SEDIMENT_MIGRATOR_PASSWORD@127.0.0.1:5432/sediment
+   SEDIMENT_DATABASE_URL=postgresql+psycopg://sediment_runtime:$SEDIMENT_RUNTIME_PASSWORD@127.0.0.1:5432/sediment
+   EOF_URLS
+     mv server.env.new server.env
+   )
+   ```
+
+   On your own host, set the two variables as in
+   [Configure the server](deploy.md#configure-the-server).
+
+The operator shell reads the operator password from `database-roles.env`.
+
 ## Rotate credentials
 
-`~/.sediment/server/server.env` holds every generated credential. Stop Sediment
-before you edit it, keep its mode at `0600`, and start Sediment after you save
-it.
+`~/.sediment/server/server.env` holds the generated API credentials, and the
+server's private environment holds the database URLs. Stop Sediment before you
+edit either, keep `server.env` at mode `0600`, and start Sediment after you
+save it.
 
 | Credential | To rotate it |
 | --- | --- |
 | A developer's capture token | Replace that entry in `SEDIMENT_INGEST_TOKENS`. The developer reruns `sediment login --capture` and `sediment install`, and restarts the agents. |
 | `SEDIMENT_OPERATOR_TOKEN` | Replace the value. Rerun `sediment login` for each operator. |
-| A database role password | Replace `SEDIMENT_MIGRATOR_PASSWORD`, `SEDIMENT_RUNTIME_PASSWORD`, or `SEDIMENT_OPERATOR_PASSWORD`. Startup applies it. Update your operator shell. |
 
 If `server.env` contains `SEDIMENT_API_BEARER_TOKEN`, the server generated it
 as a shared capture token before any named tokens existed. After every client
 uses a named token, remove that line.
 
 To revoke a developer, remove their entry from `SEDIMENT_INGEST_TOKENS`.
+
+To rotate a database role password:
+
+1. Stop Sediment.
+2. Change the password in one of two ways:
+   - If you hold the administrator connection, replace the value in
+     `database-roles.env`. Then rerun the provisioning command: step 5 of
+     [Configure PostgreSQL and Traefik](deploy-ec2.md#configure-postgresql-and-traefik)
+     on EC2, or step 3 of
+     [Create the database roles](deploy.md#create-the-database-roles) on your
+     own host.
+   - If you don't, connect with psql as that role, and run `\password`. Each
+     role can change its own password. Record the new value in
+     `database-roles.env`, so that a later provisioning keeps it.
+3. Update `SEDIMENT_MIGRATOR_DATABASE_URL` or `SEDIMENT_DATABASE_URL` in the
+   server's environment, and your operator shell.
+4. Start Sediment.
 
 ## Back up and restore
 
@@ -98,30 +173,46 @@ On EC2, encrypt both parts with [age](https://github.com/FiloSottile/age):
    partial files and rerun it. `tar` fails when a mirror changes while it
    reads it.
 
-On other hosts, use your database's backup procedure, and back up
-`~/.sediment/server` and the server's private environment with it.
+On other hosts, use your database's backup procedure, such as a managed
+service's snapshots, and back up `~/.sediment` and the server's private
+environment with it. For a logical backup, run `pg_dump --format=custom` as
+`sediment_migrator`, which can read every Sediment object. The operator role
+can't dump the database.
 
 To rebuild on a new host, extract the files archive into the operator
-account's home directory, and restore the dump into the empty database with the
-`pg_restore` options in the following restore test. Then start Sediment, and
-point your hostname at the new host. Sediment reuses the same tokens, role
-passwords, and webhook secret, so developers and webhooks don't need to enroll
-again.
+account's home directory. Create the empty database and apply the output of
+`sediment db provision --print-sql` as its administrator, with the role
+passwords from `database-roles.env`. `sediment db provision` can't prepare a
+restore target, because it also creates the schema. Then restore the dump as
+`sediment_migrator` with the `pg_restore` options in the following restore
+test, start Sediment, and point your hostname at the new host. Sediment reuses
+the same tokens, role passwords, and webhook secret, so developers and webhooks
+don't need to enroll again.
 
 Test a restore before you rely on the data, and after each upgrade that
-changes the schema:
+changes the schema. On EC2, run `psql` and `pg_restore` inside the database
+container, with `docker compose exec -it postgres`, and copy the dump in with
+`docker compose cp`.
 
-1. Create a separate, empty database. Don't touch the original.
-2. Restore the dump with
+1. As the database administrator, create a separate, empty database. Don't
+   touch the original.
+2. Give the copy its own roles, so that the live roles gain no access to it.
+   Set `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
+   `SEDIMENT_OPERATOR_ROLE` to test names, such as `restore_migrator`, run
+   `sediment db provision --print-sql --database <copy>`, and apply the output
+   as the administrator. Set a password for each test role.
+3. As the test migrator, restore the dump with
    [`pg_restore`](https://www.postgresql.org/docs/17/app-pgrestore.html)
-   `--exit-on-error --no-owner --no-privileges`.
-3. With the same Sediment version, set `SEDIMENT_BOOTSTRAP_DATABASE_URL` to the
-   restored database and the three role passwords from `server.env`. Then run
-   `sediment db provision`.
-4. Point an operator shell at the restored database. Check that
+   `--exit-on-error --no-owner --no-privileges`. The migrator owns every
+   restored object.
+4. With the same Sediment version and the test role names, set
+   `SEDIMENT_MIGRATOR_DATABASE_URL` to the copy as the test migrator and run
+   `sediment db upgrade`. It prints `grants applied and roles validated`.
+5. Point an operator shell at the copy as the test operator. Check that
    `sediment db status` shows `at_head`, and compare `sediment facts` and
    `sediment quarantine-log` with the original.
-5. Record how long recovery took, then drop the test database.
+6. Record how long recovery took. Then drop the test database and the test
+   roles.
 
 ## Monitor the deployment
 
@@ -163,7 +254,7 @@ restore the missing windows. See
 | Symptom | Action |
 | --- | --- |
 | Installation fails | Check access to the package index and the host-library prerequisites. |
-| The API doesn't start | Read the supervisor log. Check database reachability and the superuser bootstrap connection. |
+| The API doesn't start | Read the supervisor log. Check database reachability, then run `SEDIMENT_DATABASE_URL="$SEDIMENT_MIGRATOR_DATABASE_URL" sediment db check`, which names each failed role or grant check and its fix. |
 | Ingest returns `503 database_unavailable` | Restore database access. Clients with a sender buffer replay their payloads. Sediment can't recover an event that a client never retained. |
 | `/health` works, but no capture arrives | Run the agent's Session check in [Verify capture](run-pilot.md#verify-capture). Check webhook deliveries and the API log for mirror errors. |
 
@@ -182,5 +273,6 @@ history. Keep any backups and exports that you need first.
 3. Stop and disable Sediment in its supervisor, and remove its HTTPS route.
 4. Delete the database. On EC2, run `docker compose down --volumes` from
    `~/sediment-deploy`.
-5. Delete `~/.sediment/server`, exports, and any backups that your retention
-   policy doesn't require.
+5. Delete `~/.sediment`, exports, and any backups that your retention
+   policy doesn't require. On your own host, also drop the three database
+   roles.

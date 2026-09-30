@@ -11,9 +11,8 @@ artifacts — Attributed completions and Rollouts — projected into DPO/SFT and
 RLVR training rows (plus the Fact-derived Recovery pair, ADR 0004's one
 sanctioned exception). Full picture: `docs/explanation/how-sediment-works.md`.
 
-The ADRs in `docs/adr/` are binding — read the ones touching your area before
-changing anything structural. Current status is `CHANGELOG.md` plus the GitHub
-milestones.
+Before structural changes, read the binding ADRs for your area in `docs/adr/`.
+`CHANGELOG.md` and GitHub milestones track project status.
 
 ## The Non-Negotiable Rules
 
@@ -122,9 +121,10 @@ AGPL-3.0-or-later (see `LICENSE`). Every first-party `.py` file begins with:
 ```
 
 `uv run python scripts/add_spdx.py` inserts missing headers (idempotent);
-CI runs `--check`. `shims/` is carved out as MIT (`shims/pi/LICENSE`,
-`// SPDX-License-Identifier: MIT`) — shim code runs inside someone else's
-harness process, where AGPL blocks adoption.
+CI runs `--check`. `shims/` and `contrib/erode/` are carved out as MIT
+(`shims/pi/LICENSE`, `contrib/erode/LICENSE`; `SPDX-License-Identifier: MIT`) —
+shim code runs inside someone else's harness process, and erode in front of
+someone else's agent (ADR 0028), where AGPL blocks adoption.
 
 Open-core boundary: a single team's complete, auditable pipeline stays open —
 see `docs/adr/0006-open-core-boundary.md`. Review cross-team operational
@@ -176,10 +176,11 @@ on an orphan. Report a routed file that does not exist as a bug.
 |---|---|
 | Deploy on EC2 or your own host, then enroll a team | `docs/operate/deploy-ec2.md`; `docs/operate/deploy.md`; `docs/operate/run-pilot.md` |
 | Upgrade, back up, rotate credentials, quarantine, tear down; stored data, network exposure, release checks | `docs/operate/maintain.md`; `docs/operate/security.md` |
-| Run, scope, and recompute Derivations; profile them | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
+| Start with a reviewed Derivation bundle, then export; compare policies and profile workloads | `docs/operate/run-derivations.md`; [Profile reports and Derivations](CONTRIBUTING.md#profile-reports-and-derivations); `docs/adr/0020-bounded-derivation-execution.md` |
 | Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
 | Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
-| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026 |
+| Qualify a managed PostgreSQL service before any compatibility claim | [Qualify a managed PostgreSQL service](CONTRIBUTING.md#qualify-a-managed-postgresql-service); `docs/adr/0027-postgresql-without-superuser.md` |
+| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026; request-path context pruning: `docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md`, ADR 0028 |
 | Synthetic scenarios | `sim/README.md` |
 
 **Capture clients** (`docs/capture/`)
@@ -194,7 +195,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 
 | Topic | Read |
 |---|---|
-| Choose a training objective and consumer profile | `docs/exports/training-exports.md`; `docs/exports/consumer-compatibility.md` |
+| Start an export: choose an objective, prepare evidence, select a consumer, and audit output | `docs/exports/training-exports.md`; `docs/exports/consumer-compatibility.md` |
 | DPO pairs; SFT and diff-SFT rows; Recovery rows | `docs/exports/dpo.md`; `docs/exports/sft.md`; `docs/exports/recovery.md` |
 | RLVR artifacts (`tasks.jsonl`, `rollouts.jsonl`, manifest) | `docs/exports/rlvr-export.md` |
 

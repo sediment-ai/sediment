@@ -1,0 +1,23 @@
+[project]
+name = "erode"
+version = "0.1.0"
+description = "Wear stale tool output out of an AI agent's model requests."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Source = "https://github.com/sediment-ai/sediment/tree/main/contrib/erode"
+
+[project.scripts]
+erode = "erode.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"

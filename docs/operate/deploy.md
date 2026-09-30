@@ -17,8 +17,10 @@ You need the following:
   and 8 GB of memory
 - Git, `curl`, and OpenSSL
 - A dedicated operating-system account to run Sediment
-- A dedicated PostgreSQL 17 database on a private network, and a superuser
-  connection to it
+- A dedicated, empty PostgreSQL 17 database on a private network, and either
+  an administrator connection to it or a database administrator who creates
+  Sediment's roles for you. The administrator is a superuser, or a role with
+  `CREATEROLE` that owns the database.
 - A reverse proxy that serves a stable HTTPS hostname
 - Persistent storage for the account's home directory
 
@@ -49,25 +51,101 @@ The command prints the version that you installed.
 If a coding agent helps you operate this deployment, give it the output of
 `sediment guide` for guidance that matches the installed release.
 
-## Connect PostgreSQL
+## Create the database roles
 
-Sediment needs a PostgreSQL superuser (`rolsuper=true`) connection to create
-its own database roles. Managed database services that don't grant superuser
-access can't provision Sediment. Don't point Sediment at a database that
-another application uses.
+Sediment uses three PostgreSQL roles: `sediment_migrator` owns the schema and
+migrates it, `sediment_runtime` serves the API, and `sediment_operator` runs
+operator commands. The API can't change or delete a Fact. Don't point Sediment
+at a database that another application uses.
+
+Sediment doesn't claim support for a managed PostgreSQL service, such as Amazon
+RDS, until the service passes the
+[qualification in ADR 0027](../adr/0027-postgresql-without-superuser.md#qualification-before-compatibility-claims).
+
+1. Optional: If your organization names the roles itself, export
+   `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
+   `SEDIMENT_OPERATOR_ROLE`. Set them in the server's environment too, and use
+   those names in place of `sediment_migrator`, `sediment_runtime`, and
+   `sediment_operator` in every URL on this page. Two deployments with
+   different role names and databases can share one PostgreSQL instance.
+2. As the server account, generate the three role passwords into a private
+   file. The command refuses to overwrite an existing file, which holds the
+   only copy of the passwords:
+
+   ```bash
+   (
+     umask 077
+     mkdir -p ~/.sediment
+     set -o noclobber
+     cat > ~/.sediment/database-roles.env <<EOF_ROLES
+   SEDIMENT_MIGRATOR_PASSWORD=$(openssl rand -hex 32)
+   SEDIMENT_RUNTIME_PASSWORD=$(openssl rand -hex 32)
+   SEDIMENT_OPERATOR_PASSWORD=$(openssl rand -hex 32)
+   EOF_ROLES
+   )
+   ```
+
+3. Create the roles in one of two ways:
+
+   - If you hold the administrator connection, let Sediment create the roles.
+     Enter the administrator URL at the prompt, for example
+     `postgresql+psycopg://admin:<password>@db.internal:5432/sediment`.
+     Percent-encode any reserved URL character in the password. The URL
+     reaches only this command:
+
+     ```bash
+     (
+       set -a; . ~/.sediment/database-roles.env; set +a
+       read -rs -p 'Administrator URL: ' SEDIMENT_BOOTSTRAP_DATABASE_URL; echo
+       export SEDIMENT_BOOTSTRAP_DATABASE_URL
+       sediment db provision
+     )
+     ```
+
+     The command prints `database roles provisioned and schema upgraded`. If
+     the administrator lacks a capability, the command names it and the
+     statement that fixes it, and changes nothing.
+
+   - If a database administrator creates the roles, print the SQL for them:
+
+     ```bash
+     sediment db provision --print-sql --database sediment > sediment-roles.sql
+     ```
+
+     The administrator runs `sediment-roles.sql` connected to the `sediment`
+     database, then sets each role's password to the value in
+     `~/.sediment/database-roles.env`. `sediment-roles.sql` contains no
+     password.
+
+## Configure the server
 
 In the server account's private environment, set the following variables.
-Replace the organization, the connection, and the Git hosts that Sediment may
-clone from:
+Replace the organization, the database host, the two passwords from
+`~/.sediment/database-roles.env`, and the Git hosts that Sediment may clone
+from. Percent-encode any reserved URL character in a password:
 
 ```bash
 export SEDIMENT_ORG_ID=acme
-export SEDIMENT_BOOTSTRAP_DATABASE_URL='postgresql+psycopg://bootstrap:<password>@db.internal:5432/sediment'
+export SEDIMENT_MIGRATOR_DATABASE_URL='postgresql+psycopg://sediment_migrator:<migrator password>@db.internal:5432/sediment'
+export SEDIMENT_DATABASE_URL='postgresql+psycopg://sediment_runtime:<runtime password>@db.internal:5432/sediment'
 export SEDIMENT_ALLOWED_CLONE_HOSTS='["github.com"]'
 export SEDIMENT_DEV_MODE=false
 ```
 
 Keep this environment private. Your supervisor must supply it on every start.
+The administrator URL never belongs here. A database URL in these variables
+takes only TLS options, such as `sslmode` and `sslrootcert`.
+
+Check the database before the first start. The URL goes through the
+environment, so it stays out of process listings:
+
+```bash
+SEDIMENT_DATABASE_URL="$SEDIMENT_MIGRATOR_DATABASE_URL" sediment db check
+```
+
+The check prints `passed`. Otherwise, it lists each failed check with the
+statement that fixes it. Before the first start, the schema is `absent` after
+the administrator's SQL, or `at_head` after `sediment db provision`.
 
 ## Start the API
 
@@ -77,9 +155,11 @@ Keep this environment private. Your supervisor must supply it on every start.
    sediment server --host 127.0.0.1 --port 8000
    ```
 
-   On start, Sediment creates separate migrator, runtime, and operator
-   database roles and applies migrations. The API runs with the runtime role
-   only.
+   On each start, Sediment migrates the database as `sediment_migrator`,
+   applies the table grants, and checks all three roles. It then removes the
+   migrator credential from its environment before the API and its workers
+   start, and serves with the runtime role only. Replicas that start together
+   wait up to two minutes for one migration.
 
 2. In a second terminal, check readiness:
 
@@ -93,9 +173,9 @@ Keep this environment private. Your supervisor must supply it on every start.
    as the same account, with the same private environment. Set it to restart
    Sediment after a failure and after a host restart.
 
-Sediment writes its generated API tokens and database-role passwords to
-`~/.sediment/server/server.env`, and its Git mirrors to
-`~/.sediment/server/mirror`. Keep `~/.sediment/server` on persistent storage.
+Sediment writes its generated API tokens to `~/.sediment/server/server.env`,
+and its Git mirrors to `~/.sediment/server/mirror`. Keep `~/.sediment` on
+persistent storage.
 
 ## Expose HTTPS
 
@@ -122,7 +202,7 @@ directly through the `sediment_operator` role.
    ```bash
    export SEDIMENT_ORG_ID=acme
    export SEDIMENT_MIRROR_PATH="$HOME/.sediment/server/mirror"
-   OPERATOR_PASSWORD="$(sed -n 's/^SEDIMENT_OPERATOR_PASSWORD=//p' ~/.sediment/server/server.env)"
+   OPERATOR_PASSWORD="$(sed -n 's/^SEDIMENT_OPERATOR_PASSWORD=//p' ~/.sediment/database-roles.env)"
    export SEDIMENT_DATABASE_URL="postgresql+psycopg://sediment_operator:$OPERATOR_PASSWORD@db.internal:5432/sediment"
    unset OPERATOR_PASSWORD
    ```

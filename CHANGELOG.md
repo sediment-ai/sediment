@@ -11,6 +11,25 @@
   generated environment already holds the endpoint and token. Configure local
   capture, Roll out managed capture, and the agent guides drop repeated steps,
   and managed capture puts the GitHub webhooks first.
+- Add opt-in context pruning (ADR 0028). With
+  `SEDIMENT_CONTEXT_PRUNE=supersede`, the LiteLLM capture callback replaces
+  superseded tool output with a one-line stub before each model call: a file
+  read that a later read, edit, or write of the file replaced, and a command
+  run that a later identical run replaced. Captured Inference calls record the
+  pruned request and carry a count-only `sediment_context` report on `raw`.
+  OpenAI chat requests pass through unpruned, and the report counts them as
+  skipped, because their tool results carry no error flag. The rule lives in erode, an MIT-licensed, stdlib-only package in
+  `contrib/erode` that is meant to move to its own repository. The bundled
+  gateway mounts it and passes the variable through. For other gateways, or
+  agents that call a provider directly, run `erode proxy`. See
+  [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+- Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
+  Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
+  strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
+  reads and `apply_patch` edits, and stubs individual results inside a bundled
+  output. Any other call shape passes through unchanged. Three recorded Codex
+  Sessions are the test fixtures. See
+  [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
 
 ### Command line
 
@@ -18,15 +37,93 @@
   install capture. It prints a bundled guide with procedure links pinned to
   the installed release. Server startup and compatible installers name the
   command. The docs site publishes the guide at `operate/agent-guide`.
+- Change `sediment server` against an external database: it migrates at
+  start instead of provisioning. Set `SEDIMENT_MIGRATOR_DATABASE_URL` and
+  `SEDIMENT_DATABASE_URL`; each start runs the migrate step as the migrator,
+  removes the migrator credential from its environment, and serves as the
+  runtime role, as `coder server` does. The server refuses
+  `SEDIMENT_BOOTSTRAP_DATABASE_URL`, so the administrator credential never
+  reaches it. To upgrade a deployment that starts the server with the
+  bootstrap URL, run `sediment db provision` once with that URL and the three
+  role passwords from `server.env`, then replace the bootstrap URL with the
+  two role URLs. The server without a database URL keeps managing and
+  provisioning its private PostgreSQL cluster
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
+- Wait up to two minutes for the migration lock, then fail with a
+  diagnostic. `sediment db upgrade` and replicas starting together used to
+  fail at once when another process held it.
+- Add `SEDIMENT_MIGRATOR_ROLE`, `SEDIMENT_RUNTIME_ROLE`, and
+  `SEDIMENT_OPERATOR_ROLE` to name the three database roles. They default to
+  `sediment_migrator`, `sediment_runtime`, and `sediment_operator`. Each
+  database URL's user must match its role, and every check uses the
+  configured names, so two deployments can share one PostgreSQL instance
+  without sharing roles. `sediment db upgrade` reads
+  `SEDIMENT_MIGRATOR_DATABASE_URL` before `SEDIMENT_DATABASE_URL`.
+- Add `sediment db provision --print-sql`, which prints the SQL that a
+  database administrator runs to create the roles and grant database access,
+  for the configured role names and database, without connecting. Provisioning
+  runs the same statements, and `sediment db check` verifies their result.
+- Let `sediment db provision` run as an administrator that isn't a
+  superuser: one with `CREATEROLE` that owns the dedicated database, as on
+  managed PostgreSQL services. Capability checks replace the superuser
+  requirement and report every missing capability before the first change.
+  An existing Sediment role that doesn't grant the administrator the `ADMIN`
+  option fails with both fixes: grant `ADMIN` to this administrator, or switch
+  to administrator-provisioned roles. Provisioning names only the role
+  attributes that the administrator may set, and revokes each membership from
+  its grantor, so a revoke never skips a grant silently. Only a superuser
+  adopts tables that predate the role model
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)). No managed
+  service is qualified yet.
+- Extend `sediment db upgrade`. Connected as `sediment_migrator`, it verifies
+  columns after Alembic, applies the owner's table, column, and sequence
+  grants, and validates the database, its `public` schema, and all three
+  roles, all under the migration lock. A validation failure names every
+  failed check and its fix. `sediment db provision` runs the same step
+  through the migrator credential instead of granting as the administrator.
+  Another identity can still upgrade a single-owner database that grants no
+  Sediment role access, and is refused on a provisioned one
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
+- Add `sediment db check`, a read-only command that reports every failed
+  database role and grant check at once, each with the statement that fixes
+  it. It checks the migrator role, the dedicated database and its `public`
+  schema, and the unchanged runtime and operator policies. Connected as an
+  administrator, it also reports what provisioning needs from that
+  administrator. Privilege diagnostics from provisioning and API startup now
+  name the role, the privilege, and the fix
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
 - Remove `sediment install --gateway-url` and `--gateway-key`. The operator
   distributes gateway routing and client credentials through managed settings
   or MDM; developers no longer receive a gateway key. Reinstalling drops
   `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, and `SEDIMENT_GATEWAY_KEY` from
   the generated environment files. See
   [Distribute gateway routing](docs/capture/managed-capture.md#distribute-gateway-routing).
+- Fix the version-mismatch warning so that it prints the command that
+  installs the server's exact release instead of `uv tool upgrade
+  sediment-cli`, which kept a pinned client unchanged and could move an
+  unpinned client past an older server. The command handles upgrades,
+  downgrades, and release candidates. `sediment doctor` uses the same command.
+  A server version that isn't `X.Y.Z` or `X.Y.ZrcN` produces a fixed warning
+  that doesn't repeat the server's text, and an unreadable `/v1/me` response
+  stays silent.
 
 ### Deployment
 
+- Update the supplied gateway to OAuthLib 4.0.0 to fix CVE-2026-49264 and
+  CVE-2026-49265. Image tests cover its OAuth client compatibility.
+- Review FastAPI 0.142.0 and OpenTelemetry API 1.45.0 for resolved client
+  installations so the security gate accepts these maintained releases.
+- Document PostgreSQL without a superuser. Deploy Sediment on your own host
+  replaces its superuser requirement with two ways to create the database
+  roles: `sediment db provision` with an administrator that owns the
+  database, or SQL from `sediment db provision --print-sql` that a database
+  administrator runs. The server's environment holds the migrator and runtime
+  URLs, never the administrator's. Deploy Sediment on EC2 provisions once with
+  the PostgreSQL superuser. Maintain a deployment covers moving an existing
+  deployment off the bootstrap URL, password rotation in both modes, `pg_dump`
+  as the migrator, and a restore test into a copy with its own roles. No
+  managed PostgreSQL service is qualified yet
+  ([ADR 0027](docs/adr/0027-postgresql-without-superuser.md)).
 - Restructure the Operate docs into one path: deploy on EC2 or on your own
   host, enroll your team, then measure agent work. Deploy Sediment becomes
   Deploy Sediment on your own host. Enroll your team replaces the Cursor, pi,
@@ -41,12 +138,29 @@
 
 ### Contributor checks
 
+- Generate CLI defaults and lookup indexes, API parameter constraints and
+  nested request types, and links to canonical schemas. Correct reference
+  descriptions of JSON values, capture timestamps, CI run identity, and
+  Quarantine revisions. The optional reference hook also refreshes consumer
+  compatibility when profile sources change.
 - Test the pi shim against pi-coding-agent 0.87.1. Align the continuation
   comparison's exact version check and task-selection tests with the lockfile.
 - Centralize repository agent skills in `.skills/`, including release preparation
   and publication. Route every skill from `AGENTS.md` and remove the repository
   Claude Code settings so agents can read the same procedures across harnesses.
   Require verification of the README PyPI badge during release closeout.
+- Run the complete installed release rehearsal once per pull request instead of
+  repeating it in the serial test pass. The rehearsal script checks the
+  installed module locations, identities, and hashes that the repeated test
+  checked, so tag releases enforce them too. Worker cleanup tests use a
+  controlled process tree plus one installed-server interruption, and runtime
+  failure tests share one validated build.
+- Give packagers 14 days to ship an upstream runtime patch before the security
+  gate fails. The OpenSSL 3.5.9, 3.6.5, and 4.0.3 releases on 2026-09-29 failed
+  every client and gateway scan while no Wolfi, `cryptography`, or uv build
+  carried them. The window starts at the first patch that is newer than the
+  installed runtime, and the runtime evidence records each pending patch and its
+  deadline. Fixes that a vulnerability scanner reports still fail at once.
 
 ## 0.3.0 — 2026-09-27
 

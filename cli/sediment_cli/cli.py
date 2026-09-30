@@ -152,18 +152,79 @@ def _database_url(args: argparse.Namespace) -> str:
 
 
 def cmd_db_upgrade(args: argparse.Namespace) -> int:
-    """Upgrade the PostgreSQL physical schema to the supported head."""
-    from sediment_core.postgres_migrations import HEAD_REVISION, upgrade_database
+    """Upgrade the schema; as the migrator, also grant and validate the roles."""
+    from sediment_core.postgres_migrations import HEAD_REVISION
+    from sediment_core.postgres_roles import RoleNames, migrate_database
 
-    upgrade_database(_database_url(args))
-    print(f"database schema upgraded to {HEAD_REVISION}")
+    roles = RoleNames.from_environment(os.environ)
+    database_url = args.database_url
+    if not database_url and os.environ.get("SEDIMENT_MIGRATOR_DATABASE_URL"):
+        database_url = _role_url("SEDIMENT_MIGRATOR_DATABASE_URL", roles.migrator)
+    if migrate_database(database_url or _database_url(args), roles):
+        print(
+            f"database schema upgraded to {HEAD_REVISION}; "
+            "grants applied and roles validated"
+        )
+    else:
+        print(f"database schema upgraded to {HEAD_REVISION}")
     return 0
 
 
-def cmd_db_provision(args: argparse.Namespace) -> int:
-    """Provision fixed deployment roles using secrets from the environment."""
-    from sediment_core.postgres_roles import provision_database
+def _role_url(variable: str, role: str) -> str:
+    """A configured PostgreSQL URL whose user must be the named role."""
+    from sqlalchemy.engine import make_url
 
+    from sediment_core.postgres_roles import URL_OPTIONS
+
+    value = os.environ.get(variable)
+    if not value:
+        raise ValueError(f"set {variable}")
+    try:
+        url = make_url(value)
+        valid = (
+            url.get_backend_name() == "postgresql"
+            and bool(url.host)
+            and bool(url.database)
+        )
+    except Exception:
+        valid = False
+    if not valid:
+        raise ValueError(
+            f"{variable} must name an explicit PostgreSQL host and database"
+        )
+    if set(url.query) - URL_OPTIONS:
+        raise ValueError(f"{variable} may carry only TLS options")
+    if url.username != role:
+        raise ValueError(f"{variable} must connect as the configured role {role}")
+    return value
+
+
+def cmd_db_provision(args: argparse.Namespace) -> int:
+    """Provision deployment roles, or print the administrator's SQL."""
+    from sqlalchemy.engine import make_url
+
+    from sediment_core.postgres_roles import (
+        RoleNames,
+        administrator_sql,
+        provision_database,
+    )
+
+    roles = RoleNames.from_environment(os.environ)
+    if args.print_sql:
+        database = args.database
+        for variable in ("SEDIMENT_MIGRATOR_DATABASE_URL", "SEDIMENT_DATABASE_URL"):
+            if not database and os.environ.get(variable):
+                try:
+                    database = make_url(os.environ[variable]).database
+                except Exception:
+                    raise ValueError(f"{variable} is not a valid URL") from None
+        if not database:
+            raise ValueError(
+                "pass --database, or set SEDIMENT_MIGRATOR_DATABASE_URL or "
+                "SEDIMENT_DATABASE_URL"
+            )
+        print(administrator_sql(database, roles), end="")
+        return 0
     values = {}
     for name in (
         "BOOTSTRAP_DATABASE_URL",
@@ -175,7 +236,7 @@ def cmd_db_provision(args: argparse.Namespace) -> int:
         if not value:
             raise ValueError(f"set SEDIMENT_{name} for database provisioning")
         values[name.lower()] = value
-    provision_database(**values)
+    provision_database(**values, roles=roles)
     print("database roles provisioned and schema upgraded")
     return 0
 
@@ -193,6 +254,28 @@ def cmd_db_status(args: argparse.Namespace) -> int:
             f"(supported head {inspection.head_revision})"
         )
     return 0
+
+
+def cmd_db_check(args: argparse.Namespace) -> int:
+    """Report every failed database role and grant check without changing it."""
+    from sediment_core.postgres_roles import RoleNames, check_database
+
+    result = check_database(_database_url(args), RoleNames.from_environment(os.environ))
+    heading = f'database check as "{result.identity}"'
+    schema = (
+        f"schema {result.revision.value}"
+        if result.revision is not None
+        else "schema unreadable as this identity; check as the migrator for "
+        "table grants"
+    )
+    if not result.failures:
+        print(f"{heading}: passed ({schema})")
+        return 0
+    print(f"{heading}: {schema}")
+    for failure in result.failures:
+        print(f"  {failure}")
+    count = len(result.failures)
+    return _fail(f"{count} database check{'s' if count != 1 else ''} failed")
 
 
 def _public_status(status: int) -> int:
@@ -501,33 +584,50 @@ def cmd_server(args: argparse.Namespace) -> int:
 
 
 def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
-    """Provision an evaluation database, then serve with runtime database authority.
+    """Migrate, then serve with runtime database authority only.
 
-    An explicit bootstrap URL selects an external database.
-    Private server.env stores separate capture/operator API tokens and role
-    passwords. An exported secret takes precedence over its saved value.
+    Without a database URL, Sediment owns a private PostgreSQL cluster and
+    provisions it on each start. SEDIMENT_MIGRATOR_DATABASE_URL selects an
+    external database that is already provisioned: each start runs the
+    migrate step as the migrator, as `coder server` does, and the API serves
+    with SEDIMENT_DATABASE_URL. Private server.env stores separate
+    capture/operator API tokens and managed role passwords. An exported secret
+    takes precedence over its saved value.
     """
     import secrets as secrets_module
 
     from sqlalchemy.engine import make_url
 
-    from sediment_core.postgres_roles import RUNTIME_ROLE, provision_database
+    from sediment_core.postgres_roles import (
+        RoleNames,
+        migrate_database,
+        provision_database,
+    )
 
     from .local_postgres import managed_postgres, server_root
 
-    bootstrap = os.environ.get("SEDIMENT_BOOTSTRAP_DATABASE_URL")
-    try:
-        target = make_url(bootstrap) if bootstrap else None
-        if target is not None and (
-            target.get_backend_name() != "postgresql"
-            or not target.host
-            or not target.database
-        ):
-            raise ValueError
-    except Exception:
+    if os.environ.get("SEDIMENT_BOOTSTRAP_DATABASE_URL"):
+        # The administrator credential never reaches the server (ADR 0027).
         raise ValueError(
-            "bootstrap URL must name an explicit PostgreSQL host and database"
-        ) from None
+            "sediment server doesn't provision an external database; run "
+            "`sediment db provision` once, then start with "
+            "SEDIMENT_MIGRATOR_DATABASE_URL and SEDIMENT_DATABASE_URL instead of "
+            "SEDIMENT_BOOTSTRAP_DATABASE_URL"
+        )
+    roles = RoleNames.from_environment(os.environ)
+    external = bool(os.environ.get("SEDIMENT_MIGRATOR_DATABASE_URL"))
+    if external:
+        migrator_url = _role_url("SEDIMENT_MIGRATOR_DATABASE_URL", roles.migrator)
+        runtime_url = _role_url("SEDIMENT_DATABASE_URL", roles.runtime)
+        targets = {
+            (url.host, url.port or 5432, url.database)
+            for url in map(make_url, (migrator_url, runtime_url))
+        }
+        if len(targets) != 1:
+            raise ValueError(
+                "SEDIMENT_MIGRATOR_DATABASE_URL and SEDIMENT_DATABASE_URL must "
+                "name the same host, port, and database"
+            )
 
     root = Path(args.root).expanduser().absolute()
     stack.enter_context(server_root(root))
@@ -542,13 +642,17 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
         os.environ.get("SEDIMENT_INGEST_TOKENS") or stored.get("SEDIMENT_INGEST_TOKENS")
     ):
         api_keys.append("SEDIMENT_API_BEARER_TOKEN")
-    database_keys = [
-        "SEDIMENT_MIGRATOR_PASSWORD",
-        "SEDIMENT_RUNTIME_PASSWORD",
-        "SEDIMENT_OPERATOR_PASSWORD",
-    ]
-    if not bootstrap:
-        database_keys.append("SEDIMENT_BOOTSTRAP_PASSWORD")
+    # Only the managed cluster's roles take generated passwords.
+    database_keys = (
+        []
+        if external
+        else [
+            "SEDIMENT_MIGRATOR_PASSWORD",
+            "SEDIMENT_RUNTIME_PASSWORD",
+            "SEDIMENT_OPERATOR_PASSWORD",
+            "SEDIMENT_BOOTSTRAP_PASSWORD",
+        ]
+    )
     for key in (*api_keys, *database_keys):
         if not (os.environ.get(key) or stored.get(key)):
             stored[key] = secrets_module.token_hex(32)
@@ -580,25 +684,39 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
             "SEDIMENT_INGEST_TOKENS",
         )
     }
-    if not bootstrap:
+    if external:
+        if not migrate_database(migrator_url, roles):
+            raise ValueError(
+                "SEDIMENT_MIGRATOR_DATABASE_URL must connect as the configured "
+                f"role {roles.migrator}"
+            )
+        del migrator_url, runtime_url
+    else:
         bootstrap = stack.enter_context(
             managed_postgres(root, effective["SEDIMENT_BOOTSTRAP_PASSWORD"])
         )
-        target = make_url(bootstrap)
-    provision_database(
-        bootstrap,
-        migrator_password=effective["SEDIMENT_MIGRATOR_PASSWORD"],
-        runtime_password=effective["SEDIMENT_RUNTIME_PASSWORD"],
-        operator_password=effective["SEDIMENT_OPERATOR_PASSWORD"],
-    )
-    os.environ["SEDIMENT_DATABASE_URL"] = target.set(
-        drivername="postgresql+psycopg",
-        username=RUNTIME_ROLE,
-        password=effective["SEDIMENT_RUNTIME_PASSWORD"],
-    ).render_as_string(hide_password=False)
+        provision_database(
+            bootstrap,
+            migrator_password=effective["SEDIMENT_MIGRATOR_PASSWORD"],
+            runtime_password=effective["SEDIMENT_RUNTIME_PASSWORD"],
+            operator_password=effective["SEDIMENT_OPERATOR_PASSWORD"],
+            roles=roles,
+        )
+        os.environ["SEDIMENT_DATABASE_URL"] = (
+            make_url(bootstrap)
+            .set(
+                drivername="postgresql+psycopg",
+                username=roles.runtime,
+                password=effective["SEDIMENT_RUNTIME_PASSWORD"],
+            )
+            .render_as_string(hide_password=False)
+        )
+        del bootstrap
     # Only runtime connection authority reaches the API and its worker children.
     for key in (
-        *database_keys,
+        "SEDIMENT_MIGRATOR_PASSWORD",
+        "SEDIMENT_RUNTIME_PASSWORD",
+        "SEDIMENT_OPERATOR_PASSWORD",
         "SEDIMENT_BOOTSTRAP_PASSWORD",
         "SEDIMENT_BOOTSTRAP_DATABASE_URL",
         "SEDIMENT_MIGRATOR_DATABASE_URL",
@@ -621,7 +739,7 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
     print(f"Next:  {ui.style(f'sediment login {url}', 'sandstone')}")
     print("Agents: sediment guide")
 
-    del bootstrap, target, effective, stored, additions
+    del effective, stored, additions
     import uvicorn
 
     uvicorn.run("sediment_api.main:app", host=args.host, port=args.port)
@@ -1610,7 +1728,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     for operation, help_text, func in (
         ("status", "inspect the schema revision without changing it", cmd_db_status),
-        ("upgrade", "upgrade the schema under an advisory lock", cmd_db_upgrade),
+        (
+            "upgrade",
+            "upgrade the schema under an advisory lock; as the migrator, "
+            "also grant and validate the roles",
+            cmd_db_upgrade,
+        ),
+        (
+            "check",
+            "report every failed role and grant check without changing anything",
+            cmd_db_check,
+        ),
     ):
         command = db_sub.add_parser(operation, help=help_text)
         command.add_argument(
@@ -1625,7 +1753,24 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Read SEDIMENT_BOOTSTRAP_DATABASE_URL, SEDIMENT_MIGRATOR_PASSWORD, "
             "SEDIMENT_RUNTIME_PASSWORD, and SEDIMENT_OPERATOR_PASSWORD from "
-            "the environment. Stop services before provisioning."
+            "the environment. SEDIMENT_MIGRATOR_ROLE, SEDIMENT_RUNTIME_ROLE, and "
+            "SEDIMENT_OPERATOR_ROLE name the roles. Stop services before "
+            "provisioning."
+        ),
+    )
+    provision.add_argument(
+        "--print-sql",
+        action="store_true",
+        help=(
+            "print the SQL that an administrator runs to provision the roles "
+            "instead, without connecting"
+        ),
+    )
+    provision.add_argument(
+        "--database",
+        help=(
+            "database for --print-sql (default: the database in "
+            "SEDIMENT_MIGRATOR_DATABASE_URL or SEDIMENT_DATABASE_URL)"
         ),
     )
     provision.set_defaults(func=cmd_db_provision)
@@ -1968,10 +2113,12 @@ def main(argv: list[str] | None = None) -> int:
         return args.func(args)
 
     if args.command == "server":
-        # Pre-Settings dispatch: provision before the API imports its settings.
+        from sediment_core.postgres_migrations import MigrationError
+
+        # Pre-Settings dispatch: migrate before the API imports its settings.
         try:
             return args.func(args)
-        except (DatabaseOperationError, OSError, ValueError) as exc:
+        except (DatabaseOperationError, MigrationError, OSError, ValueError) as exc:
             return _fail(str(exc))
 
     if args.command == "db":

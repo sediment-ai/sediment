@@ -257,6 +257,7 @@ uv run python scripts/dump_openapi.py --check
 uv run python scripts/gen_cli_docs.py --check
 uv run python scripts/gen_api_docs.py --check
 uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
+uv run python scripts/gen_compatibility_docs.py --check
 uv run pytest -q -m cluster_roles --durations=10
 uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
 uv run pytest -q -m serial --durations=10
@@ -603,6 +604,15 @@ approving a disposition for that package.
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
 source, or scanner error blocks the gate. Keep failed evidence for investigation.
+
+The gate also compares each Python, Node, PostgreSQL, libpq, and OpenSSL
+runtime with the latest upstream patch on its release line. Packagers such as
+Wolfi, `cryptography`, and uv's managed Python builds need time to ship an
+upstream patch. The gate fails 14 days after upstream tags the first patch that
+is newer than the installed runtime. Until then, the scan passes, and the
+`*.runtime-upstream.json` evidence records the pending patch and its deadline.
+Update the pins when a packaged build ships. A fix that a vulnerability scanner
+reports gets no such window.
 
 Automatic security runs check lint, formatting, review dates, and review
 digests before building. If a review expires, run the workflow manually to
@@ -1233,3 +1243,389 @@ published format; they don't run a hosted upload or training job.
 Use the [Compose runbook](docs/operate/rehearse-compose.md) to build and qualify PostgreSQL,
 the API, the gateway, and the HTTPS proxy together. The operator docs use the
 published CLI. Container rehearsal requires the source and its build tools.
+
+## Qualify a managed PostgreSQL service
+
+Documentation claims support for a managed PostgreSQL service only after this
+procedure passes against a real instance of it, as
+[ADR 0027](docs/adr/0027-postgresql-without-superuser.md#qualification-before-compatibility-claims)
+requires. The first target is Amazon RDS for PostgreSQL 17 with its default
+parameter group ([#199](https://github.com/sediment-ai/sediment/issues/199)).
+The disposable-cluster tests prove PostgreSQL's rules; this procedure checks
+the provider's defaults and patches.
+
+You need an instance that holds nothing else, the credentials of its
+administrator, which RDS calls the master user, and a client host with the
+release under test, PostgreSQL 17 clients, OpenSSL, and Python 3. The
+procedure creates three databases and nine roles, and removes them at the
+end. Post the record in the service's qualification issue.
+
+### Prepare the client
+
+1. Download the provider's certificate bundle, for example the
+   [RDS global bundle](https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem).
+2. In a private Bash shell, set the connection. Replace the endpoint, the
+   master user, and the bundle path. The master password goes into a mode-`0600`
+   password file, never into an exported variable, so no `sediment server`
+   process inherits it:
+
+   ```bash
+   umask 077
+   export PGHOST=<instance endpoint> PGPORT=5432
+   export PGSSLMODE=verify-full PGSSLROOTCERT="$HOME/global-bundle.pem"
+   export SEDIMENT_ORG_ID=qualification SEDIMENT_DEV_MODE=false
+   export SEDIMENT_ALLOWED_CLONE_HOSTS='["github.com"]'
+   MASTER=<master user>
+   read -rs -p 'Master password: ' MASTER_PASSWORD; echo
+   WORK="$(mktemp -d)"
+   printf '%s:%s:*:%s:%s\n' "$PGHOST" "$PGPORT" "$MASTER" "$MASTER_PASSWORD" > "$WORK/pgpass"
+   ```
+
+   If the master password contains `:` or `\`, escape each with `\` in
+   `$WORK/pgpass`.
+
+3. Define the helpers:
+
+   ```bash
+   secret() { openssl rand -hex 32; }
+   encode() {
+     printf '%s' "$1" | python3 -c \
+       'import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=""))'
+   }
+   # db_url ROLE PASSWORD DATABASE prints a Sediment URL that verifies TLS.
+   db_url() {
+     printf 'postgresql+psycopg://%s:%s@%s:%s/%s?sslmode=verify-full&sslrootcert=%s' \
+       "$1" "$(encode "$2")" "$PGHOST" "$PGPORT" "$3" "$(encode "$PGSSLROOTCERT")"
+   }
+   # admin runs psql as the master user.
+   admin() { PGUSER="$MASTER" PGPASSFILE="$WORK/pgpass" psql -X "$@"; }
+   # as ROLE PASSWORD DATABASE SQL runs one statement as ROLE and prints errors.
+   as() { PGUSER="$1" PGPASSWORD="$2" psql -X -q -A -t -d "$3" -c "$4" 2>&1; }
+   # serve PORT ROOT MIGRATOR_URL RUNTIME_URL starts a server in the background.
+   serve() {
+     SEDIMENT_MIGRATOR_DATABASE_URL="$3" SEDIMENT_DATABASE_URL="$4" \
+       sediment server --port "$1" --root "$2" > "$2.log" 2>&1 &
+   }
+   # healthy PORT waits up to 150 seconds for a server, or prints its log.
+   healthy() {
+     for _ in $(seq 150); do
+       curl -fsS "http://127.0.0.1:$1/health" && return 0
+       sleep 1
+     done
+     echo "server on port $1 didn't start" >&2
+     return 1
+   }
+   ```
+
+   `secret` prints hexadecimal passwords, so URLs and SQL literals need no
+   escaping.
+
+4. Record the provider details:
+
+   ```bash
+   admin -A -d postgres \
+     -c 'SELECT version()' \
+     -c 'SHOW password_encryption' -c 'SHOW createrole_self_grant' \
+     -c 'SHOW rds.force_ssl' \
+     -c "SELECT rolname, rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = current_user" \
+     -c "SELECT r.rolname, m.admin_option, m.inherit_option, m.set_option FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = current_user) ORDER BY 1" \
+     -c 'SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid = pg_backend_pid()' \
+     | tee "$WORK/provider.txt"
+   ```
+
+### Provision with the master user
+
+This phase is the Sediment-managed mode. Its roles, `qual_a_*`, belong to the
+first of two deployments on the instance.
+
+1. Create the database, and generate the role passwords:
+
+   ```bash
+   admin -d postgres -c 'CREATE DATABASE qual_a'
+   export SEDIMENT_MIGRATOR_ROLE=qual_a_migrator SEDIMENT_RUNTIME_ROLE=qual_a_runtime
+   export SEDIMENT_OPERATOR_ROLE=qual_a_operator
+   A_MIGRATOR=$(secret) A_RUNTIME=$(secret) A_OPERATOR=$(secret)
+   ADMIN_A="$(db_url "$MASTER" "$MASTER_PASSWORD" qual_a)"
+   provision_a() {
+     SEDIMENT_BOOTSTRAP_DATABASE_URL="$ADMIN_A" SEDIMENT_MIGRATOR_PASSWORD="$A_MIGRATOR" \
+       SEDIMENT_RUNTIME_PASSWORD="$A_RUNTIME" SEDIMENT_OPERATOR_PASSWORD="$A_OPERATOR" \
+       sediment db provision
+   }
+   ```
+
+2. Check the master user's capabilities. Before provisioning, the output lists
+   the missing roles and the `PUBLIC` grants on the database and its `public`
+   schema. It must list no failure whose subject is `administrator`:
+
+   ```bash
+   SEDIMENT_DATABASE_URL="$ADMIN_A" sediment db check | tee "$WORK/a-preconditions.txt"
+   ```
+
+3. Provision. The command prints
+   `database roles provisioned and schema upgraded`:
+
+   ```bash
+   provision_a
+   ```
+
+4. Check as the master user and as the migrator. Both checks print `passed`.
+   If the master user can't read the schema revision, its check says so and
+   leaves table grants to the migrator's check, which shows `schema at_head`:
+
+   ```bash
+   SEDIMENT_DATABASE_URL="$ADMIN_A" sediment db check
+   SEDIMENT_DATABASE_URL="$(db_url qual_a_migrator "$A_MIGRATOR" qual_a)" sediment db check
+   ```
+
+5. Check the append-only boundary. Each statement prints an error that
+   contains `permission denied`, for both roles:
+
+   ```bash
+   for pair in "qual_a_runtime $A_RUNTIME" "qual_a_operator $A_OPERATOR"; do
+     set -- $pair
+     for statement in 'UPDATE inference_calls SET org_id = org_id' \
+       'DELETE FROM pushes' 'TRUNCATE sessions' 'CREATE TABLE forbidden (id int)' \
+       'SET ROLE qual_a_migrator'; do
+       as "$1" "$2" qual_a "$statement"
+     done
+   done
+   ```
+
+6. Start the server, sign in, and plant the demo Session. Note the Session
+   identifier that `sediment demo` prints:
+
+   ```bash
+   serve 8101 "$WORK/a" "$(db_url qual_a_migrator "$A_MIGRATOR" qual_a)" \
+     "$(db_url qual_a_runtime "$A_RUNTIME" qual_a)"
+   healthy 8101
+   sed -n 's/^SEDIMENT_OPERATOR_TOKEN=//p' "$WORK/a/server.env" \
+     | sediment login --with-token http://127.0.0.1:8101
+   sediment demo
+   ```
+
+7. Quarantine the demo Session's Inference calls, and save the counts:
+
+   ```bash
+   export SEDIMENT_DATABASE_URL="$(db_url qual_a_operator "$A_OPERATOR" qual_a)"
+   sediment quarantine-inference-calls --session-id '<Session identifier>' \
+     --reason qualification --apply
+   sediment facts | tee "$WORK/a-facts.txt"
+   ```
+
+8. Stop the server with `kill %1`. Rotate all three passwords by repeating
+   provisioning:
+
+   ```bash
+   A_MIGRATOR=$(secret) A_RUNTIME=$(secret) A_OPERATOR=$(secret)
+   provision_a
+   ```
+
+9. Start the server with the new passwords. The counts don't change:
+
+   ```bash
+   serve 8101 "$WORK/a" "$(db_url qual_a_migrator "$A_MIGRATOR" qual_a)" \
+     "$(db_url qual_a_runtime "$A_RUNTIME" qual_a)"
+   healthy 8101
+   export SEDIMENT_DATABASE_URL="$(db_url qual_a_operator "$A_OPERATOR" qual_a)"
+   sediment facts | diff "$WORK/a-facts.txt" -
+   ```
+
+10. Stop the server with `kill %1`. A provider membership also removes
+    password login on RDS.
+11. Check that a provider membership fails the check. The output names
+    `rds_iam`. Then remove the membership:
+
+    ```bash
+    admin -d qual_a -c 'GRANT rds_iam TO qual_a_runtime'
+    SEDIMENT_DATABASE_URL="$(db_url qual_a_migrator "$A_MIGRATOR" qual_a)" sediment db check
+    admin -d qual_a -c 'REVOKE rds_iam FROM qual_a_runtime'
+    ```
+
+### Provision with the printed SQL
+
+This phase is the administrator-provisioned mode. Its roles, `qual_b_*`,
+belong to a second deployment on the same instance. Sediment never receives
+the master credential here.
+
+1. Print the SQL for the second deployment, and apply it as the master user:
+
+   ```bash
+   export SEDIMENT_MIGRATOR_ROLE=qual_b_migrator SEDIMENT_RUNTIME_ROLE=qual_b_runtime
+   export SEDIMENT_OPERATOR_ROLE=qual_b_operator
+   admin -d postgres -c 'CREATE DATABASE qual_b'
+   sediment db provision --print-sql --database qual_b > "$WORK/qual_b.sql"
+   admin -v ON_ERROR_STOP=1 -d qual_b -f "$WORK/qual_b.sql"
+   ```
+
+2. Set the passwords. The statements reach psql on standard input, so they
+   stay out of process listings. PostgreSQL receives each password in the
+   statement text and hashes it before it stores it:
+
+   ```bash
+   B_MIGRATOR=$(secret) B_RUNTIME=$(secret) B_OPERATOR=$(secret)
+   admin -q -d qual_b <<EOF_SQL
+   ALTER ROLE qual_b_migrator PASSWORD '$B_MIGRATOR';
+   ALTER ROLE qual_b_runtime PASSWORD '$B_RUNTIME';
+   ALTER ROLE qual_b_operator PASSWORD '$B_OPERATOR';
+   EOF_SQL
+   ```
+
+3. Check the database. The output prints `passed (schema absent)`:
+
+   ```bash
+   SEDIMENT_DATABASE_URL="$(db_url qual_b_migrator "$B_MIGRATOR" qual_b)" sediment db check
+   ```
+
+4. Start two replicas together against the unmigrated database. Both serve:
+
+   ```bash
+   for port in 8201 8202; do
+     serve "$port" "$WORK/b-$port" "$(db_url qual_b_migrator "$B_MIGRATOR" qual_b)" \
+       "$(db_url qual_b_runtime "$B_RUNTIME" qual_b)"
+   done
+   healthy 8201 && healthy 8202
+   ```
+
+5. Check that only `qual_b_runtime` holds a connection. The command prints
+   `qual_b_runtime` only:
+
+   ```bash
+   admin -A -t -d postgres -c "SELECT DISTINCT usename FROM pg_stat_activity WHERE datname = 'qual_b'"
+   ```
+
+6. Check that the deployments stay apart. The first command prints `1`, so the
+   first deployment's passwords still work. The other two fail, because neither
+   runtime role can connect to the other deployment's database:
+
+   ```bash
+   as qual_a_runtime "$A_RUNTIME" qual_a 'SELECT 1'
+   as qual_b_runtime "$B_RUNTIME" qual_a 'SELECT 1'
+   as qual_a_runtime "$A_RUNTIME" qual_b 'SELECT 1'
+   ```
+
+7. Stop both replicas with `kill %1 %2`.
+8. Have each role change its own password:
+
+   ```bash
+   NEW_MIGRATOR=$(secret) NEW_RUNTIME=$(secret) NEW_OPERATOR=$(secret)
+   PGUSER=qual_b_migrator PGPASSWORD="$B_MIGRATOR" psql -X -q -d qual_b <<EOF_SQL
+   ALTER ROLE CURRENT_USER PASSWORD '$NEW_MIGRATOR';
+   EOF_SQL
+   PGUSER=qual_b_runtime PGPASSWORD="$B_RUNTIME" psql -X -q -d qual_b <<EOF_SQL
+   ALTER ROLE CURRENT_USER PASSWORD '$NEW_RUNTIME';
+   EOF_SQL
+   PGUSER=qual_b_operator PGPASSWORD="$B_OPERATOR" psql -X -q -d qual_b <<EOF_SQL
+   ALTER ROLE CURRENT_USER PASSWORD '$NEW_OPERATOR';
+   EOF_SQL
+   B_MIGRATOR="$NEW_MIGRATOR" B_RUNTIME="$NEW_RUNTIME" B_OPERATOR="$NEW_OPERATOR"
+   ```
+
+9. Start one replica with the new passwords. It serves. Then stop it with
+   `kill %1`:
+
+   ```bash
+   serve 8201 "$WORK/b-8201" "$(db_url qual_b_migrator "$B_MIGRATOR" qual_b)" \
+     "$(db_url qual_b_runtime "$B_RUNTIME" qual_b)"
+   healthy 8201
+   ```
+
+### Restore as the migrator
+
+1. Dump the first deployment as its migrator:
+
+   ```bash
+   PGUSER=qual_a_migrator PGPASSWORD="$A_MIGRATOR" \
+     pg_dump --format=custom --dbname qual_a --file "$WORK/qual_a.dump"
+   ```
+
+2. Prepare a copy with its own roles:
+
+   ```bash
+   export SEDIMENT_MIGRATOR_ROLE=qual_r_migrator SEDIMENT_RUNTIME_ROLE=qual_r_runtime
+   export SEDIMENT_OPERATOR_ROLE=qual_r_operator
+   R_MIGRATOR=$(secret) R_RUNTIME=$(secret) R_OPERATOR=$(secret)
+   admin -d postgres -c 'CREATE DATABASE qual_restore'
+   sediment db provision --print-sql --database qual_restore > "$WORK/qual_r.sql"
+   admin -v ON_ERROR_STOP=1 -d qual_restore -f "$WORK/qual_r.sql"
+   admin -q -d qual_restore <<EOF_SQL
+   ALTER ROLE qual_r_migrator PASSWORD '$R_MIGRATOR';
+   ALTER ROLE qual_r_runtime PASSWORD '$R_RUNTIME';
+   ALTER ROLE qual_r_operator PASSWORD '$R_OPERATOR';
+   EOF_SQL
+   ```
+
+3. Restore as the copy's migrator:
+
+   ```bash
+   PGUSER=qual_r_migrator PGPASSWORD="$R_MIGRATOR" pg_restore --exit-on-error \
+     --no-owner --no-privileges --dbname qual_restore "$WORK/qual_a.dump"
+   ```
+
+4. Run the migrate step. The output ends with
+   `grants applied and roles validated`:
+
+   ```bash
+   SEDIMENT_MIGRATOR_DATABASE_URL="$(db_url qual_r_migrator "$R_MIGRATOR" qual_restore)" \
+     sediment db upgrade
+   ```
+
+5. Compare the copy with the original. Each `diff` prints nothing:
+
+   ```bash
+   compare() {
+     mkdir -p "$WORK/$1-mirrors"
+     SEDIMENT_DATABASE_URL="$2" sediment facts > "$WORK/$1-facts.txt"
+     SEDIMENT_DATABASE_URL="$2" sediment quarantine-log --all > "$WORK/$1-quarantine.txt"
+     SEDIMENT_DATABASE_URL="$2" SEDIMENT_MIRROR_PATH="$WORK/$1-mirrors" \
+       sediment derive --out "$WORK/$1-bundle" | grep '^sha256:' > "$WORK/$1-bundle.txt"
+   }
+   compare qual_a "$(db_url qual_a_operator "$A_OPERATOR" qual_a)"
+   compare qual_restore "$(db_url qual_r_operator "$R_OPERATOR" qual_restore)"
+   for part in facts quarantine bundle; do
+     diff "$WORK/qual_a-$part.txt" "$WORK/qual_restore-$part.txt"
+   done
+   ```
+
+If you also exercise the provider's snapshot or point-in-time restore, restore
+it to a new instance. Run `sediment db check` against it as each migrator, and
+repeat these comparisons.
+
+### Record the result and clean up
+
+1. Post the record in the service's qualification issue, with each step's
+   outcome:
+
+   | Field | Value |
+   | --- | --- |
+   | Provider and service | For example, Amazon RDS for PostgreSQL |
+   | Region and instance class | |
+   | PostgreSQL version | `SELECT version()` |
+   | Parameter group | Default, or each changed parameter |
+   | Master user attributes and memberships | From `provider.txt` |
+   | TLS | `sslmode`, the certificate bundle, and `pg_stat_ssl` |
+   | Sediment release | `sediment --version` |
+   | Backup and restore path | `pg_dump` as the migrator; any snapshot or point-in-time restore |
+   | Result | Pass, or each failed step with its output |
+
+2. Drop the databases and the roles:
+
+   ```bash
+   admin -d postgres -c 'DROP DATABASE qual_a' -c 'DROP DATABASE qual_b' \
+     -c 'DROP DATABASE qual_restore'
+   for role in qual_a_migrator qual_a_runtime qual_a_operator qual_b_migrator \
+     qual_b_runtime qual_b_operator qual_r_migrator qual_r_runtime qual_r_operator; do
+     admin -q -d postgres -c "DROP ROLE $role"
+   done
+   ```
+
+3. Delete the working directory, which holds a dump of the demo Facts and the
+   password file, and forget the master password:
+
+   ```bash
+   rm -rf "$WORK"
+   unset MASTER_PASSWORD
+   ```
+
+4. Delete the instance.
+
+Only after a passing record does documentation name the service as supported.

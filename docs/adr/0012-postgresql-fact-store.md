@@ -68,18 +68,28 @@ lookup table. PostgreSQL indexes those scalar copies without parsing content.
 
 ### Migrations and startup
 
-Deployments run `sediment db upgrade` before starting API replicas. The
-command acquires a PostgreSQL advisory lock and runs Alembic to the supported
-head revision. Repeating the command at head succeeds without changing the
-database.
+[ADR 0027](0027-postgresql-without-superuser.md) amends this section.
 
-`sediment db upgrade` upgrades a PostgreSQL schema only. Sediment does not ship
+The migrate step runs as the migrator role, which owns every Sediment object.
+It acquires a PostgreSQL advisory lock, waiting up to two minutes for a
+concurrent migration, and runs Alembic to the supported head revision. Under
+the same lock, it verifies columns, applies every table, column, and sequence
+grant as the owner, and validates the database, its `public` schema, and all
+three roles. Repeating it at head changes no schema.
+
+`sediment server` runs the migrate step at every start against an external
+database, then serves with the runtime role only. A deployment that migrates
+as a separate job runs `sediment db upgrade` first. Provisioning runs the same
+step through the migrator credential.
+
+`sediment db upgrade` supports only PostgreSQL. Sediment does not ship
 a SQLite-to-PostgreSQL migration command, SQLite importer, or SQLite migration
 guide.
 
-The API verifies connectivity and the Alembic revision during startup. It
-refuses to serve if the schema is absent, behind, or ahead. The API never
-creates or upgrades tables.
+The API verifies connectivity and the Alembic revision during startup, and in
+production the runtime role's effective privileges. It refuses to serve if the
+schema is absent, behind, or ahead, or if a grant is missing or in excess. The
+API never creates or upgrades tables.
 
 The Docker Compose deployment contains PostgreSQL and a one-shot migration
 service. API startup depends on successful migration completion. Git mirrors
@@ -114,6 +124,11 @@ substitute remains.
 Tests cover migration idempotency and revision mismatch, every natural-key
 conflict, atomic batch rollback, session upserts, quarantine revisions,
 concurrent writes, redaction-before-write, and repeatable-read snapshots.
+
+Role tests run first, in a separate `cluster_roles` pass, against a cluster
+that no server has provisioned. They cover a superuser administrator and a
+`LOGIN CREATEROLE CREATEDB` administrator that owns the database but isn't a
+superuser.
 
 ## Rejected alternatives
 

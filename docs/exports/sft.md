@@ -1,20 +1,12 @@
 # Export SFT and diff-SFT rows
 
-For a supported downstream release, select a versioned
-[consumer profile](consumer-compatibility.md).
+Export a captured response for supervised fine-tuning (SFT), or an exact
+attributed-file patch for diff-shaped SFT (diff-SFT). This procedure is for
+operators who want to imitate eligible work.
 
-Run the default supervised fine-tuning (SFT) and diff-shaped SFT (diff-SFT)
-exports:
-
-```bash
-sediment export sft --out /data/export
-sediment export diff-sft --out /data/export
-```
-
-The commands write `sft.jsonl` and `diff_sft.jsonl`, or split train and eval
-files. Both select `sft_curated` version 1 by default. For shared prerequisites,
-reviewed-bundle steps, output inspection, and holdout guidance, see [Choose a
-training export](training-exports.md).
+Before starting, [prepare a reviewed bundle and private output parent](training-exports.md#prepare-the-export).
+The examples use `$HOME/sediment-derived/review`. SFT reads the bundle alone;
+diff-SFT also requires `SEDIMENT_MIRROR_PATH` and the referenced commit diffs.
 
 ## Choose an Evidence recipe
 
@@ -27,27 +19,37 @@ abandonment, or resolved workflow failure vetoes eligibility. The veto includes
 an ambiguous aggregate with one failing workflow. A resolved CI pass can affect
 Confidence and CI reliability, but it can't create curated eligibility.
 
-To admit only completions with a clean resolved CI pass, select the verified
-recipe:
-
-```bash
-sediment export sft --recipe sft_verified --out /data/export
-sediment export diff-sft --recipe sft_verified --out /data/export
-```
-
 `sft_verified` version 1 requires explicit selection. It admits only a clean
 resolved CI pass. Ambiguous verdicts, non-verdict-only evidence, and suspected
 flakes don't create eligibility.
 
-Both recipes require a resolved Confidence of at least
+Human-explicit rejection, abandonment, and any resolved workflow failure veto
+both recipes. Both recipes require a resolved Confidence of at least
 `SFTPolicy.min_confidence`, which defaults to 0.6.
 
 ## Export SFT rows
 
-The SFT export writes at most one row per inference call that the selected
-recipe says is safe to imitate.
+For the default curated recipe, run:
 
-An inference call can have one eligible Attributed completion per attributed
+```bash
+sediment export sft \
+  --from "$HOME/sediment-derived/review" \
+  --recipe sft_curated \
+  --out "$HOME/sediment-exports/review-sft"
+```
+
+If you selected verified imitation, use `--recipe sft_verified` and another
+unused destination. If you need a supported trainer format, follow
+[Export for a consumer](consumer-compatibility.md#export-sft-or-dpo).
+
+The command prints `samples projected`, `skipped`, and each written path.
+With the default split, populated partitions produce `sft.train.jsonl` and
+`sft.eval.jsonl`. With splitting disabled, the file is `sft.jsonl`.
+
+The SFT export writes at most one row per Inference call that the selected
+recipe admits. Eligibility doesn't establish code quality.
+
+An Inference call can have one eligible Attributed completion per attributed
 file. The projection keeps the one with the highest Confidence, then uses the
 repository-qualified evidence identity to break ties. It counts identical extra
 copies as `duplicate_completion`. If copies of one complete evidence identity
@@ -61,7 +63,7 @@ conflict. This includes conflicts in split, Provenance, and source Fact content.
 |---|---|
 | `prompt` | trainer-facing request messages; earlier assistant responses remain here, outside the loss boundary |
 | `completion` | the latest response-message list and the only SFT target |
-| `tools` | tool definitions; empty because inference-call version 1 doesn't carry definitions |
+| `tools` | tool definitions; empty because Inference call schema version 1 doesn't carry definitions |
 | `metadata` | organization, source model, completion ID, recipe ID and version, eligibility source, label Confidence, CI reliability, Provenance, and split |
 
 Example SFT row:
@@ -100,23 +102,39 @@ stay in `prompt`, outside the completion loss boundary.
 
 ### Interpret skipped SFT inputs
 
-Inspect `skipped` before training. The SFT export reports every skipped input
-under this closed vocabulary: `conflicting_run_identity`,
-`ambiguous_workflow_verdicts`, `repository_identity_absent`,
-`repository_identity_conflict`, `repository_identity_unresolved`,
-`repository_mirror_identity_unresolved`, `repository_source_absent`,
-`non_finite_number`, `unrepresentable_unicode`, `completionless`,
-`duplicate_tool_call_id`, `empty_message`, `non_string_tool_result`,
-`unrepresentable_part_order`, `unresolved_tool_call`,
-`unsupported_completion_role`, `unsupported_message_role`,
-`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
-`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
-`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
-`duplicate_completion`, and `conflicting_evidence`.
+| Reason | What to check |
+| --- | --- |
+| `no_eligibility_source` | The selected recipe needs an explicit accept, qualifying retention, or a clean CI pass. An implicit accept alone doesn't qualify. |
+| `abandoned`, `explicit_reject`, or `resolved_ci_failure` | Negative evidence vetoes imitation, including when other positive evidence exists. |
+| `unreliable_ci_resolution` | Suspected-flake evidence can't establish verified eligibility. |
+| `below_confidence_floor` | A recipe-eligible candidate falls below the default Confidence floor of 0.6. |
+| `duplicate_completion` | Another copy represents the same Inference call; one row remains. |
+| `conflicting_evidence` | Copies of one evidence identity disagree; the entire Inference call is excluded. |
+
+See [SFT projection contracts](../agents/exports-and-stats.md#sft-and-diff-sft-sftpy-diff_sftpy)
+for the complete contract and
+[representation exclusions](training-exports.md#check-representation-exclusions)
+for invalid emitted values.
 
 ## Export diff-SFT rows
 
-The diff-SFT projection writes one row per `(inference call, commit)` group and
+If you need patches instead of captured responses, run:
+
+```bash
+sediment export diff-sft \
+  --from "$HOME/sediment-derived/review" \
+  --recipe sft_curated \
+  --out "$HOME/sediment-exports/review-diff-sft"
+```
+
+If you selected verified imitation, use `--recipe sft_verified` and another
+unused destination. Diff-SFT has no consumer profile.
+
+The command prints `samples projected`, `skipped`, and each written path.
+With the default split, populated partitions produce `diff_sft.train.jsonl`
+and `diff_sft.eval.jsonl`. With splitting disabled, the file is `diff_sft.jsonl`.
+
+The diff-SFT projection writes one row per `(Inference call, commit)` group and
 reads the concrete per-file edits from the mirror. It never synthesizes a diff.
 
 The projection skips abandonment rows before grouping or mirror access. If any
@@ -129,7 +147,7 @@ the whole group. Group Confidence is the `min()` across members.
 |---|---|
 | `prompt` | the trainer-facing request messages |
 | `completion` | one assistant message whose `content` is the exact selected unified patch |
-| `tools` | tool definitions; empty because inference-call version 1 doesn't carry definitions |
+| `tools` | tool definitions; empty because Inference call schema version 1 doesn't carry definitions |
 | `metadata` | organization, Session, repo, commit, source model, completion ID, recipe ID and version, eligibility source, label Confidence, CI reliability, Provenance, split, and source Fact IDs |
 
 The `completion` value uses this shape, with the mirror text preserved exactly:
@@ -150,22 +168,24 @@ still produce rows.
 
 ### Interpret skipped diff-SFT inputs
 
-The diff-SFT export reports every skipped input under this closed vocabulary:
-`conflicting_run_identity`, `ambiguous_workflow_verdicts`,
-`repository_identity_absent`, `repository_identity_conflict`,
-`repository_identity_unresolved`, `repository_mirror_identity_unresolved`,
-`repository_source_absent`, `non_finite_number`, `unrepresentable_unicode`,
-`completionless`, `duplicate_tool_call_id`, `empty_message`,
-`non_string_tool_result`, `unrepresentable_part_order`, `unresolved_tool_call`,
-`unsupported_completion_role`, `unsupported_message_role`,
-`unsupported_role_part`, `abandoned`, `explicit_reject`, `resolved_ci_failure`,
-`no_eligibility_source`, `unreliable_ci_resolution`, `no_reward_signal`,
-`below_confidence_floor`, `inference_call_not_found`, `model_absent`,
-`duplicate_completion`, `conflicting_evidence`, `unsupported_diff_section`,
-`malformed_diff_section`, `repo_mismatch`, `split_mismatch`,
-`eligibility_source_mismatch`, `mirror_absent`, `commit_diff_unavailable`,
-`empty_patch`, and `file_diff_unavailable`. `unsupported_diff_section` and
-`malformed_diff_section` identify unusable Git evidence.
+Diff-SFT applies the SFT exclusions, then checks the commit group and patch:
+
+| Reason | What to check |
+| --- | --- |
+| `mirror_absent` or `commit_diff_unavailable` | The configured mirror must contain the referenced commit. |
+| `empty_patch` or `file_diff_unavailable` | Every attributed file needs a patch section. The projection doesn't invent missing text. |
+| `unsupported_diff_section` or `malformed_diff_section` | Git evidence contains an unusable section. Counts describe sections per commit, not lost samples. |
+| `repo_mismatch`, `split_mismatch`, or `eligibility_source_mismatch` | Group members disagree on the repository, partition, or eligibility source. |
+
+## Audit rows before training
+
+1. Check `metadata.recipe_id`, `eligibility_source`, and `label_confidence`
+   against the recipe you selected. A nonempty bundle can produce zero rows.
+2. For SFT, keep earlier assistant messages in `prompt` and train on
+   `completion`. For diff-SFT, compare the target patch with the attributed
+   file sections in the mirror.
+3. Review diagnostic counts and [audit the split](training-exports.md#audit-the-split-before-training).
+   Empty projections and empty partitions leave earlier files untouched.
 
 Keep Attribution source metadata and observation IDs with each row. Version 1
 recipe eligibility permits inferred Attribution; an empty observation list means

@@ -19,7 +19,8 @@ credential.
 | Location | Contents |
 | --- | --- |
 | PostgreSQL | Facts and the quarantine audit log |
-| `~/.sediment/server/server.env` | Generated tokens and database-role passwords |
+| `~/.sediment/server/server.env` | Generated API tokens |
+| `database-roles.env` (`~/.sediment/` on your own host, `~/sediment-deploy/` on EC2) and the server's private environment | Database role passwords, and the migrator and runtime URLs |
 | `~/.sediment/server/mirror` | Git mirrors |
 | Export and staging directories that you choose | Training rows and temporary Derivation data |
 | Sender buffer directories, if enabled | Unredacted payloads awaiting delivery |
@@ -35,7 +36,10 @@ them and keep the decryption key off the server.
 | Operator token | Operators | Read Facts, reports, and captured content |
 | Retrieval token | One agent environment | Read content from specific Sessions. See [Continue a task with captured evidence](resume-with-evidence.md). |
 | Webhook secret | GitHub | Sign forge deliveries |
-| Database role passwords | Sediment and the operator shell | Direct database access. The API uses the runtime role only. |
+| Database administrator | The one-time provisioning shell, or your database administrator | Create and change Sediment's roles. The server never receives it. |
+| Migrator password | `sediment server` at start, and `sediment db upgrade` | Change the schema and its grants. The server removes it from its environment before the API and its workers start. |
+| Runtime password | The API | Append and read Facts. It can't change or delete a Fact. |
+| Operator password | The operator shell | Read Facts and append quarantine records. It can't change or delete a Fact. |
 
 Never give an agent the operator token, `server.env`, or a database
 credential. A process under the same operating-system account as those files

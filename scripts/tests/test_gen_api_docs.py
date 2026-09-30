@@ -82,6 +82,30 @@ def test_request_schemas_are_inlined() -> None:
         assert token in page, token
 
 
+def test_nested_request_models_have_linked_field_definitions() -> None:
+    page = mod.render()
+    assert "[`EvidenceReference`](#evidencereference)" in page
+    assert "### EvidenceReference" in page
+    assert "### GatewayCapture" in page
+    section = page.split("### EvidenceReference\n")[1].split("\n### ")[0]
+    for name in ("inference_call_id", "side", "message_index", "part_index"):
+        assert f"| `{name}` |" in section
+    assert "one of `input`, `output`" in section
+
+
+def test_parameters_include_defaults_choices_and_limits() -> None:
+    section = _sections(mod.render())["GET /query/ci/failures"]
+    limit = next(
+        line for line in section.splitlines() if line.startswith("| `limit` |")
+    )
+    assert "default `50`" in limit
+    assert "minimum `1`" in limit
+    assert "maximum `100`" in limit
+    assert "`failed`" in next(
+        line for line in section.splitlines() if line.startswith("| `result` |")
+    )
+
+
 def test_router_raised_status_codes_are_documented() -> None:
     # The whole reason CONTRACTS exists: FastAPI's schema never sees these.
     page = mod.render()

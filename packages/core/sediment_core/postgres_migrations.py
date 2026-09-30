@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -13,7 +14,8 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from alembic.util import CommandError
 from sqlalchemy import inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import DBAPIError
 
 from .postgres_engine import (
     DatabaseOperationError,
@@ -24,6 +26,9 @@ from .postgres_engine import (
 
 HEAD_REVISION = "0011_inference_call_aliases"
 MIGRATION_LOCK_KEY = 7_315_324_899_385_581_412
+# A replica that finds the lock held waits for the one migrating, as
+# coder/coder's startup migration does, then fails with a diagnostic.
+MIGRATION_LOCK_WAIT_SECONDS = 120.0
 
 
 class MigrationError(RuntimeError):
@@ -61,11 +66,14 @@ def inspect_revision(database_url: str) -> RevisionInspection:
 def inspect_engine_revision(engine: Engine) -> RevisionInspection:
     """Inspect the revision through a borrowed process-owned engine."""
     with engine.connect() as connection:
-        if not inspect(connection).has_table("alembic_version"):
-            return RevisionInspection(RevisionState.ABSENT, None)
-        database_revision = MigrationContext.configure(
-            connection
-        ).get_current_revision()
+        return inspect_connection_revision(connection)
+
+
+def inspect_connection_revision(connection: Connection) -> RevisionInspection:
+    """Inspect the revision inside the caller's transaction without writes."""
+    if not inspect(connection).has_table("alembic_version"):
+        return RevisionInspection(RevisionState.ABSENT, None)
+    database_revision = MigrationContext.configure(connection).get_current_revision()
     if database_revision is None:
         return RevisionInspection(RevisionState.BEHIND, None)
     if database_revision == HEAD_REVISION:
@@ -80,27 +88,60 @@ def inspect_engine_revision(engine: Engine) -> RevisionInspection:
     return RevisionInspection(state, database_revision)
 
 
-def upgrade_database(database_url: str) -> None:
+def upgrade_database(
+    database_url: str,
+    *,
+    before_upgrade: Callable[[Connection], None] | None = None,
+    after_upgrade: Callable[[Connection], None] | None = None,
+) -> None:
+    """Upgrade to head under the migration lock.
+
+    Both hooks run on the connection that holds the lock: ``before_upgrade``
+    before Alembic, ``after_upgrade`` after it. Alembic commits each revision
+    itself, so a failing ``after_upgrade`` leaves the schema at head and rolls
+    back only its own work.
+    """
     engine = None
     try:
         engine = create_postgres_engine(database_url)
         with engine.connect() as connection:
             verify_minimum_server_version(connection)
-            acquired = bool(
-                connection.execute(
-                    text("SELECT pg_try_advisory_lock(:key)"),
-                    {"key": MIGRATION_LOCK_KEY},
-                ).scalar_one()
+            wait = MIGRATION_LOCK_WAIT_SECONDS
+            # PostgreSQL applies lock_timeout to advisory locks; 0 means forever.
+            connection.execute(
+                text("SELECT set_config('lock_timeout', :timeout, false)"),
+                {"timeout": f"{max(1, round(wait * 1000))}ms"},
             )
-            connection.commit()
-            if not acquired:
-                raise MigrationError(
-                    "database migration lock is held by another process"
-                )
             try:
+                connection.execute(
+                    text("SELECT pg_advisory_lock(:key)"),
+                    {"key": MIGRATION_LOCK_KEY},
+                )
+            except DBAPIError as exc:
+                if getattr(exc.orig, "sqlstate", None) != "55P03":
+                    raise
+                connection.rollback()
+                raise MigrationError(
+                    "database migration lock is held by another process after "
+                    f"waiting {wait:g} seconds"
+                ) from None
+            connection.exec_driver_sql("RESET lock_timeout")
+            connection.commit()
+            try:
+                if before_upgrade is not None:
+                    before_upgrade(connection)
+                    # Alembic starts each revision's transaction on a clean
+                    # connection, as it did before this hook existed.
+                    connection.commit()
                 config = _alembic_config()
                 config.attributes["connection"] = connection
                 command.upgrade(config, "head")
+                if after_upgrade is not None:
+                    after_upgrade(connection)
+                    connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
             finally:
                 connection.execute(
                     text("SELECT pg_advisory_unlock(:key)"),

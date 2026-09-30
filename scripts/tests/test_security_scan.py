@@ -193,30 +193,100 @@ def test_debian_inventory_keeps_epoch_and_vendor_security_revision():
     assert {p["version"] for p in result} == {"3.0.20-1~deb12u2", "1:19.1.7-3~deb12u1"}
 
 
-def test_runtime_patch_check_uses_upstream_release_tags(monkeypatch, tmp_path):
-    scan = module()
-    commands = []
+def upstream_tags(tags: dict[str, str], commands: list | None = None):
+    """Serve matching-refs and annotated tag dates for a stubbed ``gh api``."""
+    import hashlib
+    import json
+
+    shas = {tag: hashlib.sha1(tag.encode()).hexdigest() for tag in tags}
 
     def run(command, **kwargs):
-        commands.append(command)
-        return '[{"ref":"refs/tags/v3.12.14"},{"ref":"refs/tags/v3.12.15rc1"}]'
+        if commands is not None:
+            commands.append(command)
+        path = command[-1]
+        for tag, released in tags.items():
+            if path.endswith(f"/git/tags/{shas[tag]}"):
+                return json.dumps({"tagger": {"date": f"{released}T12:00:00Z"}})
+        return json.dumps(
+            [
+                {"ref": f"refs/tags/{tag}", "object": {"type": "tag", "sha": sha}}
+                for tag, sha in shas.items()
+            ]
+        )
 
-    monkeypatch.setattr(scan, "run", run)
-    assert (
-        scan.live_runtime_maintenance({"python": "3.12.14"}, tmp_path / "runtime.json")
-        == []
+    return run
+
+
+def test_runtime_patch_check_uses_upstream_release_tags(monkeypatch, tmp_path):
+    from datetime import date
+
+    scan = module()
+    commands = []
+    monkeypatch.setattr(
+        scan,
+        "run",
+        upstream_tags(
+            {"v3.12.14": "2026-08-01", "v3.12.15rc1": "2026-09-01"}, commands
+        ),
     )
-    assert scan.live_runtime_maintenance(
-        {"python": "3.12.13"}, tmp_path / "runtime.json"
-    )
+    today = date(2026, 9, 29)
+    out = tmp_path / "runtime.json"
+    assert scan.live_runtime_maintenance({"python": "3.12.14"}, out, today) == []
+    assert scan.live_runtime_maintenance({"python": "3.12.13"}, out, today) == [
+        "python 3.12.13: a later upstream patch is available"
+    ]
     assert commands[0][1:3] == [
         "api",
         "repos/python/cpython/git/matching-refs/tags/v3.12.",
     ]
     monkeypatch.setattr(scan, "run", lambda *a, **kw: "[]")
-    assert scan.live_runtime_maintenance(
-        {"python": "3.12.14"}, tmp_path / "runtime.json"
+    assert scan.live_runtime_maintenance({"python": "3.12.14"}, out, today)
+
+
+def test_runtime_patch_check_waits_for_packagers_then_fails(monkeypatch, tmp_path):
+    import json
+    from datetime import date
+
+    scan = module()
+    monkeypatch.setattr(
+        scan,
+        "run",
+        upstream_tags({"openssl-3.5.8": "2026-07-01", "openssl-3.5.9": "2026-09-29"}),
     )
+    out = tmp_path / "runtime.json"
+    assert (
+        scan.live_runtime_maintenance({"openssl": "3.5.8"}, out, date(2026, 10, 13))
+        == []
+    )
+    assert json.loads(out.read_text())["runtimes"][0]["pending"] == {
+        "version": "3.5.9",
+        "released_on": "2026-09-29",
+        "deadline": "2026-10-13",
+    }
+    assert scan.live_runtime_maintenance(
+        {"openssl": "3.5.8"}, out, date(2026, 10, 14)
+    ) == ["openssl 3.5.8: a later upstream patch is available"]
+    # The window starts at the first missed patch, not the latest one.
+    assert scan.live_runtime_maintenance(
+        {"openssl": "3.5.7"}, out, date(2026, 9, 30)
+    ) == ["openssl 3.5.7: a later upstream patch is available"]
+
+
+def test_runtime_patch_check_fails_closed_without_a_release_date(monkeypatch, tmp_path):
+    from datetime import date
+
+    scan = module()
+    monkeypatch.setattr(
+        scan,
+        "run",
+        lambda *a, **kw: (
+            '[{"ref":"refs/tags/openssl-3.5.9",'
+            '"object":{"type":"tree","sha":"' + "9" * 40 + '"}}]'
+        ),
+    )
+    assert scan.live_runtime_maintenance(
+        {"openssl": "3.5.8"}, tmp_path / "runtime.json", date(2026, 9, 29)
+    ) == ["openssl 3.5.8: runtime release check failed (ValueError)"]
 
 
 def test_evaluation_rejects_missing_required_scanner_evidence(tmp_path):

@@ -1,176 +1,179 @@
 # Choose a training export
 
-Choose an objective, prepare its evidence, and audit the output before training.
-For a supported trainer release, use a versioned
-[consumer profile](consumer-compatibility.md).
+Start here to turn captured evidence into a dataset that you can audit before
+training. This guide is for operators who have verified capture. If you haven't
+captured a Session, complete [Enroll your team](../operate/run-pilot.md) first.
 
-Sediment exports direct preference optimization (DPO), supervised fine-tuning
-(SFT), diff-shaped SFT (diff-SFT), Recovery, and reinforcement learning from
-verifiable rewards (RLVR) rows.
+1. [Choose an objective](#choose-an-objective) that matches your evidence.
+2. [Prepare the export](#prepare-the-export), usually from a reviewed bundle.
+3. [Choose the output contract](#choose-the-output-contract).
+4. Follow the objective guide, then [inspect the output](#inspect-the-output).
+5. [Audit the split before training](#audit-the-split-before-training).
 
 ## Choose an objective
 
-| Objective | Command | Output | Default Evidence recipe | Guide |
-|---|---|---|---|---|
-| Compare a chosen response with a rejected response for the same prompt and model | `sediment export dpo` | `dpo.jsonl` | `dpo_human` version 2 | [Export DPO pairs](dpo.md) |
-| Imitate an eligible response | `sediment export sft` | `sft.jsonl` | `sft_curated` version 1 | [Export SFT and diff-SFT rows](sft.md) |
-| Imitate the exact attributed-file patch | `sediment export diff-sft` | `diff_sft.jsonl` | `sft_curated` version 1 | [Export SFT and diff-SFT rows](sft.md) |
-| Learn from a red-to-green CI transition | `sediment export recovery` | `recovery.jsonl` | `recovery_ci` version 1 | [Export Recovery rows](recovery.md) |
-| Train or audit a trajectory against a Verifier | `sediment export rlvr` | `tasks.jsonl`, `rollouts.jsonl`, optional `environment.yaml` | `rlvr_ci` version 1 | [Export RLVR tasks and trajectories](rlvr-export.md) |
+| You want to… | Evidence needed | Guide |
+| --- | --- | --- |
+| Compare distinct responses to the same prompt and model with direct preference optimization (DPO) | Attributed completions with human-explicit accept/reject decisions, or clean opposing CI verdicts | [Export DPO pairs](dpo.md) |
+| Imitate a captured response with supervised fine-tuning (SFT) | An Attributed completion with a human-explicit accept, sufficient edit retention, or a clean CI pass, under the selected recipe | [Export SFT and diff-SFT rows](sft.md) |
+| Imitate an exact attributed-file patch with diff-shaped SFT (diff-SFT) | SFT-eligible Attributed completions and the commit diff in a Git mirror | [Export SFT and diff-SFT rows](sft.md#export-diff-sft-rows) |
+| Learn from a failed CI run followed by a passing run | A clean workflow lineage and the fixing diff | [Export Recovery rows](recovery.md) |
+| Audit trajectories or prepare reinforcement learning from verifiable rewards (RLVR) data | Captured Rollouts; task and Reward eligibility depend on the target | [Export RLVR tasks and trajectories](rlvr-export.md) |
 
-Rows retain qualified repository identity; DPO keeps each member's identity
-separately. Renames preserve identity. Matching names or commits don't join
-different repository lifetimes. Inspect repository skip counts for absent or
-conflicting evidence.
-
-## Check representation exclusions
-
-Inspect `non_finite_number` and `unrepresentable_unicode` in export skip counts.
-Every objective excludes a row if an emitted value contains a non-finite number
-or an unpaired surrogate, including nested tool arguments, keys, and metadata.
-A DPO or Recovery pair counts once when either side fails. Source content that
-the Evidence recipe omits doesn't exclude the row. Facts and canonical bundles
-preserve those values; exports don't replace them with null or replacement text.
-See [Training representation](../adr/0015-lossless-values-and-bundle-v2.md#training-representation).
+Each objective selects its own Evidence recipe. Capture doesn't guarantee
+training rows: an accept-only workflow can produce SFT rows and no DPO pairs.
+A Retry linkage or a corrective prompt doesn't supply a DPO rejection label.
+[Training-objective evidence](../adr/0011-training-objectives-own-evidence-interpretation.md)
+explains the separation.
 
 ## Prepare the export
 
-Set `SEDIMENT_ORG_ID`. Direct exports need database and mirror access. Bundle
-projections have these requirements:
+For DPO, SFT, diff-SFT, or RLVR, follow
+[Run derivations](../operate/run-derivations.md) to build and inspect one bundle.
+The examples in this section use that guide's bundle at
+`$HOME/sediment-derived/review`. Reuse the reviewed bundle across exports;
+don't rebuild it between objectives.
 
-| Projection from `--from` | Mirror required |
+### Export a reviewed bundle
+
+Commands with `--from` read the organization, scope, and policy from the bundle.
+They don't require `SEDIMENT_ORG_ID` or `SEDIMENT_DATABASE_URL`, and they don't
+fall back to live Facts. Some projections still need mirrors:
+
+| Projection from `--from` | `SEDIMENT_MIRROR_PATH` required |
 | --- | --- |
-| DPO and SFT | No |
+| DPO or SFT, including consumer profiles | No |
 | Diff-SFT | Yes, for commit diffs |
-| RLVR `sediment` and `swe-bench` | Yes, for Reference patches |
+| RLVR `sediment` or `swe-bench` | Yes, for Reference patches |
 | RLVR `nemo-gym` | No |
 
-The canonical Derivation policy defaults `eval_fraction` to `0.1`.
+If the projection needs mirrors, use the deployment's mirror root and ensure
+that it contains the referenced commits. The bundle doesn't contain Git patches.
+Recovery doesn't accept `--from`; use its direct procedure.
 
-Run the installed CLI in the configured operator shell. Use private output and
-staging directories with enough space. For example:
+### Export directly from Facts
 
-```bash
-sediment export dpo --out /data/export
-```
+If you don't need a saved review boundary, omit `--from` from an objective's
+command. Use the configured
+[operator shell](../operate/deploy.md#set-up-an-operator-shell) with
+`SEDIMENT_ORG_ID`, `SEDIMENT_DATABASE_URL`, and `SEDIMENT_MIRROR_PATH`.
+Signing in with `sediment login` doesn't configure this access.
 
-## Export a reviewed bundle
+Direct exports read the organization's available history with default policy.
+They don't accept the bundle builder's cohort or policy flags. Separate direct
+runs can see different Facts. Recovery always uses this path.
 
-For a reviewed, reproducible workflow, derive once. Then project the same
-bundle into each per-completion format:
+### Prepare private destinations
 
-```bash
-sediment derive --out /data/derived/review
-sediment export dpo --from /data/derived/review --out /data/export
-sediment export sft --from /data/derived/review --out /data/export
-sediment export diff-sft --from /data/derived/review --out /data/export
-```
-
-For RLVR, pass the same bundle and an explicit target:
+Run the installed CLI in the operator or offline export environment. Create a
+private parent for the examples:
 
 ```bash
-sediment export rlvr \
-  --target sediment \
-  --from /data/derived/review \
-  --out /data/export/sediment-reviewed
+install -d -m 700 "$HOME/sediment-exports"
+umask 077
 ```
 
-The `sediment` target still reads mirrors for Reference patches.
+Use a fresh child directory for each command. Don't create a consumer-profile
+destination in advance: profile publication requires a nonexistent path.
+If `/tmp` is memory-backed, set `TMPDIR` to an existing private, disk-backed
+directory. Provision space for staging and the output.
 
-Recovery reads CI Facts and mirrors directly and doesn't accept `--from`.
-See [Run derivations](../operate/run-derivations.md) for policy, cohort selection,
-inspection, and recomputation.
+## Choose the output contract
+
+Without `--profile`, each command writes Sediment's canonical training rows.
+Use these to inspect evidence or to implement a separately validated adapter.
+An RLVR `--target` selects a row shape; it doesn't establish compatibility with
+a particular downstream release.
+
+If you need a supported Hugging Face TRL, Fireworks, SWE-bench, or NeMo Gym
+format, follow [Export for a consumer](consumer-compatibility.md) after choosing
+your objective and recipe. That guide covers dependencies, explicit runtime
+inputs, and profile commands. Diff-SFT and Recovery have no consumer profile.
 
 ## Inspect the output
 
-The DPO, SFT, diff-SFT, and Recovery exports write `dpo.jsonl`, `sft.jsonl`,
-`diff_sft.jsonl`, or `recovery.jsonl`. If `eval_fraction` is greater than zero,
-the exporter writes `<name>.train.jsonl` and `<name>.eval.jsonl` instead.
+The objective guides name their files and diagnostic counts. With the default
+`eval_fraction = 0.1`, populated partitions use `<name>.train.jsonl` and
+`<name>.eval.jsonl`. A bundle built with `eval_fraction = 0.0` produces
+`<name>.jsonl`. Empty partitions produce no file.
 
-Writes are atomic. If a projection is empty, the exporter leaves existing
-files untouched and prints `nothing written`. It never truncates an earlier
-export. Every run prints row counts and a `skipped` tally. Each format uses a
-closed skip-reason vocabulary, so no ineligible input disappears silently.
+1. Read the command's row counts, written paths, and diagnostic maps. A zero-row
+   result isn't a dataset. `nothing written` leaves earlier files untouched.
+2. Check the files at the reported paths. JSON Lines (JSONL) stores one row per
+   line. Inspect representative rows privately; they can contain source code,
+   prompts, and responses.
+3. Check the recipe, label or eligibility source, repository identity, and
+   Provenance. Confirm that they match the evidence you intended to use.
+4. Validate the canonical `schema_id` and `schema_version` against the
+   [Schema reference](../reference/schema.md#training-rows) before adapting rows.
+   For a consumer profile, inspect its evidence sidecars and compatibility
+   manifest instead of treating the data file as the complete audit record.
 
-The RLVR writer has additional output-directory safeguards. [Inspect the RLVR
-output](rlvr-export.md#inspect-the-output) before you reuse an RLVR export
-directory.
+Canonical file replacement is atomic per file, not across a train/eval pair.
+If publication fails or stops, preserve the diagnostics and rerun to a fresh
+directory. Reusing a directory can mix earlier files with later output.
+[RLVR output safeguards](rlvr-export.md#inspect-the-output) and consumer profiles
+also reject destinations that could mix generations.
 
-DPO, SFT, and diff-SFT rows keep Sediment evidence under `metadata`, outside
-the trainer inputs. For those rows, `metadata.split` contains `train` or
-`eval`. Recovery uses its Sediment-native row envelope. RLVR uses the location
-that its target contract defines. Structured `provenance` contains
-`policy_version`, integer `quarantine_revision`, and nullable full
-`policy_digest`. Confidence values come from the
-[Confidence ladder](../agents/exports-and-stats.md#the-confidence-ladder-label_confidencepy).
-The eval split is deterministic per Session
-([Eval split](../../CONTEXT.md#eval-split-split)).
+### Check representation exclusions
 
-Validate each row's canonical `schema_id` and `schema_version` before adapting
-it. The [Schema reference](../reference/schema.md) defines fields; the
-[consumer profile](consumer-compatibility.md) versions the downstream mapping.
-Schema, recipe, policy, and database versions identify separate contracts.
+Inspect `non_finite_number` and `unrepresentable_unicode` in export skip counts.
+An emitted non-finite number or unpaired surrogate excludes the row, including
+values in nested arguments, keys, and metadata. A DPO or Recovery pair counts
+once when either side fails. Content that the recipe omits doesn't exclude a
+row. Facts and bundles preserve those values; exports don't replace them.
 
-Confidence and CI reliability don't set trainer weights. If you use them for
-weighting, define and version that mapping with the Evidence recipe and source.
-A Confidence of 0.9 doesn't mean that 90% of such rows are correct. Before you
-treat Confidence as a probability, check it against independent judgments.
+Keep diagnostic populations separate. Counts can describe inputs, pairs,
+buckets, or Segments; their sum isn't a count of lost training rows.
 
 ## Audit the split before training
 
-If you plan to train on an export, run dataset diagnostics with the same
-Evidence recipes first:
+Review the exported rows against your versioned benchmark manifest. The built-in
+split hashes Session identifiers. It doesn't enforce repository, prompt, or
+task isolation across Sessions. DPO and Recovery put a pair in eval when either
+resolvable member belongs to an eval Session. Recovery rows with no resolvable
+Session evidence go to train.
+
+Exclude pilot or development tasks when the benchmark requires it. Check model
+and recipe balance, label or Reward contrast, prompt overlap, and the size of
+the labeled evaluation population. Consumer profiles reject identical full
+prompts across train and eval; they don't detect every shared task.
+
+Optional: For a deployment-wide DPO/SFT diagnostic, run the following command
+in the configured operator shell. Set the recipe flags to match your export:
 
 ```bash
 sediment report dataset-diagnostics \
-  --org acme-corp \
+  --org "$SEDIMENT_ORG_ID" \
   --dpo-recipe dpo_human \
   --sft-recipe sft_curated \
-  --json > dataset-diagnostics.json
+  --json > "$HOME/sediment-exports/dataset-diagnostics.json"
 ```
 
-The report counts model and recipe balance, Confidence distributions,
-cross-split exact prompt duplicates, near-duplicate DPO prompt buckets, SFT
-Confidence-floor exclusions, sparse DPO buckets, abandonment coverage, and
-diagnostic final Fate counts. Fate doesn't enter an Evidence recipe or any
-training row.
+This report reads live Facts and mirrors. It doesn't accept `--from`, bundle
+cohort filters, or a Derivation policy file. Its counts don't certify a saved
+export. It reports model balance, Confidence, duplicate prompts, DPO bucket
+sparsity, SFT Confidence-floor exclusions, abandonment, and diagnostic Fate.
+Use [Measure agent work](../operate/measure-agent-work.md) for operational and
+merge-retention reports; those reports don't determine training eligibility.
 
-If you capture pull request merge Facts, run `sediment report merge-retention`
-to inspect whether attributed changes survived review and integration. Its
-thresholds are sensitivity diagnostics. They don't enter an Evidence recipe,
-Confidence, Reward, or any training row.
-
-If you need to audit individual scored changes, write the canonical rows while
-you generate the aggregate report:
-
-```bash
-sediment report merge-retention \
-  --org acme-corp \
-  --rows-out merge-retention.jsonl
-```
-
-The JSONL artifact contains source identities, boundary scores, Attribution
-metadata, and Provenance. It contains no source text, prompt text, completion
-text, Developer decision label, training eligibility, Reward, Confidence, or
-Evidence recipe. An empty or failed export leaves an earlier destination file
-untouched.
-
-The built-in split keeps one Session in one partition. It doesn't enforce a
-repository, prompt, or task-keyed holdout across Sessions.
-
-If a benchmark uses one of those boundaries, compare every exported row with
-the benchmark manifest through its source identifiers. Exclude pilot or
-development tasks before training.
-
-Preserve the diagnostics, benchmark manifest, Derivation manifest, and export
-files together. The row-level `split` value alone doesn't prove that the
-evaluation set matches a stronger holdout claim.
+Confidence and CI reliability don't set trainer weights. If you use either for
+weighting, define and version that mapping. Confidence isn't a calibrated
+probability of correctness. Fate and merge retention don't enter training rows.
 
 ## Retain source metadata
 
-Keep each row's Attribution source and Session observation ID fields when you
-prepare trainer inputs. Recipes permit inferred Attribution; an empty
-observation list leaves observed identity unavailable. Full matching Facts live
-on the canonical artifacts. [ADR 0014](../adr/0014-factual-outcomes-and-training-evidence.md#evidence-recipes-and-exact-metadata)
-defines the source scope for both DPO members, SFT and diff-SFT targets, Recovery
-enrichment sides, and each RLVR target.
+Keep the bundle manifest, export command and recipe selection, diagnostic
+output, benchmark manifest, and export files together. For mirror-dependent
+exports, retain the repository revisions used to produce patches.
+
+Preserve Attribution sources and Session observation IDs. Recipes permit
+inferred Attribution; an empty observation list supplies no observed
+Session-to-commit evidence. DPO preserves the evidence for each member separately.
+Qualified repository identity distinguishes repository lifetimes across renames.
+Don't join rows only by a matching repository name or commit.
+
+Schema versions, recipe versions, policy versions, and consumer-profile versions
+identify separate contracts. Full source Facts remain on canonical artifacts;
+[the source metadata contract](../adr/0014-factual-outcomes-and-training-evidence.md#evidence-recipes-and-exact-metadata)
+defines what each training format retains.

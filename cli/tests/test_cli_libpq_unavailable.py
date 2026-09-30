@@ -39,12 +39,24 @@ def no_libpq(tmp_path):
         SEDIMENT_OPERATOR_PASSWORD="synthetic-operator-password",
     )
     env["SEDIMENT_BOOTSTRAP_DATABASE_URL"] = env["SEDIMENT_DATABASE_URL"]
+    # The server migrates an already-provisioned database as its migrator.
+    server_env = {
+        **{k: v for k, v in env.items() if k != "SEDIMENT_BOOTSTRAP_DATABASE_URL"},
+        "SEDIMENT_MIGRATOR_DATABASE_URL": (
+            "postgresql+psycopg://sediment_migrator:secret-migrator-password"
+            "@127.0.0.1:9/test"
+        ),
+        "SEDIMENT_DATABASE_URL": (
+            "postgresql+psycopg://sediment_runtime:secret-runtime-password"
+            "@127.0.0.1:9/test"
+        ),
+    }
 
     def run(*args):
         return subprocess.run(
             [sys.executable, "-c", MISSING_LIBPQ, *args],
             cwd=tmp_path,
-            env=env,
+            env=server_env if args[:1] == ("server",) else env,
             capture_output=True,
             text=True,
             timeout=20,

@@ -95,48 +95,54 @@
       ]
     },
     "apk/glibc-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/glibc-2.44-locale-posix": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/glibc-2.44-locale-posix-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/ld-linux-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/ld-linux-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/libbz2-1": {
@@ -155,18 +161,20 @@
       ]
     },
     "apk/libcrypt1-2.44": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
+      "basis": "Reviewed 2.44-r7 on 2026-09-29 from official Wolfi APKs for x86_64 and aarch64, verified against both signed repository indexes and their payload hashes. Both embedded recipes retain the r6 release/2.44/master source commit b4f51887c48ac82acfdb13f96d9eab5d120cb2b7 and patch list. Revision r7 updates build dependencies and skips the build testsuite when /usr/lib/oldglibc exists; this review does not establish that the upstream tests ran. The packages match both delivered gateway inventories. Rolling distribution maintenance only, not a vulnerability disposition or a fixed upstream support date; the existing catalog expiry remains.",
+      "evidence": "https://packages.wolfi.dev/os/x86_64/libcrypt1-2.44-2.44-r7.apk",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/glibc-2.44.yaml",
       "source_package": "glibc-2.44",
       "source_versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.44-r6"
+        "2.44-r6",
+        "2.44-r7"
       ]
     },
     "apk/libcrypto3": {
@@ -3534,17 +3542,18 @@
       ]
     },
     "pypi/fastapi": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/fastapi/",
+      "basis": "Reviewed 2026-09-29: upstream release 0.142.0 adds native OpenTelemetry support and requires opentelemetry-api>=1.44.0. PyPI publishes unwithdrawn Python >=3.10 artifacts. The earlier reviewed versions remain recorded for locked artifacts. This maintenance assessment expires with the catalog.",
+      "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.142.0",
       "provider": "Upstream project",
       "source": "https://github.com/fastapi/fastapi",
-      "source_updated_at": "2026-09-01T20:59:55Z",
+      "source_updated_at": "2026-09-29T17:56:21Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.136.3",
         "0.139.0",
-        "0.141.1"
+        "0.141.1",
+        "0.142.0"
       ]
     },
     "pypi/fastapi-sso": {
@@ -4382,15 +4391,16 @@
       ]
     },
     "pypi/oauthlib": {
-      "basis": "Upstream SECURITY.md explicitly supports OAuthlib 3.3.x and 3.2.x; the installed 3.3.1 is within the supported series.",
-      "evidence": "https://raw.githubusercontent.com/oauthlib/oauthlib/HEAD/SECURITY.md",
+      "basis": "Reviewed 2026-09-29: upstream publishes 4.0.0 with the JSONP revocation removal and constant-time PKCE comparison fixes. PyPI artifacts are unwithdrawn. The release notes identify changes to revocation and grant validation; gateway checks cover its OAuth client consumers. SECURITY.md still lists 3.3.x and 3.2.x; the 4.0.0 assessment relies on the explicit upstream fix release and advisories GHSA-hj66-6f7g-4r5v and GHSA-xpv3-w29h-x7cv, not repository activity. This maintenance assessment expires with the catalog.",
+      "evidence": "https://github.com/oauthlib/oauthlib/releases/tag/v4.0.0",
       "provider": "Upstream project",
       "source": "https://github.com/oauthlib/oauthlib",
-      "source_updated_at": "2026-07-14T21:42:53Z",
+      "source_updated_at": "2026-09-28T09:03:40Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "3.3.1"
+        "3.3.1",
+        "4.0.0"
       ]
     },
     "pypi/openai": {
@@ -4406,15 +4416,16 @@
       ]
     },
     "pypi/opentelemetry-api": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/opentelemetry-api/",
+      "basis": "Reviewed 2026-09-29: upstream release 1.45.0 publishes the API for Python >=3.10; PyPI artifacts are unwithdrawn. The client resolves this API through FastAPI 0.142.0. The gateway retains its matched 1.44.0 API/SDK set. This maintenance assessment expires with the catalog.",
+      "evidence": "https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.45.0",
       "provider": "Upstream project",
       "source": "https://github.com/open-telemetry/opentelemetry-python",
-      "source_updated_at": "2026-09-12T04:41:24Z",
+      "source_updated_at": "2026-09-29T19:48:06Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "1.44.0"
+        "1.44.0",
+        "1.45.0"
       ]
     },
     "pypi/opentelemetry-exporter-otlp": {
