@@ -1,5 +1,58 @@
 # Execution record
 
+## 0.4.0 publication — 2026-09-30
+
+- [Release issue](https://github.com/sediment-ai/sediment/issues/228) and
+  [preparation pull request](https://github.com/sediment-ai/sediment/pull/229).
+  The maintainer requested assessment and publication. Work used an isolated
+  worktree from `086cd11f3b6a3c9500a6523a7eef516b06cd864a`.
+- Decision: 0.4.0 includes PostgreSQL role management, the agent guide,
+  context pruning, installer changes, and dependency fixes since 0.3.0.
+  The changelog and release notes preserve external-database migration steps
+  and removal of the two gateway installer flags.
+- Parsed lockfiles differ only in seven first-party version labels.
+  Initial security validation then found that cryptography 50.0.1 had lost
+  upstream support after 50.0.2 shipped on 2026-09-30. The gateway pin and
+  maintenance review moved to 50.0.2, whose wheels bundle OpenSSL 4.0.3.
+- Both gateway inventories show that sole package change. Deployment
+  predicates, reviewed LiteLLM/SAML caller hashes, and tarfile patch evidence
+  remain identical on each architecture. All 65 dispositions preserve dates,
+  expiry, targets, predicates, evidence, and decisions. Their final binding is
+  `cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145`.
+- Local checks pass: 28 help tests, 142 focused API/release/security/docs tests,
+  and 94 gateway policy/assurance tests with 22 external-tool/image skips.
+  The complete no-publish rehearsal passes at clean preparation commit
+  `452239ba0d33ccd709e3b0b290e9b2fbbe37d949`. Twelve distributions, their hashes,
+  and the synthetic acceptance record are retained by the release operator.
+- The final separate review against `origin/main` reports no findings.
+  [Hosted tests](https://github.com/sediment-ai/sediment/actions/runs/36744353962)
+  pass 6,744 tests, Compose acceptance, and release rehearsal.
+  [Hosted security](https://github.com/sediment-ai/sediment/actions/runs/36744353474)
+  passes all eight inventories, including 13 gateway runtime tests on each
+  architecture. Native platforms, shims, and all four consumer profiles pass.
+- The preparation merge is `70a97bcb80c31c7e3ae8aa113a4a8fc3b09cbe08`.
+  Its tree matches the validated preparation commit. Annotated tag `v0.4.0`
+  targets that merge. The ordinary tag push uses the configured maintainer
+  creation permission; immutable-tag protections remain unchanged.
+- [Publication workflow](https://github.com/sediment-ai/sediment/actions/runs/36746963143)
+  succeeds. The permitted maintainer approval targets only its waiting `pypi`
+  deployment. No environment or reviewer settings change.
+- [v0.4.0](https://github.com/sediment-ai/sediment/releases/tag/v0.4.0) becomes
+  the latest immutable release at `2026-09-30T16:57:12Z`. All 87 GitHub assets
+  pass checksum coverage, and all eight inventories bind to the tagged commit.
+  Twelve distribution hashes match the workflow files, GitHub assets, and six
+  PyPI version records. Each project has one wheel and one source distribution;
+  none is yanked.
+- A fresh Python 3.12.14 installation from PyPI reports all six distributions
+  at 0.4.0. Version, command help, server help, release-pinned guide links, and
+  bundled pi resources pass. The check doesn't register a harness extension.
+- After publication, the README refresh uses `release=0.4.0` on the dynamic
+  Shields endpoint. Its SVG reports `pypi: v0.4.0`; the link remains the
+  `sediment-cli` PyPI project. The release issue records final display checks.
+- The owned PostgreSQL cluster stops after local verification. Historical
+  artifact findings remain in #225, and the independent pi development
+  dependency finding remains in #227. No support period or release gate changes.
+
 ## 0.3.0 preparation — 2026-09-27
 
 - Base: `c745b6bb44412b3cbb6e65e6a1bd3e226a28365f` on `origin/main`.
