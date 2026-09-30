@@ -48,6 +48,9 @@ sediment --version
 
 The command prints the version that you installed.
 
+If a coding agent helps you operate this deployment, give it the output of
+`sediment guide` for guidance that matches the installed release.
+
 ## Create the database roles
 
 Sediment uses three PostgreSQL roles: `sediment_migrator` owns the schema and

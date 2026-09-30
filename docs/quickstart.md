@@ -19,6 +19,9 @@ The installer installs `sediment-cli` from PyPI in an isolated tool environment
 with Python 3.12. It installs `uv` if needed, plus the maintained host libraries
 that the local PostgreSQL server needs.
 
+If a coding agent helps you run Sediment or install capture, give it the output
+of `sediment guide` for guidance that matches the installed release.
+
 If the installer prints an `export PATH=...` instruction, run it in this
 terminal before continuing. Repeat the same instruction in each terminal where
 you run `sediment`.

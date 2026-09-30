@@ -43,6 +43,7 @@ Global options:
 - [`sediment server`](#sediment-server)
 - [`sediment login`](#sediment-login)
 - [`sediment logout`](#sediment-logout)
+- [`sediment guide`](#sediment-guide)
 - [`sediment commit`](#sediment-commit)
 - [`sediment derive`](#sediment-derive)
 - [`sediment export`](#sediment-export)
@@ -347,6 +348,14 @@ Options:
 | Name | Default | Description |
 |---|---|---|
 | `--server` | — | server URL to log out of (default: current) |
+
+## sediment guide
+
+print the agent guide for operators and developers
+
+```text
+sediment guide [-h]
+```
 
 ## sediment commit
 

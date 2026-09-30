@@ -11,9 +11,8 @@ artifacts — Attributed completions and Rollouts — projected into DPO/SFT and
 RLVR training rows (plus the Fact-derived Recovery pair, ADR 0004's one
 sanctioned exception). Full picture: `docs/explanation/how-sediment-works.md`.
 
-The ADRs in `docs/adr/` are binding — read the ones touching your area before
-changing anything structural. Current status is `CHANGELOG.md` plus the GitHub
-milestones.
+Before structural changes, read the binding ADRs for your area in `docs/adr/`.
+`CHANGELOG.md` and GitHub milestones track project status.
 
 ## The Non-Negotiable Rules
 
@@ -157,6 +156,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 |---|---|
 | Reading order for humans and agents | `docs/onboarding.md` |
 | Try Sediment locally | `docs/quickstart.md` |
+| Help operators and developers use Sediment (`sediment guide`) | `docs/operate/agent-guide.md` |
 | Generated references — edit the source, never the page: CLI flags, HTTP routes, schema fields, consumer profiles | `docs/reference/cli.md`; `docs/reference/api.md`; `docs/reference/schema.md`; `docs/reference/compatibility.md` |
 
 **Concepts** (`docs/explanation/`)

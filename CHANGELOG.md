@@ -33,6 +33,10 @@
 
 ### Command line
 
+- Add `sediment guide` for agents helping operators run Sediment and developers
+  install capture. It prints a bundled guide with procedure links pinned to
+  the installed release. Server startup and compatible installers name the
+  command. The docs site publishes the guide at `operate/agent-guide`.
 - Change `sediment server` against an external database: it migrates at
   start instead of provisioning. Set `SEDIMENT_MIGRATOR_DATABASE_URL` and
   `SEDIMENT_DATABASE_URL`; each start runs the migrate step as the migrator,

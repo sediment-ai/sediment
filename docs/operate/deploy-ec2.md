@@ -58,6 +58,9 @@ The installer also installs Python 3.12 and the host libraries.
 `UV_NO_BUILD=1` makes the installation fail instead of building a missing wheel
 from source.
 
+If a coding agent helps you operate this deployment, give it the output of
+`sediment guide` for guidance that matches the installed release.
+
 ## Configure PostgreSQL and Traefik
 
 1. Create a private deployment directory and its environment files. Before you
