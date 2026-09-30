@@ -498,7 +498,7 @@ for the publisher-to-project relationship.
 ### Reproduce the checks
 
 Run the commands from the release source checkout. Use Python 3.12.14 and uv
-0.12.19. Install the exact Trivy version and verified checksum specified in
+0.12.21. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.

@@ -157,6 +157,10 @@
   carried them. The window starts at the first patch that is newer than the
   installed runtime, and the runtime evidence records each pending patch and its
   deadline. Fixes that a vulnerability scanner reports still fail at once.
+- Run CI and the security scans with uv 0.12.21. Its managed Python 3.12.14
+  build bundles OpenSSL 3.5.9, so the client scan no longer waits on that
+  patch. The image builds keep uv 0.12.19, which doesn't reach any scanned
+  runtime.
 
 ## 0.3.0 — 2026-09-27
 
