@@ -4,6 +4,32 @@
 
 ### Capture
 
+- Add `scripts/erode_replay.py`, the offline replay for evaluation E1 of the
+  context-pruning spec. It reads recorded Anthropic Messages request bodies
+  from a directory, groups them into Sessions, replays each request through
+  erode's `prune`, and writes a counts-only JSON report with E1's gate ratio.
+  The gate requires three long Sessions. The report counts OpenAI chat skips
+  and provider-managed context bypasses; the latter retain their input cost.
+
+## 0.4.0 — 2026-09-30
+
+### Upgrade notes
+
+- If your server uses `SEDIMENT_BOOTSTRAP_DATABASE_URL`, follow
+  [Move off the bootstrap URL](docs/operate/maintain.md#move-off-the-bootstrap-url)
+  before restarting it. External-database startup requires migrator and runtime
+  credentials; local managed PostgreSQL keeps its existing startup path.
+- If capture installation uses `--gateway-url` or `--gateway-key`, remove those
+  flags and distribute routing through
+  [managed settings](docs/capture/managed-capture.md#distribute-gateway-routing).
+- This release supplies the dependency fixes missing from retained v0.1.0–v0.3.0
+  artifact inventories. Follow [Upgrade Sediment](docs/operate/maintain.md#upgrade-sediment).
+  Historical artifact findings remain visible in issue #225. The scoped
+  OpenSSL mitigation remains limited to the documented deployment conditions
+  and expires on 2026-10-12; see [Secure a deployment](docs/operate/security.md).
+
+### Capture
+
 - Restructure the Capture docs. Capture pi work moves out of Agent
   integrations into its own page, like the other agents. Agent integrations
   becomes a comparison page that also shows Inference-call support. To opt in
@@ -30,12 +56,6 @@
   output. Any other call shape passes through unchanged. Three recorded Codex
   Sessions are the test fixtures. See
   [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
-- Add `scripts/erode_replay.py`, the offline replay for evaluation E1 of the
-  context-pruning spec. It reads recorded Anthropic Messages request bodies
-  from a directory, groups them into Sessions, replays each request through
-  erode's `prune`, and writes a counts-only JSON report with E1's gate ratio.
-  The gate requires three long Sessions. The report counts OpenAI chat skips
-  and provider-managed context bypasses; the latter retain their input cost.
 
 ### Command line
 
@@ -115,6 +135,9 @@
 
 ### Deployment
 
+- Update the gateway to cryptography 50.0.2, which bundles OpenSSL 4.0.3 in its
+  binary wheels. Upstream supports only its latest release; both gateway
+  architectures must pass the release security and runtime checks.
 - Consolidate dependency updates to SQLAlchemy 2.1.1, Uvicorn 0.54.0,
   Ruff 0.16.9, Node 24 typings, uv 0.12.21, and LiteLLM 1.103.1. Pin the
   gateway to PyJWT 2.14.0 to fix the reported token and key-set vulnerabilities.

@@ -37,6 +37,9 @@ Anthropic routes retain the same provider boundary.
 The Dockerfile records pinned input images and direct dependency updates.
 The PyJWT override uses 2.14.0 to fix the reported 2.13.0 token verification
 and key-set handling vulnerabilities.
+The cryptography override uses 50.0.2, the supported upstream release whose
+wheels bundle OpenSSL 4.0.3. The system OpenSSL packages retain their separate
+reviewed pins.
 The OAuthLib override uses 4.0.0 to fix CVE-2026-49264 and CVE-2026-49265.
 Image tests reject the removed JSONP revocation option and exercise the
 authorization-code client in FastAPI SSO.

@@ -644,7 +644,7 @@ wheels = [
 
 [[package]]
 name = "sediment"
-version = "0.3.0"
+version = "0.4.0"
 source = { virtual = "." }
 dependencies = [
     { name = "sediment-api" },
@@ -685,7 +685,7 @@ dev = [
 
 [[package]]
 name = "sediment-api"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "anyio" },
@@ -714,7 +714,7 @@ requires-dist = [
 
 [[package]]
 name = "sediment-capture"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "packages/capture" }
 dependencies = [
     { name = "sediment-core" },
@@ -725,7 +725,7 @@ requires-dist = [{ name = "sediment-core", editable = "packages/core" }]
 
 [[package]]
 name = "sediment-cli"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "cli" }
 dependencies = [
     { name = "httpx" },
@@ -746,7 +746,7 @@ requires-dist = [
 
 [[package]]
 name = "sediment-core"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "alembic" },
@@ -765,7 +765,7 @@ requires-dist = [
 
 [[package]]
 name = "sediment-derive"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "packages/derive" }
 dependencies = [
     { name = "pydantic" },
@@ -780,7 +780,7 @@ requires-dist = [
 
 [[package]]
 name = "sediment-export"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "packages/export" }
 dependencies = [
     { name = "pydantic" },
