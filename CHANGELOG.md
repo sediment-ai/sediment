@@ -126,6 +126,9 @@
 
 ### Deployment
 
+- Update the gateway to cryptography 50.0.2, which bundles OpenSSL 4.0.3 in its
+  binary wheels. Upstream supports only its latest release; both gateway
+  architectures must pass the release security and runtime checks.
 - Consolidate dependency updates to SQLAlchemy 2.1.1, Uvicorn 0.54.0,
   Ruff 0.16.9, Node 24 typings, uv 0.12.21, and LiteLLM 1.103.1. Pin the
   gateway to PyJWT 2.14.0 to fix the reported token and key-set vulnerabilities.
