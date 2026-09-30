@@ -39,6 +39,10 @@
 
 ### Command line
 
+- Add `sediment guide` for agents helping operators run Sediment and developers
+  install capture. It prints a bundled guide with procedure links pinned to
+  the installed release. Server startup and compatible installers name the
+  command. The docs site publishes the guide at `operate/agent-guide`.
 - Change `sediment server` against an external database: it migrates at
   start instead of provisioning. Set `SEDIMENT_MIGRATOR_DATABASE_URL` and
   `SEDIMENT_DATABASE_URL`; each start runs the migrate step as the migrator,
@@ -111,6 +115,15 @@
 
 ### Deployment
 
+- Consolidate dependency updates to SQLAlchemy 2.1.1, Uvicorn 0.54.0,
+  Ruff 0.16.9, Node 24 typings, uv 0.12.21, and LiteLLM 1.103.1. Pin the
+  gateway to PyJWT 2.14.0 to fix the reported token and key-set vulnerabilities.
+  Review FastAPI 0.142.2 and Wolfi tzdata 2026e-r0 for resolved installations.
+
+- Update the supplied gateway to OAuthLib 4.0.0 to fix CVE-2026-49264 and
+  CVE-2026-49265. Image tests cover its OAuth client compatibility.
+- Review FastAPI 0.142.0 and OpenTelemetry API 1.45.0 for resolved client
+  installations so the security gate accepts these maintained releases.
 - Document PostgreSQL without a superuser. Deploy Sediment on your own host
   replaces its superuser requirement with two ways to create the database
   roles: `sediment db provision` with an administrator that owns the

@@ -737,6 +737,7 @@ def _run_server(args: argparse.Namespace, stack: ExitStack) -> int:
         print(f"Using credentials from {env_file} and explicit environment overrides")
     print(f"Serving on {ui.style(url, 'sandstone', 'bold')}")
     print(f"Next:  {ui.style(f'sediment login {url}', 'sandstone')}")
+    print("Agents: sediment guide")
 
     del effective, stored, additions
     import uvicorn
@@ -910,6 +911,37 @@ def cmd_logout(args: argparse.Namespace) -> int:
     print(
         f"{ui.glyph('✓', 'phosphor')}logged out of {url} (org {removed.get('org_id')})"
     )
+    return 0
+
+
+def _guide_ref() -> str:
+    """The ref whose docs match this CLI.
+
+    A released wheel ships the guide and the pages it links from one commit, so
+    its tag resolves. A source checkout runs ahead of that tag: its guide links
+    pages the last release never had, and `v{__version__}` would name a release
+    predating them. Those runs resolve against `main` instead.
+    """
+    checkout = Path(__file__).resolve().parents[2] / "docs" / "operate"
+    return "main" if (checkout / "agent-guide.md").is_file() else f"v{__version__}"
+
+
+def cmd_guide(args: argparse.Namespace) -> int:
+    """Print the bundled guide with release-pinned links, without reading settings."""
+    import re
+    from importlib import resources
+    from urllib.parse import urljoin
+
+    text = (
+        resources.files("sediment_cli").joinpath("agent_guide.txt").read_text("utf-8")
+    )
+    base = (
+        f"https://raw.githubusercontent.com/sediment-ai/sediment/{_guide_ref()}/"
+        "docs/operate/agent-guide.md"
+    )
+    # The bundled Markdown uses the published page's relative procedure links.
+    text = re.sub(r"\]\(([^)\s]+)\)", lambda m: f"]({urljoin(base, m[1])})", text)
+    sys.stdout.write(text)
     return 0
 
 
@@ -1843,6 +1875,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_logout.set_defaults(func=cmd_logout)
 
+    p_guide = sub.add_parser(
+        "guide",
+        help="print the agent guide for operators and developers",
+    )
+    p_guide.set_defaults(func=cmd_guide)
+
     p_commit = sub.add_parser("commit", help="pretty-print attributions for a commit")
     p_commit.add_argument("sha", help="full 40- or 64-char commit SHA")
     p_commit.add_argument(
@@ -2069,6 +2107,10 @@ def main(argv: list[str] | None = None) -> int:
             return args.func(None, None, args)
         except (OSError, ValueError) as exc:
             return _fail(str(exc))
+
+    if args.command == "guide":
+        # Static print; must never reach _prepare_store_command or Settings.
+        return args.func(args)
 
     if args.command == "server":
         from sediment_core.postgres_migrations import MigrationError

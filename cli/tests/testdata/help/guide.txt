@@ -1,0 +1,7 @@
+USAGE:
+  sediment guide [-h]
+
+  print the agent guide for operators and developers
+
+OPTIONS:
+  -h, --help  show this help message and exit

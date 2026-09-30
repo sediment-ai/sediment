@@ -19,7 +19,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.16.8",
+    "ruff>=0.16.9",
     "httpx>=0.27",
     "jsonschema>=4.23",
     "pytest-xdist>=3.8.0",

@@ -302,6 +302,54 @@ print('protocol consumers interoperate')
     assert "protocol consumers interoperate" in result.stdout
 
 
+def test_gateway_oauth_client_works_without_jsonp_revocation() -> None:
+    result = docker(
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--entrypoint",
+        "python",
+        image("GATEWAY"),
+        "-c",
+        r"""
+import asyncio
+from urllib.parse import parse_qs, urlsplit
+from oauthlib.oauth2 import RequestValidator, RevocationEndpoint
+from fastapi_sso.sso.google import GoogleSSO
+
+# The vulnerable JSONP option must be unavailable even when explicitly enabled.
+try:
+    RevocationEndpoint(RequestValidator(), enable_jsonp=True)
+except TypeError:
+    pass
+else:
+    raise AssertionError('unsafe JSONP revocation remains available')
+
+# FastAPI SSO retains its authorization-code client interface.
+async def check_clients():
+    async with GoogleSSO('client-id', 'client-secret', 'https://client.example/callback') as client:
+        assert client.oauth_client.client_id == 'client-id'
+        url = client.oauth_client.prepare_request_uri(
+            'https://provider.example/authorize', redirect_uri=client.redirect_uri, state='state'
+        )
+        query = parse_qs(urlsplit(url).query)
+        assert query['client_id'] == ['client-id']
+        assert query['redirect_uri'] == ['https://client.example/callback']
+        assert query['response_type'] == ['code']
+        assert query['state'] == ['state']
+        token = client.oauth_client.parse_request_body_response(
+            '{"access_token":"test-token","token_type":"Bearer"}'
+        )
+        assert token['access_token'] == 'test-token'
+
+asyncio.run(check_clients())
+print('OAuth client interoperates without JSONP revocation')
+""",
+    )
+    assert "OAuth client interoperates without JSONP revocation" in result.stdout
+
+
 def test_gateway_tokenizers_and_hub2_download_and_count_tokens() -> None:
     result = docker(
         "run",
