@@ -3423,7 +3423,7 @@
       ]
     },
     "pypi/cryptography": {
-      "basis": "Upstream applies security fixes only to the latest release and does not promise older-release backports. The online gate must confirm the latest non-prerelease, non-yanked registry version.",
+      "basis": "Upstream applies security fixes only to the latest release and does not promise older-release backports. Reviewed 50.0.2, released 2026-09-30, which updates its binary wheels to OpenSSL 4.0.3. The online gate must confirm the latest non-prerelease, non-yanked registry version.",
       "evidence": "https://cryptography.io/en/latest/security/",
       "provider": "Upstream project",
       "source": "https://github.com/pyca/cryptography",
@@ -3432,7 +3432,8 @@
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "50.0.1"
+        "50.0.1",
+        "50.0.2"
       ]
     },
     "pypi/ddtrace": {
@@ -5067,7 +5068,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/sediment-capture": {
@@ -5080,7 +5082,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/sediment-cli": {
@@ -5093,7 +5096,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/sediment-core": {
@@ -5106,7 +5110,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/sediment-derive": {
@@ -5119,7 +5124,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/sediment-export": {
@@ -5132,7 +5138,8 @@
       "versions": [
         "0.1.0",
         "0.2.0",
-        "0.3.0"
+        "0.3.0",
+        "0.4.0"
       ]
     },
     "pypi/semantic-router": {
@@ -5604,7 +5611,7 @@
     },
     "openssl-cryptography": {
       "4.0": {
-        "basis": "OpenSSL 4.0.2 is observed through the cryptography wheel binding; its upstream 4.0 support ends 2027-05-14.",
+        "basis": "Cryptography 50.0.2 wheels bundle OpenSSL 4.0.3; upstream OpenSSL 4.0 support ends 2027-05-14.",
         "end_of_support": "2027-05-14",
         "evidence": "https://openssl-library.org/policies/releasestrat/",
         "minimum": "4.0.2",
