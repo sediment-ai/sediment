@@ -546,18 +546,20 @@
       ]
     },
     "apk/tzdata": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/tzdata.yaml",
+      "basis": "Reviewed 2026-09-30: the signed Wolfi repository supplies tzdata 2026e-r0 in the scanned gateway. IANA publishes release 2026e; the maintained Wolfi timezone package supplies distribution updates. This rolling maintenance assessment expires with the catalog.",
+      "evidence": "https://data.iana.org/time-zones/releases/tzdata2026e.tar.gz",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/tzdata.yaml",
       "source_package": "tzdata",
       "source_versions": [
-        "2026d-r0"
+        "2026d-r0",
+        "2026e-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2026d-r0"
+        "2026d-r0",
+        "2026e-r0"
       ]
     },
     "apk/wolfi-base": {
@@ -3542,8 +3544,8 @@
       ]
     },
     "pypi/fastapi": {
-      "basis": "Reviewed 2026-09-29: upstream release 0.142.0 adds native OpenTelemetry support and requires opentelemetry-api>=1.44.0. PyPI publishes unwithdrawn Python >=3.10 artifacts. The earlier reviewed versions remain recorded for locked artifacts. This maintenance assessment expires with the catalog.",
-      "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.142.0",
+      "basis": "Reviewed 2026-09-30: the unwithdrawn 0.142.2 release supports Python >=3.10 and fixes startup when automatic OpenTelemetry configuration fails. Earlier reviewed versions remain recorded for locked artifacts. This assessment expires with the catalog.",
+      "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.142.2",
       "provider": "Upstream project",
       "source": "https://github.com/fastapi/fastapi",
       "source_updated_at": "2026-09-29T17:56:21Z",
@@ -3553,7 +3555,8 @@
         "0.136.3",
         "0.139.0",
         "0.141.1",
-        "0.142.0"
+        "0.142.0",
+        "0.142.2"
       ]
     },
     "pypi/fastapi-sso": {
@@ -4111,8 +4114,8 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed LiteLLM 1.103.0 on 2026-09-27 against the unwithdrawn PyPI release, immutable release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d, and the resolved ARM64 gateway inventory. The release pins enterprise 0.1.69 and proxy-extras 0.4.100. Both architectures in the official image index carry the release commit as their revision label. All four guarded vendor sources changed. The patch still removes the same 11 PrismaClient retry decorators and rewrites the one master-key database error. db/exception_handler.py adds one Prisma import site, the postgres_sqlstate lookup; without Prisma it returns None, not False, so its only caller keeps classifying failures. The release adds google-cloud-speech, which the gateway removes as unused, and the h2, hpack, and hyperframe stack that its base httpx[http2] requirement needs. Its proxy extra requires MCP 2, so the gateway drops its MCP 1.30.0 override and keeps the vendor's MCP 2.2.0. Native ARM64 runtime and capture checks pass. This maintenance entry does not approve vulnerability dispositions. The existing catalog expiry and online latest-stable gate remain.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
+      "basis": "Reviewed 2026-09-30 against the unwithdrawn 1.103.1 wheel and release. All four hash-guarded proxy patch inputs and the SAML handler are byte-identical to reviewed 1.103.0. Enterprise 0.1.69 and proxy-extras 0.4.100 remain pinned. The Anthropic-only provider boundary and removed optional dependencies remain. Both architecture builds must pass runtime, capture, dependency consistency, and security checks. The catalog expiry and online latest-stable gate remain.",
+      "evidence": "https://github.com/BerriAI/litellm/releases/tag/v1.103.1",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-27T07:50:16Z",
@@ -4122,7 +4125,8 @@
       "versions": [
         "1.102.0",
         "1.102.1",
-        "1.103.0"
+        "1.103.0",
+        "1.103.1"
       ]
     },
     "pypi/litellm-enterprise": {
@@ -4785,15 +4789,16 @@
       ]
     },
     "pypi/pyjwt": {
-      "basis": "Upstream SECURITY.md explicitly supports PyJWT 2.x and has not announced its end-of-life date.",
-      "evidence": "https://raw.githubusercontent.com/jpadilla/pyjwt/HEAD/SECURITY.md",
+      "basis": "Reviewed 2026-09-30: upstream supports the 2.x series. The unwithdrawn 2.14.0 release fixes the reported 2.13.0 JWT and JWK vulnerabilities and supports Python >=3.9. The gateway pins this release; earlier versions remain identifiable for retained inventories and do not bypass vulnerability checks.",
+      "evidence": "https://github.com/jpadilla/pyjwt/releases/tag/2.14.0",
       "provider": "Upstream project",
       "source": "https://github.com/jpadilla/pyjwt",
       "source_updated_at": "2026-09-11T18:50:37Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "2.13.0"
+        "2.13.0",
+        "2.14.0"
       ]
     },
     "pypi/pynacl": {
@@ -5203,7 +5208,7 @@
       ]
     },
     "pypi/sqlalchemy": {
-      "basis": "Reviewed on 2026-09-15: SQLAlchemy identifies 2.0 as its supported release series. Versions 2.0.52 and 2.0.54 are unwithdrawn releases in that series; 2.0.54 supports Python 3.12. This maintenance assessment expires with the catalog.",
+      "basis": "Reviewed 2026-09-30: upstream identifies 2.1 as the current release series and 2.0 as maintained. The unwithdrawn 2.1.1 release supports Python >=3.11. Sediment uses synchronous Core and psycopg; its PostgreSQL and migration suites qualify this upgrade. This assessment expires with the catalog.",
       "evidence": "https://www.sqlalchemy.org/download.html#current",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/sqlalchemy",
@@ -5212,7 +5217,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "2.0.52",
-        "2.0.54"
+        "2.0.54",
+        "2.1.1"
       ]
     },
     "pypi/sse-starlette": {
