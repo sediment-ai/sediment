@@ -741,6 +741,10 @@ def test_cc_raw_removes_account_identity_without_changing_evidence(
             [
                 {"key": "user.email", "value": {"stringValue": "account@example.test"}},
                 {"key": "user.account_id", "value": {"stringValue": "account-123"}},
+                {
+                    "key": "user.account_uuid",
+                    "value": {"stringValue": "22222222-2222-4222-8222-222222222222"},
+                },
                 # Remove every occurrence, even when its value is malformed.
                 {"key": "user.email", "value": ["duplicate@example.test"]},
             ]
@@ -751,6 +755,7 @@ def test_cc_raw_removes_account_identity_without_changing_evidence(
 
     assert "account@example.test" not in decision.model_dump_json()
     assert "account-123" not in decision.model_dump_json()
+    assert "22222222-2222-4222-8222-222222222222" not in decision.model_dump_json()
     assert "duplicate@example.test" not in decision.model_dump_json()
     assert _fact_values([decision]) == expected
     assert decision.user_id == "spike-dev"

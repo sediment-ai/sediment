@@ -65,8 +65,10 @@ there instead.
 
 The installed environment enables `OTEL_LOG_TOOL_DETAILS=1` for file-path
 recovery. Sediment retains the joined `tool_input`, including edit text, under
-Basic redaction. The translator removes `user.email` and `user.account_id`
-record attributes before storage. It preserves your explicit `user.id`.
+Basic redaction. The translator removes the `user.email`, `user.account_id`,
+and `user.account_uuid` record attributes before storage. Claude Code documents
+these keys in [Standard attributes](https://code.claude.com/docs/en/monitoring-usage#standard-attributes).
+Sediment preserves your explicit `user.id`.
 
 A user's approval or refusal has `explicit=true`. An approval from
 configuration or a hook has `explicit=false`.

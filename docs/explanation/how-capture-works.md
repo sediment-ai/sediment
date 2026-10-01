@@ -374,9 +374,11 @@ logging; it doesn't strip tool-argument content. pi's decision-only path carries
 no applied or observed file text.
 
 Before creating Developer decisions, the Claude Code and Codex translators
-remove the record attributes `user.email` and `user.account_id` from `raw`.
-They preserve explicit `user.id` and join identifiers. Source text can still
-contain personal information.
+remove the record attributes `user.email`, `user.account_id`, and
+`user.account_uuid` from `raw`. Claude Code documents these keys in
+[Standard attributes](https://code.claude.com/docs/en/monitoring-usage#standard-attributes).
+The translators preserve explicit `user.id` and join identifiers. Source text
+can still contain personal information.
 
 Before PostgreSQL writes a content-bearing Fact, Basic redaction replaces
 high-confidence API keys and bearer credentials with

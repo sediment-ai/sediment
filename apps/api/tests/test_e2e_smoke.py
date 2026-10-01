@@ -212,6 +212,10 @@ def test_claude_code_account_identity_removed_before_storage(
             [
                 {"key": "user.email", "value": {"stringValue": "account@example.test"}},
                 {"key": "user.account_id", "value": {"stringValue": "account-123"}},
+                {
+                    "key": "user.account_uuid",
+                    "value": {"stringValue": "22222222-2222-4222-8222-222222222222"},
+                },
             ]
         )
         if any(
@@ -229,6 +233,7 @@ def test_claude_code_account_identity_removed_before_storage(
     [decision] = _store().read_decisions(settings.org_id)
     assert "account@example.test" not in decision.model_dump_json()
     assert "account-123" not in decision.model_dump_json()
+    assert "22222222-2222-4222-8222-222222222222" not in decision.model_dump_json()
     stored_input = next(
         attr["value"]["stringValue"]
         for attr in decision.raw["result"]["attributes"]

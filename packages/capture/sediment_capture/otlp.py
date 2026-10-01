@@ -90,7 +90,9 @@ _SESSION = "session.id"  # Copilot: resource scope; Claude Code: record scope
 _USER = "user.id"  # resource scope (from OTEL_RESOURCE_ATTRIBUTES, if set)
 # Account metadata is excluded from Claude Code and Codex raw provenance.
 # Explicit user.id and the captured source content remain evidence.
-_ACCOUNT_IDENTITY_ATTRS = frozenset({"user.email", "user.account_id"})
+_ACCOUNT_IDENTITY_ATTRS = frozenset(
+    {"user.email", "user.account_id", "user.account_uuid"}
+)
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -855,8 +857,7 @@ def _codex_decisions(
                         call_id=_id_or_none(call_id),
                         occurred_at=occurred,
                         # Store scrubbed flattened attrs (not the raw record):
-                        # per-developer identity (user.email/account_id) must
-                        # not be persisted.
+                        # account identity attributes must not be persisted.
                         raw={
                             "decision": _cx_scrub(attrs),
                             "result": _cx_scrub(result),
