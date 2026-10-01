@@ -820,7 +820,8 @@ def _store_login(
     cfg["servers"] = servers
     write_config(cfg)
     action = "capture credential enrolled for" if capture else "logged in to"
-    print(f"{ui.glyph('✓', 'phosphor')}{action} {url} (org {me['org_id']})")
+    org_id = ui.printable_text(me["org_id"])
+    print(f"{ui.glyph('✓', 'phosphor')}{action} {url} (org {org_id})")
     return 0
 
 
@@ -908,9 +909,8 @@ def cmd_logout(args: argparse.Namespace) -> int:
     if cfg.get("current") == url:
         cfg["current"] = None
     write_config(cfg)
-    print(
-        f"{ui.glyph('✓', 'phosphor')}logged out of {url} (org {removed.get('org_id')})"
-    )
+    org_id = ui.printable_text(removed.get("org_id"))
+    print(f"{ui.glyph('✓', 'phosphor')}logged out of {url} (org {org_id})")
     return 0
 
 

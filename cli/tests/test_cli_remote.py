@@ -862,6 +862,96 @@ def test_error_detail_uses_the_servers_detail_string() -> None:
     assert api_client._error_detail(resp) == "org_id is required"
 
 
+@pytest.mark.parametrize("command", ["login", "facts", "demo"])
+@pytest.mark.parametrize(
+    ("detail", "display"),
+    [
+        ("org_id is required", "org_id is required"),
+        ("Équipe 東京 — Δ 🚀", "Équipe 東京 — Δ 🚀"),
+        ("bad\x1b[31m\x1b]0;title\x07\r\nforged\x9b\u2028", "bad[31m]0;titleforged"),
+    ],
+    ids=["ascii", "unicode", "controls"],
+)
+def test_remote_errors_print_only_display_text(
+    tmp_path, monkeypatch, capsys, command, detail, display
+):
+    import httpx
+
+    url = "http://127.0.0.1:8000"
+    monkeypatch.setattr(api_client, "CONFIG_PATH", tmp_path / "config.json")
+    monkeypatch.setattr(api_client, "_version_checked", True)
+    monkeypatch.delenv("SEDIMENT_DATABASE_URL", raising=False)
+    monkeypatch.delenv("SEDIMENT_SESSION_TOKEN", raising=False)
+    monkeypatch.setenv("SEDIMENT_URL", url)
+    api_client.write_config({"current": url, "servers": {url: {"token": "synthetic"}}})
+    monkeypatch.setattr(
+        api_client,
+        "_http",
+        lambda: httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(400, json={"detail": detail})
+            )
+        ),
+    )
+    monkeypatch.setattr(sys, "stdin", io.StringIO("synthetic\n"))
+    arguments = [command, url, "--with-token"] if command == "login" else [command]
+
+    assert cli.main(arguments) == 1
+
+    output = capsys.readouterr()
+    # Compare escaped output so a regression can't execute controls in test logs.
+    assert ascii(output.err) == ascii(f"error: {display}\n")
+    assert output.out == (
+        f"posting demo session (synthetic) to {url}\n" if command == "demo" else ""
+    )
+
+
+@pytest.mark.parametrize(
+    ("org_id", "display"),
+    [
+        ("ordinary-team", "ordinary-team"),
+        ("Équipe 東京 — Δ 🚀", "Équipe 東京 — Δ 🚀"),
+        ("team\x1b]0;title\x07\r\nforged", "team]0;titleforged"),
+    ],
+    ids=["ascii", "unicode", "controls"],
+)
+def test_login_and_logout_filter_identity_only_for_display(
+    tmp_path, monkeypatch, capsys, org_id, display
+):
+    import httpx
+
+    url = "https://sediment.example.com"
+    monkeypatch.delenv("SEDIMENT_SESSION_TOKEN", raising=False)
+    monkeypatch.setattr(api_client, "CONFIG_PATH", tmp_path / "config.json")
+    monkeypatch.setattr(sys, "stdin", io.StringIO("synthetic\n"))
+    monkeypatch.setattr(
+        api_client,
+        "_http",
+        lambda: httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    json={
+                        "org_id": org_id,
+                        "authority": "operator",
+                        "client_id": "operator",
+                    },
+                )
+            )
+        ),
+    )
+
+    assert cli.main(["login", url, "--with-token"]) == 0
+    assert api_client.read_config()["servers"][url]["org_id"] == org_id
+    assert cli.main(["logout"]) == 0
+
+    output = capsys.readouterr()
+    assert ascii(output.out) == ascii(
+        f"logged in to {url} (org {display})\nlogged out of {url} (org {display})\n"
+    )
+    assert output.err == ""
+
+
 def test_commit_shows_exact_ci_without_session_observation(remote, capsys, monkeypatch):
     from sediment_api.config import settings
     from sediment_api.main import app

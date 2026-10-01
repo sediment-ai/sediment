@@ -2954,6 +2954,171 @@ def _login_config(home: Path, url: str = "http://127.0.0.1:8000") -> None:
     )
 
 
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize(
+    "failure", ["encoding", "permissions", "sync", "replace", "interrupt"]
+)
+def test_private_write_failure_preserves_original(
+    tmp_path, monkeypatch, existing, failure
+):
+    mod = _load_module()
+    path = tmp_path / "private.config.toml"
+    original = b'# preserve bytes\r\nmodel="custom"\r\n'
+    if existing:
+        path.write_bytes(original)
+        path.chmod(0o640)
+    content = "replacement"
+    error = OSError
+    if failure == "encoding":
+        content += "\ud800"
+        error = UnicodeError
+    else:
+        if failure == "interrupt":
+            error = KeyboardInterrupt
+
+        def fail(*args):
+            raise error("injected failure")
+
+        operation = {
+            "permissions": "fchmod",
+            "sync": "fsync",
+            "replace": "replace",
+            "interrupt": "fsync",
+        }[failure]
+        monkeypatch.setattr(mod.os, operation, fail)
+
+    with pytest.raises(error):
+        mod._write_0600(path, content)
+
+    if existing:
+        assert path.read_bytes() == original
+        assert path.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not path.exists()
+    assert list(tmp_path.iterdir()) == ([path] if existing else [])
+
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_codex_profile_symlink_cleanup_is_selective(
+    tmp_path, monkeypatch, capsys, managed
+):
+    mod = _load_module()
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / ".codex"))
+    directory = tmp_path / ".codex"
+    directory.mkdir()
+    target = tmp_path / "original.toml"
+    original = 'model="custom"\n'
+    if managed:
+        original += f'{mod._CODEX_OTEL_BEGIN}\n[otel]\nenvironment="sediment"\n{mod._CODEX_OTEL_END}\n'
+    target.write_text(original)
+    target.chmod(0o600)
+    link = directory / "linked.config.toml"
+    link.symlink_to(target)
+
+    assert mod._uninstall_codex_profiles() is not managed
+
+    assert link.is_symlink()
+    assert target.read_text() == original
+    assert target.stat().st_mode & 0o777 == 0o600
+    output = capsys.readouterr()
+    assert ("skipped" in output.err) is managed
+    assert not output.out
+
+
+@pytest.mark.parametrize("target_exists", [False, True])
+def test_private_write_refuses_existing_symlink(tmp_path, target_exists):
+    mod = _load_module()
+    target = tmp_path / "owned-elsewhere"
+    original = b"# preserve the target bytes\n"
+    if target_exists:
+        target.write_bytes(original)
+        target.chmod(0o640)
+    path = tmp_path / "private-config"
+    path.symlink_to(target)
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        mod._write_0600(path, "replacement")
+
+    assert path.is_symlink()
+    assert path.readlink() == target
+    if target_exists:
+        assert target.read_bytes() == original
+        assert target.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not target.exists()
+    assert set(tmp_path.iterdir()) == ({path, target} if target_exists else {path})
+
+
+@pytest.mark.parametrize(
+    "relative_path", [".sediment/env.sh", ".config/fish/conf.d/sediment.fish"]
+)
+@pytest.mark.parametrize("target_exists", [False, True])
+def test_install_refuses_environment_symlink_without_replacing_it(
+    tmp_path, relative_path, target_exists
+):
+    home = tmp_path / "home"
+    _login_config(home)
+    target = home / "externally-managed-env"
+    original = b"# preserve externally managed configuration\n"
+    if target_exists:
+        target.write_bytes(original)
+        target.chmod(0o640)
+    path = home / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.symlink_to(target)
+    repo = make_repo(tmp_path / "repo")
+
+    result = run_cli(
+        ["install", str(repo)],
+        cwd=repo,
+        extra_env={**doctor_env(home), "SEDIMENT_URL": "http://127.0.0.1:8000"},
+    )
+
+    assert result.returncode == 1
+    assert "symbolic link" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert "tok-405" not in result.stdout + result.stderr
+    assert path.is_symlink()
+    assert path.readlink() == target
+    if target_exists:
+        assert target.read_bytes() == original
+        assert target.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not target.exists()
+    assert not list(path.parent.glob(f".{path.name}.*.tmp"))
+
+
+@pytest.mark.parametrize("operation", ["install", "uninstall"])
+def test_codex_profile_edit_failure_keeps_user_content(
+    tmp_path, monkeypatch, operation
+):
+    mod = _load_module()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / ".codex"))
+    _login_config(tmp_path)
+    path = tmp_path / ".codex" / "pilot.config.toml"
+    path.parent.mkdir()
+    path.write_text('model="custom"\n# keep this comment\n')
+    if operation == "uninstall":
+        mod._install_codex_profile("pilot")
+    path.chmod(0o600)
+    original = path.read_bytes()
+
+    def fail(fd, mode):
+        raise OSError("injected failure")
+
+    monkeypatch.setattr(mod.os, "fchmod", fail)
+    if operation == "install":
+        with pytest.raises(OSError):
+            mod._install_codex_profile("pilot")
+    else:
+        assert mod._uninstall_codex_profiles() is False
+
+    assert path.read_bytes() == original
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert list(path.parent.iterdir()) == [path]
+
+
 def test_env_wiring_writes_0600_files_with_the_runbook_block(
     tmp_path, monkeypatch
 ) -> None:
@@ -3061,6 +3226,40 @@ def test_doctor_server_ok_and_skew(tmp_path, monkeypatch) -> None:
     assert status in (mod.DOCTOR_OK, mod.DOCTOR_INFO)
     assert "token valid (org acme)" in detail
     assert opener.request.get_header("User-agent") == "sediment-doctor/1"
+
+
+@pytest.mark.parametrize("standalone", [False, True], ids=["package", "standalone"])
+@pytest.mark.parametrize(
+    ("org_id", "display"),
+    [
+        ("ordinary-team", "ordinary-team"),
+        ("Équipe 東京 — Δ 🚀", "Équipe 東京 — Δ 🚀"),
+        ("team\x1b[31m\x1b]0;title\x07\r\nforged\x9b\u2028", "team[31m]0;titleforged"),
+    ],
+    ids=["ascii", "unicode", "controls"],
+)
+def test_doctor_prints_only_display_identity(
+    tmp_path, monkeypatch, capsys, standalone, org_id, display
+):
+    if standalone:
+        mod = _load_module()
+    else:
+        from sediment_cli import attribution as mod
+
+    for key, value in doctor_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv("SEDIMENT_URL", raising=False)
+    _login_config(tmp_path)
+    response = {"org_id": org_id, "authority": "operator", "client_id": "operator"}
+    opener = _FakeOpener(_FakeResponse(json.dumps(response).encode()))
+    monkeypatch.setattr(mod.urllib.request, "build_opener", lambda *_: opener)
+
+    mod.cmd_doctor([], fetch=False)
+
+    output = capsys.readouterr()
+    assert f"reachable, operator token valid (org {display})\n" in output.out
+    assert "\nforged" not in output.out + output.err
+    assert not any(char in output.out + output.err for char in "\x1b\x07\r\x9b\u2028")
 
 
 def test_doctor_server_unreachable_fails(tmp_path, monkeypatch) -> None:

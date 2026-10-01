@@ -103,5 +103,18 @@ doesn't repair OpenSSL or cover added DTLS callers, native extensions, custom
 commands, or changed deployment settings. Apply a distribution fix when
 available. See the [Debian advisory](https://security-tracker.debian.org/tracker/CVE-2026-84782).
 
+The API and PostgreSQL images also retain PCRE2 `10.42-1+deb12u1`.
+The 2026-10-01 review found no fixed Bookworm package for CVE-2026-103111.
+An attacker-controlled pattern can corrupt memory when a caller uses
+just-in-time (JIT) matching with an assigned growable stack. The reviewed
+Sediment paths don't accept patterns for that mode, and PostgreSQL uses a
+different regex engine. Installed GNU `grep -P` can still reach the affected
+mode. The scoped mitigation expires on 2026-10-12 and requires the reviewed
+image inputs and deployment conditions. It doesn't repair PCRE2 or cover
+custom commands, initialization scripts, native extensions, or added regex
+callers. Process compromise can affect credentials and writable data despite
+container confinement. Apply a fixed Bookworm package when available. See
+the [PCRE2 advisory](https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m).
+
 Maintainers follow
 [Security verification and release policy](../../CONTRIBUTING.md#security-verification-and-release-policy).

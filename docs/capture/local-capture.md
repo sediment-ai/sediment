@@ -70,6 +70,10 @@ Each run rewrites `env.sh` from the flags that you pass, so always pass the same
 `--user-id`. Otherwise the rerun drops it. The installer changes only
 Sediment's own entries in agent configuration.
 
+If either generated environment file is a symbolic link, installation stops
+without changing the link or its target. Use a regular file, or manage capture
+variables yourself with `--no-env`.
+
 Start each agent from a shell that loaded `env.sh`. Fully quit a running
 desktop agent first, because it keeps its old environment. Cursor is the
 exception: its hooks read `env.sh` directly.
@@ -307,6 +311,10 @@ every repository. Run it with the CLI installation that registered pi, or
 remove the stale entry from `~/.pi/agent/settings.json`. If you set capture
 variables yourself, remove them from your shell profiles, and restart the
 agents.
+
+Uninstall leaves unrelated Codex profile symbolic links alone. If a linked
+profile contains Sediment's telemetry block, uninstall reports it for manual
+cleanup without changing the link or its target.
 
 If the command reports a skipped Codex profile, remove only Sediment's
 telemetry block from that file by hand. Until you do, the profile keeps its

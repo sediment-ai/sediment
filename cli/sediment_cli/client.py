@@ -226,7 +226,11 @@ def _error_detail(resp: httpx.Response) -> str:
         }
         if isinstance(reason, str) and reason in messages:
             return messages[reason]
-    return detail if isinstance(detail, str) else f"server error ({resp.status_code})"
+    return (
+        ui.printable_text(detail)
+        if isinstance(detail, str)
+        else f"server error ({resp.status_code})"
+    )
 
 
 def probe_me(base_url: str, token: str) -> dict[str, Any]:

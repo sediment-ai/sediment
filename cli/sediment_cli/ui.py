@@ -54,6 +54,11 @@ _LOGO = "\n".join(
 )
 
 
+def printable_text(value: object) -> str:
+    """Keep printable text without server-supplied terminal or line controls."""
+    return "".join(char for char in str(value) if char.isprintable())
+
+
 def on(stream: TextIO | None = None) -> bool:
     """Whether *stream* (default stdout) gets styled output."""
     stream = sys.stdout if stream is None else stream
