@@ -3952,8 +3952,8 @@
       ]
     },
     "pypi/huggingface-hub": {
-      "basis": "Upstream applies security fixes only to the latest release and does not backport fixes to older releases. Reviewed 2.0.0 on 2026-09-26 against its release security policy and non-yanked PyPI metadata. Its declared Python >=3.10.0 requirement includes gateway Python 3.13.15. The online gate must still confirm the latest non-prerelease, non-yanked registry version. This review does not establish Tokenizers or LiteLLM compatibility; their gateway acceptance checks remain required.",
-      "evidence": "https://raw.githubusercontent.com/huggingface/huggingface_hub/97c5f5f2030c2df01b60548f7d357970a106cd7d/SECURITY.md",
+      "basis": "Reviewed 2.1.1 on 2026-10-01 against its release security policy, non-yanked PyPI metadata, and wheel source delta from 2.0.0. Upstream applies security fixes only to the latest release and does not backport fixes. Python >=3.10.0 and dependency requirements are unchanged. The wheel adds no native code; hf_hub_download and file_download.py are unchanged. HfFileSystem.get_file can use the existing Xet downloader, whose native dependency version remains unchanged. The online latest-stable gate, catalog expiry, and Tokenizers/LiteLLM gateway acceptance checks remain.",
+      "evidence": "https://github.com/huggingface/huggingface_hub/releases/tag/v2.1.1",
       "provider": "Upstream project",
       "source": "https://github.com/huggingface/huggingface_hub",
       "source_updated_at": "2026-09-26T03:01:56Z",
@@ -3963,7 +3963,8 @@
       "versions": [
         "1.31.0",
         "1.32.0",
-        "2.0.0"
+        "2.0.0",
+        "2.1.1"
       ]
     },
     "pypi/humanfriendly": {
@@ -5295,7 +5296,7 @@
       ]
     },
     "pypi/tokenizers": {
-      "basis": "Reviewed Tokenizers 0.23.1 on 2026-09-26 against its non-yanked PyPI wheels and immutable upstream source. Sediment applies a guarded downstream metadata patch declaring compatibility only with Hub 2.0.0; upstream Tokenizers retains its below-2 constraint. The compiled Tokenizers code is unchanged. Both wheel architectures share the reviewed metadata hash. Native image tests exercise the real Rust Hub download caller with revisions and credentials and local Claude token counting. The image label identifies the patch and its file-integrity record is updated. This compatibility assessment expires with the catalog.",
+      "basis": "Reviewed Tokenizers 0.23.1 on 2026-10-01 against its non-yanked PyPI wheels and immutable upstream source. Sediment applies a guarded downstream metadata patch declaring compatibility only with Hub 2.1.1; upstream Tokenizers retains its below-2 constraint. The compiled Tokenizers code is unchanged. Both wheel architectures share the reviewed metadata hash. Native image tests exercise the real Rust Hub download caller with revisions and credentials and local Claude token counting. The image label identifies the patch and its file-integrity record is updated. This compatibility assessment expires with the catalog.",
       "evidence": "https://github.com/huggingface/tokenizers/blob/7f1623b90b5adfb9bc327d4c3468d2f70bbce262/bindings/python/src/tokenizer.rs",
       "provider": "Upstream project; Sediment Hub 2 compatibility declaration",
       "source": "https://github.com/huggingface/tokenizers",

@@ -18,7 +18,7 @@ LiteLLM features, Google provider routes, and the legacy Langfuse integration
 aren't supported by this image. The standalone Sediment callback remains
 available for a separately maintained gateway.
 
-The image uses Hugging Face Hub 2.0.0, which receives upstream security fixes.
+The image uses Hugging Face Hub 2.1.1, which receives upstream security fixes.
 Tokenizers 0.23.1 retains its original code. A guarded metadata patch declares
 its tested compatibility with that exact Hub version and updates the wheel's
 file-integrity record. This is Sediment's compatibility declaration; upstream
