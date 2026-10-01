@@ -77,6 +77,11 @@ exception: its hooks read `env.sh` directly.
 The hooks call the CLI by its absolute path. If you move or reinstall the CLI,
 rerun `sediment install`.
 
+Sediment preserves an existing shell hook's exit status and any commands after
+its marked block. Capture failures don't turn a successful repository check into
+a failure. The `prepare-commit-msg` hook accepts an absent commit source when
+your hook enables `set -u`. Rerun `sediment install` to update an installed block.
+
 If another system manages the agents' environment, pass `--no-env`, and set
 `SEDIMENT_OTLP_ENDPOINT` and `SEDIMENT_INGEST_TOKEN` there yourself. With
 `--no-env`, Cursor's hooks also read Cursor's process environment instead of

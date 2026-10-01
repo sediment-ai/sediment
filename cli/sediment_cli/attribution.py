@@ -146,7 +146,7 @@ _HOOK_BLOCK_RE = re.compile(
 # disagree about which hooks exist.
 _REPO_HOOKS = (
     ("post-commit", "stamp"),
-    ("prepare-commit-msg", 'union-squash-notes "$1" "$2"'),
+    ("prepare-commit-msg", 'union-squash-notes "$1" "${2-}"'),
     ("pre-push", 'push-notes "$1"'),
 )
 # Substrings used to recognise our entries in agent hook configs. The
@@ -2185,7 +2185,18 @@ def _install_hook_block(hook_file: Path, command: str) -> bool:
     appending sh to a python/binary hook would break every commit/push, the
     one thing the stamper must never do.
     """
-    block = f"{HOOK_BLOCK_BEGIN}\n{command}\n{HOOK_BLOCK_END}\n"
+    # The subshell restores the previous command's status without exiting the
+    # user's hook or leaking a variable into it. The AND list also preserves
+    # an exempt failure (such as `false && :`) under `set -e` before tail code.
+    block = (
+        f"{HOOK_BLOCK_BEGIN}\n"
+        "(\n"
+        "    __sediment_status=$?\n"
+        f"    {command}\n"
+        '    exit "$__sediment_status"\n'
+        ") && :\n"
+        f"{HOOK_BLOCK_END}\n"
+    )
     if hook_file.exists():
         try:
             content = hook_file.read_text(encoding="utf-8")
