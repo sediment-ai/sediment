@@ -16,6 +16,11 @@
 
 ### Capture
 
+- Add `scripts/erode_record.py`, the recorder for evaluation E1 of the
+  context-pruning spec. It runs the erode proxy with pruning off, saves each
+  Anthropic Messages request body to a private run directory, and writes each
+  response's `usage` token counts to `usage.jsonl`. Bodies of refused or
+  unanswered requests stay out of the replay's input.
 - Remove `user.email`, `user.account_id`, and `user.account_uuid` record
   attributes from Claude Code Developer decisions before storage, matching the
   Codex privacy boundary.

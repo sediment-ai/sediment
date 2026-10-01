@@ -369,13 +369,20 @@ provider's actual prices.
    5 Sessions).** This replaces the original E1, which reran the issue #134
    harness and fixtures: E0 showed that their tool output is too small to prune.
    - **Record.** Run Claude Code on a frontier model, with its default settings,
-     on SWE-bench Verified instances drawn with E2's seed procedure but outside
-     E2's 50-instance subset, so E2 stays held out. Route each run through a
-     recorder: `erode.proxy.make_server(upstream, prune=False)`, wrapped to save
-     each `POST /v1/messages` body before forwarding it, as the stage A.2 Codex
-     recordings were made. The proxy changes nothing, so the traffic is the
-     agent's own. Keep the recordings private: they hold prompts and repository
-     content, and reports carry counts only.
+     on open issues in this repository that need changes across several files,
+     one issue per run. This workload is a mid-sized Python repository with
+     real history, so Sessions are long and read large files. E2 keeps its
+     SWE-bench Verified subset, so E2 stays held out, and E1 says nothing about
+     SWE-bench traffic. Route each run through `scripts/erode_record.py`, which
+     runs `erode.proxy.make_server(upstream, prune=False)` and saves each
+     `POST /v1/messages` body before forwarding it. The recorder changes only
+     transport: it drops `Accept-Encoding` so it can read the response. It also
+     writes each response's `usage` token counts to `usage.jsonl`, so a later
+     replay step can estimate billed cost from cache reads, cache writes, and
+     where new stubs would break the cached prefix. Bodies of requests the
+     upstream refused are kept apart, because the provider doesn't bill them
+     and the agent retries them. Keep the recordings private: they hold prompts
+     and repository content, and reports carry counts only.
    - **Group requests into Sessions.** One run through the proxy interleaves
      the main agent's conversation with subagent (`Task`) conversations, small
      side requests, and compaction requests. A Session is one main-agent
