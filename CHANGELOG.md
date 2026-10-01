@@ -7,6 +7,8 @@
 - Update the gateway to LiteLLM 1.103.2, PyJWT 2.15.1, and urllib3 2.8.0.
   Retain the guarded proxy and Python fixes, and align the client and API
   python-dotenv dependency with the reviewed 1.2.4 release.
+- Update Hugging Face Hub to 2.1.1 and retain the exact Tokenizers compatibility
+  declaration and file-integrity guards.
 - Record the scoped PCRE2 CVE-2026-103111 mitigation for the default API and
   PostgreSQL deployment. The library remains vulnerable; custom commands and
   added regex callers require reassessment. The mitigation expires on
