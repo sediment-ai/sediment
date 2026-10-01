@@ -11,6 +11,9 @@
 
 ### Command line
 
+- Remove terminal and line-control characters from server error details and
+  organization names displayed by login, logout, and doctor. Preserve printable
+  text and the original stored identity.
 - Preserve existing Codex profile and capture environment files when a write
   fails. Sediment publishes complete replacements with mode `0600`.
   Uninstall leaves unrelated profile symlinks alone and refuses links that
