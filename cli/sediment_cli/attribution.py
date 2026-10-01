@@ -105,9 +105,12 @@ try:
 except ImportError:  # pragma: no cover — run by path, not as a package
     # The checkout shim (scripts/sediment_attribution.py) and the fleet
     # bundle execute this file standalone, where no sibling ui module
-    # exists. Those are hook/MDM piped contexts: plain text is the correct
-    # output there, so a passthrough stand-in keeps the bytes identical.
+    # exists. Keep styling plain and match ui's server-text display filter.
     class ui:  # type: ignore[no-redef]  # ponytail: plain-text stand-in
+        @staticmethod
+        def printable_text(value: object) -> str:
+            return "".join(char for char in str(value) if char.isprintable())
+
         @staticmethod
         def style(text: str, *names: str, stream=None) -> str:
             return text
@@ -3431,7 +3434,8 @@ def _doctor_server(findings: list[Finding]) -> None:
             )
         )
         return
-    detail = f"reachable, {authority} token valid (org {body.get('org_id')})"
+    org_id = ui.printable_text(body.get("org_id"))
+    detail = f"reachable, {authority} token valid (org {org_id})"
     try:
         from sediment_cli import __version__ as client_version
         from sediment_cli import version_skew_advice

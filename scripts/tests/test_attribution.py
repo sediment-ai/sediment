@@ -3165,6 +3165,40 @@ def test_doctor_server_ok_and_skew(tmp_path, monkeypatch) -> None:
     assert opener.request.get_header("User-agent") == "sediment-doctor/1"
 
 
+@pytest.mark.parametrize("standalone", [False, True], ids=["package", "standalone"])
+@pytest.mark.parametrize(
+    ("org_id", "display"),
+    [
+        ("ordinary-team", "ordinary-team"),
+        ("Équipe 東京 — Δ 🚀", "Équipe 東京 — Δ 🚀"),
+        ("team\x1b[31m\x1b]0;title\x07\r\nforged\x9b\u2028", "team[31m]0;titleforged"),
+    ],
+    ids=["ascii", "unicode", "controls"],
+)
+def test_doctor_prints_only_display_identity(
+    tmp_path, monkeypatch, capsys, standalone, org_id, display
+):
+    if standalone:
+        mod = _load_module()
+    else:
+        from sediment_cli import attribution as mod
+
+    for key, value in doctor_env(tmp_path).items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv("SEDIMENT_URL", raising=False)
+    _login_config(tmp_path)
+    response = {"org_id": org_id, "authority": "operator", "client_id": "operator"}
+    opener = _FakeOpener(_FakeResponse(json.dumps(response).encode()))
+    monkeypatch.setattr(mod.urllib.request, "build_opener", lambda *_: opener)
+
+    mod.cmd_doctor([], fetch=False)
+
+    output = capsys.readouterr()
+    assert f"reachable, operator token valid (org {display})\n" in output.out
+    assert "\nforged" not in output.out + output.err
+    assert not any(char in output.out + output.err for char in "\x1b\x07\r\x9b\u2028")
+
+
 def test_doctor_server_unreachable_fails(tmp_path, monkeypatch) -> None:
     mod = _load_module()
     monkeypatch.setenv("HOME", str(tmp_path))
