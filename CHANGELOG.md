@@ -16,6 +16,13 @@
   Uninstall leaves unrelated profile symlinks alone and refuses links that
   require a managed edit.
 
+### Training evidence
+
+- Add a pilot validation procedure for sampling, publication permission,
+  independent human labels, Attribution precision, and training-row audits.
+  The procedure reuses existing reports and preserves the distinction between
+  synthetic checks and empirical results.
+
 ## 0.4.0 — 2026-09-30
 
 ### Upgrade notes
