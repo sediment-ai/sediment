@@ -1174,6 +1174,7 @@ for line in sys.stdin:
             assert set(results) <= {"queued buffered\n", "declined storage_busy\n"}, (
                 f"round {round_}"
             )
+            assert "queued buffered\n" in results, f"round {round_}"
             assert delivery.status(queue)["pending"] == results.count(
                 "queued buffered\n"
             )
