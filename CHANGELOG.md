@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Capture
+
+- Remove `user.email` and `user.account_id` record attributes from Claude Code
+  Developer decisions before storage, matching the Codex privacy boundary.
+  Preserve explicit `user.id`, join identifiers, and Basic-redacted tool input.
+  Capture documentation describes the edit text that both native paths retain.
+
 ### Command line
 
 - Preserve existing Codex profile and capture environment files when a write
