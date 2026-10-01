@@ -27,7 +27,7 @@ Hub download caller with revisions and credentials, local Claude token counting,
 and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
 Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
 
-LiteLLM 1.103.1 also bundles optional PostgreSQL clients, Bedrock real-time
+LiteLLM 1.103.2 also bundles optional PostgreSQL clients, Bedrock real-time
 packages, and the Vertex speech SDK. The image removes these unused
 dependencies, including the native `awscrt` library. It removes the bundled
 PgBouncer executable and its unused libevent dependency, and rejects
@@ -35,8 +35,10 @@ PgBouncer executable and its unused libevent dependency, and rejects
 Anthropic routes retain the same provider boundary.
 
 The Dockerfile records pinned input images and direct dependency updates.
-The PyJWT override uses 2.14.0 to fix the reported 2.13.0 token verification
-and key-set handling vulnerabilities.
+The PyJWT override uses 2.15.1, which includes the deeply nested payload
+error-handling fix and restores trailing Base64URL padding compatibility.
+The urllib3 override uses 2.8.0 to fix HTTPS proxy TLS configuration,
+unbounded chunk-size lines, and chunked Deflate streaming.
 The cryptography override uses 50.0.2, the supported upstream release whose
 wheels bundle OpenSSL 4.0.3. The system OpenSSL packages retain their separate
 reviewed pins.
