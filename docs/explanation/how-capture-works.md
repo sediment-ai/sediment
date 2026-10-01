@@ -363,11 +363,20 @@ Inference-call capture contains full prompt and response content. A repository
 mirror contains pushed code. Decision Facts contain metadata such as file path,
 tool name, Session id, and user id.
 
-Codex native Developer decisions can also retain patch code and other tool
-arguments in `raw`. This path is independent of the transcript hook and
-`--transcripts`. `log_user_prompt=false` disables native user-prompt logging;
-it doesn't strip tool-argument content. pi's decision-only path carries no
-applied or observed file text.
+Claude Code native Developer decisions retain the decision record and its
+joined `tool_result` in `raw`. The installed environment enables
+`OTEL_LOG_TOOL_DETAILS=1` to recover file paths. This also captures `tool_input`,
+which can contain an Edit's `old_string` and `new_string` or a Write's content.
+Codex native Developer decisions retain patch code and other tool arguments
+in `raw`. Both paths operate independently of the transcript hook and
+`--transcripts`. Codex's `log_user_prompt=false` disables native user-prompt
+logging; it doesn't strip tool-argument content. pi's decision-only path carries
+no applied or observed file text.
+
+Before creating Developer decisions, the Claude Code and Codex translators
+remove the record attributes `user.email` and `user.account_id` from `raw`.
+They preserve explicit `user.id` and join identifiers. Source text can still
+contain personal information.
 
 Before PostgreSQL writes a content-bearing Fact, Basic redaction replaces
 high-confidence API keys and bearer credentials with

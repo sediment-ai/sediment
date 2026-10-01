@@ -194,6 +194,60 @@ def test_otlp_fixtures_to_decision_facts(client: TestClient) -> None:
     assert len(_store().read_decisions(settings.org_id)) == expected
 
 
+def test_claude_code_account_identity_removed_before_storage(
+    client: TestClient,
+) -> None:
+    from sediment_core import REDACTION_MARKER
+
+    payload = _fixture("otlp/claude_code/tool_decision_acceptedits_edit.json")
+    records = payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
+    tool_input = {
+        "file_path": "/home/dev/project/target.txt",
+        "old_string": "original text",
+        "new_string": "Bearer synthetic-credential-1234567890",
+    }
+    for record in records:
+        attrs = record["attributes"]
+        attrs.extend(
+            [
+                {"key": "user.email", "value": {"stringValue": "account@example.test"}},
+                {"key": "user.account_id", "value": {"stringValue": "account-123"}},
+            ]
+        )
+        if any(
+            attr["key"] == "tool_name" and attr["value"].get("stringValue") == "Edit"
+            for attr in attrs
+        ):
+            for attr in attrs:
+                if attr["key"] == "tool_input":
+                    attr["value"] = {"stringValue": json.dumps(tool_input)}
+
+    response = client.post("/v1/logs", json=payload, headers=_auth())
+
+    assert response.status_code == 200
+    assert response.json() == {}
+    [decision] = _store().read_decisions(settings.org_id)
+    assert "account@example.test" not in decision.model_dump_json()
+    assert "account-123" not in decision.model_dump_json()
+    stored_input = next(
+        attr["value"]["stringValue"]
+        for attr in decision.raw["result"]["attributes"]
+        if attr["key"] == "tool_input"
+    )
+    assert json.loads(stored_input) == {
+        **tool_input,
+        "new_string": f"Bearer {REDACTION_MARKER}",
+    }
+    assert decision.file_path == tool_input["file_path"]
+    assert decision.call_id == "toolu_0000000000000002"
+    assert decision.session_id == "11111111-1111-1111-1111-111111111111"
+    assert decision.user_id == "spike-dev"
+    assert decision.accepted is True
+    assert decision.explicit is False
+    assert client.post("/v1/logs", json=payload, headers=_auth()).status_code == 200
+    assert _store().read_decisions(settings.org_id) == [decision]
+
+
 def test_otlp_chunked_transfer_body(client: TestClient) -> None:
     # Real OTLP exporters stream chunked (no Content-Length); the route must
     # still assemble and parse the body.

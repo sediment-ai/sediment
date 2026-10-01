@@ -101,7 +101,7 @@ terms.
 - `file_path` recovery needs `OTEL_LOG_TOOL_DETAILS=1`; rejects emit the
   `file_path=""` sentinel — a domain value, never "fixed" to `None`
   (`attachment.py` owns the read-time collapse).
-- `raw`: `{"decision": record, "result": record|None}`.
+- `raw`: `{"decision": record, "result": record|None}`. `otlp.py::_cc_scrub` removes `user.email` and `user.account_id` attributes from copies of both records. It preserves `user.id` and join keys without mutating the source payload. Joined `tool_input` retains edit text under storage-seam Basic redaction, independently of transcript opt-in.
 
 ### Codex (decisions — `otlp.py`)
 - `call_id`: `call_id`, in-batch join to `codex.tool_result`, then one decision
@@ -116,7 +116,7 @@ terms.
   (proto3) — real time is `observedTimeUnixNano`; V4A file markers match at
   **column 0 only**; path-less patches emit the `file_path=""` sentinel. A
   shell-tool decision needs its result because the decision doesn't prove an edit.
-- `raw` scrubs `user.email` and `user.account_id` (`otlp.py::_CX_PII`), but retains patch/tool arguments. Native decision capture can therefore carry code without transcript opt-in; `log_user_prompt=false` doesn't remove it.
+- `raw` scrubs `user.email` and `user.account_id` (`otlp.py::_ACCOUNT_IDENTITY_ATTRS`), but retains patch/tool arguments. Native decision capture can therefore carry code without transcript opt-in; `log_user_prompt=false` doesn't remove it.
 
 ### Harness clients (decisions — `sediment.tool_decision`)
 - The harness-neutral wire (`docs/agents/capture-clients.md`): one record

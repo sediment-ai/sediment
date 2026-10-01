@@ -88,6 +88,9 @@ _FILE = "copilot_chat.file.relative_path"
 _COMMIT = "github.copilot.git.commit_sha"
 _SESSION = "session.id"  # Copilot: resource scope; Claude Code: record scope
 _USER = "user.id"  # resource scope (from OTEL_RESOURCE_ATTRIBUTES, if set)
+# Account metadata is excluded from Claude Code and Codex raw provenance.
+# Explicit user.id and the captured source content remain evidence.
+_ACCOUNT_IDENTITY_ATTRS = frozenset({"user.email", "user.account_id"})
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -493,6 +496,25 @@ def _cc_file_path(result_attrs: dict[str, Any]) -> str:
     return path if isinstance(path, str) else ""
 
 
+def _cc_scrub(record: dict[str, Any]) -> dict[str, Any]:
+    """Copy a raw OTLP record without its account identity attributes."""
+    attrs = record.get("attributes")
+    if not isinstance(attrs, list):
+        return dict(record)
+    return {
+        **record,
+        "attributes": [
+            item
+            for item in attrs
+            if not (
+                isinstance(item, dict)
+                and isinstance(item.get("key"), str)
+                and item["key"] in _ACCOUNT_IDENTITY_ATTRS
+            )
+        ],
+    }
+
+
 def _claude_code_decisions(
     payload: dict[str, Any],
     *,
@@ -609,7 +631,10 @@ def _claude_code_decisions(
                     interaction_mode=InteractionMode.AGENT,
                     call_id=_id_or_none(tool_use_id),
                     occurred_at=occurred,
-                    raw={"decision": record, "result": result[0] if result else None},
+                    raw={
+                        "decision": _cc_scrub(record),
+                        "result": _cc_scrub(result[0]) if result else None,
+                    },
                 )
             )
             if _translated_records is not None:
@@ -650,10 +675,6 @@ _CX_SHELL_TOOL = "exec_command"
 # tools, so they skip with otlp_record_unknown_decision, not a quiet-list.
 _CX_ACCEPT = frozenset({"approved", "approved_for_session"})
 _CX_REJECT = frozenset({"denied", "abort"})
-# Per-developer identity Codex puts on every record. We derive user_id from the
-# resource scope, never these — and the client doc promises they are not stored,
-# so they must not survive into the persisted ``raw`` payload either.
-_CX_PII = frozenset({"user.email", "user.account_id"})
 
 
 def _cx_scrub(attrs: Any) -> Any:
@@ -665,7 +686,7 @@ def _cx_scrub(attrs: Any) -> Any:
     """
     if not isinstance(attrs, dict):
         return attrs
-    return {k: v for k, v in attrs.items() if k not in _CX_PII}
+    return {k: v for k, v in attrs.items() if k not in _ACCOUNT_IDENTITY_ATTRS}
 
 
 def _files_from_v4a(arguments: Any) -> list[str]:

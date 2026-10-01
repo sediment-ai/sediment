@@ -20,6 +20,10 @@ produce pathless or no Facts.
 
 ## Before you begin
 
+Review [Privacy boundaries](../../explanation/how-capture-works.md#privacy-boundaries-and-ceilings)
+before you enable capture. Native Developer decisions can include edit text
+without `--transcripts`.
+
 Install the CLI and get a capture token with
 [Configure local capture](../local-capture.md). Start Claude Code once so that
 `~/.claude` exists.
@@ -58,6 +62,11 @@ OpenTelemetry Protocol (OTLP) logs and sends them to Sediment. If mobile device
 management (MDM) or a service owns the environment, set the variables in
 [Distribute decision telemetry](../managed-capture.md#distribute-decision-telemetry)
 there instead.
+
+The installed environment enables `OTEL_LOG_TOOL_DETAILS=1` for file-path
+recovery. Sediment retains the joined `tool_input`, including edit text, under
+Basic redaction. The translator removes `user.email` and `user.account_id`
+record attributes before storage. It preserves your explicit `user.id`.
 
 A user's approval or refusal has `explicit=true`. An approval from
 configuration or a hook has `explicit=false`.
