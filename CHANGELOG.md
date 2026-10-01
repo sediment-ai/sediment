@@ -14,8 +14,9 @@
 
 ### Capture
 
-- Remove `user.email` and `user.account_id` record attributes from Claude Code
-  Developer decisions before storage, matching the Codex privacy boundary.
+- Remove `user.email`, `user.account_id`, and `user.account_uuid` record
+  attributes from Claude Code Developer decisions before storage, matching the
+  Codex privacy boundary.
   Preserve explicit `user.id`, join identifiers, and Basic-redacted tool input.
   Capture documentation describes the edit text that both native paths retain.
 
@@ -26,6 +27,8 @@
   text and the original stored identity.
 - Preserve existing Codex profile and capture environment files when a write
   fails. Sediment publishes complete replacements with mode `0600`.
+  Installation refuses existing environment-file symlinks and preserves their
+  targets.
   Uninstall leaves unrelated profile symlinks alone and refuses links that
   require a managed edit.
 
