@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 FROM ghcr.io/astral-sh/uv:0.12.21@sha256:a7aed3216253ee804de3e2d8afa5073baa1a177335345d43845cd4165e43b711 AS uv
-FROM ghcr.io/berriai/litellm:v1.103.1@sha256:df15400b5b80925c45d3fd53f8f7a6c0eaa8a25a86833e1b358002e129018943 AS runtime-files
-# Vendor 1.103.1 predates these compatible fixes. Remove the Python overrides
-# when a supported vendor image contains them; dependency consistency gates it.
+FROM ghcr.io/berriai/litellm:v1.103.2@sha256:f63fb81b831b170ec16851e23c36ac5bf52ef106b271406429524a2ed730bbfd AS runtime-files
+# Vendor 1.103.2 retains dependencies that need these compatible updates.
+# Remove the Python overrides when a supported vendor image contains them;
+# dependency consistency gates it.
 # The supplied routing/callback does not use the legacy Langfuse v2 SDK. Its
 # incompatible packaging constraint must not force an obsolete dependency tree.
 # The no-database gateway also excludes the discontinued Prisma Python client,
@@ -38,9 +39,9 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
         'opentelemetry-exporter-otlp==1.44.0' \
         'opentelemetry-instrumentation-fastapi==0.65b0' 'google-cloud-kms==3.16.0' \
         'typing-extensions==4.16.0' 'fastapi-sso==0.23.0' 'oauthlib==4.0.0' 'referencing==0.37.0' \
-        'idna==3.20' 'python-dotenv==1.2.3' 'tokenizers==0.23.1' \
+        'idna==3.20' 'python-dotenv==1.2.4' 'tokenizers==0.23.1' \
         'websockets==17.1' 'gunicorn==26.2.0' \
-        'PyJWT==2.14.0' 'polars==1.44.2' 'cryptography==50.0.2' 'numpy==2.5.3' \
+        'PyJWT==2.15.1' 'urllib3==2.8.0' 'polars==1.44.2' 'cryptography==50.0.2' 'numpy==2.5.3' \
     && uv pip uninstall --python /app/.venv/bin/python \
         langfuse prisma nodeenv backoff google-genai google-cloud-aiplatform \
         psycopg psycopg-binary aws-sdk-bedrock-runtime aws-sdk-signers \
@@ -53,7 +54,7 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     --mount=type=bind,source=docker/gateway/patch_tokenizers.py,target=/tmp/patch_tokenizers.py \
     python /tmp/patch_tokenizers.py /app/.venv/lib/python3.13/site-packages/tokenizers-0.23.1.dist-info \
     && uv pip install --python /app/.venv/bin/python --no-cache \
-        'huggingface-hub==2.0.0' 'httpx2==2.13.1' 'httpcore2==2.13.1' \
+        'huggingface-hub==2.1.1' 'httpx2==2.13.1' 'httpcore2==2.13.1' \
         'truststore==0.10.4' \
     && uv pip check --python /app/.venv/bin/python
 RUN --mount=type=bind,source=docker/gateway/patch_proxy.py,target=/tmp/patch_proxy.py \
@@ -75,8 +76,8 @@ COPY --from=runtime-files / /
 WORKDIR /app
 USER 65532:65532
 LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson,google-cloud-speech" \
-    io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; CPython CVE-2026-82049 backport b8f23e307097552eaea2604383a12ab280520d0d; docker/gateway/patch_tarfile.py; Tokenizers 0.23.1 tested Hub 2.0.0 dependency declaration; docker/gateway/patch_tokenizers.py" \
-    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,oauthlib=4.0.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.3,tokenizers=0.23.1,huggingface-hub=2.0.0,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,gunicorn=26.2.0,PyJWT=2.14.0,polars=1.44.2,cryptography=50.0.2,numpy=2.5.3"
+    io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; CPython CVE-2026-82049 backport b8f23e307097552eaea2604383a12ab280520d0d; docker/gateway/patch_tarfile.py; Tokenizers 0.23.1 tested Hub 2.1.1 dependency declaration; docker/gateway/patch_tokenizers.py" \
+    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,oauthlib=4.0.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.4,tokenizers=0.23.1,huggingface-hub=2.1.1,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,gunicorn=26.2.0,PyJWT=2.15.1,urllib3=2.8.0,polars=1.44.2,cryptography=50.0.2,numpy=2.5.3"
 ENV PATH="/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin" \
     HOME=/tmp \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

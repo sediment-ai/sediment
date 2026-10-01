@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 SOURCE_SHA256 = "67226b8d55c78feec1f100f38cd5b04ad7385af8484696b7fd332c1d8cec4345"
-PATCHED_SHA256 = "1790601ecfac9a88825ef4d0b31dc47e5703abae979e62a740c4cfe2374b66e0"
+PATCHED_SHA256 = "50ca680702d20ef3a3c47f857ae45b8879ccbda92a0eda41dd162ad8554134ca"
 
 
 def record_hash(content: bytes) -> str:
@@ -25,7 +25,7 @@ def patch_tokenizers(root: Path) -> None:
     if hashlib.sha256(source).hexdigest() != SOURCE_SHA256:
         raise ValueError("Unexpected Tokenizers metadata")
     old = b"Requires-Dist: huggingface-hub>=0.16.4,<2.0\n"
-    updated = source.replace(old, b"Requires-Dist: huggingface-hub==2.0.0\n")
+    updated = source.replace(old, b"Requires-Dist: huggingface-hub==2.1.1\n")
     if source.count(old) != 1 or hashlib.sha256(updated).hexdigest() != PATCHED_SHA256:
         raise ValueError("Unexpected Tokenizers dependency patch site")
     record = root / "RECORD"

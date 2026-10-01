@@ -8,7 +8,7 @@
         "api/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "api/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -19,7 +19,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected LDAP allocation path remains installed through native dependencies. The reviewed Git transports exclude LDAP and the supplied PostgreSQL authentication configuration uses SCRAM only. Those caller restrictions reduce exposure; they do not remove the library. Custom authentication, SQL extensions, or additional native callers require reassessment.",
       "evidence": [
@@ -37,7 +37,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -46,7 +48,7 @@
         "postgres/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "postgres/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -57,7 +59,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected LDAP allocation path remains installed through native dependencies. The reviewed Git transports exclude LDAP and the supplied PostgreSQL authentication configuration uses SCRAM only. Those caller restrictions reduce exposure; they do not remove the library. Custom authentication, SQL extensions, or additional native callers require reassessment.",
       "evidence": [
@@ -75,7 +77,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -84,13 +88,13 @@
         "api/amd64/zlib1g@1:1.2.13.dfsg-1",
         "api/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "minizip_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "Debian zlib1g does not build the contributed MiniZip code affected by this advisory. The exact image has no MiniZip library. This does not exempt other zlib findings.",
       "evidence": [
@@ -108,7 +112,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -117,13 +123,13 @@
         "postgres/amd64/zlib1g@1:1.2.13.dfsg-1",
         "postgres/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "minizip_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "Debian zlib1g does not build the contributed MiniZip code affected by this advisory. The exact image has no MiniZip library. This does not exempt other zlib findings.",
       "evidence": [
@@ -141,7 +147,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -150,7 +158,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -161,7 +169,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
@@ -179,7 +187,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -194,13 +204,13 @@
         "api/arm64/ncurses-base@6.4-4",
         "api/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "infocmp_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected infocmp executable has been removed from the exact delivered filesystem. Terminal libraries remain inventoried; this disposition covers only the removed command.",
       "evidence": [
@@ -218,7 +228,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -233,13 +245,13 @@
         "postgres/arm64/ncurses-base@6.4-4",
         "postgres/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "infocmp_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected infocmp executable has been removed from the exact delivered filesystem. Terminal libraries remain inventoried; this disposition covers only the removed command.",
       "evidence": [
@@ -257,7 +269,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -266,7 +280,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -276,7 +290,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -294,7 +308,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -303,7 +319,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -313,7 +329,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -331,7 +347,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -340,7 +358,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -350,7 +368,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -368,7 +386,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -377,7 +397,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -387,7 +407,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -405,7 +425,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -414,7 +436,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -424,7 +446,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -442,7 +464,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -451,7 +475,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -461,7 +485,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected SQLite library remains installed through runtime or system dependencies. Sediment has a PostgreSQL-only FactStore and no production SQLite database or arbitrary SQL input path. The reviewed caller restriction and process confinement reduce exposure; arbitrary local SQL/database execution or additional SQLite consumers invalidate this assessment. This is not a claim that the library is fixed.",
       "evidence": [
@@ -479,7 +503,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -488,13 +514,13 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "curl_cli_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The vendor limits this issue to the curl command-line tool, not libcurl. The exact API image contains libcurl but no curl executable.",
       "evidence": [
@@ -514,7 +540,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -529,7 +557,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -540,7 +568,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -559,7 +587,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -574,7 +604,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -585,7 +615,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -604,7 +634,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -615,13 +647,13 @@
         "api/arm64/libsystemd0@252.39-1~deb12u2",
         "api/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "systemd_homed_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected systemd-homed service is absent; the installed shared libraries do not provide that service.",
       "evidence": [
@@ -639,7 +671,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -650,13 +684,13 @@
         "postgres/arm64/libsystemd0@252.39-1~deb12u2",
         "postgres/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "systemd_homed_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected systemd-homed service is absent; the installed shared libraries do not provide that service.",
       "evidence": [
@@ -674,7 +708,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -683,7 +719,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -694,7 +730,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
@@ -712,7 +748,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -721,7 +759,7 @@
         "api/amd64/gzip@1.12-1",
         "api/arm64/gzip@1.12-1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -731,7 +769,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected gzip implementation remains installed. PostgreSQL initialization processes trusted initialization files one per gunzip invocation, and Sediment exposes no service path accepting arbitrary compressed archives for this tool. This restriction avoids the documented cross-file LZW/LZH state reuse in the supported path. Arbitrary operator decompression and custom initialization scripts require reassessment; process limits do not repair the code.",
       "evidence": [
@@ -749,7 +787,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -758,7 +798,7 @@
         "postgres/amd64/gzip@1.12-1",
         "postgres/arm64/gzip@1.12-1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -768,7 +808,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected gzip implementation remains installed. PostgreSQL initialization processes trusted initialization files one per gunzip invocation, and Sediment exposes no service path accepting arbitrary compressed archives for this tool. This restriction avoids the documented cross-file LZW/LZH state reuse in the supported path. Arbitrary operator decompression and custom initialization scripts require reassessment; process limits do not repair the code.",
       "evidence": [
@@ -786,7 +826,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -801,7 +843,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -812,7 +854,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -831,7 +873,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -846,7 +890,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -857,7 +901,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -876,7 +920,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -891,7 +937,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -902,7 +948,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -921,7 +967,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -936,7 +984,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -947,7 +995,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -966,7 +1014,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -975,7 +1025,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -986,7 +1036,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Expat library remains linked by installed Git helpers. The API request and mirror worker paths invoke clone/fetch and do not expose an XML parser or the Git HTTP push helper. Developer-side Attribution can invoke git push; custom, operator, and client push usage requires a separate assessment. This caller restriction and bounded mirror workers reduce exposure; the complete Git parser graph was not proven unreachable. Resource limits bound process impact but do not repair memory corruption or guarantee availability against repeated requests. Reassess additional helpers or XML-consuming features.",
       "evidence": [
@@ -1004,7 +1054,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1019,7 +1071,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1030,7 +1082,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1049,7 +1101,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1064,7 +1118,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1075,7 +1129,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1094,7 +1148,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1117,7 +1173,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1129,7 +1185,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1148,7 +1204,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1171,7 +1229,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1183,7 +1241,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1202,7 +1260,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1211,7 +1271,7 @@
         "api/amd64/libacl1@2.3.1-3",
         "api/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1223,7 +1283,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1241,7 +1301,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1250,7 +1312,7 @@
         "postgres/amd64/libacl1@2.3.1-3",
         "postgres/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1262,7 +1324,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1280,7 +1342,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1295,7 +1359,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1306,7 +1370,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1325,7 +1389,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1340,7 +1406,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1351,7 +1417,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1370,7 +1436,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1385,7 +1453,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1396,7 +1464,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1415,7 +1483,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1430,7 +1500,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1441,7 +1511,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -1460,7 +1530,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1469,7 +1541,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1480,7 +1552,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The libcurl code remains installed and Git links it. The advisory requires custom Host headers, cookie handling, and connection reuse. The reviewed default deployment uses confined Git transports and default Git settings; Sediment does not configure those prerequisites. This is conditional exposure reduction, not a library fix or complete reachability proof. Reassess custom authentication, headers, proxies, environment overrides, and configuration in reused mirror volumes before installation. Image Git configuration evidence does not inspect a partner volume. A compromised allowed forge or service remains a residual risk.",
       "evidence": [
@@ -1500,7 +1572,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1509,7 +1583,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1521,7 +1595,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "Native XML parsing remains installed. Sediment exposes neither arbitrary SQL nor XML operations and uses bound SQL parameters. Database network and credential isolation reduce access; resource limits and process confinement reduce host impact. An attacker with a database credential and network access, SQL injection, or host access can reach native XML parsing through an ordinary SQL role. Append-only Fact grants do not sandbox that parser. These controls do not repair the library or protect the database volume after native process compromise. Code execution and complete reachability of the DTD formatting bug were not verified.",
       "evidence": [
@@ -1541,7 +1615,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1550,13 +1626,13 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "libxml_python_bindings_absent"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "This finding concerns libxml2 Python SAX bindings. The exact PostgreSQL image has neither those Python bindings nor their extension module. Native XML findings receive separate dispositions.",
       "evidence": [
@@ -1574,7 +1650,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1597,7 +1675,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1609,7 +1687,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1634,7 +1712,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1657,7 +1737,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1669,7 +1749,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1694,7 +1774,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1717,13 +1799,13 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "no_suid_sgid"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The vendor identifies nsenter --join-cgroup as introduced in util-linux2.40. These exact Debian2.38.1 packages predate the affected implementation.",
       "evidence": [
@@ -1742,7 +1824,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1765,13 +1849,13 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "no_suid_sgid"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The vendor identifies nsenter --join-cgroup as introduced in util-linux2.40. These exact Debian2.38.1 packages predate the affected implementation.",
       "evidence": [
@@ -1790,7 +1874,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1813,13 +1899,13 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "no_suid_sgid"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The vendor identifies the detached-mount implementation introduced in util-linux2.42. These exact Debian2.38.1 packages predate that implementation.",
       "evidence": [
@@ -1838,7 +1924,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1861,13 +1949,13 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "no_suid_sgid"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The vendor identifies the detached-mount implementation introduced in util-linux2.42. These exact Debian2.38.1 packages predate that implementation.",
       "evidence": [
@@ -1886,7 +1974,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1909,7 +1999,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1921,7 +2011,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1940,7 +2030,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -1963,7 +2055,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1975,7 +2067,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected filesystem utilities or ACL library remain installed. The exact images remove set-user-ID and set-group-ID bits, retain an empty fstab, and run with no-new-privileges, restricted capabilities, read-only roots, and no host data mounts. These controls remove the default privileged user-mount path and limit host impact; they do not repair the library or protect writable container data after process compromise. Privileged containers, user fstab entries, or custom mount/ACL operations require reassessment.",
       "evidence": [
@@ -1994,7 +2086,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2003,7 +2097,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2014,7 +2108,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The libcurl code remains installed and Git links it. The advisory requires STARTTLS protocols outside the permitted Git transport set. The reviewed default deployment uses confined Git transports and default Git settings; Sediment does not configure those prerequisites. This is conditional exposure reduction, not a library fix or complete reachability proof. Reassess custom authentication, headers, proxies, environment overrides, and configuration in reused mirror volumes before installation. Image Git configuration evidence does not inspect a partner volume. A compromised allowed forge or service remains a residual risk.",
       "evidence": [
@@ -2034,7 +2128,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2049,13 +2145,13 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "perl_64bit"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
       "evidence": [
@@ -2073,7 +2169,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2088,13 +2186,13 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "perl_64bit"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
       "evidence": [
@@ -2112,7 +2210,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2121,7 +2221,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2132,7 +2232,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The libcurl code remains installed and Git links it. The advisory requires HTTP Negotiate connection reuse with different service names. The reviewed default deployment uses confined Git transports and default Git settings; Sediment does not configure those prerequisites. This is conditional exposure reduction, not a library fix or complete reachability proof. Reassess custom authentication, headers, proxies, environment overrides, and configuration in reused mirror volumes before installation. Image Git configuration evidence does not inspect a partner volume. A compromised allowed forge or service remains a residual risk.",
       "evidence": [
@@ -2152,7 +2252,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2161,13 +2263,13 @@
         "gateway/amd64/zlib@1.3.2-r7",
         "gateway/arm64/zlib@1.3.2-r7"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "gzip_write_api_unreachable"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Wolfi zlib 1.3.2-r7 library remains installed and implements the affected non-blocking gzip-file write API; this record does not claim a backported fix. Exact-image ELF inspection finds no dynamic importer of that API and no static embed outside the reviewed lxml.etree, lxml.objectify, and xmlsec extensions. Manual review of the pinned LiteLLM SAML handler and python3-saml callers finds that untrusted XML is parsed from memory, XML output is serialized to memory, and XMLSec keys and certificates are loaded from memory. Schema validation also parses trusted packaged XSD files through already-open file objects; it does not open a non-blocking gzFile writer. The reviewed caller sources match the final AMD64 and ARM64 images byte for byte. These absent call prerequisites support not_affected for the exact reviewed images, not a claim that zlib is fixed. The symbol predicate detects changed native imports and static-embed paths; it does not inspect Python callers. A changed caller, gzip-file output path, native importer, static embed, dependency, or deployment extension requires reassessment.",
       "evidence": [
@@ -2190,7 +2292,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2199,7 +2303,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2211,7 +2315,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "Native XML parsing remains installed. Sediment exposes neither arbitrary SQL nor XML operations and uses bound SQL parameters. Database network and credential isolation reduce access; resource limits and process confinement reduce host impact. An attacker with a database credential and network access, SQL injection, or host access can reach native XML parsing through an ordinary SQL role. Append-only Fact grants do not sandbox that parser. These controls do not repair the library or protect the database volume after native process compromise. Code execution and complete reachability of the DTD formatting bug were not verified.",
       "evidence": [
@@ -2231,7 +2335,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2240,7 +2346,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2251,7 +2357,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The libcurl code remains installed and Git links it. The advisory requires Digest proxy reuse after proxy-environment changes. The reviewed default deployment uses confined Git transports and default Git settings; Sediment does not configure those prerequisites. This is conditional exposure reduction, not a library fix or complete reachability proof. Reassess custom authentication, headers, proxies, environment overrides, and configuration in reused mirror volumes before installation. Image Git configuration evidence does not inspect a partner volume. A compromised allowed forge or service remains a residual risk.",
       "evidence": [
@@ -2271,7 +2377,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2286,7 +2394,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "api/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -2297,7 +2405,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -2316,7 +2424,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2331,7 +2441,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
         "postgres/arm64/perl@5.36.0-7+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -2342,7 +2452,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
       "evidence": [
@@ -2361,7 +2471,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2370,7 +2482,7 @@
         "api/amd64/libexpat1@2.5.0-1+deb12u3",
         "api/arm64/libexpat1@2.5.0-1+deb12u3"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2381,7 +2493,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian bookworm libexpat1 2.5.0-1+deb12u3 package remains vulnerable to quadratic CPU consumption while parsing XML attributes. Debian postpones the bookworm fix. Sediment's authenticated ingest routes parse JSON, and its service mirror paths invoke Git clone/fetch rather than HTTP push or XML parsing. The installed Git HTTP-push helper and Expat library remain present; complete helper reachability is not proven. Source-reviewed clone-host restrictions, two mirror workers, a queue of sixteen, a 120-second process-group execution budget, and the supplied container resource limits reduce exposure and bound one operation. These controls do not fix Expat or prevent repeated eligible work from denying service. A compromised allowed forge, custom Git helpers or configuration, operator/client push usage, or an added XML-consuming service path requires reassessment. This is mitigation with residual availability risk, not non-applicability.",
       "evidence": [
@@ -2403,7 +2515,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2412,7 +2526,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2424,7 +2538,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian source retains the unchecked qualified-name dictionary arithmetic and native parsing remains installed. Sediment exposes neither arbitrary SQL nor XML operations. Database access restrictions reduce access to native parsing; confinement reduces host impact. Parser name limits constrain the reviewed PostgreSQL document path, but complete caller bounds and exploitability were not verified. An ordinary SQL role can invoke native XML. These controls do not repair the library or protect the Fact volume and database availability after native process compromise.",
       "evidence": [
@@ -2445,7 +2559,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2454,7 +2570,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2466,7 +2582,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian source xmlURIEscapeStr rejects a nonpositive xmlStrlen result, equivalent to the cited upstream correction for length saturation. The guard also exists in the original 2.9.14 source, while Debian still marks this package vulnerable. Retain a conservative mitigated classification pending resolution of that discrepancy. Database access restrictions and process confinement reduce exposure; this source comparison does not establish a vendor fix, prove absence of other URI arithmetic defects, or verify every binary caller. Native XML remains accessible to an ordinary SQL role, and native process compromise can affect the Fact volume and database availability.",
       "evidence": [
@@ -2487,7 +2603,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2496,7 +2614,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2508,7 +2626,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian source retains the affected XPointer allocation. The reviewed PostgreSQL XML implementation invokes XPath compilation and evaluation, not XPointer; those are distinct APIs. Sediment exposes no XPointer interface. Database access restrictions and process confinement reduce exposure. Libxml2 XInclude can call XPointer, so optional extensions and other native callers require reassessment. Whole-image non-reachability and exploitation were not verified. The controls do not repair the installed library or protect the Fact volume and database availability after native process compromise.",
       "evidence": [
@@ -2529,7 +2647,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2538,7 +2658,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2550,7 +2670,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian source retains unchecked output callback length narrowing. PostgreSQL XML serialization reaches a buffer callback through xmlSaveToBuffer; that path is not absent. Sediment exposes neither XML serialization nor arbitrary SQL. Database access restrictions reduce access; resource limits and confinement reduce host impact. The callback overflow threshold was not reproduced or proven unreachable, and PostgreSQL datum limits are not a general bound on libxml allocations. An ordinary SQL role can invoke native XML. Native process compromise can affect the Fact volume, and exhaustion can stop the database.",
       "evidence": [
@@ -2571,7 +2691,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2580,7 +2702,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2592,7 +2714,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian source retains XInclude entry points that reset parser flags. The reviewed PostgreSQL XML implementation does not call XInclude processing and installs an external-entity loader that returns empty input. This is evidence about that path, not every native consumer. Database network isolation and credential separation further reduce exposure. Added XML extensions, native callers, or loader changes require reassessment. Network isolation does not prevent local file reads, and read-only roots do not provide confidentiality or protect the Fact volume after process compromise.",
       "evidence": [
@@ -2613,7 +2735,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2624,13 +2748,13 @@
         "gateway/arm64/python-3.13@3.13.15-r8",
         "gateway/arm64/python-3.13-base@3.13.15-r8"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "tarfile_hardlink_fix"
       ],
       "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The image retains released Wolfi Python 3.13.15-r8 and applies CPython's exact hard-link target-resolution fix from commit b8f23e307097552eaea2604383a12ab280520d0d. The package version remains unchanged and raw scanner findings remain visible. A guarded backport checks the complete input and output source hashes and removes cached bytecode. The required predicate measures the imported tarfile source at its expected path, requires the exact patched hash, and rejects cached bytecode. Native image tests exercise both data and tar filters with a hard link to a symbolic link and verify that external contents, permissions, and modification time remain unchanged. This record is invalid if the source hash, imported path, or bytecode condition changes; it does not accept the unpatched runtime or a development snapshot.",
       "evidence": [
@@ -2643,7 +2767,9 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
         "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2654,7 +2780,7 @@
         "api/arm64/libssl3@3.0.22-1~deb12u1",
         "api/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -2666,7 +2792,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian Bookworm OpenSSL packages retain the affected DTLS retransmission implementation; Debian has no fixed Bookworm package on 2026-09-30. The supplied API uses HTTP over stream sockets, Python ssl uses TLS contexts, Git mirror transports use HTTPS or SSH, and PostgreSQL uses stream connections. These supported paths do not configure DTLS. The recorded image inputs, network and credential boundaries, and process confinement reduce exposure but do not patch OpenSSL or prove whole-image non-reachability. The openssl command and libssl remain installed; arbitrary commands, native extensions, additional DTLS callers, or changed deployment settings invalidate this assessment. If DTLS becomes reachable, process memory disclosure and process crashes remain possible; read-only roots and resource limits do not prevent disclosure or protect the Fact volume after process compromise. Apply an available distribution fix rather than extending this mitigation.",
       "evidence": [
@@ -2674,7 +2800,9 @@
         "https://openssl-library.org/news/secadv/20260929.txt",
         "https://docs.python.org/3.12/library/ssl.html",
         "https://www.postgresql.org/docs/17/ssl-tcp.html",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     },
     {
@@ -2685,7 +2813,7 @@
         "postgres/arm64/libssl3@3.0.22-1~deb12u1",
         "postgres/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "cc4870333c074f7a64d0ce80b31751c0f64d5508047169efc327ec370429e145",
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -2697,7 +2825,7 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-09-30",
+      "reviewed_on": "2026-10-01",
       "expires_on": "2026-10-12",
       "reason": "The exact Debian Bookworm OpenSSL packages retain the affected DTLS retransmission implementation; Debian has no fixed Bookworm package on 2026-09-30. The supplied API uses HTTP over stream sockets, Python ssl uses TLS contexts, Git mirror transports use HTTPS or SSH, and PostgreSQL uses stream connections. These supported paths do not configure DTLS. The recorded image inputs, network and credential boundaries, and process confinement reduce exposure but do not patch OpenSSL or prove whole-image non-reachability. The openssl command and libssl remain installed; arbitrary commands, native extensions, additional DTLS callers, or changed deployment settings invalidate this assessment. If DTLS becomes reachable, process memory disclosure and process crashes remain possible; read-only roots and resource limits do not prevent disclosure or protect the Fact volume after process compromise. Apply an available distribution fix rather than extending this mitigation.",
       "evidence": [
@@ -2705,7 +2833,73 @@
         "https://openssl-library.org/news/secadv/20260929.txt",
         "https://docs.python.org/3.12/library/ssl.html",
         "https://www.postgresql.org/docs/17/ssl-tcp.html",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899"
+        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+      ]
+    },
+    {
+      "id": "CVE-2026-103111",
+      "targets": [
+        "api/amd64/libpcre2-8-0@10.42-1+deb12u1",
+        "api/arm64/libpcre2-8-0@10.42-1+deb12u1"
+      ],
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
+      "required_predicates": [
+        "capabilities_confined",
+        "git_default_config",
+        "no_host_data_mounts",
+        "no_suid_sgid",
+        "nonroot_user",
+        "read_only_roots",
+        "resource_limits"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-01",
+      "expires_on": "2026-10-12",
+      "reason": "The exact Debian PCRE2 package remains vulnerable when an attacker-controlled pattern reaches JIT matching with an explicitly assigned growable stack. Installed GNU grep -P uses that configuration and remains a residual execution path. The reviewed Sediment service uses fixed Git operations and exposes no GNU grep or PCRE2 pattern interface. The installed Git source uses the default JIT stack, and libselinux uses interpreter matching. Default Git configuration, a nonroot service, and measured deployment confinement reduce exposure; they do not patch the library or prove all local commands safe. Custom commands, shell access, hooks, additional regex or native callers, and changed deployment settings require reassessment. If the affected path becomes reachable, memory corruption and code execution can affect credentials and writable data despite read-only roots and resource limits. Apply a fixed Bookworm package when available.",
+      "evidence": [
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
+        "https://security-tracker.debian.org/tracker/CVE-2026-103111",
+        "https://sources.debian.org/src/grep/3.8-5/src/pcresearch.c/",
+        "https://sources.debian.org/src/libselinux/3.4-1/src/regex.c/",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://sources.debian.org/src/git/1%3A2.39.5-0%2Bdeb12u3/grep.c/",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+      ]
+    },
+    {
+      "id": "CVE-2026-103111",
+      "targets": [
+        "postgres/amd64/libpcre2-8-0@10.42-1+deb12u1",
+        "postgres/arm64/libpcre2-8-0@10.42-1+deb12u1"
+      ],
+      "review_digest": "e93fe97af4af98dc87dd9ad9a804a55284db55fe8bacc5bd86ffbeccbf2e6419",
+      "required_predicates": [
+        "capabilities_confined",
+        "database_credentials_separated",
+        "database_isolated",
+        "no_host_data_mounts",
+        "no_suid_sgid",
+        "read_only_roots",
+        "resource_limits",
+        "scram_configured",
+        "scram_only"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-01",
+      "expires_on": "2026-10-12",
+      "reason": "The exact Debian PCRE2 package remains vulnerable when an attacker-controlled pattern reaches JIT matching with an explicitly assigned growable stack. Installed GNU grep -P uses that configuration and remains a residual execution path. PostgreSQL 17 uses its own Henry Spencer regex engine rather than PCRE2. The reviewed entrypoint and default initialization directory expose no GNU grep pattern path, and the installed libselinux uses interpreter matching. Database access separation and measured deployment confinement reduce exposure; they do not patch PCRE2 or protect the Fact volume after process compromise. Custom initialization scripts, shell or program execution, native extensions, additional regex callers, and changed deployment settings require reassessment. Arbitrary commands with attacker-supplied patterns can still reach memory corruption and code execution. Apply a fixed Bookworm package when available.",
+      "evidence": [
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
+        "https://security-tracker.debian.org/tracker/CVE-2026-103111",
+        "https://sources.debian.org/src/grep/3.8-5/src/pcresearch.c/",
+        "https://sources.debian.org/src/libselinux/3.4-1/src/regex.c/",
+        "https://github.com/sediment-ai/sediment/pull/234",
+        "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/regex/README",
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
       ]
     }
   ]

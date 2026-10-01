@@ -91,10 +91,10 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
   rather than a symmetric metric: the comparison is a snippet against a
   whole file.
 - Corpus sizing runs through `scripts/corpus_sizing.py`, the `precision_harness.py` planning helper. It gives a pre-labelling estimate, not a reported interval.
-- Ground-truth manifest scoring goes through `precision_report.py`. It matches
-  exactly on `(inference_call_id, commit, file)`, and keeps the notes and jaccard
-  confusion matrices separate. Negative manifest rows count: a
-  threshold-passing Attribution against one is a false positive.
+- `precision_report.py` scores exact `(qualified repository, inference_call_id, commit, file)` linkages.
+  Notes and jaccard confusion matrices stay separate. A threshold-passing Attribution to a negative call is a false positive.
+  [Validate a training-data pilot](../../CONTRIBUTING.md#validate-a-training-data-pilot)
+  defines permitted empirical inputs, independent labels, and reporting limits.
 - Historical callers supply `note_sessions_by_commit` from bounded `SessionCommitObservation` Facts. An explicit empty mapping is authoritative: Attribution doesn't read mutable Git notes and may still use Jaccard.
 
 ## Notes wire contract (`notes.py`)

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Security
+
+- Update the gateway to LiteLLM 1.103.2, PyJWT 2.15.1, and urllib3 2.8.0.
+  Retain the guarded proxy and Python fixes, and align the client and API
+  python-dotenv dependency with the reviewed 1.2.4 release.
+- Update Hugging Face Hub to 2.1.1 and retain the exact Tokenizers compatibility
+  declaration and file-integrity guards.
+- Record the scoped PCRE2 CVE-2026-103111 mitigation for the default API and
+  PostgreSQL deployment. The library remains vulnerable; custom commands and
+  added regex callers require reassessment. The mitigation expires on
+  2026-10-12. See [Secure a deployment](docs/operate/security.md).
+
 ### Capture
 
 - Add `scripts/erode_replay.py`, the offline replay for evaluation E1 of the
@@ -10,6 +22,30 @@
   erode's `prune`, and writes a counts-only JSON report with E1's gate ratio.
   The gate requires three long Sessions. The report counts OpenAI chat skips
   and provider-managed context bypasses; the latter retain their input cost.
+- Remove `user.email`, `user.account_id`, and `user.account_uuid` record
+  attributes from Claude Code Developer decisions before storage, matching the
+  Codex privacy boundary.
+  Preserve explicit `user.id`, join identifiers, and Basic-redacted tool input.
+  Capture documentation describes the edit text that both native paths retain.
+
+### Command line
+
+- Remove terminal and line-control characters from server error details and
+  organization names displayed by login, logout, and doctor. Preserve printable
+  text and the original stored identity.
+- Preserve existing Codex profile and capture environment files when a write
+  fails. Sediment publishes complete replacements with mode `0600`.
+  Installation refuses existing environment-file symlinks and preserves their
+  targets.
+  Uninstall leaves unrelated profile symlinks alone and refuses links that
+  require a managed edit.
+
+### Training evidence
+
+- Add a pilot validation procedure for sampling, publication permission,
+  independent human labels, Attribution precision, and training-row audits.
+  The procedure reuses existing reports and preserves the distinction between
+  synthetic checks and empirical results.
 
 ## 0.4.0 — 2026-09-30
 

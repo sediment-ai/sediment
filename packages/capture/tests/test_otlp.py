@@ -720,6 +720,48 @@ def test_cc_accept_config_auto_applied() -> None:
     assert d.raw["decision"] is not None and d.raw["result"] is not None
 
 
+@pytest.mark.parametrize(
+    "fixture_name",
+    ["tool_decision_acceptedits_edit.json", "tool_decision_reject_user.json"],
+)
+def test_cc_raw_removes_account_identity_without_changing_evidence(
+    fixture_name: str,
+) -> None:
+    from copy import deepcopy
+
+    # The wire captures have no account identity. Add synthetic attributes in
+    # memory to cover logged-in clients without rewriting the frozen fixtures.
+    payload = _fixture("claude_code", fixture_name)
+    records = payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
+    for record in records:
+        record["attributes"].extend([None, {"key": [], "value": {}}])
+    expected = _fact_values(_translate(payload))
+    for record in records:
+        record["attributes"].extend(
+            [
+                {"key": "user.email", "value": {"stringValue": "account@example.test"}},
+                {"key": "user.account_id", "value": {"stringValue": "account-123"}},
+                {
+                    "key": "user.account_uuid",
+                    "value": {"stringValue": "22222222-2222-4222-8222-222222222222"},
+                },
+                # Remove every occurrence, even when its value is malformed.
+                {"key": "user.email", "value": ["duplicate@example.test"]},
+            ]
+        )
+    before = deepcopy(payload)
+
+    [decision] = _translate(payload)
+
+    assert "account@example.test" not in decision.model_dump_json()
+    assert "account-123" not in decision.model_dump_json()
+    assert "22222222-2222-4222-8222-222222222222" not in decision.model_dump_json()
+    assert "duplicate@example.test" not in decision.model_dump_json()
+    assert _fact_values([decision]) == expected
+    assert decision.user_id == "spike-dev"
+    assert payload == before
+
+
 def test_cc_whitespace_user_id_degrades_to_absent() -> None:
     # Both user.id sources whitespace-only: the decision survives with an
     # absent user_id, never dropped by NonEmptyId stripping to "".

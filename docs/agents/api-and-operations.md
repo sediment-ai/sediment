@@ -83,7 +83,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   `error: …` to stderr and exit 1. Apply that boundary before opening a local
   store and around every pre-argparse dispatch.
 - Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
-  Pipes, `NO_COLOR`, and `TERM=dumb` retain byte-identical plain text. Direct script and fleet invocations of `attribution.py` use plain output.
+  Pipes, `NO_COLOR`, and `TERM=dumb` use plain text, as do direct and fleet scripts. The CLI removes nonprintable characters from server error details and displayed organization identifiers through `ui.printable_text`; standalone doctor applies the same filter. Stored identity stays unchanged.
   `--version` shows the static knot in the terminal's own text color, followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
   The banner adds no dependency or network request. Help names the full installed command path. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works

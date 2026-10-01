@@ -105,9 +105,12 @@ try:
 except ImportError:  # pragma: no cover — run by path, not as a package
     # The checkout shim (scripts/sediment_attribution.py) and the fleet
     # bundle execute this file standalone, where no sibling ui module
-    # exists. Those are hook/MDM piped contexts: plain text is the correct
-    # output there, so a passthrough stand-in keeps the bytes identical.
+    # exists. Keep styling plain and match ui's server-text display filter.
     class ui:  # type: ignore[no-redef]  # ponytail: plain-text stand-in
+        @staticmethod
+        def printable_text(value: object) -> str:
+            return "".join(char for char in str(value) if char.isprintable())
+
         @staticmethod
         def style(text: str, *names: str, stream=None) -> str:
             return text
@@ -2876,13 +2879,23 @@ def _env_pairs(
 
 
 def _write_0600(path: Path, content: str) -> None:
-    """0600 on create AND on rewrite — O_CREAT's mode applies only at
-    creation, and these files carry the bearer token."""
+    """Publish a complete private file without truncating the previous version."""
+    if path.is_symlink():
+        raise ValueError(
+            "refusing to replace a symbolic link with private configuration"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        fh.write(content)
+    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            os.fchmod(fh.fileno(), 0o600)
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _write_env_files(pairs: list[tuple[str, str]]) -> None:
@@ -3209,11 +3222,13 @@ def _uninstall_codex_profiles() -> bool:
     complete = True
     for path in profiles:
         try:
-            if path.is_symlink() or not path.is_file():
+            if not path.is_file():
                 raise ValueError
             original = path.read_text(encoding="utf-8")
             if _CODEX_OTEL_BEGIN not in original and _CODEX_OTEL_END not in original:
                 continue
+            if path.is_symlink():
+                raise ValueError
             remaining = _without_codex_telemetry(original)
             if remaining.strip():
                 _write_0600(path, remaining)
@@ -3423,7 +3438,8 @@ def _doctor_server(findings: list[Finding]) -> None:
             )
         )
         return
-    detail = f"reachable, {authority} token valid (org {body.get('org_id')})"
+    org_id = ui.printable_text(body.get("org_id"))
+    detail = f"reachable, {authority} token valid (org {org_id})"
     try:
         from sediment_cli import __version__ as client_version
         from sediment_cli import version_skew_advice
