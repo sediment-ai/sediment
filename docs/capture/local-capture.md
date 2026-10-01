@@ -308,6 +308,10 @@ remove the stale entry from `~/.pi/agent/settings.json`. If you set capture
 variables yourself, remove them from your shell profiles, and restart the
 agents.
 
+Uninstall leaves unrelated Codex profile symbolic links alone. If a linked
+profile contains Sediment's telemetry block, uninstall reports it for manual
+cleanup without changing the link or its target.
+
 If the command reports a skipped Codex profile, remove only Sediment's
 telemetry block from that file by hand. Until you do, the profile keeps its
 token and keeps sending telemetry. If you use several Codex homes, run

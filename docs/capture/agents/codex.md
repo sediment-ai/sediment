@@ -59,6 +59,9 @@ The installer writes an `[otel]` table to `<Codex home>/sediment.config.toml`,
 with mode `0600`. Codex sends header values literally, so the file holds your
 capture token itself. Keep it private. The table sets `log_user_prompt=false`,
 and the installer keeps the profile's model, provider, and other settings.
+Installation and removal replace regular profile files atomically. If a write
+fails before replacement, the original content and permissions remain intact.
+Installation refuses symbolic links.
 
 Decision telemetry can include patch text and other tool arguments, even
 without transcript capture. `log_user_prompt=false` doesn't remove them. Agree

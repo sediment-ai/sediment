@@ -2876,13 +2876,19 @@ def _env_pairs(
 
 
 def _write_0600(path: Path, content: str) -> None:
-    """0600 on create AND on rewrite — O_CREAT's mode applies only at
-    creation, and these files carry the bearer token."""
+    """Publish a complete private file without truncating the previous version."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as fh:
-        fh.write(content)
+    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            os.fchmod(fh.fileno(), 0o600)
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _write_env_files(pairs: list[tuple[str, str]]) -> None:
@@ -3209,11 +3215,13 @@ def _uninstall_codex_profiles() -> bool:
     complete = True
     for path in profiles:
         try:
-            if path.is_symlink() or not path.is_file():
+            if not path.is_file():
                 raise ValueError
             original = path.read_text(encoding="utf-8")
             if _CODEX_OTEL_BEGIN not in original and _CODEX_OTEL_END not in original:
                 continue
+            if path.is_symlink():
+                raise ValueError
             remaining = _without_codex_telemetry(original)
             if remaining.strip():
                 _write_0600(path, remaining)

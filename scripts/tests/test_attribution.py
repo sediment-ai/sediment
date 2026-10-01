@@ -2954,6 +2954,108 @@ def _login_config(home: Path, url: str = "http://127.0.0.1:8000") -> None:
     )
 
 
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize(
+    "failure", ["encoding", "permissions", "sync", "replace", "interrupt"]
+)
+def test_private_write_failure_preserves_original(
+    tmp_path, monkeypatch, existing, failure
+):
+    mod = _load_module()
+    path = tmp_path / "private.config.toml"
+    original = b'# preserve bytes\r\nmodel="custom"\r\n'
+    if existing:
+        path.write_bytes(original)
+        path.chmod(0o640)
+    content = "replacement"
+    error = OSError
+    if failure == "encoding":
+        content += "\ud800"
+        error = UnicodeError
+    else:
+        if failure == "interrupt":
+            error = KeyboardInterrupt
+
+        def fail(*args):
+            raise error("injected failure")
+
+        operation = {
+            "permissions": "fchmod",
+            "sync": "fsync",
+            "replace": "replace",
+            "interrupt": "fsync",
+        }[failure]
+        monkeypatch.setattr(mod.os, operation, fail)
+
+    with pytest.raises(error):
+        mod._write_0600(path, content)
+
+    if existing:
+        assert path.read_bytes() == original
+        assert path.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not path.exists()
+    assert list(tmp_path.iterdir()) == ([path] if existing else [])
+
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_codex_profile_symlink_cleanup_is_selective(
+    tmp_path, monkeypatch, capsys, managed
+):
+    mod = _load_module()
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / ".codex"))
+    directory = tmp_path / ".codex"
+    directory.mkdir()
+    target = tmp_path / "original.toml"
+    original = 'model="custom"\n'
+    if managed:
+        original += f'{mod._CODEX_OTEL_BEGIN}\n[otel]\nenvironment="sediment"\n{mod._CODEX_OTEL_END}\n'
+    target.write_text(original)
+    target.chmod(0o600)
+    link = directory / "linked.config.toml"
+    link.symlink_to(target)
+
+    assert mod._uninstall_codex_profiles() is not managed
+
+    assert link.is_symlink()
+    assert target.read_text() == original
+    assert target.stat().st_mode & 0o777 == 0o600
+    output = capsys.readouterr()
+    assert ("skipped" in output.err) is managed
+    assert not output.out
+
+
+@pytest.mark.parametrize("operation", ["install", "uninstall"])
+def test_codex_profile_edit_failure_keeps_user_content(
+    tmp_path, monkeypatch, operation
+):
+    mod = _load_module()
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / ".codex"))
+    _login_config(tmp_path)
+    path = tmp_path / ".codex" / "pilot.config.toml"
+    path.parent.mkdir()
+    path.write_text('model="custom"\n# keep this comment\n')
+    if operation == "uninstall":
+        mod._install_codex_profile("pilot")
+    path.chmod(0o600)
+    original = path.read_bytes()
+
+    def fail(fd, mode):
+        raise OSError("injected failure")
+
+    monkeypatch.setattr(mod.os, "fchmod", fail)
+    if operation == "install":
+        with pytest.raises(OSError):
+            mod._install_codex_profile("pilot")
+    else:
+        assert mod._uninstall_codex_profiles() is False
+
+    assert path.read_bytes() == original
+    assert path.stat().st_mode & 0o777 == 0o600
+    assert list(path.parent.iterdir()) == [path]
+
+
 def test_env_wiring_writes_0600_files_with_the_runbook_block(
     tmp_path, monkeypatch
 ) -> None:
