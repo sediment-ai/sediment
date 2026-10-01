@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Capture
+
+- Preserve repository shell-hook exit status when Sediment installs its marked
+  blocks. Handle a missing optional `prepare-commit-msg` argument in hooks that
+  enable `set -u`.
+- Forward the original request when erode can't serialize or encode a pruned
+  body. Log the failure without reporting discarded pruning as applied.
+
 ## 0.4.0 — 2026-09-30
 
 ### Upgrade notes

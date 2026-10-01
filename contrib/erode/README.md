@@ -88,8 +88,12 @@ retries, and streams each response as it arrives.
    ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude
    ```
 
-The proxy logs a count-only report for each chat request:
+For recognized chat requests, the proxy logs a count-only report:
 `erode_prune policy_version=4 stubbed_results=3 bytes_removed=48210 skipped=none`.
+
+If parsing, pruning, or encoding fails, the proxy forwards the original request
+bytes. It logs `erode_prune reason=prune_failed` without request content or
+discarded pruning counts.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |

@@ -1006,6 +1006,104 @@ def test_install_is_idempotent_and_preserves_existing_hooks(tmp_path: Path) -> N
     assert content.count("# >>> sediment-attribution >>>") == 1  # not duplicated
 
 
+@pytest.fixture(params=("local", "fleet"))
+def hook_installation(tmp_path: Path, request, monkeypatch):
+    repo = make_repo(tmp_path / "r")
+    monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}:/usr/bin:/bin")
+    if request.param == "local":
+        return repo, hooks_dir(repo), ["install", str(repo), "--no-agents"]
+    bundle = tmp_path / "bundle"
+    hooks = bundle / "git-template" / "hooks"
+    hooks.mkdir(parents=True)
+    return (
+        repo,
+        hooks,
+        ["install", "--fleet", "--out", str(bundle), "--prefix", str(bundle)],
+    )
+
+
+@pytest.mark.parametrize("hook_name", ("post-commit", "prepare-commit-msg", "pre-push"))
+@pytest.mark.parametrize("status", (0, 23))
+def test_installed_hook_preserves_repository_status(
+    hook_installation, hook_name, status
+):
+    repo, hooks, install_args = hook_installation
+    hook = hooks / hook_name
+    original = f"#!/bin/sh\n(exit {status})\n"
+    hook.write_text(original)
+    hook.chmod(0o755)
+    args = [str(hook), "message", "message"]
+    assert subprocess.run(args, cwd=repo, capture_output=True).returncode == status
+    for _ in range(2):
+        result = run_cli(install_args, cwd=repo)
+        assert result.returncode == 0, result.stderr
+        result = subprocess.run(args, cwd=repo, capture_output=True, text=True)
+        assert result.returncode == status, result.stderr
+    assert hook.read_text().count("# >>> sediment-attribution >>>") == 1
+    _load_module()._remove_hook_block(hook)
+    assert hook.read_text() == original
+    assert subprocess.run(args, cwd=repo, capture_output=True).returncode == status
+
+
+@pytest.mark.parametrize("status", (0, 23))
+@pytest.mark.parametrize("errexit", (False, True))
+def test_reinstalled_hook_preserves_tail_code_and_incoming_status(
+    hook_installation, status, errexit
+):
+    repo, hooks, install_args = hook_installation
+    hook = hooks / "pre-push"
+    original = (
+        f"#!/bin/sh\nset -e\n(exit {status}) && :\n"
+        if errexit
+        else f"#!/bin/sh\n(exit {status})\n"
+    )
+    hook.write_text(original)
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    tail = 'sediment_tail_status=$?\nprintf "tail:%s\\n" "$sediment_tail_status"\n(exit 31)\n'
+    hook.write_text(hook.read_text() + tail)
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    result = subprocess.run(
+        [str(hook), "origin"], cwd=repo, capture_output=True, text=True
+    )
+    assert result.returncode == 31, result.stderr
+    assert result.stdout == f"tail:{status}\n"
+    _load_module()._remove_hook_block(hook)
+    assert hook.read_text() == original + tail
+
+
+@pytest.mark.parametrize("source", ([], ["message"]))
+def test_prepare_commit_msg_optional_source_under_nounset(hook_installation, source):
+    repo, hooks, install_args = hook_installation
+    hook = hooks / "prepare-commit-msg"
+    hook.write_text("#!/bin/sh\nset -eu\n")
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    message = repo / "message"
+    message.write_text("ordinary commit\n")
+    result = subprocess.run(
+        [str(hook), str(message), *source], cwd=repo, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert not result.stderr
+
+
+@pytest.mark.parametrize("shell", ("sh", "bash", "dash", "ash", "ksh", "zsh"))
+@pytest.mark.parametrize("status", (0, 23))
+def test_capture_failure_preserves_hook_status(
+    tmp_path: Path, shell: str, status: int
+) -> None:
+    executable = shutil.which(shell)
+    if executable is None:
+        pytest.skip(f"{shell} is unavailable")
+    hook = tmp_path / "pre-push"
+    hook.write_text(f"#!{executable}\nset -eu\n(exit {status}) && :\n")
+    assert _load_module()._install_hook_block(
+        hook, "printf 'capture attempted\\n'; (exit 71) || true"
+    )
+    result = subprocess.run([str(hook)], capture_output=True, text=True)
+    assert result.stdout == "capture attempted\n"
+    assert result.returncode == status
+
+
 def test_install_respects_core_hooks_path(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r")
     custom = repo / ".husky"
