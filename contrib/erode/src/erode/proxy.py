@@ -64,14 +64,18 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
         return body
     try:
         request = json.loads(body)
-    except ValueError:
-        return body
-    try:
         pruned, report = prune_request(request, PrunePolicy())
+        if report is None:
+            return body
+        forwarded = body
+        if report["stubbed_results"]:
+            # Compact separators match JavaScript's JSON.stringify, which agents
+            # such as Claude Code send. Encoding can fail on untouched content.
+            forwarded = json.dumps(
+                pruned, ensure_ascii=False, separators=(",", ":")
+            ).encode()
     except Exception:  # noqa: BLE001 — pruning must never fail a model call
         logger.warning("erode_prune reason=prune_failed")
-        return body
-    if report is None:
         return body
     logger.info(
         "erode_prune policy_version=%s stubbed_results=%d bytes_removed=%d skipped=%s",
@@ -80,11 +84,7 @@ def prune_body(method: str, path: str, body: bytes, enabled: bool) -> bytes:
         report["bytes_removed"],
         report.get("skipped", "none"),
     )
-    if not report["stubbed_results"]:
-        return body
-    # Compact separators match JavaScript's JSON.stringify, which agents such
-    # as Claude Code send, so bytes outside the stubbed results don't change.
-    return json.dumps(pruned, ensure_ascii=False, separators=(",", ":")).encode()
+    return forwarded
 
 
 class ProxyHandler(BaseHTTPRequestHandler):

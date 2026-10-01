@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import logging
 import threading
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -152,7 +153,10 @@ def test_binds_to_loopback_by_default(upstream: Upstream) -> None:
         server.server_close()
 
 
-def test_messages_are_pruned_and_other_fields_untouched(upstream, proxy) -> None:
+def test_messages_are_pruned_and_other_fields_untouched(
+    upstream, proxy, caplog
+) -> None:
+    caplog.set_level(logging.INFO, logger="erode.proxy")
     upstream.first_event_read.set()
     request = _request()
     proxy.request("POST", "/v1/messages?beta=true", body=json.dumps(request))
@@ -165,6 +169,14 @@ def test_messages_are_pruned_and_other_fields_untouched(upstream, proxy) -> None
     assert sent == {**request, "messages": expected}
     stubbed = sent["messages"][2]["content"][0]
     assert stubbed["cache_control"] == {"type": "ephemeral"}
+    assert caplog.record_tuples == [
+        (
+            "erode.proxy",
+            logging.INFO,
+            f"erode_prune policy_version={report['policy_version']} "
+            f"stubbed_results=1 bytes_removed={report['bytes_removed']} skipped=none",
+        )
+    ]
 
 
 def test_streaming_is_relayed_in_order_without_buffering(upstream, proxy) -> None:
@@ -214,6 +226,38 @@ def test_unknown_routes_and_malformed_requests_pass_through(
     assert proxy.getresponse().read() == b"{}"
     assert upstream.requests[0][0:2] == (method, "/base" + path)
     assert upstream.requests[0][3] == body
+
+
+@pytest.mark.parametrize("failure", ["decode", "parse", "prune", "encode"])
+def test_transform_failure_forwards_original_bytes_without_success_report(
+    upstream, proxy, caplog, failure
+) -> None:
+    caplog.set_level(logging.INFO, logger="erode.proxy")
+    request = _request()
+    if failure == "prune":
+        request["messages"][2]["content"][0]["content"] += "\ud800"
+    elif failure == "encode":
+        request["system"][0]["text"] = "unchanged private text \ud800"
+    body = json.dumps(request, indent=2).encode()
+    if failure == "decode":
+        body = b"\xff" + body
+    elif failure == "parse":
+        body = body[:-1]
+
+    upstream.reply = (202, {"Content-Type": "application/json"}, b'{"ok":true}')
+    proxy.request("POST", "/v1/messages?beta=true", body=body)
+    response = proxy.getresponse()
+    assert response.status == 202
+    assert response.read() == b'{"ok":true}'
+    assert len(upstream.requests) == 1
+    method, path, headers, forwarded = upstream.requests[0]
+    assert (method, path) == ("POST", "/base/v1/messages?beta=true")
+    assert headers["Content-Length"] == str(len(body))
+    assert forwarded == body
+    assert caplog.record_tuples == [
+        ("erode.proxy", logging.WARNING, "erode_prune reason=prune_failed")
+    ]
+    assert caplog.records[0].exc_info is None
 
 
 def test_prunable_body_passes_through_when_disabled(upstream: Upstream) -> None:
