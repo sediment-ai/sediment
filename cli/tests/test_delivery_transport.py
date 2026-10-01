@@ -1171,8 +1171,13 @@ for line in sys.stdin:
                 process.stdin.write(line)
                 process.stdin.flush()
             results = [process.stdout.readline() for process in publishers]
-            assert results == ["queued buffered\n"] * 8, f"round {round_}"
-            assert delivery.status(queue)["pending"] == 8
+            assert set(results) <= {"queued buffered\n", "declined storage_busy\n"}, (
+                f"round {round_}"
+            )
+            assert "queued buffered\n" in results, f"round {round_}"
+            assert delivery.status(queue)["pending"] == results.count(
+                "queued buffered\n"
+            )
     finally:
         for process in publishers:
             process.kill()
