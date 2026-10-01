@@ -3025,6 +3025,69 @@ def test_codex_profile_symlink_cleanup_is_selective(
     assert not output.out
 
 
+@pytest.mark.parametrize("target_exists", [False, True])
+def test_private_write_refuses_existing_symlink(tmp_path, target_exists):
+    mod = _load_module()
+    target = tmp_path / "owned-elsewhere"
+    original = b"# preserve the target bytes\n"
+    if target_exists:
+        target.write_bytes(original)
+        target.chmod(0o640)
+    path = tmp_path / "private-config"
+    path.symlink_to(target)
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        mod._write_0600(path, "replacement")
+
+    assert path.is_symlink()
+    assert path.readlink() == target
+    if target_exists:
+        assert target.read_bytes() == original
+        assert target.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not target.exists()
+    assert set(tmp_path.iterdir()) == ({path, target} if target_exists else {path})
+
+
+@pytest.mark.parametrize(
+    "relative_path", [".sediment/env.sh", ".config/fish/conf.d/sediment.fish"]
+)
+@pytest.mark.parametrize("target_exists", [False, True])
+def test_install_refuses_environment_symlink_without_replacing_it(
+    tmp_path, relative_path, target_exists
+):
+    home = tmp_path / "home"
+    _login_config(home)
+    target = home / "externally-managed-env"
+    original = b"# preserve externally managed configuration\n"
+    if target_exists:
+        target.write_bytes(original)
+        target.chmod(0o640)
+    path = home / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.symlink_to(target)
+    repo = make_repo(tmp_path / "repo")
+
+    result = run_cli(
+        ["install", str(repo)],
+        cwd=repo,
+        extra_env={**doctor_env(home), "SEDIMENT_URL": "http://127.0.0.1:8000"},
+    )
+
+    assert result.returncode == 1
+    assert "symbolic link" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert "tok-405" not in result.stdout + result.stderr
+    assert path.is_symlink()
+    assert path.readlink() == target
+    if target_exists:
+        assert target.read_bytes() == original
+        assert target.stat().st_mode & 0o777 == 0o640
+    else:
+        assert not target.exists()
+    assert not list(path.parent.glob(f".{path.name}.*.tmp"))
+
+
 @pytest.mark.parametrize("operation", ["install", "uninstall"])
 def test_codex_profile_edit_failure_keeps_user_content(
     tmp_path, monkeypatch, operation

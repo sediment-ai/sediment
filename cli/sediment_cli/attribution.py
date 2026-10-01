@@ -2880,6 +2880,10 @@ def _env_pairs(
 
 def _write_0600(path: Path, content: str) -> None:
     """Publish a complete private file without truncating the previous version."""
+    if path.is_symlink():
+        raise ValueError(
+            "refusing to replace a symbolic link with private configuration"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

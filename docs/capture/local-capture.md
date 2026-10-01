@@ -70,6 +70,10 @@ Each run rewrites `env.sh` from the flags that you pass, so always pass the same
 `--user-id`. Otherwise the rerun drops it. The installer changes only
 Sediment's own entries in agent configuration.
 
+If either generated environment file is a symbolic link, installation stops
+without changing the link or its target. Use a regular file, or manage capture
+variables yourself with `--no-env`.
+
 Start each agent from a shell that loaded `env.sh`. Fully quit a running
 desktop agent first, because it keeps its old environment. Cursor is the
 exception: its hooks read `env.sh` directly.
