@@ -631,6 +631,182 @@ artifact scan evidence. Selected jobs must complete successfully for the final
 security gate to pass.
 
 
+## Validate a training-data pilot
+
+Use this procedure to audit a permitted, human-labeled corpus before publishing
+training-export claims. A small Pandas case study can establish what happens on
+its selected tasks. It doesn't establish Attribution precision across developer
+workflows. The bundled precision fixtures remain synthetic examples.
+
+### Freeze the population and evidence
+
+1. Before inspecting export results, record the task-selection rule, repositories,
+   revisions, capture period, participants, agents, models, and Evidence recipes.
+   For a small selected corpus, audit every attempted task, including failures.
+   Inventory its Sessions, Inference calls, candidate commit/file linkages, and
+   expected training outputs. Include unmatched calls and missing outputs;
+   inspecting emitted rows alone cannot measure recall.
+2. Define strata before labeling: Attribution source, agent/model, single-file
+   and multi-file edits, source and test/scaffold files, and successful and failed
+   tasks. Record empty strata. If a larger study samples cases, retain its sampling
+   frame, selection probabilities, and random seed. Don't pool deliberately
+   selected challenge cases into a population estimate.
+3. Obtain each owner's permission for evaluation and publication. Record which
+   source, prompts, responses, and derived rows that permission covers. Access to
+   a public repository doesn't authorize publication of private transcripts.
+4. [Restore a backup](docs/operate/maintain.md#back-up-and-restore) into an isolated
+   PostgreSQL instance and copy its mirrors. Stop ingest and mirror updates in
+   that environment. Record the Sediment revision, schema revision, Fact counts,
+   quarantine revision, repository identities, mirror revisions, and policy.
+   Preserve the original evidence privately; don't edit Facts to sanitize a
+   publication.
+5. [Build and inspect a bundle](docs/operate/run-derivations.md) from those inputs,
+   then [export the chosen objectives](docs/exports/training-exports.md). Retain
+   the bundle, commands, manifests, file hashes, and diagnostic output. Use fresh
+   output directories. Repeated byte-identical exports demonstrate reproducibility,
+   not label accuracy.
+
+### Record independent human judgments
+
+Have two human reviewers label each candidate call-to-commit-file relationship
+independently, before seeing matcher predictions. Reviewers use original evidence
+to decide whether the call contributed the file's added code. They record their
+evidence and uncertainty. A captured Session note establishes a Session-to-commit
+relationship; it doesn't establish individual call/file authorship. Passing CI
+doesn't establish authorship either.
+
+Keep both initial labels. Record disagreements and a separate human adjudication;
+don't overwrite the initial records. An author's explanation supplies evidence,
+not an independent second review. Model judgments cannot supply ground truth.
+Unresolved labels remain unknown, with a reason and an exclusion count.
+
+Copy this empty record for each task and linkage. Fill every field before
+publishing a measured result; an empty field isn't an approval or a negative label.
+For an inapplicable field, record that status and its reason. Keep identity and
+permission evidence private where required.
+
+```text
+Task / stratum / snapshot reference:
+Owner / evaluation permission / publication permission / evidence reference:
+Repository identity / Session / Inference call / commit / file:
+Reviewer 1 / initial label (contributed, did not contribute, unknown) / evidence:
+Reviewer 2 / initial label (contributed, did not contribute, unknown) / evidence:
+Agreement or disagreement / adjudicator / final label / rationale:
+Exclusion reason / affected tasks and calls:
+Export file hash / row number / recipe / schema and policy versions:
+Source IDs / label, eligibility, and Reward evidence / exact target review:
+Split review / row verdict (correct, incorrect, unresolved) / reviewer:
+Publication reviewer / approved material hashes / sanitization or exclusion:
+```
+
+After authorship labeling, prepare a JSON Lines (JSONL) ground-truth manifest for
+`sediment report precision`. Retain the review records alongside it:
+
+| Field | Value |
+| --- | --- |
+| `scenario`, `inference_call_id`, `notes` | Nonempty strings identifying the case, captured call, and adjudication record. |
+| `expected_attribution` | `git_notes` or `jaccard` for an expected linkage; null for a call with no expected linkage. Classify the source from the captured note and candidate-scope evidence separately from the authorship judgment. |
+| `expected_commit`, `expected_file` | Exact commit and file for a positive linkage; null for a negative call. |
+| `expected_repository` | For a positive linkage, `{"org_id":"…","identity":{"provider":"github","host":"github.com","repository_id":"…"}}`; for a legacy repository, `{"org_id":"…","repo":"owner/repo"}`. Copy the actual qualified identity; don't substitute a display name. Use null for a negative call. |
+| `expected_reward_min` | Null. The Attribution report parses this field but doesn't evaluate Reward; audit it in each training row. |
+
+List every expected linkage for each included call. Any prediction on an unlisted
+file for that call counts as a false positive. A negative row prohibits every
+linkage for that call, not one file. If any relevant linkage or source remains
+unresolved, exclude the entire call from the manifest and count it separately.
+Don't convert missing evidence into a negative label. Validate the manifest with
+`sediment_derive.precision_report.load_ground_truth_manifest` before scoring.
+
+Retain the [reported pi false positive](https://github.com/sediment-ai/sediment/issues/49#issuecomment-5759921350)
+as a separate historical challenge: a real Session writes one file, humans add
+test scaffolding, and verified diff-SFT includes both patches. Preserve its
+Sediment 0.1.0 policy boundary and reported outcome. Reproducing it requires the
+owners' permitted original evidence. A synthetic reconstruction or a later
+release's result doesn't replace that historical record. Include legitimate
+multi-file edits and missing Edit observations when evaluating a future fix.
+
+### Score admitted Attributions and audit every row
+
+In the isolated environment, configure `SEDIMENT_DATABASE_URL`,
+`SEDIMENT_MIRROR_PATH`, and `SEDIMENT_ORG_ID` for the restored inputs. Create a
+private audit directory and place the reviewed manifest there:
+
+```bash
+export PILOT_AUDIT="$HOME/sediment-pilot-audit"
+install -d -m 700 "$PILOT_AUDIT"
+umask 077
+```
+
+The precision command derives from Facts with default policy; it doesn't read a
+bundle or accept its cohort or policy settings. If your export uses another
+scope or policy, this command doesn't certify that export's Attribution
+population. Keep the manual row audit bound to the actual saved export.
+
+For the default-policy population, score every already-admitted Attribution:
+
+```bash
+uv run python - <<'PY'
+import os
+from pathlib import Path
+from sediment_derive.precision_report import load_ground_truth_manifest
+
+manifest = Path(os.environ["PILOT_AUDIT"]) / "ground-truth.jsonl"
+print(f"Manifest rows: {len(load_ground_truth_manifest(manifest))}")
+PY
+uv run sediment report precision --org "$SEDIMENT_ORG_ID" \
+  --manifest "$PILOT_AUDIT/ground-truth.jsonl" \
+  --threshold 0 --sweep-thresholds 0 --json > "$PILOT_AUDIT/precision.json"
+```
+
+Require successful exit status before using the output. The reporting cutoff of
+0 preserves the Derivation's admitted edges; it doesn't change matching policy.
+The default report cutoff of 0.7 hides admitted Git-note matches below 0.7,
+including the historical approximately 0.357 false positive. A report sweep
+filters admitted edges; it doesn't rerun the matcher or recover candidates
+excluded by its thresholds, windows, or file rules.
+
+For each `by_source` entry in the JSON, retain `default` and all skip counts.
+Calculate the precision denominator as `true_positives + false_positives` and
+the recall denominator as `true_positives + false_negatives`. Retain all four
+confusion counts, `precision_ci`, and `recall_ci`. These are 95% Wilson intervals.
+If a denominator is zero, report that metric as unavailable; the harness's zero
+value and `(0.0, 0.0)` interval are sentinels, not measured certainty.
+
+Report selected, labeled, unresolved, and excluded tasks and calls separately.
+Also report candidate linkages, emitted rows, incorrect rows, unresolved rows,
+and export skips in their own units. Preserve `skipped_unlabelled_predictions`,
+`skipped_repository_ground_truth`, and `skipped_repository_predictions`; they
+aren't extra true negatives. The sum of confusion counts isn't a task count.
+Report observed fractions for the chosen corpus. Wilson intervals assume
+independent Bernoulli trials; related files and calls within a task don't supply
+independent task trials. Neither an interval nor a twelve-task census establishes
+precision for unmeasured populations.
+
+Independently review every emitted training row against its source evidence:
+
+- Verify repository and source IDs, recipe, and each label, eligibility decision,
+  or Reward. Review both members of a pair. CI eligibility doesn't certify the
+  target's authorship.
+- Compare the captured response or exact patch with the exported target under
+  its recipe. Flag manually added scaffolding attributed to the model,
+  unintended omissions, and unsupported labels. Keep incorrect and unresolved rows visible in audit totals;
+  exclude them from any dataset presented as reviewed training data.
+- Check task and prompt overlap across train and eval. Reconcile absent outputs
+  with diagnostic counts. Zero eligible DPO pairs can be correct; don't invent
+  rejection labels to populate an objective.
+- Before publication, have a human inspect the actual files for credentials,
+  personal data, and private source content. Record approved file hashes and each
+  sanitization or exclusion. A code license or Basic redaction alone doesn't
+  satisfy this review.
+
+Publish measured results with their population, exclusions, unresolved cases,
+and source evidence. Keep synthetic regression results separate. A protocol alone
+doesn't establish empirical validation; retain the illustrative-data caveat until
+the permitted corpus, independent labels, publication review, and measurements
+exist.
+If later evidence motivates a threshold change, bump `policy_version` and add
+determinism tests before publishing results for the changed policy.
+
 ## Maintainer performance rehearsals
 
 ### Rehearse capture alongside batch work

@@ -109,6 +109,10 @@ The objective guides name their files and diagnostic counts. With the default
    For a consumer profile, inspect its evidence sidecars and compatibility
    manifest instead of treating the data file as the complete audit record.
 
+Before publishing a pilot's correctness claims, follow
+[Validate a training-data pilot](../../CONTRIBUTING.md#validate-a-training-data-pilot).
+That procedure requires independent human labels and review of every emitted row.
+
 Canonical file replacement is atomic per file, not across a train/eval pair.
 If publication fails or stops, preserve the diagnostics and rerun to a fresh
 directory. Reusing a directory can mix earlier files with later output.
