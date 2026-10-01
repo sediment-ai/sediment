@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Command line
+
+- Preserve existing Codex profile and capture environment files when a write
+  fails. Sediment publishes complete replacements with mode `0600`.
+  Uninstall leaves unrelated profile symlinks alone and refuses links that
+  require a managed edit.
+
 ## 0.4.0 — 2026-09-30
 
 ### Upgrade notes
