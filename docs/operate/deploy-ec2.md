@@ -39,10 +39,10 @@ If you already run PostgreSQL and HTTPS, follow
 1. Select a [published release](https://github.com/sediment-ai/sediment/releases).
    Optional: check it with [Verify a release](security.md#verify-a-release).
 2. As the operator account, run the installer. This example installs version
-   0.4.0:
+   0.5.0:
 
    ```bash
-   SEDIMENT_VERSION=0.4.0
+   SEDIMENT_VERSION=0.5.0
    SEDIMENT_INSTALLER="$(mktemp)" &&
      curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
      UV_NO_BUILD=1 UV_TOOL_BIN_DIR="$HOME/.local/bin" \

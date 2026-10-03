@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-03
+
 ### Upgrade notes
 
 - Context pruning and the erode package are removed. If your gateway sets
