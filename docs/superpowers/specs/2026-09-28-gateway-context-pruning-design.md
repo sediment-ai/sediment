@@ -495,7 +495,8 @@ E1 recorded five Claude Code Sessions on 2026-10-03, one per open issue in this
 repository (#46, #204, #33, #50, and #172), with a frontier model and the
 agent's default settings in headless mode. The model spend was $7.82. Every
 Session was long (25 to 86 requests), had one segment and no compactions, and
-used no subagents. The recordings stay private; issue #134 records the counts.
+used no subagents. The recordings stay private; the replay reports hold
+counts only.
 
 Two defects hid the result on the first replay; both are fixed:
 
