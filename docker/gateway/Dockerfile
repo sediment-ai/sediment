@@ -43,7 +43,7 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
         'opentelemetry-instrumentation-fastapi==0.65b0' 'google-cloud-kms==3.16.0' \
         'typing-extensions==4.16.0' 'fastapi-sso==0.23.0' 'oauthlib==4.0.0' 'referencing==0.37.0' \
         'idna==3.20' 'python-dotenv==1.2.4' 'tokenizers==0.23.1' \
-        'websockets==17.1' 'gunicorn==26.2.0' \
+        'websockets==17.2' 'gunicorn==26.2.0' \
         'PyJWT==2.15.1' 'urllib3==2.8.0' 'polars==1.44.2' 'cryptography==50.0.2' 'numpy==2.5.3' \
     && uv pip uninstall --python /app/.venv/bin/python \
         langfuse prisma nodeenv backoff google-genai google-cloud-aiplatform \
@@ -58,7 +58,7 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     python /tmp/patch_tokenizers.py /app/.venv/lib/python3.13/site-packages/tokenizers-0.23.1.dist-info \
     && uv pip install --python /app/.venv/bin/python --no-cache \
         'huggingface-hub==2.1.1' 'httpx2==2.13.1' 'httpcore2==2.13.1' \
-        'truststore==0.10.4' \
+        'truststore==0.10.4' 'mcp==2.3.0' 'mcp-types==2.3.0' \
     && uv pip check --python /app/.venv/bin/python
 RUN --mount=type=bind,source=docker/gateway/patch_proxy.py,target=/tmp/patch_proxy.py \
     python /tmp/patch_proxy.py /app/.venv/lib/python3.13/site-packages/litellm/proxy
@@ -78,7 +78,7 @@ WORKDIR /app
 USER 65532:65532
 LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson,google-cloud-speech" \
     io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; Tokenizers 0.23.1 tested Hub 2.1.1 dependency declaration; docker/gateway/patch_tokenizers.py" \
-    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,oauthlib=4.0.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.4,tokenizers=0.23.1,huggingface-hub=2.1.1,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,gunicorn=26.2.0,PyJWT=2.15.1,urllib3=2.8.0,polars=1.44.2,cryptography=50.0.2,numpy=2.5.3"
+    io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,oauthlib=4.0.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.4,tokenizers=0.23.1,huggingface-hub=2.1.1,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,mcp=2.3.0,mcp-types=2.3.0,websockets=17.2,gunicorn=26.2.0,PyJWT=2.15.1,urllib3=2.8.0,polars=1.44.2,cryptography=50.0.2,numpy=2.5.3"
 ENV PATH="/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin" \
     HOME=/tmp \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

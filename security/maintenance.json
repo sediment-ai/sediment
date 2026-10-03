@@ -4248,7 +4248,7 @@
       ],
       "versions": [
         "1.30.0",
-        "2.2.0"
+        "2.3.0"
       ]
     },
     "pypi/mcp-types": {
@@ -4264,7 +4264,7 @@
         "2"
       ],
       "versions": [
-        "2.2.0"
+        "2.3.0"
       ]
     },
     "pypi/mdurl": {
@@ -5470,7 +5470,7 @@
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "17.1"
+        "17.2"
       ]
     },
     "pypi/wrapt": {
