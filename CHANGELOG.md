@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Security
+
+- Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
+  below 2 without importing it; the gateway's guarded metadata patch declares
+  the tested Hub 2.1.1 for LiteLLM as it does for Tokenizers. The vendor image
+  ships pypdf 6.19.0, oauthlib 4.0.0, and urllib3 2.8.0, so the gateway drops
+  those overrides.
+- Update the gateway to OpenSSL 3.6.5 through Wolfi's OpenSSL 4 transition.
+- Update the API image and CI to Python 3.12.15, and every image and workflow
+  to uv 0.12.23.
+- Accept Debian's fixed PCRE2 `10.42-1+deb12u2` build in the API and
+  PostgreSQL image reviews while Trivy's Debian data lags.
+- Renew the maintenance catalog and image dispositions through 2026-11-02, and
+  drop four Expat dispositions the API image no longer needs.
+
 ## 0.5.0 — 2026-10-03
 
 ### Upgrade notes

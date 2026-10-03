@@ -497,16 +497,16 @@ for the publisher-to-project relationship.
 
 ### Reproduce the checks
 
-Run the commands from the release source checkout. Use Python 3.12.14 and uv
-0.12.19. Install the exact Trivy version and verified checksum specified in
+Run the commands from the release source checkout. Use Python 3.12.15 and uv
+0.12.23. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.
 
 ```sh
-uv run --python 3.12.14 --no-project python scripts/security_static.py --out security-evidence
+uv run --python 3.12.15 --no-project python scripts/security_static.py --out security-evidence
 uv build --all-packages --wheel --out-dir dist
-uv run --python 3.12.14 --no-project python scripts/security_scan.py client \
+uv run --python 3.12.15 --no-project python scripts/security_scan.py client \
   --wheels dist --out security-evidence
 ```
 
@@ -526,7 +526,7 @@ With Node 24.21.0 on `PATH`, run the pi check inside the shim directory:
 (
   cd shims/pi
   npm exec --yes --package=npm@12.0.2 -- \
-    uv run --python 3.12.14 --no-project python ../../scripts/security_scan.py pi \
+    uv run --python 3.12.15 --no-project python ../../scripts/security_scan.py pi \
     --out ../../security-evidence
 )
 ```
@@ -544,7 +544,7 @@ checks that it belongs to the source under review.
 To rescan one retained inventory, keep its referenced evidence files beside it:
 
 ```sh
-uv run --python 3.12.14 --no-project python scripts/security_scan.py rescan \
+uv run --python 3.12.15 --no-project python scripts/security_scan.py rescan \
   --inventory retained/api-amd64.inventory.json --out rescanned
 ```
 

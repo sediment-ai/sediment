@@ -19,15 +19,17 @@ aren't supported by this image. The standalone Sediment callback remains
 available for a separately maintained gateway.
 
 The image uses Hugging Face Hub 2.1.1, which receives upstream security fixes.
-Tokenizers 0.23.1 retains its original code. A guarded metadata patch declares
-its tested compatibility with that exact Hub version and updates the wheel's
-file-integrity record. This is Sediment's compatibility declaration; upstream
-Tokenizers still declares Hub versions below 2. Image tests exercise the real
-Hub download caller with revisions and credentials, local Claude token counting,
-and proxy capture. Hub's HTTPX2 client coexists with LiteLLM's HTTPX client.
-Remove this patch when a reviewed Tokenizers release declares Hub 2 support.
+Tokenizers 0.23.1 and LiteLLM 1.104.0 retain their original code. A guarded
+metadata patch declares their tested compatibility with that exact Hub version
+and updates each wheel's file-integrity record. This is Sediment's compatibility
+declaration; upstream Tokenizers and LiteLLM still declare Hub versions below 2.
+LiteLLM never imports Hub: its bound mirrors Tokenizers', the only Hub caller.
+Image tests exercise the real Hub download caller with revisions and
+credentials, local Claude token counting, and proxy capture. Hub's HTTPX2
+client coexists with LiteLLM's HTTPX client. Remove each declaration when a
+reviewed release of that package declares Hub 2 support.
 
-LiteLLM 1.103.2 also bundles optional PostgreSQL clients, Bedrock real-time
+LiteLLM 1.104.0 also bundles optional PostgreSQL clients, Bedrock real-time
 packages, and the Vertex speech SDK. The image removes these unused
 dependencies, including the native `awscrt` library. It removes the bundled
 PgBouncer executable and its unused libevent dependency, and rejects
@@ -68,11 +70,11 @@ CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310, so the image carries no
 Python source patch. Image tests exercise both tar extraction filters with a
 hard link to a symbolic link.
 
-The image pins the OpenSSL 3.6.4-r7 packages and reviewed legacy provider.
-This avoids the OpenSSL 4 package transition's conflicting ownership of
-`/etc/ssl` configuration files. The package manager, certificate bundle, and
-libuuid also stay at the revisions in `security/maintenance.json`. Update these
-pins with their maintenance reviews and image checks.
+The image pins the OpenSSL 3.6.5-r0 packages, the OpenSSL 4.0.3-r1 libraries
+they depend on, and the reviewed legacy provider. The package manager,
+certificate bundle, and libuuid also stay at the revisions in
+`security/maintenance.json`. Update these pins with their maintenance reviews
+and image checks.
 
 The image also pins zlib to the reviewed Wolfi `1.3.2-r7` release. The pin
 prevents a release candidate from replacing the reviewed package during
@@ -81,11 +83,15 @@ symbol check; the pin doesn't repair the library. Review an available released
 fix before changing the pin. The pypdf override uses `6.19.0`, which bounds
 alphabetical PDF page labels; an image test verifies the reader's fallback.
 
-OpenSSL, libcrypto3, and libssl3 stay on the maintenance catalog's reviewed
-`3.6.4-r7` packages. Wolfi's r8 transition adds OpenSSL 4 libraries whose
-configuration files conflict with the pinned vendor image during an upgrade.
-The explicit pins keep clean builds on the reviewed package set. Review the
-transition and refresh image evidence before advancing them.
+Wolfi ships OpenSSL 3.6.5 through its OpenSSL 4 transition: `libcrypto3` and
+`libssl3` 3.6.5 depend on `openssl-4.0-libcrypto` and `openssl-4.0-libssl`,
+which own `/etc/ssl/openssl.cnf` and `/etc/ssl/ca.cnf`. The vendor image's
+`openssl` 3.6.4 package owns those files too, so the build removes it before
+installing the pinned set; the reviewed CLI is reinstalled at 3.6.5. Python's
+`ssl` module and the `openssl` command report OpenSSL 3.6.5. The OpenSSL 4
+libraries also bring Wolfi's Brotli libraries. Review the next transition step,
+such as a Python build linked against OpenSSL 4, and refresh image evidence
+before advancing these pins.
 
 If you change these inputs or provider boundaries, run the image tests on both
 architectures and retain the resulting inventories and scans. Tests exercise

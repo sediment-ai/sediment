@@ -434,7 +434,7 @@ def collect_client(wheels: Path, out: Path) -> Path:
         raise ScanFailure("release inventory requires the exact six release wheels")
     with tempfile.TemporaryDirectory(prefix="sediment-security-client-") as temporary:
         venv = Path(temporary) / "venv"
-        run(["uv", "venv", "--python", "3.12.14", str(venv)])
+        run(["uv", "venv", "--python", "3.12.15", str(venv)])
         python = venv / "bin/python"
         run(["uv", "pip", "install", "--python", str(python), *map(str, artifacts)])
         run(["uv", "pip", "check", "--python", str(python)])

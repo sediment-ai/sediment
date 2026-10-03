@@ -1,5 +1,5 @@
 {
-  "expires_on": "2026-10-12",
+  "expires_on": "2026-11-02",
   "owner": "Sediment maintainers",
   "packages": {
     "apk/alsa-lib": {
@@ -145,6 +145,51 @@
         "2.44-r7"
       ]
     },
+    "apk/libbrotlicommon1": {
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe (brotli 1.2.0, epoch 5) and the amd64 gateway inventory. The openssl-4.0-libcrypto package links libbrotlidec and libbrotlienc. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/32e8888/brotli.yaml",
+      "provider": "Wolfi",
+      "source": "https://github.com/wolfi-dev/os/blob/main/brotli.yaml",
+      "source_package": "brotli",
+      "source_versions": [
+        "1.2.0-r5"
+      ],
+      "status": "maintained",
+      "support_kind": "distribution_maintenance",
+      "versions": [
+        "1.2.0-r5"
+      ]
+    },
+    "apk/libbrotlidec1": {
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe (brotli 1.2.0, epoch 5) and the amd64 gateway inventory. The openssl-4.0-libcrypto package links libbrotlidec and libbrotlienc. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/32e8888/brotli.yaml",
+      "provider": "Wolfi",
+      "source": "https://github.com/wolfi-dev/os/blob/main/brotli.yaml",
+      "source_package": "brotli",
+      "source_versions": [
+        "1.2.0-r5"
+      ],
+      "status": "maintained",
+      "support_kind": "distribution_maintenance",
+      "versions": [
+        "1.2.0-r5"
+      ]
+    },
+    "apk/libbrotlienc1": {
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe (brotli 1.2.0, epoch 5) and the amd64 gateway inventory. The openssl-4.0-libcrypto package links libbrotlidec and libbrotlienc. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/32e8888/brotli.yaml",
+      "provider": "Wolfi",
+      "source": "https://github.com/wolfi-dev/os/blob/main/brotli.yaml",
+      "source_package": "brotli",
+      "source_versions": [
+        "1.2.0-r5"
+      ],
+      "status": "maintained",
+      "support_kind": "distribution_maintenance",
+      "versions": [
+        "1.2.0-r5"
+      ]
+    },
     "apk/libbz2-1": {
       "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
       "evidence": "https://github.com/wolfi-dev/os/blob/main/bzip2.yaml",
@@ -178,18 +223,18 @@
       ]
     },
     "apk/libcrypto3": {
-      "basis": "Reviewed on 2026-09-16 against the immutable Wolfi recipe and both delivered architecture inventories. Revision r7 retains released OpenSSL 3.6.4 and propagates the legacy opt-out to the provider-level enable switch. It pairs with the reviewed 4.0.2-r3 provider so explicit provider loading cannot bypass that opt-out. Default legacy and DES settings remain unchanged. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/4e99d024b81879be3eb15019aa666276fa902866/openssl.yaml",
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe at e1167c3 (openssl 3.6.5, epoch 0) and the amd64 gateway inventory. From the reviewed 3.6.4-r7 recipe at 4e99d02, the only changes are the upstream openssl-3.6.5 tag, runtime dependencies on openssl-4.0-libcrypto and openssl-4.0-libssl, and a development metapackage; the patch set, including the legacy opt-out, is unchanged. It pairs with the reviewed 4.0.2-r3 legacy provider. Python's ssl module and the openssl command report OpenSSL 3.6.5. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/e1167c3/openssl.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/openssl.yaml",
       "source_package": "openssl",
       "source_versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
       ]
     },
     "apk/libexpat1": {
@@ -300,18 +345,18 @@
       ]
     },
     "apk/libssl3": {
-      "basis": "Reviewed on 2026-09-16 against the immutable Wolfi recipe and both delivered architecture inventories. Revision r7 retains released OpenSSL 3.6.4 and propagates the legacy opt-out to the provider-level enable switch. It pairs with the reviewed 4.0.2-r3 provider so explicit provider loading cannot bypass that opt-out. Default legacy and DES settings remain unchanged. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/4e99d024b81879be3eb15019aa666276fa902866/openssl.yaml",
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe at e1167c3 (openssl 3.6.5, epoch 0) and the amd64 gateway inventory. From the reviewed 3.6.4-r7 recipe at 4e99d02, the only changes are the upstream openssl-3.6.5 tag, runtime dependencies on openssl-4.0-libcrypto and openssl-4.0-libssl, and a development metapackage; the patch set, including the legacy opt-out, is unchanged. It pairs with the reviewed 4.0.2-r3 legacy provider. Python's ssl module and the openssl command report OpenSSL 3.6.5. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/e1167c3/openssl.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/openssl.yaml",
       "source_package": "openssl",
       "source_versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
       ]
     },
     "apk/libstdc++": {
@@ -426,18 +471,48 @@
       ]
     },
     "apk/openssl": {
-      "basis": "Reviewed on 2026-09-16 against the immutable Wolfi recipe and both delivered architecture inventories. Revision r7 retains released OpenSSL 3.6.4 and propagates the legacy opt-out to the provider-level enable switch. It pairs with the reviewed 4.0.2-r3 provider so explicit provider loading cannot bypass that opt-out. Default legacy and DES settings remain unchanged. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/4e99d024b81879be3eb15019aa666276fa902866/openssl.yaml",
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe at e1167c3 (openssl 3.6.5, epoch 0) and the amd64 gateway inventory. From the reviewed 3.6.4-r7 recipe at 4e99d02, the only changes are the upstream openssl-3.6.5 tag, runtime dependencies on openssl-4.0-libcrypto and openssl-4.0-libssl, and a development metapackage; the patch set, including the legacy opt-out, is unchanged. It pairs with the reviewed 4.0.2-r3 legacy provider. Python's ssl module and the openssl command report OpenSSL 3.6.5. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/e1167c3/openssl.yaml",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/openssl.yaml",
       "source_package": "openssl",
       "source_versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.6.4-r7"
+        "3.6.5-r0"
+      ]
+    },
+    "apk/openssl-4.0-libcrypto": {
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe (openssl 4.0.3, epoch 1). It is the runtime dependency through which OpenSSL 3.6.5's libcrypto3 and libssl3 enter Wolfi's OpenSSL 4 transition, and it owns /etc/ssl/openssl.cnf and ca.cnf in the gateway. From the 4.0.3-r0 recipe at 77dc8e3, r1 changes only development-subpackage metadata. The gateway's Python and openssl command load OpenSSL 3.6.5; the cryptography wheel bundles its own OpenSSL 4.0.3. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/32e8888/openssl-4.0.yaml",
+      "provider": "Wolfi",
+      "source": "https://github.com/wolfi-dev/os/blob/main/openssl-4.0.yaml",
+      "source_package": "openssl-4.0",
+      "source_versions": [
+        "4.0.3-r1"
+      ],
+      "status": "maintained",
+      "support_kind": "distribution_maintenance",
+      "versions": [
+        "4.0.3-r1"
+      ]
+    },
+    "apk/openssl-4.0-libssl": {
+      "basis": "Reviewed on 2026-10-03 against the public Wolfi recipe (openssl 4.0.3, epoch 1). It is the runtime dependency through which OpenSSL 3.6.5's libcrypto3 and libssl3 enter Wolfi's OpenSSL 4 transition, and it owns /etc/ssl/openssl.cnf and ca.cnf in the gateway. From the 4.0.3-r0 recipe at 77dc8e3, r1 changes only development-subpackage metadata. The gateway's Python and openssl command load OpenSSL 3.6.5; the cryptography wheel bundles its own OpenSSL 4.0.3. Rolling distribution maintenance; no fixed upstream support date is inferred.",
+      "evidence": "https://github.com/wolfi-dev/os/blob/32e8888/openssl-4.0.yaml",
+      "provider": "Wolfi",
+      "source": "https://github.com/wolfi-dev/os/blob/main/openssl-4.0.yaml",
+      "source_package": "openssl-4.0",
+      "source_versions": [
+        "4.0.3-r1"
+      ],
+      "status": "maintained",
+      "support_kind": "distribution_maintenance",
+      "versions": [
+        "4.0.3-r1"
       ]
     },
     "apk/openssl-provider-legacy-allowed": {
@@ -3596,7 +3671,8 @@
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "3.29.0"
+        "3.29.0",
+        "3.32.7"
       ]
     },
     "pypi/frozenlist": {
@@ -3620,7 +3696,8 @@
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "2026.4.0"
+        "2026.4.0",
+        "2026.7.0"
       ]
     },
     "pypi/google-api-core": {
@@ -4118,8 +4195,8 @@
       ]
     },
     "pypi/litellm": {
-      "basis": "Reviewed 2026-10-01 against the unwithdrawn 1.103.2 wheels and release. The proxy_server.py changes repair pass-through configuration reloads and normalize logged API-key metadata; its hash guard is refreshed without changing patch sites. The other three guarded inputs and the SAML handler remain byte-identical to 1.103.1. Enterprise 0.1.69.post1 changes two database key-attribution helpers; proxy-extras remains 0.4.100. The Anthropic-only provider boundary and removed optional dependencies remain. Both architecture builds must pass runtime, capture, dependency consistency, and security checks. The catalog expiry and online latest-stable gate remain.",
-      "evidence": "https://github.com/BerriAI/litellm/releases/tag/v1.103.2",
+      "basis": "Reviewed 2026-10-03 against the unwithdrawn 1.104.0 wheel and its release pyproject.toml. All four inputs that patch_proxy.py guards changed. The same 11 PrismaClient retry decorators, nine Prisma import sites, and one no-database authentication error remain, so only the hash guards are refreshed. is_database_connection_error adds a DBLookupDeadlineExceeded branch after its Prisma import; the patched no-Prisma answer stays False, and every bounded_db_lookup caller wraps a Prisma table lookup that the no-database gateway never runs. The release adds a huggingface-hub requirement below 2 that mirrors Tokenizers; LiteLLM imports no Hub module, and patch_hub_metadata.py declares the tested Hub 2.1.1. The tokenizer route remains Python-only, so token counting still runs through Tokenizers. The SAML handler is byte-identical to 1.103.2. Enterprise 0.1.71 and proxy-extras 0.4.102.post1 change database-backed paths only. The Anthropic-only provider boundary and removed optional dependencies remain. Both architecture builds must pass runtime, capture, dependency consistency, and security checks. The catalog expiry and online latest-stable gate remain.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/v1.104.0/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-27T07:50:16Z",
@@ -4131,12 +4208,13 @@
         "1.102.1",
         "1.103.0",
         "1.103.1",
-        "1.103.2"
+        "1.103.2",
+        "1.104.0"
       ]
     },
     "pypi/litellm-enterprise": {
-      "basis": "Reviewed 2026-10-01 against the unwithdrawn 0.1.69.post1 wheel paired with LiteLLM 1.103.2. The wheel adds no dependencies. Its only payload changes normalize database-backed batch and managed-file API-key attribution, using helpers present in LiteLLM 1.103.2. The supplied gateway retains its no-database boundary. The catalog expiry remains.",
-      "evidence": "https://github.com/BerriAI/litellm/releases/tag/v1.103.2",
+      "basis": "Reviewed 2026-10-03 against the unwithdrawn 0.1.71 wheel that LiteLLM 1.104.0 pins. The wheel adds no dependencies. Its payload changes route managed-file, managed-object, and batch-cost database lookups through typed table helpers. The supplied gateway retains its no-database boundary. The catalog expiry remains.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/v1.104.0/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-27T07:50:16Z",
@@ -4145,12 +4223,13 @@
       "versions": [
         "0.1.67",
         "0.1.69",
-        "0.1.69.post1"
+        "0.1.69.post1",
+        "0.1.71"
       ]
     },
     "pypi/litellm-proxy-extras": {
-      "basis": "Reviewed on 2026-09-27 as part of stable LiteLLM 1.103.0. Release commit c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d pins the proxy to enterprise 0.1.69 and proxy-extras 0.4.100; all three releases are unwithdrawn and support the measured Python 3.13 runtime. Both architectures in the official image index carry the release commit. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
-      "evidence": "https://github.com/BerriAI/litellm/blob/c991f4b01f5799eb0b0cab0fb63988e15c3a8a9d/pyproject.toml",
+      "basis": "Reviewed 2026-10-03 against the unwithdrawn 0.4.102.post1 wheel that LiteLLM 1.104.0 pins. Its changes add database migrations, a migration lock, and migration recovery, and update the Prisma schema and toolchain helpers. The no-database gateway runs none of them and excludes the Prisma client and engines. Sediment retains its Anthropic routing/capture boundary and excludes the unused PgBouncer binary and libevent dependency. The online gate continues to enforce the latest stable LiteLLM release.",
+      "evidence": "https://github.com/BerriAI/litellm/blob/v1.104.0/pyproject.toml",
       "provider": "Upstream project",
       "source": "https://github.com/BerriAI/litellm",
       "source_updated_at": "2026-09-27T07:50:16Z",
@@ -4158,7 +4237,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.4.97",
-        "0.4.100"
+        "0.4.100",
+        "0.4.102.post1"
       ]
     },
     "pypi/llm-sandbox": {
@@ -5530,14 +5610,14 @@
       ]
     }
   },
-  "reviewed_on": "2026-09-12",
+  "reviewed_on": "2026-10-03",
   "runtimes": {
     "grpcio": {
       "1.83": {
         "basis": "Only the latest and previous gRPC release remain supported. The online rolling-window check is mandatory; the review horizon is not a vendor EOL date.",
         "evidence": "https://grpc.io/docs/what-is-grpc/faq/",
         "minimum": "1.83.1",
-        "review_horizon": "2026-10-12",
+        "review_horizon": "2026-11-02",
         "source": "https://github.com/grpc/grpc",
         "support_kind": "rolling_window"
       }
@@ -5576,7 +5656,7 @@
         "basis": "Require the latest stable OSS release conservatively, matching the upstream production recommendation. The catalog does not assume a paid support agreement. The review horizon is not a vendor EOL date.",
         "evidence": "https://docs.litellm.ai/docs/proxy/release_cycle",
         "minimum": "1.102.0",
-        "review_horizon": "2026-10-12",
+        "review_horizon": "2026-11-02",
         "source": "https://github.com/BerriAI/litellm",
         "support_kind": "rolling_window"
       },
@@ -5584,7 +5664,15 @@
         "basis": "Require the latest stable OSS release conservatively, matching the upstream production recommendation. The catalog does not assume a paid support agreement. The review horizon is not a vendor EOL date.",
         "evidence": "https://docs.litellm.ai/docs/proxy/release_cycle",
         "minimum": "1.103.0",
-        "review_horizon": "2026-10-12",
+        "review_horizon": "2026-11-02",
+        "source": "https://github.com/BerriAI/litellm",
+        "support_kind": "rolling_window"
+      },
+      "1.104": {
+        "basis": "Require the latest stable OSS release conservatively, matching the upstream production recommendation. The catalog does not assume a paid support agreement. The review horizon is not a vendor EOL date.",
+        "evidence": "https://docs.litellm.ai/docs/proxy/release_cycle",
+        "minimum": "1.104.0",
+        "review_horizon": "2026-11-02",
         "source": "https://github.com/BerriAI/litellm",
         "support_kind": "rolling_window"
       }
@@ -5612,7 +5700,7 @@
         "basis": "Upstream OpenSSL 3.5 LTS support covers the client runtime.",
         "end_of_support": "2030-04-08",
         "evidence": "https://openssl-library.org/policies/releasestrat/",
-        "minimum": "3.5.8",
+        "minimum": "3.5.9",
         "source": "https://github.com/openssl/openssl",
         "support_kind": "dated_lifecycle"
       },
@@ -5620,7 +5708,7 @@
         "basis": "Upstream OpenSSL 3.6 support covers the gateway Python runtime.",
         "end_of_support": "2026-11-01",
         "evidence": "https://openssl-library.org/policies/releasestrat/",
-        "minimum": "3.6.4",
+        "minimum": "3.6.5",
         "source": "https://github.com/openssl/openssl",
         "support_kind": "dated_lifecycle"
       }
@@ -5630,7 +5718,7 @@
         "basis": "Cryptography 50.0.2 wheels bundle OpenSSL 4.0.3; upstream OpenSSL 4.0 support ends 2027-05-14.",
         "end_of_support": "2027-05-14",
         "evidence": "https://openssl-library.org/policies/releasestrat/",
-        "minimum": "4.0.2",
+        "minimum": "4.0.3",
         "source": "https://github.com/openssl/openssl",
         "support_kind": "dated_lifecycle"
       }
@@ -5670,7 +5758,7 @@
         "basis": "Python 3.12 receives PSF security maintenance. The first day of the published October 2028 EOL month is a conservative gate boundary.",
         "end_of_support": "2028-10-01",
         "evidence": "https://devguide.python.org/versions/",
-        "minimum": "3.12.14",
+        "minimum": "3.12.15",
         "source": "https://github.com/python/cpython",
         "support_kind": "dated_lifecycle"
       },
@@ -5678,7 +5766,7 @@
         "basis": "Python 3.13 receives PSF maintenance. The first day of the published October 2029 EOL month is a conservative gate boundary.",
         "end_of_support": "2029-10-01",
         "evidence": "https://devguide.python.org/versions/",
-        "minimum": "3.13.15",
+        "minimum": "3.13.16",
         "source": "https://github.com/python/cpython",
         "support_kind": "dated_lifecycle"
       }

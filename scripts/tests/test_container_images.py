@@ -403,17 +403,21 @@ for name,token in [('anonymous',None),('authorized','local-review-token')]:
     expected=None if token is None else 'Bearer '+token
     assert all(call['authorization']==expected for call in selected),selected
 import litellm
-from litellm.utils import _load_huggingface_tokenizer
-local=_load_huggingface_tokenizer('anthropic')
+from litellm.utils import _huggingface_tokenizer_backend, _load_huggingface_tokenizer
+local=_load_huggingface_tokenizer('anthropic',_huggingface_tokenizer_backend())
+assert isinstance(local,Tokenizer),type(local)
 assert local.decode(local.encode('hello pilot').ids)=='hello pilot'
 ids=litellm.encode(model='claude-2',text='hello pilot')
 assert ids and litellm.decode(model='claude-2',tokens=ids)=='hello pilot'
 assert litellm.token_counter(model='claude-2',text='hello pilot')>0
+for name in ('tokenizers','litellm'):
+    p=distribution(name)._path/'METADATA'
+    assert 'Requires-Dist: huggingface-hub==2.1.1\n' in p.read_text(),name
+    row=next(row for row in csv.reader(io.StringIO((p.parent/'RECORD').read_text())) if row[0]==p.parent.name+'/METADATA')
+    expected_hash='sha256='+base64.urlsafe_b64encode(hashlib.sha256(p.read_bytes()).digest()).rstrip(b'=').decode()
+    assert row[1:]==[expected_hash,str(p.stat().st_size)],name
 p=distribution('tokenizers')._path/'METADATA'
-row=next(row for row in csv.reader(io.StringIO((p.parent/'RECORD').read_text())) if row[0]==p.parent.name+'/METADATA')
-expected_hash='sha256='+base64.urlsafe_b64encode(hashlib.sha256(p.read_bytes()).digest()).rstrip(b'=').decode()
-assert row[1:]==[expected_hash,str(p.stat().st_size)]
-print(json.dumps({'result':'PASS','versions':{n:version(n) for n in ('litellm','tokenizers','huggingface-hub','httpx','httpcore','httpx2','httpcore2','truststore')},'tokenizers_metadata_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'request_methods':[c['method'] for c in calls],'checks':['real Rust Tokenizer.from_pretrained','real Hub 2 hf_hub_download against loopback HTTP server','HEAD/GET revision routing','anonymous requests omit Authorization','string token propagated as Bearer','local Claude tokenizer encode/decode','LiteLLM Claude encode/decode/token_counter','Tokenizers METADATA RECORD integrity','HTTPX and HTTPX2 module coexistence']},indent=2))
+print(json.dumps({'result':'PASS','versions':{n:version(n) for n in ('litellm','tokenizers','huggingface-hub','httpx','httpcore','httpx2','httpcore2','truststore')},'tokenizers_metadata_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'request_methods':[c['method'] for c in calls],'checks':['real Rust Tokenizer.from_pretrained','real Hub 2 hf_hub_download against loopback HTTP server','HEAD/GET revision routing','anonymous requests omit Authorization','string token propagated as Bearer','local Claude tokenizer encode/decode','LiteLLM Claude encode/decode/token_counter','Tokenizers and LiteLLM METADATA RECORD integrity','HTTPX and HTTPX2 module coexistence']},indent=2))
 server.shutdown()
 """,
     )
@@ -452,11 +456,11 @@ def test_gateway_prisma_classifiers_answer_without_prisma() -> None:
         "-c",
         "from litellm.proxy.db.exception_handler import PrismaDBExceptionHandler; "
         "from litellm.proxy.db.db_spend_update_writer import "
-        "_daily_spend_commit_failure_is_requeue_safe; "
+        "_spend_commit_failure_is_requeue_safe; "
         "error=ValueError('not a database error'); "
         "assert PrismaDBExceptionHandler.is_prisma_error(error) is False; "
         "assert PrismaDBExceptionHandler.postgres_sqlstate(error) is None; "
-        "assert _daily_spend_commit_failure_is_requeue_safe(error) is True",
+        "assert _spend_commit_failure_is_requeue_safe(error) is True",
     )
     assert result.returncode == 0
 
