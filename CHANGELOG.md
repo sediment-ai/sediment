@@ -12,6 +12,13 @@
 
 ### Security
 
+- Update the gateway's Python to Wolfi's CPython 3.13.16 build, which fixes
+  CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310. CPython 3.13.16 also
+  includes the CVE-2026-82049 fix, so the gateway drops its tarfile backport and
+  that disposition. Record maintenance reviews for markupsafe 3.0.4, SQLAlchemy
+  2.1.3, and the rebuilt Wolfi `py3-pip-wheel`, which client installations and
+  the gateway resolve. Update the gateway to MCP 2.3.0 and WebSockets 17.2, the
+  latest releases their upstream support policies cover. Closes #239.
 - Update the gateway to LiteLLM 1.103.2, PyJWT 2.15.1, and urllib3 2.8.0.
   Retain the guarded proxy and Python fixes, and align the client and API
   python-dotenv dependency with the reviewed 1.2.4 release.

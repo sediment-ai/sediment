@@ -477,42 +477,42 @@
       "source": "https://github.com/wolfi-dev/os/blob/main/py3-pip.yaml",
       "source_package": "py3-pip",
       "source_versions": [
-        "26.2.1-r1"
+        "26.2.1-r2"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "26.2.1-r1"
+        "26.2.1-r2"
       ]
     },
     "apk/python-3.13": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
+      "basis": "Reviewed on 2026-10-03: Wolfi builds Python 3.13 from the CPython maintenance branch. Build 3.13.16_git20261002-r0 reports CPython 3.13.16 from commit 15e701addee, which is the v3.13.16 tag (cbc944f4bc59) plus two commits: the post-release version bump and a removal of unused GitHub files. It links OpenSSL 3.6; the -r1 rebuild moves to OpenSSL 4 and is excluded by the exact pin. It contains the upstream fixes for CVE-2026-82049, CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310, so the gateway no longer carries a tarfile backport. Rolling distribution maintenance; no fixed upstream support date is inferred. This maintenance entry does not approve a vulnerability disposition.",
+      "evidence": "https://github.com/python/cpython/compare/v3.13.16...15e701addee",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
       "source_package": "python-3.13",
       "source_versions": [
-        "3.13.15-r8"
+        "3.13.16_git20261002-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.13.15-r8"
+        "3.13.16_git20261002-r0"
       ]
     },
     "apk/python-3.13-base": {
-      "basis": "Reviewed on 2026-09-15: the immutable Wolfi recipe builds CPython release v3.13.15 with its documented CVE-2026-15806 backport. Exact package constraints exclude the higher-sorting development snapshot. The native rebuilt gateway reports Python 3.13.15. Rolling distribution maintenance; no fixed upstream support date is inferred. Sediment backports the one-expression CVE-2026-82049 fix from CPython commit b8f23e307097552eaea2604383a12ab280520d0d to the exact released source. Input/output hashes guard the patch; image labels and assurance retain its identity while the package version remains unchanged. This maintenance entry does not approve a vulnerability disposition.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml",
+      "basis": "Reviewed on 2026-10-03: Wolfi builds Python 3.13 from the CPython maintenance branch. Build 3.13.16_git20261002-r0 reports CPython 3.13.16 from commit 15e701addee, which is the v3.13.16 tag (cbc944f4bc59) plus two commits: the post-release version bump and a removal of unused GitHub files. It links OpenSSL 3.6; the -r1 rebuild moves to OpenSSL 4 and is excluded by the exact pin. It contains the upstream fixes for CVE-2026-82049, CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310, so the gateway no longer carries a tarfile backport. Rolling distribution maintenance; no fixed upstream support date is inferred. This maintenance entry does not approve a vulnerability disposition.",
+      "evidence": "https://github.com/python/cpython/compare/v3.13.16...15e701addee",
       "provider": "Wolfi",
       "source": "https://github.com/wolfi-dev/os/blob/main/python-3.13.yaml",
       "source_package": "python-3.13",
       "source_versions": [
-        "3.13.15-r8"
+        "3.13.16_git20261002-r0"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "3.13.15-r8"
+        "3.13.16_git20261002-r0"
       ]
     },
     "apk/readline": {
@@ -4229,7 +4229,8 @@
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
-        "3.0.3"
+        "3.0.3",
+        "3.0.4"
       ]
     },
     "pypi/mcp": {
@@ -4247,11 +4248,11 @@
       ],
       "versions": [
         "1.30.0",
-        "2.2.0"
+        "2.3.0"
       ]
     },
     "pypi/mcp-types": {
-      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.2.0 is its newest release. MCP 2.2.0 depends on it, and LiteLLM 1.103.0's MCP server imports its handshake protocol versions.",
+      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.3.0 is its newest release. MCP 2.3.0 pins it, and LiteLLM 1.103.2's MCP server imports its handshake protocol versions.",
       "evidence": "https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/HEAD/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/modelcontextprotocol/python-sdk",
@@ -4263,7 +4264,7 @@
         "2"
       ],
       "versions": [
-        "2.2.0"
+        "2.3.0"
       ]
     },
     "pypi/mdurl": {
@@ -5220,7 +5221,7 @@
       ]
     },
     "pypi/sqlalchemy": {
-      "basis": "Reviewed 2026-09-30: upstream identifies 2.1 as the current release series and 2.0 as maintained. The unwithdrawn 2.1.1 release supports Python >=3.11. Sediment uses synchronous Core and psycopg; its PostgreSQL and migration suites qualify this upgrade. This assessment expires with the catalog.",
+      "basis": "Reviewed 2026-09-30: upstream identifies 2.1 as the current release series and 2.0 as maintained. The unwithdrawn 2.1.1 release supports Python >=3.11. Sediment uses synchronous Core and psycopg; its PostgreSQL and migration suites qualify this upgrade. Reviewed 2026-10-03: 2.1.3 is an unwithdrawn regression-fix release in the current series; Sediment's core PostgreSQL and migration suites pass on it. This assessment expires with the catalog.",
       "evidence": "https://www.sqlalchemy.org/download.html#current",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/sqlalchemy",
@@ -5230,7 +5231,8 @@
       "versions": [
         "2.0.52",
         "2.0.54",
-        "2.1.1"
+        "2.1.1",
+        "2.1.3"
       ]
     },
     "pypi/sse-starlette": {
@@ -5468,7 +5470,7 @@
       "support_kind": "project_maintenance_review",
       "support_window": "latest_stable",
       "versions": [
-        "17.1"
+        "17.2"
       ]
     },
     "pypi/wrapt": {
