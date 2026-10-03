@@ -3,8 +3,10 @@
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
 Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
 Status: stage A, A.1, and A.2 are built. E0 failed its gate on the issue #134
-recordings; see [E0 result](#e0-result-fails-its-gate). E1 now replays recorded
-real Sessions instead of rerunning the issue #134 harness.
+recordings; see [E0 result](#e0-result-fails-its-gate). E1 failed its gate on
+recorded real Claude Code Sessions, and the stubs it applied would have raised
+billed cost; see [E1 result](#e1-result-fails-its-gate). The evaluation stops
+before E2.
 
 ## Thesis
 
@@ -486,6 +488,71 @@ traffic would look the same. These are small synthetic workspaces of about
 18 KB, so the result says nothing about real long Sessions with large file
 reads. Measuring the opportunity again needs recordings of such Sessions, which
 the revised E1 makes.
+
+### E1 result: fails its gate
+
+E1 recorded five Claude Code Sessions on 2026-10-03, one per open issue in this
+repository (#46, #204, #33, #50, and #172), with a frontier model and the
+agent's default settings in headless mode. The model spend was $7.82. Every
+Session was long (25 to 86 requests), had one segment and no compactions, and
+used no subagents. The recordings stay private; issue #134 records the counts.
+
+Two defects hid the result on the first replay; both are fixed:
+
+- Claude Code sends `context_management` with one `clear_thinking_20251015`
+  edit (`keep: all`) on every request. erode passed any request with
+  `context_management` through, so it pruned nothing. erode now passes a
+  request through only when an edit clears tool results or compacts, or the
+  field has a shape it doesn't recognize (`PrunePolicy.policy_version` `"5"`).
+- Claude Code ends every request with a `system`-role message that the next
+  request doesn't carry, so no request extended the previous one. The replay
+  now drops trailing `system` messages before grouping and reports them: 223
+  messages, 82 KB in total.
+
+After the fixes, the replay was deterministic, preserved tool-call pairing, and
+had no stub regressions or unexplained prefix breaks in all 223 requests.
+
+| Session | Requests | Removed / sent | No thresholds, no protected turns | Cache breaks |
+| --- | --- | --- | --- | --- |
+| #204 | 39 | 23.5% | 23.6% | 2 (requests 10, 15) |
+| #33 | 38 | 8.7% | 8.7% | 1 (request 12) |
+| #46 | 86 | 0.16% | 0.47% | 1 (request 78) |
+| #172 | 25 | 0% | 0.30% | 0 |
+| #50 | 35 | 0% | 0% | 0 |
+
+The median is 0.16% against the 20% gate. Turning the thresholds off barely
+moves it, so the policy isn't too strict: the Sessions rarely supersede their
+own tool output.
+
+- **Why so little.** Tool results were 31% to 43% of input bytes, and tool
+  schemas another 21% to 36%. In #46, #50, and #172, `Bash` produced 95% to 98%
+  of tool-result bytes: test and command runs whose commands differ from run
+  to run, so no later call supersedes them. In each final request, most
+  tool-result bytes were never superseded (159 KB of 183 KB in #46). #204 is the
+  exception: `Read` produced most of its bytes, and the agent re-read files.
+  No stubbed target was read again in any Session.
+- **Billed cost.** In every Session, the responses' `usage` counts at the
+  provider's published prices reproduce the agent's reported cost to the cent.
+  Almost all input was cache reads; uncached input was 2 tokens per request.
+  Cache reads were 37% to 56% of each Session's cost, cache writes 22% to 32%,
+  and output 22% to 36%. A stub
+  rewrites every cached token after it at the cache-write price, 25 times the
+  read price, so a stub saves money only when the tokens it removes, times the
+  requests left, exceed about 24 times the tokens it rewrites. An estimate at 4
+  bytes per token puts every Session with stubs at a net loss: #204 saves about
+  $0.10 of cache reads and adds about $0.23 of rewrites, #33 adds about $0.14
+  net, and #46 about $0.21 net.
+- **The ceiling.** Stubbing every tool result with no rewrite cost would save at
+  most about a quarter of billed cost, because tool results are at most 43% of
+  input bytes and cache reads at most 56% of cost.
+
+Following the gate, the evaluation stops before E2. These Sessions are short
+for agent work, so the result doesn't cover Sessions of several hundred
+requests, where one batched rewrite can buy many cheaper reads. That is the
+case for age-based clearing in rare large batches, such as `clear_tool_uses`
+with its trigger settings, not for supersession. Claude Code already sends
+`context_management`, so an E2 provider-clearing arm would add its edit to the
+agent's list rather than set the field.
 
 ## Effort, debt, and risk
 
