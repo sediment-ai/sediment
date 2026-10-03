@@ -1,5 +1,50 @@
 # Execution record
 
+## 0.5.0 publication — 2026-10-03
+
+- [Release issue](https://github.com/sediment-ai/sediment/issues/243) and
+  [preparation pull request](https://github.com/sediment-ai/sediment/pull/244).
+  The maintainer requested the release. Work used an isolated worktree from
+  `c2265005c3a9bde7a7e43618ac43a9993bcff69d` on `origin/main`.
+- Decision: 0.5.0, a minor release, because removing context pruning and the
+  erode package (#241) breaks operators who set `SEDIMENT_CONTEXT_PRUNE`. It
+  also carries the gateway's CPython 3.13.16 and dependency security updates
+  (#242). No database schema changed; a 0.4.0 database upgraded to head on a
+  scratch database before the release.
+- Parsed lockfiles differ only in seven first-party version labels. All 66
+  dispositions matched `main`'s digest
+  `bb6421cfbb425b55ca5ebca563a97b82dc5327adb2a0e002296fff03d9f44d79` and are
+  bound to `237259d7a70b037bbea6f9c2c63beec03c3e23914315ff3aee424bf431b652e0`
+  with dates, expiry, targets, predicates, evidence, and decisions unchanged.
+- Local checks pass: the release check list, 168 focused API, help, release,
+  security, and docs tests, and the complete no-publish rehearsal on disposable
+  PostgreSQL 17.11 at `3892bca`. Hosted preparation checks pass, including the
+  full test suite, all eight security inventories, four native platforms, and
+  four consumer profiles.
+- The preparation merge is `3209703c2ea82285eb1f821cbf911182f2131203`. Its tree
+  matches the validated `3892bca`. This agent session's git proxy refused the
+  tag push with HTTP 403, so the maintainer created and pushed annotated tag
+  `v0.5.0` at that merge; GitHub reported the expected maintainer-creation
+  bypass notice. Before that push, the maintainer's shell needed
+  `security unlock-keychain` because git couldn't read the credential from a
+  locked macOS keychain over SSH.
+- [Publication workflow](https://github.com/sediment-ai/sediment/actions/runs/37141090523)
+  succeeds. The session's permission classifier blocked its own approval of the
+  waiting `pypi` deployment, so the maintainer approved that deployment.
+- [v0.5.0](https://github.com/sediment-ai/sediment/releases/tag/v0.5.0) is the
+  latest immutable release, published at `2026-10-03T17:47:06Z`. All 87 GitHub
+  assets download; `SHA256SUMS` verifies the other 86. The maintained
+  `rescan_releases.verify_release` validates all eight security inventories.
+- The twelve distribution hashes match byte for byte across the local
+  rehearsal, the GitHub Release assets, and the six PyPI version records. Each
+  project has one wheel and one source distribution; none is yanked.
+- A fresh Python 3.12.14 installation from PyPI with source builds disabled
+  reports all six distributions at 0.5.0. Version, command help, and server help
+  pass; bundled pi resources are present, and `erode` is absent.
+- The README uses `release=0.5.0` on the dynamic Shields endpoint, whose SVG
+  reports `pypi: v0.5.0`. The task-owned PostgreSQL 17 container stops after
+  verification.
+
 ## 0.4.0 publication — 2026-09-30
 
 - [Release issue](https://github.com/sediment-ai/sediment/issues/228) and
