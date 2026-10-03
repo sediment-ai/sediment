@@ -16,13 +16,16 @@ FROM ghcr.io/berriai/litellm:v1.103.2@sha256:f63fb81b831b170ec16851e23c36ac5bf52
 # plus the Vertex speech SDK.
 # The vendor pins OS package revisions in world. Release those revision locks
 # so the signed distribution repository can supply security fixes.
-# Pin reviewed released builds before upgrading: apk sorts development
-# snapshots after the corresponding released version. Keep the reviewed OpenSSL
-# 3.6 package set: the 4.0 transition has conflicting configuration ownership.
+# Wolfi builds Python 3.13 from the CPython maintenance branch. Pin the reviewed
+# build: 3.13.16_git20261002-r0 is the v3.13.16 tag plus its post-release
+# version bump, linked against OpenSSL 3.6. Its -r1 rebuild moves to OpenSSL 4.
+# Keep the reviewed OpenSSL 3.6 package set: the 4.0 transition has conflicting
+# configuration ownership.
 # Other pins retain the package revisions in security/maintenance.json.
 RUN sed -i 's/=.*//' /etc/apk/world \
     && apk add --no-cache \
-        'python-3.13=3.13.15-r8' 'python-3.13-base=3.13.15-r8' \
+        'python-3.13=3.13.16_git20261002-r0' \
+        'python-3.13-base=3.13.16_git20261002-r0' \
         'zlib=1.3.2-r7' \
         'openssl=3.6.4-r7' 'libcrypto3=3.6.4-r7' 'libssl3=3.6.4-r7' \
         'openssl-provider-legacy-allowed=4.0.2-r3' \
@@ -59,8 +62,6 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     && uv pip check --python /app/.venv/bin/python
 RUN --mount=type=bind,source=docker/gateway/patch_proxy.py,target=/tmp/patch_proxy.py \
     python /tmp/patch_proxy.py /app/.venv/lib/python3.13/site-packages/litellm/proxy
-RUN --mount=type=bind,source=docker/gateway/patch_tarfile.py,target=/tmp/patch_tarfile.py \
-    python /tmp/patch_tarfile.py /usr/lib/python3.13/tarfile.py
 COPY docker/gateway/entrypoint.py /usr/local/bin/sediment-gateway.py
 RUN rm -rf /opt/prisma /app/.venv/lib/python3.13/site-packages/prisma \
     && mkdir -p /data/delivery \
@@ -76,7 +77,7 @@ COPY --from=runtime-files / /
 WORKDIR /app
 USER 65532:65532
 LABEL io.sediment.removed-packages="langfuse,prisma,nodeenv,nodejs,pgbouncer,libevent,backoff,@prisma/client,@prisma/engines,google-genai,google-cloud-aiplatform,psycopg,psycopg-binary,aws-sdk-bedrock-runtime,aws-sdk-signers,smithy-aws-core,smithy-aws-event-stream,smithy-core,smithy-http,smithy-json,awscrt,ijson,google-cloud-speech" \
-    io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; CPython CVE-2026-82049 backport b8f23e307097552eaea2604383a12ab280520d0d; docker/gateway/patch_tarfile.py; Tokenizers 0.23.1 tested Hub 2.1.1 dependency declaration; docker/gateway/patch_tokenizers.py" \
+    io.sediment.source-patches="LiteLLM database retries removed, absent Prisma predicates guarded, and master-key errors normalized; docker/gateway/patch_proxy.py; Tokenizers 0.23.1 tested Hub 2.1.1 dependency declaration; docker/gateway/patch_tokenizers.py" \
     io.sediment.patched-packages="tornado=6.5.10,pypdf=6.19.0,protobuf=6.33.6,grpcio=1.83.1,grpcio-status=1.83.1,opentelemetry-exporter-otlp=1.44.0,opentelemetry-instrumentation-fastapi=0.65b0,google-cloud-kms=3.16.0,typing-extensions=4.16.0,fastapi-sso=0.23.0,oauthlib=4.0.0,referencing=0.37.0,idna=3.20,python-dotenv=1.2.4,tokenizers=0.23.1,huggingface-hub=2.1.1,httpx2=2.13.1,httpcore2=2.13.1,truststore=0.10.4,websockets=17.1,gunicorn=26.2.0,PyJWT=2.15.1,urllib3=2.8.0,polars=1.44.2,cryptography=50.0.2,numpy=2.5.3"
 ENV PATH="/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin" \
     HOME=/tmp \

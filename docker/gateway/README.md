@@ -54,20 +54,19 @@ Missing or invalid keys don't require a database and don't cause an import
 failure. The patch rejects an unexpected vendor source hash, patch site, or
 classifier return type.
 
-The image pins both Python operating system packages to `3.13.15-r8`. This
-[Wolfi build recipe](https://github.com/wolfi-dev/os/blob/d52bf0e18defc56a9d18c3fe4c214b545d82a93c/python-3.13.yaml)
-uses CPython release `3.13.15`. The pins prevent `apk` from selecting a
-development snapshot that sorts after the released version. Security probes
-preserve the complete observed version and reject unreleased runtimes.
+The image pins both Python operating system packages to
+`3.13.16_git20261002-r0`. Wolfi builds Python 3.13 from the CPython maintenance
+branch. This build reports CPython `3.13.16` from commit `15e701addee`: the
+[v3.13.16 tag plus two commits](https://github.com/python/cpython/compare/v3.13.16...15e701addee),
+the post-release version bump and a removal of unused GitHub files. It links
+OpenSSL 3.6. The `-r1` rebuild links OpenSSL 4, so the exact pin excludes it.
+Security probes preserve the complete observed version and reject unreleased
+runtimes.
 
-The image applies CPython's
-[CVE-2026-82049 fix](https://github.com/python/cpython/commit/b8f23e307097552eaea2604383a12ab280520d0d)
-to that released runtime. The patch resolves a hard-link target before linking
-it, so archive extraction cannot relocate a symbolic link outside the destination.
-The patch requires the exact input and output file hashes and removes cached
-bytecode. Image tests exercise both extraction filters. Security evidence retains
-the patched file hash; the package inventory still reports `3.13.15-r8`.
-Remove this backport when a reviewed released package includes the fix.
+CPython 3.13.16 includes the tarfile and archive fixes for CVE-2026-82049,
+CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310, so the image carries no
+Python source patch. Image tests exercise both tar extraction filters with a
+hard link to a symbolic link.
 
 The image pins the OpenSSL 3.6.4-r7 packages and reviewed legacy provider.
 This avoids the OpenSSL 4 package transition's conflicting ownership of

@@ -92,16 +92,6 @@ def test_vendor_source_drift_is_rejected_without_edit(tmp_path: Path) -> None:
     assert (proxy / "utils.py").read_text() == "# upstream changed\n"
 
 
-def test_tarfile_source_drift_is_rejected_without_edit(tmp_path: Path) -> None:
-    patcher = runpy.run_path(str(ROOT / "docker/gateway/patch_tarfile.py"))
-    source = tmp_path / "tarfile.py"
-    source.write_text("os.link(tarinfo._link_target, targetpath)\n")
-    original = source.read_bytes()
-    with pytest.raises(ValueError, match="source"):
-        patcher["patch_tarfile"](source)
-    assert source.read_bytes() == original
-
-
 def test_tokenizers_metadata_drift_is_rejected_without_edit(tmp_path: Path) -> None:
     patcher = runpy.run_path(str(ROOT / "docker/gateway/patch_tokenizers.py"))
     metadata = tmp_path / "METADATA"
