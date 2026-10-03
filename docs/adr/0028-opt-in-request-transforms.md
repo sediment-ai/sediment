@@ -1,9 +1,26 @@
 # ADR 0028 — Opt-in request transforms in the model request path
 
-Status: accepted
+Status: withdrawn on 2026-10-03
 
-Amends the capture documentation's statement that Sediment stays out of the
-model request path. Applies [ADR 0006](0006-open-core-boundary.md).
+Amended the capture documentation's statement that Sediment stays out of the
+model request path. Applied [ADR 0006](0006-open-core-boundary.md).
+
+## Withdrawal
+
+Sediment removed the erode package, the LiteLLM pre-call hook, and
+`SEDIMENT_CONTEXT_PRUNE`. Sediment stays out of the model request path again,
+and the capture documentation says so.
+
+The evaluation this decision depended on failed its gates. On five recorded
+Claude Code Sessions, erode removed a median 0.16% of input bytes against a 20%
+target. The agent rarely re-read a file or repeated a command, so little tool
+output was ever superseded. Where erode did apply stubs, each stub forced the
+provider to rewrite the cached prompt after it at 25 times the cache-read
+price, which cost more than the cache reads it saved. The
+[gateway pruning spec](../superpowers/specs/2026-09-28-gateway-context-pruning-design.md#e1-result-fails-its-gate)
+records the measurements.
+
+The rest of this record describes the decision as it was accepted.
 
 ## Context
 

@@ -121,10 +121,9 @@ AGPL-3.0-or-later (see `LICENSE`). Every first-party `.py` file begins with:
 ```
 
 `uv run python scripts/add_spdx.py` inserts missing headers (idempotent);
-CI runs `--check`. `shims/` and `contrib/erode/` are carved out as MIT
-(`shims/pi/LICENSE`, `contrib/erode/LICENSE`; `SPDX-License-Identifier: MIT`) —
-shim code runs inside someone else's harness process, and erode in front of
-someone else's agent (ADR 0028), where AGPL blocks adoption.
+CI runs `--check`. `shims/` is carved out as MIT (`shims/pi/LICENSE`,
+`// SPDX-License-Identifier: MIT`) — shim code runs inside someone else's
+harness process, where AGPL blocks adoption.
 
 Open-core boundary: a single team's complete, auditable pipeline stays open —
 see `docs/adr/0006-open-core-boundary.md`. Review cross-team operational
@@ -180,7 +179,7 @@ on an orphan. Report a routed file that does not exist as a bug.
 | Measure agent work: model outcomes, lifecycle, merge retention | `docs/operate/measure-agent-work.md` |
 | Rehearse the Compose deployment from source | `docs/operate/rehearse-compose.md` |
 | Qualify a managed PostgreSQL service before any compatibility claim | [Qualify a managed PostgreSQL service](CONTRIBUTING.md#qualify-a-managed-postgresql-service); `docs/adr/0027-postgresql-without-superuser.md` |
-| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026; request-path context pruning: `docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md`, ADR 0028 |
+| Bounded evidence reads and agent continuation | `docs/operate/resume-with-evidence.md`; ADRs 0021, 0022, 0025, 0026; request-path context pruning, removed after its evaluation: `docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md`, ADR 0028 (withdrawn) |
 | Synthetic scenarios | `sim/README.md` |
 
 **Capture clients** (`docs/capture/`)

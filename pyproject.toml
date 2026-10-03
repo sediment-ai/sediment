@@ -50,7 +50,7 @@ include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
 select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm", "contrib"]
+testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm"]
 markers = [
     "cluster_roles: run first, before any test provisions deployment roles",
     "serial: run after the parallel pass without concurrent test load",

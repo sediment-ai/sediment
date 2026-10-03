@@ -278,9 +278,6 @@ protocol carrier. The API skips unresolved calls and logs
 `gateway_ingest_skipped_no_session`. Upgrade the server before clients when
 identity parsing changes.
 
-Optional: to prune superseded tool output from model requests, follow
-[Enable pruning in an existing LiteLLM gateway](../capture/managed-capture.md#enable-pruning-in-an-existing-litellm-gateway).
-
 ## Verify the deployment
 
 For remote clients, check the public health endpoint. For Docker Desktop
@@ -334,11 +331,6 @@ If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
 `sediment-delivery` named volume and owns a replay worker for its process
 lifetime. Leave the setting empty for direct best-effort delivery.
-
-If you want the gateway to prune superseded tool output from model requests,
-set `SEDIMENT_CONTEXT_PRUNE=supersede` in `.env`. Leave it empty to keep the
-gateway a pass-through. See
-[Prune superseded tool output](../capture/managed-capture.md#prune-superseded-tool-output).
 
 From the deployment checkout, build and start the gateway with its source identity:
 
