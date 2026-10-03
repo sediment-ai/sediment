@@ -2809,8 +2809,8 @@
     {
       "id": "CVE-2026-103111",
       "targets": [
-        "api/amd64/libpcre2-8-0@10.42-1+deb12u1",
-        "api/arm64/libpcre2-8-0@10.42-1+deb12u1"
+        "api/amd64/libpcre2-8-0@10.42-1+deb12u2",
+        "api/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
       "review_digest": "237259d7a70b037bbea6f9c2c63beec03c3e23914315ff3aee424bf431b652e0",
       "required_predicates": [
@@ -2822,26 +2822,24 @@
         "read_only_roots",
         "resource_limits"
       ],
-      "status": "mitigated",
+      "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-01",
+      "reviewed_on": "2026-10-03",
       "expires_on": "2026-10-12",
-      "reason": "The exact Debian PCRE2 package remains vulnerable when an attacker-controlled pattern reaches JIT matching with an explicitly assigned growable stack. Installed GNU grep -P uses that configuration and remains a residual execution path. The reviewed Sediment service uses fixed Git operations and exposes no GNU grep or PCRE2 pattern interface. The installed Git source uses the default JIT stack, and libselinux uses interpreter matching. Default Git configuration, a nonroot service, and measured deployment confinement reduce exposure; they do not patch the library or prove all local commands safe. Custom commands, shell access, hooks, additional regex or native callers, and changed deployment settings require reassessment. If the affected path becomes reachable, memory corruption and code execution can affect credentials and writable data despite read-only roots and resource limits. Apply a fixed Bookworm package when available.",
+      "reason": "Debian's bookworm-security update 10.42-1+deb12u2 (DLA-4816-1, 2026-10-03) fixes CVE-2026-103111: its changelog lists \"GHSA-r9hj-j2rw-4q3m: Fix large JIT stack allocation\", and its source diff adds the large_stack_allocation guard to src/pcre2_jit_compile.c that bounds JIT stack growth. Debian's security tracker marks deb12u2 fixed. Trivy's Debian data still reports the installed deb12u2 as affected with no fixed version, so this record covers that scanner lag only. The api image's measured confinement predicates still hold. Remove this record once the scanner's Debian data marks deb12u2 fixed; a later package version or a reappearing deb12u1 needs a new review.",
       "evidence": [
-        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
         "https://security-tracker.debian.org/tracker/CVE-2026-103111",
-        "https://sources.debian.org/src/grep/3.8-5/src/pcresearch.c/",
-        "https://sources.debian.org/src/libselinux/3.4-1/src/regex.c/",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://sources.debian.org/src/git/1%3A2.39.5-0%2Bdeb12u3/grep.c/",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+        "https://security-tracker.debian.org/tracker/DLA-4816-1",
+        "https://security.debian.org/debian-security/pool/updates/main/p/pcre2/pcre2_10.42-1+deb12u2.diff.gz",
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
+        "https://github.com/PCRE2Project/pcre2/commit/2b4038298072684b0fae29b15bedfb1a75bda46d"
       ]
     },
     {
       "id": "CVE-2026-103111",
       "targets": [
-        "postgres/amd64/libpcre2-8-0@10.42-1+deb12u1",
-        "postgres/arm64/libpcre2-8-0@10.42-1+deb12u1"
+        "postgres/amd64/libpcre2-8-0@10.42-1+deb12u2",
+        "postgres/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
       "review_digest": "237259d7a70b037bbea6f9c2c63beec03c3e23914315ff3aee424bf431b652e0",
       "required_predicates": [
@@ -2855,19 +2853,17 @@
         "scram_configured",
         "scram_only"
       ],
-      "status": "mitigated",
+      "status": "not_affected",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-01",
+      "reviewed_on": "2026-10-03",
       "expires_on": "2026-10-12",
-      "reason": "The exact Debian PCRE2 package remains vulnerable when an attacker-controlled pattern reaches JIT matching with an explicitly assigned growable stack. Installed GNU grep -P uses that configuration and remains a residual execution path. PostgreSQL 17 uses its own Henry Spencer regex engine rather than PCRE2. The reviewed entrypoint and default initialization directory expose no GNU grep pattern path, and the installed libselinux uses interpreter matching. Database access separation and measured deployment confinement reduce exposure; they do not patch PCRE2 or protect the Fact volume after process compromise. Custom initialization scripts, shell or program execution, native extensions, additional regex callers, and changed deployment settings require reassessment. Arbitrary commands with attacker-supplied patterns can still reach memory corruption and code execution. Apply a fixed Bookworm package when available.",
+      "reason": "Debian's bookworm-security update 10.42-1+deb12u2 (DLA-4816-1, 2026-10-03) fixes CVE-2026-103111: its changelog lists \"GHSA-r9hj-j2rw-4q3m: Fix large JIT stack allocation\", and its source diff adds the large_stack_allocation guard to src/pcre2_jit_compile.c that bounds JIT stack growth. Debian's security tracker marks deb12u2 fixed. Trivy's Debian data still reports the installed deb12u2 as affected with no fixed version, so this record covers that scanner lag only. The postgres image's measured confinement predicates still hold. Remove this record once the scanner's Debian data marks deb12u2 fixed; a later package version or a reappearing deb12u1 needs a new review.",
       "evidence": [
-        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
         "https://security-tracker.debian.org/tracker/CVE-2026-103111",
-        "https://sources.debian.org/src/grep/3.8-5/src/pcresearch.c/",
-        "https://sources.debian.org/src/libselinux/3.4-1/src/regex.c/",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/postgres/postgres/blob/REL_17_11/src/backend/regex/README",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+        "https://security-tracker.debian.org/tracker/DLA-4816-1",
+        "https://security.debian.org/debian-security/pool/updates/main/p/pcre2/pcre2_10.42-1+deb12u2.diff.gz",
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
+        "https://github.com/PCRE2Project/pcre2/commit/2b4038298072684b0fae29b15bedfb1a75bda46d"
       ]
     }
   ]
