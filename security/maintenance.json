@@ -2056,12 +2056,14 @@
       "source": "https://sources.debian.org/src/pcre2/",
       "source_package": "pcre2",
       "source_versions": [
-        "10.42-1+deb12u1"
+        "10.42-1+deb12u1",
+        "10.42-1+deb12u2"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "10.42-1+deb12u1"
+        "10.42-1+deb12u1",
+        "10.42-1+deb12u2"
       ]
     },
     "deb/libperl5.36": {
