@@ -217,8 +217,9 @@ Sediment never changes the following parts of a request:
   report records the request as skipped.
 - Any field outside tool results, including Anthropic `cache_control`
   breakpoints.
-- A request that carries Anthropic `context_management`, which hands context
-  editing or compaction to the provider.
+- A request whose Anthropic `context_management` asks the provider to clear
+  tool results or compact. A request that only clears thinking blocks
+  (`clear_thinking_*` edits), as Claude Code sends on every request, is pruned.
 
 An agent's own compaction request, such as Claude Code's automatic compaction,
 is an ordinary Messages request. Nothing in its wire shape identifies it, so

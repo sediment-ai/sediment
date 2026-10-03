@@ -16,6 +16,10 @@
 
 ### Capture
 
+- erode prunes requests whose `context_management` only clears thinking
+  blocks, which Claude Code sends on every request; before, any
+  `context_management` field disabled pruning. `PrunePolicy.policy_version`
+  is `"5"`.
 - Remove `user.email`, `user.account_id`, and `user.account_uuid` record
   attributes from Claude Code Developer decisions before storage, matching the
   Codex privacy boundary.

@@ -73,8 +73,10 @@ The following constraints bind every request transform:
   clock, and no other request. The same request always produces the same model
   input, which keeps the provider's cached prefix stable across turns.
 - **Fail-open.** A transform failure logs a structured reason and forwards the
-  request unchanged. A request that the transform doesn't recognize, or that
-  carries Anthropic `context_management`, passes through unchanged.
+  request unchanged. A request that the transform doesn't recognize, or whose
+  Anthropic `context_management` asks the provider to clear tool results or
+  compact, passes through unchanged. Clearing only thinking blocks
+  (`clear_thinking_*` edits) leaves tool results to the transform.
 - **No stored credentials.** Both modes forward the agent's own
   authentication and provider headers. The proxy stores nothing, adds no
   retries, and binds to loopback unless the operator chooses another address.

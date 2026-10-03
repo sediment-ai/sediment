@@ -31,9 +31,11 @@ adapter for Codex CLI's ``exec`` calls: JavaScript that the adapter parses with
 a strict line grammar and never evaluates. A call outside that grammar is
 opaque, so a missed read costs savings, never correctness.
 
-``prune_request`` is the entry point for a whole request body. A request that
-carries Anthropic ``context_management`` hands context editing or compaction to
-the provider, so it passes through untouched. A client-side compaction request,
+``prune_request`` is the entry point for a whole request body. A request whose
+Anthropic ``context_management`` asks the provider to clear tool results or
+compact hands that work to the provider, so it passes through untouched. Only
+thinking-block clearing (``clear_thinking_*`` edits), which Claude Code sends
+on every request, leaves tool results to erode. A client-side compaction request,
 such as Claude Code's, is an ordinary Messages request with a summarization
 prompt; nothing in its wire shape identifies it reliably, so it is pruned like
 any other request.
@@ -85,7 +87,7 @@ _SED_RANGE = re.compile(r"\d+(?:,\d+)?p")
 
 @dataclass(frozen=True)
 class PrunePolicy:
-    policy_version: str = "4"
+    policy_version: str = "5"
     min_result_bytes: int = 512
     min_new_bytes: int = 4096
     protected_turns: int = 2
@@ -516,6 +518,25 @@ def _prune(
     return result, report
 
 
+def provider_managed(request: dict) -> bool:
+    """Whether ``context_management`` hands tool results to the provider.
+
+    Edits that clear only thinking blocks leave tool results alone; any other
+    edit, or a shape this doesn't recognize, counts as provider-managed.
+    """
+    if "context_management" not in request:
+        return False
+    managed = request["context_management"]
+    edits = managed.get("edits") if isinstance(managed, dict) else None
+    if not isinstance(edits, list) or set(managed) != {"edits"}:
+        return True
+    return not all(
+        isinstance(edit, dict)
+        and str(edit.get("type", "")).startswith("clear_thinking_")
+        for edit in edits
+    )
+
+
 def prune_request(request: Any, policy: PrunePolicy) -> tuple[Any, dict | None]:
     """Prune a request body; the report is None when it isn't prunable.
 
@@ -524,7 +545,7 @@ def prune_request(request: Any, policy: PrunePolicy) -> tuple[Any, dict | None]:
     shallow copy with the new list. Every other field, ``cache_control``
     included, is untouched.
     """
-    if not isinstance(request, dict) or "context_management" in request:
+    if not isinstance(request, dict) or provider_managed(request):
         return request, None  # the provider manages this request's context
     if isinstance(request.get("messages"), list):
         key = "messages"

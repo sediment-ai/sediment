@@ -46,8 +46,9 @@ erode never changes the following parts of a request:
   still needs. The report counts the request as skipped.
 - Any field outside tool results, including Anthropic `cache_control`
   breakpoints.
-- A request that carries Anthropic `context_management`, which hands context
-  editing or compaction to the provider.
+- A request whose Anthropic `context_management` asks the provider to clear
+  tool results or compact. A request that only clears thinking blocks
+  (`clear_thinking_*` edits), as Claude Code sends on every request, is pruned.
 - A Responses request that sets `previous_response_id`, which keeps its history
   on the server. The report counts it as skipped.
 
@@ -89,7 +90,7 @@ retries, and streams each response as it arrives.
    ```
 
 The proxy logs a count-only report for each chat request:
-`erode_prune policy_version=4 stubbed_results=3 bytes_removed=48210 skipped=none`.
+`erode_prune policy_version=5 stubbed_results=3 bytes_removed=48210 skipped=none`.
 
 | Setting | Flag | Environment variable | Default |
 | --- | --- | --- | --- |

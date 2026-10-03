@@ -114,7 +114,7 @@ def test_read_superseded_by_later_edit() -> None:
         "read it again if you need the current content]"
     )
     assert report == {
-        "policy_version": "4",
+        "policy_version": "5",
         "stubbed_results": 1,
         "bytes_removed": len(BIG) - len(stub),
     }
@@ -417,9 +417,22 @@ def test_prune_request_leaves_other_fields_and_provider_managed_context() -> Non
         k: v for k, v in request.items() if k != "messages"
     }
     assert request["messages"] is messages  # the input isn't mutated
-    # Provider-side context editing or compaction: never pruned.
-    managed = {**request, "context_management": {"edits": [{"type": "x"}]}}
-    assert prune_request(managed, POLICY) == (managed, None)
+    # Provider-side tool clearing, compaction, or an unknown shape: never pruned.
+    thinking = {"type": "clear_thinking_20251015", "keep": "all"}
+    for managed_context in (
+        {"edits": [{"type": "x"}]},
+        {"edits": [thinking, {"type": "clear_tool_uses_20250919"}]},
+        {"edits": [thinking], "x": 1},
+        {"edits": "x"},
+        None,
+    ):
+        managed = {**request, "context_management": managed_context}
+        assert prune_request(managed, POLICY) == (managed, None)
+    # Clearing thinking blocks leaves tool results to erode, as Claude Code sends.
+    thinking_only = {**request, "context_management": {"edits": [thinking]}}
+    pruned, report = prune_request(thinking_only, POLICY)
+    assert report["stubbed_results"] == 1
+    assert pruned["context_management"] is thinking_only["context_management"]
     # Nothing to stub: the same request object comes back.
     quiet = {"model": "m", "messages": messages[:3]}
     assert prune_request(quiet, POLICY)[0] is quiet
@@ -456,7 +469,7 @@ def test_openai_chat_requests_are_skipped_and_counted() -> None:
     pruned, report = prune(messages, POLICY)
     assert pruned is messages and messages == before
     assert report == {
-        "policy_version": "4",
+        "policy_version": "5",
         "stubbed_results": 0,
         "bytes_removed": 0,
         "skipped": "openai_chat",
