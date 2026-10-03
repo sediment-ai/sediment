@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Upgrade notes
+
+- Context pruning and the erode package are removed. If your gateway sets
+  `SEDIMENT_CONTEXT_PRUNE`, delete it: the gateway ignores it and forwards
+  requests unchanged. Captured Inference calls no longer carry a
+  `sediment_context` report on `raw`. If you run `erode proxy`, point your
+  agents back at the provider or gateway.
+
 ### Security
 
 - Update the gateway to LiteLLM 1.103.2, PyJWT 2.15.1, and urllib3 2.8.0.
@@ -16,6 +24,12 @@
 
 ### Capture
 
+- Remove opt-in context pruning: the erode package, the LiteLLM pre-call hook,
+  and `SEDIMENT_CONTEXT_PRUNE` (ADR 0028, now withdrawn). On five recorded
+  Claude Code Sessions, pruning removed a median 0.16% of input bytes against
+  its 20% target. Where it fired, its stubs forced cache rewrites that cost more
+  than the cache reads they saved. See the
+  [E1 result](docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md#e1-result-fails-its-gate).
 - Remove `user.email`, `user.account_id`, and `user.account_uuid` record
   attributes from Claude Code Developer decisions before storage, matching the
   Codex privacy boundary.
@@ -78,14 +92,16 @@
   `contrib/erode` that is meant to move to its own repository. The bundled
   gateway mounts it and passes the variable through. For other gateways, or
   agents that call a provider directly, run `erode proxy`. See
-  [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+  [Prune superseded tool output](https://github.com/sediment-ai/sediment/blob/v0.4.0/docs/capture/managed-capture.md#prune-superseded-tool-output)
+  (0.4.0).
 - Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
   Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
   strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
   reads and `apply_patch` edits, and stubs individual results inside a bundled
   output. Any other call shape passes through unchanged. Three recorded Codex
   Sessions are the test fixtures. See
-  [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
+  [Use erode with Codex CLI](https://github.com/sediment-ai/sediment/blob/v0.4.0/contrib/erode/README.md#use-erode-with-codex-cli)
+  (0.4.0).
 
 ### Command line
 
