@@ -424,15 +424,20 @@ provider's actual prices.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
    random 50-instance subset of SWE-bench Verified, run with Claude Code on a
    frontier model through the stage A.1 proxy. The comparison is against what
-   the agent already does by default:
+   the agent already does by default, and against the provider's own tool-result
+   clearing, which is what most users would try first:
 
    | Arm | Setup |
    | --- | --- |
    | Default | The agent as shipped: provider prompt caching and its own automatic compaction on; the proxy forwards unchanged |
    | Pruned | The same agent and settings, with the proxy applying stage A |
+   | Provider clearing | The same agent and settings, with pruning off and the proxy adding Anthropic context editing to each `POST /v1/messages` request: `context_management` with one `clear_tool_uses_20250919` edit at its default settings, and the `context-management-2025-06-27` beta header. The API clears the oldest tool results past its threshold, by age rather than by supersession |
 
-   The same model, settings, subset, and seed apply to both arms. Report per
-   instance:
+   The same model, settings, subset, and seed apply to all three arms. The
+   provider-clearing arm changes only the request the proxy forwards; erode
+   leaves a request with `context_management` unpruned, so the arms never
+   combine. If the agent already sends `context_management`, report that and
+   leave its request as sent. Report per instance:
    - resolved or not;
    - **billed cost**, taken from the provider's usage fields (uncached input,
      cache writes, cache reads, and output), each at the provider's published
@@ -440,7 +445,10 @@ provider's actual prices.
    - calls, compactions, and latency.
 
    Targets: billed cost at least 30% lower than Default, and resolved instances
-   within 2 of Default. Publish the harness, subset, prices, and raw counts. A
+   within 2 of Default. Report Pruned against Provider clearing on the same
+   measures, with no target: it says whether stage A earns its place next to a
+   feature the API already offers. Publish the harness, subset, prices, and raw
+   counts. A
    plain pass-through run without compaction is a secondary diagnostic, not the
    comparison.
 
