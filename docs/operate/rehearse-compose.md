@@ -127,7 +127,7 @@ curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
 ```
 
 ```text
-{"status":"ok","version":"0.4.0"}
+{"status":"ok","version":"0.5.0"}
 ```
 
 Compose waits for PostgreSQL to pass its health check, then runs `migrate` to
