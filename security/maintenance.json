@@ -4252,7 +4252,7 @@
       ]
     },
     "pypi/mcp-types": {
-      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.2.0 is its newest release. MCP 2.2.0 depends on it, and LiteLLM 1.103.0's MCP server imports its handshake protocol versions.",
+      "basis": "Upstream supports only the newest 1.x maintenance release or newest 2.x stable release; older releases and prereleases are unsupported. mcp-types publishes the 2.x wire types from the same repository, and 2.3.0 is its newest release. MCP 2.3.0 pins it, and LiteLLM 1.103.2's MCP server imports its handshake protocol versions.",
       "evidence": "https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/HEAD/SECURITY.md",
       "provider": "Upstream project",
       "source": "https://github.com/modelcontextprotocol/python-sdk",
