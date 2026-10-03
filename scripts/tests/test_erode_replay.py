@@ -242,6 +242,25 @@ def test_moving_cache_control_marker_keeps_one_thread():
     assert bodies[0]["messages"] != bodies[1]["messages"][:1]
 
 
+def test_trailing_system_message_keeps_one_thread(tmp_path):
+    bodies = _requests(
+        "main", MAIN_TOOLS, "task", [_step("Bash", {"command": "ls"}, "x")] * 3
+    )
+    # Claude Code ends each request with a system message the next one drops.
+    for n, body in enumerate(bodies):
+        body["messages"].append({"role": "system", "content": f"note {n}"})
+        (tmp_path / f"{n:04d}.json").write_text(json.dumps(body))
+    result = replay.report(tmp_path)
+    session = result["sessions"][0]
+    assert (session["segments"], session["raw_prefix_breaks"]) == (1, 0)
+    dropped = result["trailing_system_messages_dropped"]
+    assert dropped["messages"] == len(bodies)
+    assert dropped["bytes"] == sum(replay.size(b["messages"][-1:]) for b in bodies)
+    assert session["input_bytes"] == sum(
+        replay.size({**b, "messages": b["messages"][:-1]}) for b in bodies
+    )
+
+
 @pytest.mark.parametrize("run_count", [0, 1, 2, 3])
 @pytest.mark.parametrize("result_bytes", [10, 20_000])
 def test_gate_requires_three_long_sessions(tmp_path, run_count, result_bytes):
@@ -296,7 +315,8 @@ def test_provider_managed_request_keeps_cost_and_reports_bypass(tmp_path):
         "task",
         [_step("Read", {"file_path": "a.py"}, "x" * 20_000)] * 20,
     )
-    bodies[-1]["context_management"] = {"edits": []}
+    clear = {"edits": [{"type": "clear_tool_uses_20250919"}]}
+    bodies[-1]["context_management"] = clear
     for n, body in enumerate(bodies):
         (tmp_path / f"{n:04d}.json").write_text(json.dumps(body))
     session = replay.report(tmp_path)["sessions"][0]

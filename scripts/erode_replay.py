@@ -16,7 +16,10 @@ Grouping follows the spec. Requests with the same system prompt and tool names
 belong to one agent. The main agent is the one that can launch subagents (a
 ``Task`` or ``Agent`` tool); if none can, the agent with the most requests is
 used, and the output says so. Within an agent, a request joins the thread
-whose last request its ``messages`` extend. The main agent's threads are the
+whose last request its ``messages`` extend. Claude Code ends each request with
+a ``system``-role message that the next request doesn't carry, so trailing
+``system`` messages are dropped before replay and counted separately; input
+bytes exclude them. The main agent's threads are the
 segments of one Session: a new segment whose history is shorter than the
 previous one's is counted as a compaction. Every other agent's thread is a
 subagent or side conversation, reported separately and outside the gate.
@@ -141,7 +144,24 @@ def threads(bodies: list[dict]) -> list[list[dict]]:
     return out
 
 
-def group(run: list[tuple[str, dict | None]]) -> tuple[list[dict], Counter]:
+def without_trailing_system(body: dict, dropped: Counter) -> dict:
+    """Drop the per-request ``system`` messages after the conversation."""
+    messages = body["messages"]
+    end = len(messages)
+    while end and isinstance(messages[end - 1], dict):
+        if messages[end - 1].get("role") != "system":
+            break
+        end -= 1
+    if end == len(messages):
+        return body
+    dropped["messages"] += len(messages) - end
+    dropped["bytes"] += size(messages[end:])
+    return {**body, "messages": messages[:end]}
+
+
+def group(
+    run: list[tuple[str, dict | None]], dropped: Counter
+) -> tuple[list[dict], Counter]:
     """Return the run's conversations and counts of requests not replayed."""
     skipped: Counter = Counter()
     agents: dict[str, list[dict]] = {}
@@ -153,6 +173,7 @@ def group(run: list[tuple[str, dict | None]]) -> tuple[list[dict], Counter]:
         elif core._openai_chat(body["messages"]):
             skipped["openai_chat"] += 1
         else:
+            body = without_trailing_system(body, dropped)
             agents.setdefault(signature(body), []).append(body)
     main = [s for s, b in agents.items() if tool_names(b[0]) & SUBAGENT_TOOLS]
     by_count = not main and bool(agents)
@@ -262,6 +283,7 @@ def _stubbed_by(block: dict, calls: list) -> Any:
 def drop_outs(body: dict, pruned: dict, policy: core.PrunePolicy) -> dict:
     """Where each tool result in the final request falls out of the rules."""
     messages = body["messages"]
+    managed = core.prune_request(body, policy)[1] is None
     calls, turns = core._calls(messages)
     stubbed = stub_positions(pruned["messages"])
     count: Counter = Counter()
@@ -273,7 +295,7 @@ def drop_outs(body: dict, pruned: dict, policy: core.PrunePolicy) -> dict:
             continue
         i, j, _ = call.where
         n = size(messages[i]["content"][j])
-        if "context_management" in body:
+        if managed:
             fate = "context_management"
         elif call.kind is None:
             fate = "unrecognized_tool"
@@ -475,8 +497,9 @@ def replay(conversation: dict) -> dict:
 def report(root: Path) -> dict:
     sessions = []
     skipped: Counter = Counter()
+    dropped: Counter = Counter(messages=0, bytes=0)
     for name, run in load_runs(root).items():
-        conversations, run_skipped = group(run)
+        conversations, run_skipped = group(run, dropped)
         skipped += run_skipped
         for conversation in conversations:
             sessions.append(dict(run=name, **replay(conversation)))
@@ -495,6 +518,7 @@ def report(root: Path) -> dict:
             passed=None if len(long) < MIN_LONG_SESSIONS else median >= GATE_RATIO,
         ),
         requests_not_replayed=dict(skipped),
+        trailing_system_messages_dropped=dict(dropped),
         sessions=sessions,
     )
 
