@@ -11,10 +11,6 @@ you can compare models, give agents earlier context, and build training data.
 This package installs the `sediment` command: the local server, agent capture,
 reports, and dataset exports.
 
-**Status:** pre-alpha. Interfaces and storage can change between releases; each
-release documents its upgrade path in the
-[changelog](https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md).
-
 ## Install
 
 Use Python 3.12:
