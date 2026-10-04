@@ -62,7 +62,7 @@ curl -sf http://127.0.0.1:8000/health
 ```
 
 ```text
-{"status":"ok","version":"0.5.0"}
+{"status":"ok","version":"0.6.0"}
 ```
 
 If the health check fails, read the error in the server terminal. PostgreSQL
