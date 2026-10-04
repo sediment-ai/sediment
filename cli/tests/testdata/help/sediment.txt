@@ -27,6 +27,9 @@ COMMANDS:
                         telemetry env (sediment install --help)
   uninstall             remove the per-repo git hooks (--agents: user-level too)
   doctor                check attribution + server health on this machine
+  stamp                 write pending Session markers to the HEAD note
+  repair-notes          reconcile the notes ref with a remote and push
+  transcript            emit Edit observations from a JSON hook event
   server                run a local API server with managed PostgreSQL
   login                 store credentials for a server
   logout                remove stored credentials

@@ -52,6 +52,8 @@ Global options:
 - [`sediment export sft`](#sediment-export-sft)
 - [`sediment export diff-sft`](#sediment-export-diff-sft)
 - [`sediment export recovery`](#sediment-export-recovery)
+- [`sediment stamp`](#sediment-stamp)
+- [`sediment repair-notes`](#sediment-repair-notes)
 - [`sediment doctor`](#sediment-doctor)
 - [`sediment install`](#sediment-install)
 - [`sediment uninstall`](#sediment-uninstall)
@@ -60,6 +62,7 @@ Global options:
 - [`sediment delivery enqueue`](#sediment-delivery-enqueue)
 - [`sediment delivery status`](#sediment-delivery-status)
 - [`sediment delivery replay`](#sediment-delivery-replay)
+- [`sediment transcript`](#sediment-transcript)
 - [`sediment report`](#sediment-report)
 - [`sediment report model`](#sediment-report-model)
 - [`sediment report label-confidence-inspection`](#sediment-report-label-confidence-inspection)
@@ -491,6 +494,24 @@ Options:
 | `--out` | — | output directory **(required)** |
 | `--recipe` | `recovery_ci` | evidence recipe (default: recovery_ci) (choices: `recovery_ci`) |
 
+## sediment stamp
+
+```text
+sediment stamp [-h]
+```
+
+## sediment repair-notes
+
+```text
+sediment repair-notes [-h] [remote]
+```
+
+Arguments:
+
+| Name | Default | Description |
+|---|---|---|
+| `remote` | `origin` | — |
+
 ## sediment doctor
 
 ```text
@@ -622,6 +643,26 @@ Options:
 | `--directory` | — | private buffer (default: SEDIMENT_DELIVERY_DIR) |
 | `--watch` | `false` | supervise replay until stopped |
 | `--retry-blocked` | `false` | retry blocked payloads once; stop the existing worker first |
+
+## sediment transcript
+
+Read a JSON hook event from stdin and emit Edit observations. Configure a capture endpoint before running this command.
+
+```text
+sediment transcript [snapshot] --agent {claude-code,codex,pi}
+```
+
+Arguments:
+
+| Name | Default | Description |
+|---|---|---|
+| `mode` | — | capture pre-edit line hashes from a PreToolUse event; place snapshot before --agent, or omit it for a SessionEnd event (choices: `snapshot`) |
+
+Options:
+
+| Name | Default | Description |
+|---|---|---|
+| `--agent` | — | transcript's agent harness (choices: `claude-code`, `codex`, `pi`) **(required)** |
 
 ## sediment report
 

@@ -24,7 +24,17 @@ import pytest
 from sediment_cli.cli import _REPORTS, build_parser, main
 
 GOLDEN_DIR = Path(__file__).parent / "testdata" / "help"
-_DISPATCH_ONLY = {"report", "mirror-gc", "install", "uninstall", "doctor", "delivery"}
+_DISPATCH_ONLY = {
+    "report",
+    "mirror-gc",
+    "install",
+    "uninstall",
+    "doctor",
+    "delivery",
+    "stamp",
+    "repair-notes",
+    "transcript",
+}
 _DISPATCH_PATHS = [
     ("report",),
     ("mirror-gc",),
@@ -32,6 +42,9 @@ _DISPATCH_PATHS = [
     ("uninstall",),
     ("doctor",),
     ("delivery",),
+    ("stamp",),
+    ("repair-notes",),
+    ("transcript",),
     *(("delivery", name) for name in ("enqueue", "status", "replay")),
     *(("report", name) for name in _REPORTS),
 ]
@@ -135,6 +148,26 @@ def test_dispatched_runtime_help_uses_public_command_path(path) -> None:
 
     assert captured.stdout.startswith("USAGE:\n")
     assert f"sediment {' '.join(path)}" in captured.stdout.splitlines()[1]
+
+
+def test_operator_repair_commands_appear_in_top_help(capsys) -> None:
+    code, captured = _invoke(["--help"], capsys)
+    assert code == 0
+    for command in ("stamp", "repair-notes", "transcript"):
+        assert command in captured.out
+    for command in ("cursor-hook", "union-squash-notes", "push-notes"):
+        assert command not in captured.out
+
+
+def test_transcript_help_does_not_read_capture_state(monkeypatch, capsys) -> None:
+    from sediment_cli import transcript
+
+    def unexpected_capture():
+        pytest.fail("help must not read capture configuration")
+
+    monkeypatch.setattr(transcript, "_endpoint", unexpected_capture)
+    assert transcript.main(["--agent", "claude-code", "--help"]) == 0
+    assert "sediment transcript" in capsys.readouterr().out
 
 
 def test_report_registry_uses_attribution_vocabulary() -> None:

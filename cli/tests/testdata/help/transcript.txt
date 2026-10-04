@@ -1,0 +1,15 @@
+USAGE:
+  sediment transcript [snapshot] --agent {claude-code,codex,pi}
+
+  Read a JSON hook event from stdin and emit Edit observations. Configure a
+  capture endpoint before running this command.
+
+ARGUMENTS:
+  {snapshot}            capture pre-edit line hashes from a PreToolUse event;
+                        place snapshot before --agent, or omit it for a
+                        SessionEnd event
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --agent {claude-code,codex,pi}
+                        transcript's agent harness

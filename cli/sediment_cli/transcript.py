@@ -68,6 +68,7 @@ Unset endpoint = not opted in: the hook exits 0 without reading anything.
 
 from __future__ import annotations
 
+import argparse
 import difflib
 import hashlib
 import importlib.util
@@ -1687,16 +1688,44 @@ def _publish(url: str, payload: dict) -> bool:
     return complete
 
 
+def build_parser() -> argparse.ArgumentParser:
+    """Describe the operator entry point without changing fail-soft hook parsing."""
+    agents = ",".join(sorted(_PARSERS))
+    parser = argparse.ArgumentParser(
+        prog="sediment transcript",
+        usage=f"%(prog)s [snapshot] --agent {{{agents}}}",
+        description="Read a JSON hook event from stdin and emit Edit observations. "
+        "Configure a capture endpoint before running this command.",
+    )
+    parser.add_argument(
+        "mode",
+        nargs="?",
+        choices=["snapshot"],
+        help="capture pre-edit line hashes from a PreToolUse event; "
+        "place snapshot before --agent, or omit it for a SessionEnd event",
+    )
+    parser.add_argument(
+        "--agent",
+        required=True,
+        choices=sorted(_PARSERS),
+        help="transcript's agent harness",
+    )
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     """The hook entry point — SessionEnd, or ``snapshot`` for PreToolUse.
 
     Every path exits 0.
     """
     try:
+        args = sys.argv[1:] if argv is None else argv
+        if "--help" in args or "-h" in args:
+            build_parser().print_help()
+            return 0
         url = _endpoint()
         if url is None:
             return 0  # not opted in — and nothing is cached either
-        args = sys.argv[1:] if argv is None else argv
         if "--agent" not in args:
             _trail("missing --agent; skipping")
             return 0

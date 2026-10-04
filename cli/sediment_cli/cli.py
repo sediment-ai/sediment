@@ -1826,6 +1826,11 @@ def build_parser() -> argparse.ArgumentParser:
         "uninstall", help="remove the per-repo git hooks (--agents: user-level too)"
     )
     sub.add_parser("doctor", help="check attribution + server health on this machine")
+    sub.add_parser("stamp", help="write pending Session markers to the HEAD note")
+    sub.add_parser(
+        "repair-notes", help="reconcile the notes ref with a remote and push"
+    )
+    sub.add_parser("transcript", help="emit Edit observations from a JSON hook event")
 
     p_server = sub.add_parser(
         "server", help="run a local API server with managed PostgreSQL"
@@ -2031,8 +2036,7 @@ def build_parser() -> argparse.ArgumentParser:
 _REMOTE_VERBS = {"login", "logout", "commit", "facts", "demo", "evidence"}
 
 # Dispatched pre-argparse to the stdlib-only attribution module.
-# install/uninstall/doctor get help stubs; the hook-plumbing verbs are
-# execution-only (hidden from --help).
+# Operator-facing verbs get help stubs; hook-only verbs stay execution-only.
 _ATTRIBUTION_VERBS = {
     "cursor-hook",
     "install",
@@ -2082,14 +2086,22 @@ def main(argv: list[str] | None = None) -> int:
             return _fail(str(exc))
     if argv[:1] == ["transcript"]:
         module = importlib.import_module("sediment_cli.transcript")
+        if "--help" in argv[1:] or "-h" in argv[1:]:
+            return _print_dispatched_help(
+                module.build_parser(), prog="sediment transcript"
+            )
         return _public_status(module.main(argv[1:]))
     if argv[:1] and argv[0] in _ATTRIBUTION_VERBS:
         # Forwarded verbatim to the attribution module's own parser —
-        # stdlib-only, never constructs Settings. The plumbing verbs (mark,
-        # stamp, union-squash-notes, push-notes, repair-notes) get no help
-        # stub: hooks invoke them, humans don't.
+        # stdlib-only, never constructs Settings. Hook-only verbs have no stub.
         module = importlib.import_module("sediment_cli.attribution")
-        if argv[0] in {"install", "uninstall", "doctor"} and argv[1:] in (
+        if argv[0] in {
+            "install",
+            "uninstall",
+            "doctor",
+            "stamp",
+            "repair-notes",
+        } and argv[1:] in (
             ["-h"],
             ["--help"],
         ):

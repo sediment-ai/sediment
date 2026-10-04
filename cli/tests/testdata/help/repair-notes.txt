@@ -1,0 +1,8 @@
+USAGE:
+  sediment repair-notes [-h] [remote]
+
+ARGUMENTS:
+  remote
+
+OPTIONS:
+  -h, --help  show this help message and exit

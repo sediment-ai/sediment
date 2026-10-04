@@ -65,11 +65,12 @@ def test_every_command_and_flag_is_on_the_page() -> None:
     walk(cli.build_parser())
     # install/uninstall/doctor carry their flags only in the attribution tree.
     attribution_sub = mod._subparsers(attribution.build_parser())
-    for name in ("install", "uninstall", "doctor"):
+    for name in ("install", "uninstall", "doctor", "stamp", "repair-notes"):
         walk(attribution_sub.choices[name], (name,))
     # mirror-gc and each report own their parser too.
     walk(mod._module_parser("sediment_api.mirror_gc"), ("mirror-gc",))
     walk(mod._module_parser("sediment_cli.delivery"), ("delivery",))
+    walk(mod._module_parser("sediment_cli.transcript"), ("transcript",))
     for name, (module_path, _) in cli._REPORTS.items():
         walk(mod._module_parser(module_path), ("report", name))
 
@@ -105,8 +106,20 @@ def test_env_defaults_do_not_leak_into_the_page(monkeypatch) -> None:
 def test_plumbing_verbs_stay_off_the_page() -> None:
     # Hooks invoke these; documenting them invites hand-running them.
     page = mod.render()
-    for verb in ("sediment mark", "sediment stamp", "sediment push-notes"):
+    for verb in (
+        "sediment mark",
+        "sediment cursor-hook",
+        "sediment push-notes",
+        "sediment union-squash-notes",
+    ):
         assert verb not in page
+
+
+def test_transcript_usage_preserves_snapshot_argument_order() -> None:
+    page = mod.render()
+    section = _command_section(page, ("transcript",))
+    assert "sediment transcript [snapshot] --agent" in section
+    assert "place snapshot before --agent" in section
 
 
 def test_check_fails_on_a_stale_page(tmp_path, monkeypatch, capsys) -> None:

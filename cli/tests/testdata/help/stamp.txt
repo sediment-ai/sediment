@@ -1,0 +1,5 @@
+USAGE:
+  sediment stamp [-h]
+
+OPTIONS:
+  -h, --help  show this help message and exit

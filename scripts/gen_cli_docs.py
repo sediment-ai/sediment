@@ -5,12 +5,14 @@ Coder's reference model: the page is produced from the CLI itself, so a new
 flag cannot ship undocumented. Nothing here is hand-authored, and CI runs
 `--check` to fail on a stale page.
 
-Three parser sources, because the CLI dispatches three ways:
+Parser sources follow the CLI dispatch paths:
 
 - ``sediment_cli.cli.build_parser`` — the argparse tree (`facts`, `login`,
   `export …`, quarantine verbs, `server`).
-- ``sediment_cli.attribution.build_parser`` — `install`/`uninstall`/`doctor`,
+- ``sediment_cli.attribution.build_parser`` — capture setup and repair commands,
   whose flags live only there; `cli.py` carries help stubs.
+- ``sediment_cli.transcript.build_parser`` — transcript help metadata; runtime
+  hook parsing stays fail-soft.
 - the report modules and ``sediment_api.mirror_gc``, dispatched pre-argparse
   with argv forwarded verbatim to each module's own ``build_parser``.
 
@@ -20,9 +22,9 @@ Report defaults that read the environment (``--org`` from
 is generated with those unset — it documents the contract a reader gets on
 a bare shell, not one machine's environment.
 
-The hook-plumbing verbs (`cursor-hook`, `mark`, `stamp`,
-`union-squash-notes`, `push-notes`, `repair-notes`) are omitted: hooks invoke
-them, humans do not, and they are already hidden from `--help`.
+The hook-only verbs (`cursor-hook`, `mark`, `union-squash-notes`, and
+`push-notes`) are omitted. Operator-facing repair and transcript commands
+render their real parser metadata.
 """
 
 from __future__ import annotations
@@ -40,17 +42,24 @@ OUT_PATH = REPO_ROOT / "docs" / "reference" / "cli.md"
 _PLUMBING = {
     "cursor-hook",
     "mark",
-    "stamp",
     "union-squash-notes",
     "push-notes",
-    "repair-notes",
 }
 
-# Help stubs in cli.py whose real parser lives elsewhere: install/uninstall/
-# doctor come from the attribution tree, mirror-gc and each report from
-# their own module's build_parser. Rendering the stub would document a verb
-# as flagless.
-_STUBS = {"install", "uninstall", "doctor", "report", "mirror-gc", "delivery"}
+# Help stubs in cli.py whose real parser lives elsewhere: capture setup and
+# repair come from the attribution tree; transcript, reports, delivery, and
+# mirror-gc own their metadata. Rendering a stub would omit its real flags.
+_STUBS = {
+    "install",
+    "uninstall",
+    "doctor",
+    "stamp",
+    "repair-notes",
+    "transcript",
+    "report",
+    "mirror-gc",
+    "delivery",
+}
 
 _HEADER = """# CLI reference
 
@@ -85,7 +94,7 @@ def _usage(parser: argparse.ArgumentParser, path: tuple[str, ...]) -> str:
     optionals = [a for a in parser._actions if a.option_strings]
     positionals = [a for a in parser._actions if not a.option_strings]
     usage = formatter._format_usage(
-        None, optionals + positionals, parser._mutually_exclusive_groups, ""
+        parser.usage, optionals + positionals, parser._mutually_exclusive_groups, ""
     )
     return " ".join(usage.split())
 
@@ -182,6 +191,7 @@ def render() -> str:
     # parser, so they render from those rather than cli.py's help stubs.
     lines += _render(_module_parser("sediment_api.mirror_gc"), ("mirror-gc",))
     lines += _render(_module_parser("sediment_cli.delivery"), ("delivery",))
+    lines += _render(_module_parser("sediment_cli.transcript"), ("transcript",))
     lines += [
         "## sediment report",
         "",

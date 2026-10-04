@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- CLI help and the generated reference list `stamp`, `repair-notes`, and
+  `transcript`, including their operator arguments. Closes #172.
+
 ### Upgrade notes
 
 - The Compose `gateway` profile runs the upstream LiteLLM image pinned in
