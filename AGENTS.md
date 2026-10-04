@@ -2,7 +2,8 @@
 
 ## What Sediment Is
 
-A self-hosted pipeline that turns AI developer workflow traces into RL-ready
+A self-hosted evidence store for coding agents. It records what happened to
+agent output and turns that evidence into reports, agent context, and RL-ready
 training data. It captures inference calls, developer accept/reject decisions,
 Edit observations, Retry linkages, git pushes, and CI outcomes as **immutable
 Facts**; derives Attributions, edit retention scores, and Reward linkage as
