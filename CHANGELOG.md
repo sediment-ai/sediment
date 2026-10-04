@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-### Fixed
-
-- CLI help and the generated reference list `stamp`, `repair-notes`, and
-  `transcript`, including their operator arguments. Closes #172.
-
 ### Upgrade notes
 
 - The Compose `gateway` profile runs the upstream LiteLLM image pinned in
@@ -33,6 +28,11 @@
   PostgreSQL image reviews while Trivy's Debian data lags.
 - Renew the maintenance catalog and image dispositions through 2026-11-02, and
   drop four Expat dispositions the API image no longer needs.
+
+### Command line
+
+- CLI help and the generated reference list `stamp`, `repair-notes`, and
+  `transcript`, including their operator arguments. Closes #172.
 
 ## 0.5.0 — 2026-10-03
 
