@@ -196,13 +196,20 @@ belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
 [review contract](docs/agents/review.md).
 
-## License
+## License and Contributor License Agreement
 
-Contributions are accepted under the repository license
-(AGPL-3.0-or-later), except contributions to `shims/`, which are accepted
-under MIT (`shims/pi/LICENSE`). Submitting a PR certifies you have the
-right to contribute the code under the license that covers the paths you
-touched.
+Sediment is licensed under AGPL-3.0-or-later; `shims/` uses MIT
+(`shims/pi/LICENSE`).
+
+Before a maintainer can merge your first pull request, sign the
+[Contributor License Agreement](CLA.md). A bot
+comments on the pull request with the exact reply to post; one signature
+covers all your later contributions. The CLA grants PAULSEN'S LLC, which
+maintains Sediment, a license to your contribution, including the right to
+offer the Project under other license terms; you keep the copyright. The CLA
+lets PAULSEN'S LLC assign that license to a successor company formed to develop
+Sediment. If you contribute for an employer, confirm that you have its
+permission first.
 
 
 
@@ -416,9 +423,9 @@ artifact. Running this procedure by itself never publishes a distribution.
 
 ### Publish a version tag
 
-Before the first release, configure these external controls:
+A release requires these external controls:
 
-- Make the repository public. The workflow rejects a release while the
+- The repository is public. The workflow rejects a release while the
   repository is private.
 - Create a tag ruleset for `v*` that prevents tag updates and deletions. Limit
   tag creation to maintainers who can release.
