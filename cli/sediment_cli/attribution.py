@@ -3758,7 +3758,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--tool", required=True, choices=["claude-code", "codex", "cursor", "pi"]
     )
 
-    sub.add_parser("stamp", help="write the attribution note on HEAD (post-commit)")
+    sub.add_parser(
+        "stamp",
+        help="write the attribution note on HEAD (post-commit)",
+        description="Write this repository's pending Session markers to the "
+        "note on HEAD under refs/notes/sediment, then clear the markers that "
+        "it wrote. The post-commit hook runs this command after each commit. "
+        "Run it yourself only to recover a pending stamp, while HEAD is still "
+        "the commit that the markers belong to. The command always exits 0, "
+        "prints each failure on stderr, and logs it to "
+        "~/.sediment/attribution.log.",
+    )
 
     p_squash = sub.add_parser(
         "union-squash-notes",
@@ -3775,9 +3785,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_repair = sub.add_parser(
         "repair-notes",
-        help="reconcile the notes ref with a remote and push (operator fix)",
+        help="reconcile a behind or diverged notes ref and push it (operator fix)",
+        description="Fetch refs/notes/sediment from the remote, union-merge it "
+        "into the local notes ref, and push the result. Run it inside a "
+        "repository when `sediment doctor --fetch` reports a notes ref that "
+        "is behind or diverged. Unlike the pre-push hook, the command exits 1 "
+        "when it can't reconcile or push.",
     )
-    p_repair.add_argument("remote", nargs="?", default="origin")
+    p_repair.add_argument(
+        "remote",
+        nargs="?",
+        default="origin",
+        help="remote to fetch from and push to; use origin, the remote that "
+        "doctor checks (default: origin)",
+    )
 
     p_doctor = sub.add_parser(
         "doctor",
@@ -3876,7 +3897,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_uninstall = sub.add_parser("uninstall", help="remove hooks from a repo")
-    p_uninstall.add_argument("repo", nargs="?", default=".")
+    p_uninstall.add_argument(
+        "repo",
+        nargs="?",
+        default=".",
+        help="repository to remove the git hooks from (default: current directory)",
+    )
     p_uninstall.add_argument(
         "--agents",
         action="store_true",

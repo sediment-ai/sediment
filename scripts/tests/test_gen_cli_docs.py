@@ -63,11 +63,12 @@ def test_every_command_and_flag_is_on_the_page() -> None:
             walk(child, (*path, name))
 
     walk(cli.build_parser())
-    # install/uninstall/doctor carry their flags only in the attribution tree.
+    # These carry their arguments only in the attribution tree.
     attribution_sub = mod._subparsers(attribution.build_parser())
-    for name in ("install", "uninstall", "doctor"):
+    for name in ("install", "uninstall", "doctor", "stamp", "repair-notes"):
         walk(attribution_sub.choices[name], (name,))
-    # mirror-gc and each report own their parser too.
+    # transcript, mirror-gc, delivery, and each report own their parser too.
+    walk(mod._module_parser("sediment_cli.transcript"), ("transcript",))
     walk(mod._module_parser("sediment_api.mirror_gc"), ("mirror-gc",))
     walk(mod._module_parser("sediment_cli.delivery"), ("delivery",))
     for name, (module_path, _) in cli._REPORTS.items():
@@ -105,8 +106,29 @@ def test_env_defaults_do_not_leak_into_the_page(monkeypatch) -> None:
 def test_plumbing_verbs_stay_off_the_page() -> None:
     # Hooks invoke these; documenting them invites hand-running them.
     page = mod.render()
-    for verb in ("sediment mark", "sediment stamp", "sediment push-notes"):
-        assert verb not in page
+    for verb in ("mark", "cursor-hook", "union-squash-notes", "push-notes"):
+        assert f"sediment {verb}" not in page
+
+
+def test_hand_run_capture_commands_describe_themselves() -> None:
+    # The docs tell people to run these three, so each says what it does and
+    # no argument ships without help text.
+    from sediment_cli import attribution, transcript
+
+    attribution_sub = mod._subparsers(attribution.build_parser()).choices
+    for parser in (
+        attribution_sub["stamp"],
+        attribution_sub["repair-notes"],
+        transcript.build_parser(),
+    ):
+        assert parser.description, parser.prog
+        assert all(action.help for action in parser._actions), parser.prog
+    # `snapshot` is read only as the first argument; argparse's own usage
+    # would print it after --agent.
+    assert (
+        "sediment transcript [-h] [snapshot] --agent {claude-code,codex,pi}"
+        in _command_section(mod.render(), ("transcript",))
+    )
 
 
 def test_check_fails_on_a_stale_page(tmp_path, monkeypatch, capsys) -> None:

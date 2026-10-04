@@ -1687,6 +1687,43 @@ def _publish(url: str, payload: dict) -> bool:
     return complete
 
 
+def build_parser():
+    """The command's shape, for ``sediment transcript --help`` and the CLI
+    reference only."""
+    # ponytail: a help-only twin of the hand parsing in main, which must exit
+    # 0 where argparse exits 2. Two arguments described twice; drive both from
+    # one table if the grammar grows.
+    import argparse  # the hook path never imports it
+
+    parser = argparse.ArgumentParser(
+        prog="sediment transcript",
+        # argparse prints options before positionals; main reads `snapshot`
+        # only as the first argument.
+        usage="%(prog)s [-h] [snapshot] --agent {" + ",".join(_PARSERS) + "}",
+        description="Read one hook event on stdin: a JSON object with "
+        "session_id and transcript_path. Extract the Session's Edit "
+        "observations from that agent transcript, and send them to "
+        "SEDIMENT_OTLP_ENDPOINT. For Claude Code, also send Rejected edits and "
+        "Retry linkages. Agent session-end hooks run this command. Run it "
+        "yourself to recover a Session that ended without its extractor. The "
+        "command always exits 0 and reports problems on stderr. If "
+        "SEDIMENT_OTLP_ENDPOINT is unset, it does nothing.",
+    )
+    parser.add_argument(
+        "snapshot",
+        nargs="?",
+        help="run as the PreToolUse hook instead: record line hashes around "
+        "one edit call in a local cache; must come before --agent",
+    )
+    parser.add_argument(
+        "--agent",
+        required=True,
+        choices=tuple(_PARSERS),
+        help="agent harness that wrote the transcript",
+    )
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     """The hook entry point — SessionEnd, or ``snapshot`` for PreToolUse.
 

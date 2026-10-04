@@ -1,0 +1,14 @@
+USAGE:
+  sediment repair-notes [-h] [remote]
+
+  Fetch refs/notes/sediment from the remote, union-merge it into the local
+  notes ref, and push the result. Run it inside a repository when `sediment
+  doctor --fetch` reports a notes ref that is behind or diverged. Unlike the
+  pre-push hook, the command exits 1 when it can't reconcile or push.
+
+ARGUMENTS:
+  remote      remote to fetch from and push to; use origin, the remote that
+              doctor checks (default: origin)
+
+OPTIONS:
+  -h, --help  show this help message and exit
