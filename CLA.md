@@ -3,8 +3,8 @@
 Version 1.0, 2026-10-04
 
 This Contributor License Agreement ("Agreement") sets the terms under which You
-contribute to Sediment. Eric Paulsen maintains Sediment and receives the rights
-in this Agreement ("Maintainer"). Read it before you submit a Contribution.
+contribute to Sediment. PAULSEN'S LLC maintains Sediment and receives the
+rights in this Agreement ("Maintainer"). Read it before you submit a Contribution.
 Signing it applies to Your current and future Contributions. It doesn't limit
 Your own use of Your Contributions.
 
@@ -96,8 +96,8 @@ Section 3.
    exclusive jurisdiction over any dispute under this Agreement, and You and the
    Maintainer consent to that jurisdiction.
 2. **Assignment.** The Maintainer may assign this Agreement, and the rights and
-   licenses You grant in it, to any person or entity, including a company
-   formed to develop the Project. An assignee must agree in writing to the
+   licenses You grant in it, to any person or entity, including a successor
+   company formed to develop the Project. An assignee must agree in writing to the
    Maintainer's obligations in this Agreement. This Agreement binds and benefits
    each party's successors and permitted assigns. You may not assign Your
    obligations under this Agreement.

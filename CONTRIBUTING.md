@@ -204,10 +204,10 @@ Sediment is licensed under AGPL-3.0-or-later; `shims/` uses MIT
 Before a maintainer can merge your first pull request, sign the
 [Contributor License Agreement](CLA.md). A bot
 comments on the pull request with the exact reply to post; one signature
-covers all your later contributions. The CLA grants Eric Paulsen, who
+covers all your later contributions. The CLA grants PAULSEN'S LLC, which
 maintains Sediment, a license to your contribution, including the right to
 offer the Project under other license terms; you keep the copyright. The CLA
-lets the maintainer assign that license to a company formed to develop
+lets PAULSEN'S LLC assign that license to a successor company formed to develop
 Sediment. If you contribute for an employer, confirm that you have its
 permission first.
 
