@@ -39,12 +39,12 @@ Anthropic routes retain the same provider boundary.
 The Dockerfile records pinned input images and direct dependency updates.
 The PyJWT override uses 2.15.1, which includes the deeply nested payload
 error-handling fix and restores trailing Base64URL padding compatibility.
-The urllib3 override uses 2.8.0 to fix HTTPS proxy TLS configuration,
+LiteLLM 1.104.0 ships urllib3 2.8.0, which fixes HTTPS proxy TLS configuration,
 unbounded chunk-size lines, and chunked Deflate streaming.
 The cryptography override uses 50.0.2, the supported upstream release whose
 wheels bundle OpenSSL 4.0.3. The system OpenSSL packages retain their separate
 reviewed pins.
-The OAuthLib override uses 4.0.0 to fix CVE-2026-49264 and CVE-2026-49265.
+LiteLLM 1.104.0 ships OAuthLib 4.0.0, which fixes CVE-2026-49264 and CVE-2026-49265.
 Image tests reject the removed JSONP revocation option and exercise the
 authorization-code client in FastAPI SSO.
 Image labels record removed packages and source patches. The final software
@@ -80,7 +80,7 @@ The image also pins zlib to the reviewed Wolfi `1.3.2-r7` release. The pin
 prevents a release candidate from replacing the reviewed package during
 `apk upgrade`. The zlib finding retains its exact caller assessment and native
 symbol check; the pin doesn't repair the library. Review an available released
-fix before changing the pin. The pypdf override uses `6.19.0`, which bounds
+fix before changing the pin. LiteLLM 1.104.0 ships pypdf `6.19.0`, which bounds
 alphabetical PDF page labels; an image test verifies the reader's fallback.
 
 Wolfi ships OpenSSL 3.6.5 through its OpenSSL 4 transition: `libcrypto3` and
