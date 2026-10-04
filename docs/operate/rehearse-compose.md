@@ -185,7 +185,7 @@ loopback hosts.
 2. [Configure GitHub webhooks](../capture/managed-capture.md#configure-push-and-ci-capture)
    for Pushes, pull requests, repository changes, and continuous integration (CI)
    outcomes.
-3. Optional: [Enable bundled LiteLLM](#enable-bundled-litellm) or
+3. Optional: [Enable the LiteLLM gateway](#enable-the-litellm-gateway) or
    [connect an existing gateway](#connect-an-existing-litellm-gateway)
    for Inference calls. Keep the developer's selected model unchanged.
 
@@ -317,22 +317,29 @@ rerun provisioning. To stop and resume the same deployment, run
 `docker compose down`, then `docker compose up --wait --wait-timeout 120`.
 Keep `.env` and omit `--volumes` to retain credentials and Facts.
 
-### Enable bundled LiteLLM
+### Enable the LiteLLM gateway
 
-If you need the bundled Anthropic gateway, add `ANTHROPIC_API_KEY` to `.env`.
-Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
-supports `claude-*` routing; other providers require a separate gateway
-configuration. See the [gateway boundary](../../docker/gateway/README.md).
+The `gateway` profile runs the upstream LiteLLM image that `docker-compose.yml`
+pins, with Sediment's callback and `litellm/config.yaml` mounted read-only.
+Sediment doesn't build, patch, or scan that image, and release scans don't
+cover it. You own its updates and its vulnerability response.
+
+To enable it, add `ANTHROPIC_API_KEY` to `.env`. Keep the generated
+`LITELLM_MASTER_KEY` and gateway ingest token. The supplied configuration routes
+`claude-*` models to Anthropic; edit `litellm/config.yaml` for other providers.
 Agents authenticate with `LITELLM_MASTER_KEY`, which also administers the
-gateway. [Distribute gateway routing](../capture/managed-capture.md#distribute-gateway-routing)
+gateway. Without a database, LiteLLM rejects any other key, answering an
+unknown `sk-` key with 400 `No connected db.` [Distribute gateway routing](../capture/managed-capture.md#distribute-gateway-routing)
 defines how agents reach it.
 
 If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
 `sediment-delivery` named volume and owns a replay worker for its process
-lifetime. Leave the setting empty for direct best-effort delivery.
+lifetime. A one-shot `gateway-volume` service gives that volume to the gateway's
+non-root user before the gateway starts. Leave the setting empty for direct best-effort delivery.
 
-From the deployment checkout, build and start the gateway with its source identity:
+From the deployment checkout, build the Sediment images with their source
+identity and start the gateway profile:
 
 ```bash
 set -e
@@ -346,7 +353,7 @@ docker compose --profile gateway ps gateway
 Compose checks gateway liveness. Also require a successful authenticated model
 request and captured Inference call before declaring that path ready.
 If you use external ingress, route its HTTPS gateway hostname to
-`http://127.0.0.1:4000`. The bundled proxy instead serves the gateway at `/llm`
+`http://127.0.0.1:4000`. The supplied proxy instead serves the gateway at `/llm`
 on the API hostname. The gateway receives provider and ingest credentials, but no
 database credentials. Its callback sends Inference calls to `http://api:8000`.
 A capture failure doesn't retract a successful model response.
@@ -543,7 +550,7 @@ archive and connection options. Record the backup timestamp, restore result,
 and recovery duration. Test restoration before enrollment and after
 schema or backup-tool changes.
 
-If you enable the bundled gateway, review unresolved completion identity:
+If you enable the gateway, review unresolved completion identity:
 
 ```bash
 docker compose logs api | grep gateway_ingest_skipped_no_session
@@ -687,10 +694,10 @@ images, and dependencies inside your network.
 - **Compose recreates another checkout's containers:** both checkouts selected
   the same project name. Keep the original deployment's `.env` intact. Set a
   distinct project name and ports in the evaluation checkout before starting it.
-- **The bundled gateway exits during startup:** run
-  `docker compose logs gateway`. Its entrypoint names a missing
+- **The gateway exits during startup:** run
+  `docker compose logs gateway-volume gateway`. Its entrypoint names a missing
   `ANTHROPIC_API_KEY` or `LITELLM_MASTER_KEY` before LiteLLM starts.
-- **An agent receives no model response through the bundled gateway:** inspect
+- **An agent receives no model response through the gateway:** inspect
   `docker compose logs gateway` for client authentication, model routing, or
   Anthropic errors. The Sediment callback doesn't run until a model call
   succeeds.

@@ -101,9 +101,9 @@ agent service. `sediment install` doesn't configure gateway routing, and
 developers don't request a gateway credential.
 
 Give each machine a client credential that the gateway accepts and that can't
-administer the gateway. The bundled LiteLLM gateway accepts only
-`LITELLM_MASTER_KEY`, its administrative key, and can't issue per-developer
-keys. Keep that key on machines that you control.
+administer the gateway. The Compose LiteLLM gateway runs without a database, so
+it accepts only `LITELLM_MASTER_KEY`, its administrative key, and can't issue
+per-developer keys. Keep that key on machines that you control.
 
 Routed calls use the gateway's provider key. While a gateway credential is
 active, Claude Code doesn't use the developer's claude.ai subscription.
@@ -132,7 +132,7 @@ routing from its own configuration, not from this file.
 ### Codex
 
 Codex needs a gateway with a Responses API route for the developer's model. The
-bundled gateway serves only `claude-*` models. Distribute these files:
+Compose gateway's configuration routes only `claude-*` models. Distribute these files:
 
 1. A provider in `<Codex home>/config.toml`:
 

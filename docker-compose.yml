@@ -143,13 +143,28 @@ services:
       postgres:
         condition: service_healthy
 
+  # Upstream LiteLLM runs as root by default and has no /data/delivery. This
+  # one-shot service gives the optional delivery volume to the gateway user.
+  gateway-volume:
+    <<: *runtime
+    profiles: [gateway, https]
+    image: &litellm-image ghcr.io/berriai/litellm:v1.104.0@sha256:625981c83410a3ea68eb0697590a57ec1d764d634514d54fa5db0591077ee839
+    restart: "no"
+    user: "0:0"
+    cap_add: [CHOWN]
+    network_mode: none
+    mem_limit: 64m
+    cpus: 0.5
+    pids_limit: 16
+    entrypoint: [chown, "65532:65532", /data/delivery]
+    volumes:
+      - sediment-delivery:/data/delivery
+
   gateway:
     <<: *runtime
     profiles: [gateway, https]
-    build:
-      <<: *api-build
-      dockerfile: docker/gateway/Dockerfile
-    image: ${COMPOSE_PROJECT_NAME:-sediment}-gateway:local
+    image: *litellm-image
+    user: "65532:65532"
     mem_limit: 2g
     cpus: 2.0
     pids_limit: 256
@@ -169,7 +184,7 @@ services:
           echo "error: gateway profile requires SEDIMENT_GATEWAY_INGEST_TOKEN" >&2
           exit 1
         fi
-        exec python /usr/local/bin/sediment-gateway.py "$$@"
+        exec /app/docker/prod_entrypoint.sh "$$@"
       - sediment-gateway
     command: [--config, /app/config.yaml, --port, "4000"]
     ports:
@@ -183,6 +198,7 @@ services:
       SEDIMENT_DELIVERY_DIR: "${SEDIMENT_DELIVERY_DIR:-}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:-}"
+      HOME: /tmp
       PYTHONPATH: /app
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
@@ -194,6 +210,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      gateway-volume:
+        condition: service_completed_successfully
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)"]
       interval: 5s

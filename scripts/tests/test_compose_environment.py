@@ -13,6 +13,10 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
+UPSTREAM_GATEWAY_IMAGE = (
+    "ghcr.io/berriai/litellm:v1.104.0"
+    "@sha256:625981c83410a3ea68eb0697590a57ec1d764d634514d54fa5db0591077ee839"
+)
 
 
 def _compose_config(
@@ -109,6 +113,7 @@ def test_compose_passes_each_secret_only_to_the_process_that_uses_it(
         "SEDIMENT_GATEWAY_LOCAL_HTTP_ORIGIN",
         "ANTHROPIC_API_KEY",
         "LITELLM_MASTER_KEY",
+        "HOME",
         "PYTHONPATH",
         "SEDIMENT_API_BEARER_TOKEN",
         "SEDIMENT_INGEST_URL",
@@ -197,7 +202,8 @@ def test_parallel_deployments_keep_ports_volumes_and_image_tags_separate(tmp_pat
     for name in ("api", "migrate", "operator"):
         assert services[name]["image"] == "pilot-check-api:local"
     assert services["postgres"]["image"] == "pilot-check-postgres:local"
-    assert services["gateway"]["image"] == "pilot-check-gateway:local"
+    assert services["gateway"]["image"] == UPSTREAM_GATEWAY_IMAGE
+    assert services["gateway-volume"]["image"] == UPSTREAM_GATEWAY_IMAGE
     assert all(v["name"].startswith("pilot-check_") for v in config["volumes"].values())
 
 
@@ -213,9 +219,12 @@ def test_default_compose_keeps_existing_ports_and_image_names(tmp_path):
     assert result.returncode == 0, result.stderr
     config = json.loads(result.stdout)
     assert config["name"] == "sediment"
-    for name, port in (("api", "8000"), ("gateway", "4000")):
+    for name, port, image in (
+        ("api", "8000", "sediment-api:local"),
+        ("gateway", "4000", UPSTREAM_GATEWAY_IMAGE),
+    ):
         service = config["services"][name]
-        assert service["image"] == f"sediment-{name}:local"
+        assert service["image"] == image
         assert service["ports"][0]["host_ip"] == "127.0.0.1"
         assert service["ports"][0]["published"] == port
 
@@ -245,8 +254,8 @@ def _gateway_process(
     }
     environment = os.environ.copy()
     environment.update(values)
-    image_entrypoint = tmp_path / "sediment-gateway.py"
-    image_entrypoint.write_text("raise SystemExit(0)\n", encoding="utf-8")
+    image_entrypoint = tmp_path / "prod_entrypoint.sh"
+    image_entrypoint.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     image_entrypoint.chmod(0o755)
     project = _compose_project(tmp_path, values)
     result = _compose_config(project, environment)
@@ -256,7 +265,7 @@ def _gateway_process(
     assert isinstance(entrypoint, list), "gateway has no runtime key validation"
     runtime_entrypoint = [
         part.replace("$$", "$").replace(
-            "/usr/local/bin/sediment-gateway.py", str(image_entrypoint)
+            "/app/docker/prod_entrypoint.sh", str(image_entrypoint)
         )
         if isinstance(part, str)
         else part

@@ -163,14 +163,16 @@ jobs:
           SEDIMENT_TEST_COMPOSE: "1"
           SEDIMENT_TEST_API_IMAGE: sediment-ci-api
           SEDIMENT_TEST_POSTGRES_IMAGE: sediment-ci-postgres
-          SEDIMENT_TEST_GATEWAY_IMAGE: sediment-ci-gateway
           SEDIMENT_TEST_PROXY_IMAGE: sediment-ci-proxy
         run: |
           set -euo pipefail
           docker build -t sediment-ci-api .
-          docker build -f docker/gateway/Dockerfile -t sediment-ci-gateway .
           docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
           uv run pytest -q scripts/tests/test_pilot_compose.py
+          # The gateway runs the upstream LiteLLM image that Compose pins.
+          gateway_image="$(sed -n 's/^ *image: &litellm-image //p' docker-compose.yml)"
+          SEDIMENT_TEST_GATEWAY_IMAGE="$gateway_image" \
+            uv run pytest -q scripts/tests/test_container_images.py -k gateway
       # Build and inspect all twelve distribution artifacts, then install and
       # exercise the six wheels without publishing. This is the pull request's
       # one complete rehearsal; the test suite covers its failure paths at

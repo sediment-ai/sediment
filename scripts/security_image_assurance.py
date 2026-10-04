@@ -63,153 +63,6 @@ class AssuranceFailure(Exception):
     """A required observation could not be established."""
 
 
-# zlib's convenience gzFile write API (CVE-2026-85091 requires a caller to
-# reach gzprintf/gzvprintf, or the gzwrite/gzputc/gzputs/gzflush/gzsetparams
-# paths that share its gz_write()/gz_vacate() implementation) on a
-# non-blocking descriptor. The low-level deflate/inflate/checksum API is
-# unaffected.
-GZ_WRITE_API_SYMBOLS = frozenset(
-    {
-        "gzprintf",
-        "gzvprintf",
-        "gzwrite",
-        "gzwrite64",
-        "gzputc",
-        "gzputs",
-        "gzflush",
-        "gzsetparams",
-    }
-)
-# libxml2 is optionally built with its own bundled zlib for gzip-file I/O.
-# These reviewed gateway extensions statically embed that API for SAML XML
-# processing. Their Python callers require a separate exact-image review
-# (docs/operate/security.md); symbol inspection cannot establish whether Python
-# opens a gzip filename. Any other static embed is unreviewed and revokes the
-# predicate.
-REVIEWED_STATIC_GZ_WRITE_EMBEDS = frozenset(
-    {
-        "app/.venv/lib/python3.13/site-packages/lxml/etree.cpython-313-aarch64-linux-gnu.so",
-        "app/.venv/lib/python3.13/site-packages/lxml/etree.cpython-313-x86_64-linux-gnu.so",
-        "app/.venv/lib/python3.13/site-packages/lxml/objectify.cpython-313-aarch64-linux-gnu.so",
-        "app/.venv/lib/python3.13/site-packages/lxml/objectify.cpython-313-x86_64-linux-gnu.so",
-        "app/.venv/lib/python3.13/site-packages/xmlsec.cpython-313-aarch64-linux-gnu.so",
-        "app/.venv/lib/python3.13/site-packages/xmlsec.cpython-313-x86_64-linux-gnu.so",
-    }
-)
-
-
-def _elf_symbol_names(readelf_output: str, *, undefined_only: bool) -> set[str]:
-    names: set[str] = set()
-    for line in readelf_output.splitlines():
-        fields = line.split()
-        if len(fields) < 8 or fields[3] != "FUNC":
-            continue
-        is_undefined = fields[6] == "UND"
-        if is_undefined != undefined_only:
-            continue
-        names.add(fields[7].split("@", 1)[0])
-    return names
-
-
-def gzip_write_api_reachability(
-    symbols: dict[str, tuple[set[str], set[str]]],
-) -> dict[str, list[str]]:
-    """Classify observed ELF files against zlib's non-blocking gzip write API.
-
-    `symbols` maps each file's path (relative to the image root) to a pair of
-    (undefined dynamic-import names, all defined symbol names) drawn from its
-    ELF symbol tables.
-    """
-    dynamic_importers = sorted(
-        path
-        for path, (undefined, _) in symbols.items()
-        if undefined & GZ_WRITE_API_SYMBOLS
-    )
-    unexpected_static_embeds = sorted(
-        path
-        for path, (_, defined) in symbols.items()
-        if defined & GZ_WRITE_API_SYMBOLS
-        and path not in REVIEWED_STATIC_GZ_WRITE_EMBEDS
-        and not Path(path).name.startswith("libz.so")
-    )
-    return {
-        "dynamic_importers": dynamic_importers,
-        "unexpected_static_embeds": unexpected_static_embeds,
-    }
-
-
-def gzip_write_api_unreachable(image_id: str) -> bool:
-    """Check native imports and static embeds of the vulnerable write API.
-
-    Extracts the immutable image filesystem and inspects every ELF file's
-    symbol tables with readelf: no file may dynamically import the gzip
-    convenience write API from the system zlib, and no file outside the
-    reviewed static-embed set may define it either. Python callers of the
-    permitted static embeds require a separate manual review.
-    """
-    if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
-        raise AssuranceFailure("exact image identifier required")
-    name = "sediment-assurance-elf-" + uuid4().hex
-    try:
-        run(
-            ["docker", "create", "--name", name, "--network", "none", image_id],
-            timeout=60,
-        )
-        with tempfile.TemporaryDirectory(prefix="sediment-assurance-elf-") as temporary:
-            extracted = Path(temporary) / "rootfs"
-            extracted.mkdir()
-            try:
-                export = subprocess.Popen(
-                    ["docker", "export", name], stdout=subprocess.PIPE
-                )
-                tar = subprocess.run(
-                    ["tar", "-x", "-C", str(extracted)],
-                    stdin=export.stdout,
-                    capture_output=True,
-                    timeout=180,
-                )
-                if export.stdout is not None:
-                    export.stdout.close()
-                export.wait(timeout=60)
-            except (OSError, subprocess.TimeoutExpired) as error:
-                raise AssuranceFailure(
-                    f"required observation failed ({type(error).__name__})"
-                ) from None
-            del tar  # Device-node extraction failures under an unprivileged runner are expected.
-            symbols: dict[str, tuple[set[str], set[str]]] = {}
-            for base, _, files in os.walk(extracted, followlinks=False):
-                for filename in files:
-                    path = Path(base) / filename
-                    if path.is_symlink() or not path.is_file():
-                        continue
-                    try:
-                        with path.open("rb") as handle:
-                            if handle.read(4) != b"\x7fELF":
-                                continue
-                    except OSError:
-                        continue
-                    dyn = run(
-                        ["readelf", "--dyn-syms", "-W", str(path)],
-                        check=False,
-                        timeout=30,
-                    )
-                    full = run(["readelf", "-sW", str(path)], check=False, timeout=30)
-                    relative = path.relative_to(extracted).as_posix()
-                    symbols[relative] = (
-                        _elf_symbol_names(dyn, undefined_only=True),
-                        _elf_symbol_names(full, undefined_only=False),
-                    )
-            if not symbols:
-                raise AssuranceFailure("no ELF files were observed in the image")
-    finally:
-        run(["docker", "rm", "--force", "--volumes", name], check=False)
-    classification = gzip_write_api_reachability(symbols)
-    return (
-        not classification["dynamic_importers"]
-        and not classification["unexpected_static_embeds"]
-    )
-
-
 def source_digest(root: Path = ROOT) -> str:
     """Hash deployed source paths, content, and executable bits in stable order."""
     return _tree_digest(root, SOURCE_FILES, SOURCE_DIRS)
@@ -382,6 +235,10 @@ def _database_target(value: object, user: str, password: str) -> bool:
         return False
 
 
+CAPABILITIES = {"postgres": PG_CAPS, "gateway-volume": {"CHOWN"}}
+USERS = {"gateway": "65532:65532", "gateway-volume": "0:0"}
+
+
 def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
     """Validate the fixed supported service topology, never an arbitrary deployment."""
     failed = dict.fromkeys(DEPLOYMENT_KEYS, False)
@@ -393,6 +250,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             "api",
             "operator",
             "gateway",
+            "gateway-volume",
             "proxy",
         } or not all(isinstance(s, dict) for s in services.values()):
             return failed
@@ -412,7 +270,13 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                 "database" in services[n].get("networks", {})
                 for n in ("api", "migrate", "operator")
             )
-            and not any(s.get("network_mode") for s in services.values())
+            and not any(
+                s.get("network_mode")
+                for name, s in services.items()
+                if name != "gateway-volume"
+            )
+            and services["gateway-volume"].get("network_mode") == "none"
+            and not services["gateway-volume"].get("networks")
         )
         pg_env, migration_env, api_env, operator_env, gateway_env = (
             s.get("environment", {}) for s in (pg, migration, api, operator, gateway)
@@ -519,6 +383,7 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
                 ("sediment-staging", "/data/staging"),
             },
             "gateway": {("sediment-delivery", "/data/delivery")},
+            "gateway-volume": {("sediment-delivery", "/data/delivery")},
             "proxy": {("sediment-certificates", "/data")},
         }
         mounts = not any(
@@ -556,20 +421,26 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             and _positive(s.get("logging", {}).get("options", {}).get("max-file"))
             for s in services.values()
         )
+        # Upstream LiteLLM defaults to root: the gateway runs as a fixed user, and
+        # only the one-shot volume owner step keeps root, limited to chown.
         capabilities = all(
             set(s.get("cap_drop", [])) == {"ALL"}
-            and set(s.get("cap_add", [])) == (PG_CAPS if name == "postgres" else set())
+            and set(s.get("cap_add", [])) == CAPABILITIES.get(name, set())
             and bool(s.get("security_opt"))
             and set(s["security_opt"])
             <= {"no-new-privileges:true", "no-new-privileges"}
             and not any(
                 s.get(key) for key in ("privileged", "devices", "device_cgroup_rules")
             )
-            and not s.get("user")
+            and s.get("user") == USERS.get(name)
             and s.get("pid") != "host"
             and s.get("ipc") != "host"
             for name, s in services.items()
-        )
+        ) and services["gateway-volume"].get("entrypoint") == [
+            "chown",
+            "65532:65532",
+            "/data/delivery",
+        ]
         scram = f"hba_file={HBA_TARGET}" in pg.get("command", []) and any(
             str(Path(m.get("source", "")).resolve())
             == str((root / "docker/postgres/pg_hba.conf").resolve())
@@ -621,51 +492,6 @@ printf '}\n'
 """
 
 
-GATEWAY_CALLER_PROBE = r"""
-import hashlib
-import json
-import os
-import sysconfig
-from pathlib import Path
-
-root = Path(sysconfig.get_paths()["purelib"])
-handler = root / "litellm/proxy/management_endpoints/sso/saml_sso.py"
-saml = root / "onelogin/saml2"
-
-
-def require_regular(path, *, directory=False):
-    if any(parent.is_symlink() for parent in (path, *path.parents)):
-        raise RuntimeError("gateway caller path is a symlink")
-    if not (path.is_dir() if directory else path.is_file()):
-        raise RuntimeError("gateway caller path is absent or not regular")
-
-
-def walk_error(error):
-    raise RuntimeError("gateway caller directory cannot be read") from None
-
-
-require_regular(handler)
-require_regular(saml, directory=True)
-files = [handler]
-for base, directories, names in os.walk(saml, followlinks=False, onerror=walk_error):
-    for directory in directories:
-        require_regular(Path(base) / directory, directory=True)
-    for name in names:
-        if name.endswith(".py"):
-            path = Path(base) / name
-            require_regular(path)
-            files.append(path)
-if len(files) == 1:
-    raise RuntimeError("gateway SAML caller sources are absent")
-result = {}
-for path in sorted(files):
-    with path.open("rb") as source:
-        digest = hashlib.file_digest(source, "sha256").hexdigest()
-    result[path.relative_to(root).as_posix()] = digest
-print(json.dumps(result, sort_keys=True))
-"""
-
-
 def _container_probe(image_id: str, script: str, *, root_user: bool = False) -> dict:
     # Read-search permits a complete file inventory through private directories.
     # It is exclusive to this networkless, read-only inventory container.
@@ -714,7 +540,7 @@ def _container_probe(image_id: str, script: str, *, root_user: bool = False) -> 
 def probe_image(image_id: str, artifact: str, architecture: str) -> dict:
     if (
         not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id)
-        or artifact not in {"api", "postgres", "gateway"}
+        or artifact not in {"api", "postgres"}
         or architecture not in {"amd64", "arm64"}
     ):
         raise AssuranceFailure(
@@ -762,34 +588,8 @@ def probe_image(image_id: str, artifact: str, architecture: str) -> dict:
             **filesystem,
             "git_default_config": user["git_default_config"],
             "nonroot_user": user["uid"] != 0,
-            "gzip_write_api_unreachable": gzip_write_api_unreachable(image_id),
         },
     }
-
-
-def probe_gateway_callers(image_id: str) -> dict[str, str]:
-    """Retain exact caller file identities for manual review, never a verdict."""
-    if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
-        raise AssuranceFailure("exact gateway image identifier required")
-    files = _container_probe(
-        image_id, "python - <<'PY'\n" + GATEWAY_CALLER_PROBE + "\nPY\n"
-    )
-    handler = "litellm/proxy/management_endpoints/sso/saml_sso.py"
-    if (
-        handler not in files
-        or not any(name.startswith("onelogin/saml2/") for name in files)
-        or any(
-            not isinstance(name, str)
-            or (name != handler and not name.startswith("onelogin/saml2/"))
-            or not name.endswith(".py")
-            or ".." in Path(name).parts
-            or not isinstance(digest, str)
-            or not re.fullmatch(r"[a-f0-9]{64}", digest)
-            for name, digest in files.items()
-        )
-    ):
-        raise AssuranceFailure("gateway caller file evidence is incomplete")
-    return files
 
 
 def probe_postgres(image_id: str, root: Path = ROOT) -> dict:
@@ -923,8 +723,6 @@ def collect_assurance(
         "postgres": postgres,
         "deployment": deployment,
     }
-    if artifact == "gateway":
-        record["gateway_caller_files"] = probe_gateway_callers(image_id)
     out.mkdir(parents=True, exist_ok=True)
     (out / f"{artifact}-{architecture}.assurance.json").write_text(
         json.dumps(record, indent=2, sort_keys=True) + "\n"
@@ -943,7 +741,7 @@ def main(argv: list[str] | None = None) -> int:
         "collect", help="measure an exact image and checked-in deployment"
     )
     collect.add_argument("image_id")
-    collect.add_argument("artifact", choices=("api", "postgres", "gateway"))
+    collect.add_argument("artifact", choices=("api", "postgres"))
     collect.add_argument("architecture", choices=("amd64", "arm64"))
     collect.add_argument("out", type=Path)
     args = parser.parse_args(argv)

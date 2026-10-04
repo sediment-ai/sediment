@@ -4,12 +4,10 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import importlib.util
 import json
 import os
 import shutil
-import sysconfig
 from pathlib import Path
 
 import pytest
@@ -184,7 +182,16 @@ def deployment(root):
         "SEDIMENT_DATABASE_URL": "postgresql+psycopg://sediment_operator:db-operator@postgres:5432/sediment"
     }
     services["api"]["networks"]["edge"] = {}
+    services["gateway-volume"] = copy.deepcopy(runtime)
+    del services["gateway-volume"]["networks"]
+    services["gateway-volume"].update(
+        user="0:0",
+        cap_add=["CHOWN"],
+        network_mode="none",
+        entrypoint=["chown", "65532:65532", "/data/delivery"],
+    )
     services["gateway"].update(
+        user="65532:65532",
         networks={"edge": {}},
         environment={
             "SEDIMENT_API_BEARER_TOKEN": "gateway-token",
@@ -311,6 +318,26 @@ def test_proxy_cannot_receive_application_credentials(tmp_path, secret):
         (
             lambda c: c["services"]["api"].update(privileged=True),
             "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway-volume"]["cap_add"].append("FOWNER"),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway-volume"].update(entrypoint=["sh"]),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway"].update(user="0:0"),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["api"].update(user="0:0"),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway-volume"].pop("network_mode"),
+            "database_isolated",
         ),
         (
             lambda c: c["services"]["postgres"].update(read_only=False),
@@ -470,255 +497,4 @@ def test_conflicting_privilege_options_do_not_count_as_protection(tmp_path):
     )
 
 
-def test_gzip_write_api_reachability_accepts_the_reviewed_static_embeds():
-    module = assurance()
-    reviewed = next(iter(module.REVIEWED_STATIC_GZ_WRITE_EMBEDS))
-    classification = module.gzip_write_api_reachability(
-        {
-            "usr/lib/libz.so.1.3.2": (set(), {"gzprintf", "gzwrite", "gz_write"}),
-            "usr/bin/apk": ({"uncompress"}, set()),
-            "usr/lib/python3.13/lib-dynload/zlib.so": (
-                {"deflate", "inflate", "crc32"},
-                set(),
-            ),
-            reviewed: (set(), {"gzprintf", "gzvprintf", "gzwrite"}),
-        }
-    )
-    assert classification == {"dynamic_importers": [], "unexpected_static_embeds": []}
-
-
-def test_gzip_write_api_reachability_flags_a_new_dynamic_importer():
-    module = assurance()
-    classification = module.gzip_write_api_reachability(
-        {"app/plugin.so": ({"gzprintf"}, set())}
-    )
-    assert classification["dynamic_importers"] == ["app/plugin.so"]
-    assert classification["unexpected_static_embeds"] == []
-
-
-def test_gzip_write_api_reachability_flags_an_unreviewed_static_embed():
-    module = assurance()
-    classification = module.gzip_write_api_reachability(
-        {"app/.venv/lib/python3.13/site-packages/unexpected.so": (set(), {"gzvprintf"})}
-    )
-    assert classification["dynamic_importers"] == []
-    assert classification["unexpected_static_embeds"] == [
-        "app/.venv/lib/python3.13/site-packages/unexpected.so"
-    ]
-
-
-def test_gzip_write_api_reachability_ignores_unrelated_symbols():
-    module = assurance()
-    classification = module.gzip_write_api_reachability(
-        {
-            "app/harmless.so": ({"printf", "malloc"}, {"gzip_helper_unrelated"}),
-        }
-    )
-    assert classification == {"dynamic_importers": [], "unexpected_static_embeds": []}
-
-
-def test_elf_symbol_names_parses_readelf_dyn_syms_output():
-    module = assurance()
-    output = (
-        "   1: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND gzprintf@@ZLIB_1.2.7.1\n"
-        "   2: 0000000000000000     0 FUNC    GLOBAL DEFAULT   11 deflate\n"
-        "   3: 0000000000000000     0 OBJECT  GLOBAL DEFAULT  UND some_data\n"
-    )
-    assert module._elf_symbol_names(output, undefined_only=True) == {"gzprintf"}
-    assert module._elf_symbol_names(output, undefined_only=False) == {"deflate"}
-
-
-def test_gzip_write_api_unreachable_rejects_a_malformed_image_id():
-    module = assurance()
-    with pytest.raises(module.AssuranceFailure):
-        module.gzip_write_api_unreachable("not-a-digest")
-
-
-def test_real_gateway_image_gzip_write_api(tmp_path):
-    module = assurance()
-    image = os.environ.get("SEDIMENT_TEST_GATEWAY_IMAGE")
-    if not image:
-        pytest.skip(
-            "set SEDIMENT_TEST_GATEWAY_IMAGE for a disposable native ELF-symbol scan"
-        )
-    inspected = json.loads(module.run(["docker", "image", "inspect", image]))[0]
-    assert module.gzip_write_api_unreachable(inspected["Id"]) is True
-
-
 HANDLER = "litellm/proxy/management_endpoints/sso/saml_sso.py"
-
-
-def gateway_callers(root):
-    root = root.resolve()
-    for name in (HANDLER, "onelogin/saml2/utils.py", "onelogin/saml2/nested/extra.py"):
-        path = root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(name)
-    (root / "onelogin/saml2/ignored.txt").write_text("not Python source")
-    return root
-
-
-def execute_gateway_probe(module, root, monkeypatch):
-    monkeypatch.setattr(sysconfig, "get_paths", lambda: {"purelib": str(root)})
-    exec(module.GATEWAY_CALLER_PROBE, {})
-
-
-def test_gateway_probe_hashes_every_actual_python_source(tmp_path, monkeypatch, capsys):
-    module = assurance()
-    root = gateway_callers(tmp_path)
-    execute_gateway_probe(module, root, monkeypatch)
-    files = json.loads(capsys.readouterr().out)
-    assert files == {
-        name: hashlib.sha256(name.encode()).hexdigest()
-        for name in (
-            HANDLER,
-            "onelogin/saml2/utils.py",
-            "onelogin/saml2/nested/extra.py",
-        )
-    }
-    added = root / "onelogin/saml2/previously_unlisted.py"
-    added.write_bytes(b"extra caller")
-    (root / "onelogin/saml2/utils.py").write_bytes(b"modified caller")
-    execute_gateway_probe(module, root, monkeypatch)
-    changed = json.loads(capsys.readouterr().out)
-    assert (
-        changed[added.relative_to(root).as_posix()]
-        == hashlib.sha256(b"extra caller").hexdigest()
-    )
-    assert changed["onelogin/saml2/utils.py"] != files["onelogin/saml2/utils.py"]
-    assert set(changed) == set(files) | {added.relative_to(root).as_posix()}
-
-
-@pytest.mark.parametrize("missing", [HANDLER, "onelogin/saml2", "all_saml_python"])
-def test_gateway_probe_refuses_absent_sources(tmp_path, monkeypatch, capsys, missing):
-    root = gateway_callers(tmp_path)
-    if missing == "all_saml_python":
-        for path in (root / "onelogin/saml2").rglob("*.py"):
-            path.unlink()
-    elif (root / missing).is_dir():
-        shutil.rmtree(root / missing)
-    else:
-        (root / missing).unlink()
-    with pytest.raises(RuntimeError, match="absent"):
-        execute_gateway_probe(assurance(), root, monkeypatch)
-    assert capsys.readouterr().out == ""
-
-
-@pytest.mark.parametrize(
-    "linked", [HANDLER, "onelogin", "onelogin/saml2/nested", "onelogin/saml2/utils.py"]
-)
-def test_gateway_probe_refuses_symlinked_sources(tmp_path, monkeypatch, capsys, linked):
-    root = gateway_callers(tmp_path / "site-packages")
-    path = root / linked
-    target = tmp_path / "outside"
-    path.rename(target)
-    path.symlink_to(target, target_is_directory=target.is_dir())
-    with pytest.raises(RuntimeError, match="symlink"):
-        execute_gateway_probe(assurance(), root, monkeypatch)
-    assert capsys.readouterr().out == ""
-
-
-@pytest.mark.parametrize("fails", [False, True])
-def test_gateway_probe_uses_confined_exact_image_and_always_cleans_up(
-    monkeypatch, fails
-):
-    module = assurance()
-    image = "sha256:" + "a" * 64
-    files = {HANDLER: "b" * 64, "onelogin/saml2/utils.py": "c" * 64}
-    calls = []
-
-    def run(command, **kwargs):
-        calls.append(command)
-        if command[1] == "start":
-            if fails:
-                raise module.AssuranceFailure("caller path is absent")
-            return json.dumps(files)
-        return ""
-
-    monkeypatch.setattr(module, "run", run)
-    if fails:
-        with pytest.raises(module.AssuranceFailure, match="absent"):
-            module.probe_gateway_callers(image)
-    else:
-        assert module.probe_gateway_callers(image) == files
-    create, start, remove = calls
-    for flag, value in (
-        ("--network", "none"),
-        ("--cap-drop", "ALL"),
-        ("--security-opt", "no-new-privileges"),
-        ("--entrypoint", "/bin/sh"),
-    ):
-        assert create[create.index(flag) + 1] == value
-    assert "--read-only" in create
-    assert "--cap-add" not in create
-    assert create[create.index("/bin/sh") + 1] == image
-    assert module.GATEWAY_CALLER_PROBE in create[-1]
-    name = create[create.index("--name") + 1]
-    assert start == ["docker", "start", "--attach", name]
-    assert remove == ["docker", "rm", "--force", "--volumes", name]
-
-
-@pytest.mark.parametrize(
-    "files",
-    [
-        {},
-        {HANDLER: "b" * 64},
-        {"onelogin/saml2/utils.py": "c" * 64},
-        {HANDLER: "invalid", "onelogin/saml2/utils.py": "c" * 64},
-        {HANDLER: "b" * 64, "onelogin/saml2/../escape.py": "c" * 64},
-        {HANDLER: "b" * 64, "onelogin/saml2/utils.txt": "c" * 64},
-        {HANDLER: "b" * 64, "onelogin/saml2/utils.py": "c" * 64, "other.py": "d" * 64},
-    ],
-)
-def test_gateway_probe_rejects_incomplete_or_malformed_evidence(monkeypatch, files):
-    module = assurance()
-    monkeypatch.setattr(module, "_container_probe", lambda *a, **k: files)
-    with pytest.raises(module.AssuranceFailure, match="incomplete"):
-        module.probe_gateway_callers("sha256:" + "a" * 64)
-
-
-def test_gateway_probe_rejects_a_mutable_image_reference(monkeypatch):
-    module = assurance()
-    monkeypatch.setattr(
-        module, "_container_probe", lambda *a, **k: pytest.fail("ran image")
-    )
-    with pytest.raises(module.AssuranceFailure, match="exact"):
-        module.probe_gateway_callers("gateway:latest")
-
-
-@pytest.mark.parametrize("artifact", ["gateway", "api"])
-def test_caller_evidence_is_retained_only_for_gateway(tmp_path, monkeypatch, artifact):
-    module = assurance()
-    root = source_tree(tmp_path / "source")
-    image = "sha256:" + "a" * 64
-    files = {HANDLER: "b" * 64, "onelogin/saml2/utils.py": "c" * 64}
-    monkeypatch.setattr(module, "probe_image", lambda *args: {"predicates": {}})
-    monkeypatch.setattr(module, "render_deployment", deployment)
-
-    def probe(image_id):
-        assert artifact == "gateway"
-        assert image_id == image
-        return files
-
-    monkeypatch.setattr(module, "probe_gateway_callers", probe)
-    out = tmp_path / "evidence"
-    result = module.collect_assurance(image, artifact, "amd64", out, root=root)
-    retained = json.loads((out / f"{artifact}-amd64.assurance.json").read_text())
-    assert retained == result
-    assert result["image_id"] == image
-    assert "gateway_caller_files" not in result["predicates"]
-    if artifact == "gateway":
-        assert result["gateway_caller_files"] == files
-    else:
-        assert "gateway_caller_files" not in result
-
-
-def test_real_gateway_caller_evidence():
-    module = assurance()
-    image = os.environ.get("SEDIMENT_TEST_GATEWAY_IMAGE")
-    if not image:
-        pytest.skip("set SEDIMENT_TEST_GATEWAY_IMAGE for exact caller collection")
-    inspected = json.loads(module.run(["docker", "image", "inspect", image]))[0]
-    files = module.probe_gateway_callers(inspected["Id"])
-    assert HANDLER in files
-    assert any(name.startswith("onelogin/saml2/") for name in files)
