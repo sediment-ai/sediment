@@ -2,18 +2,6 @@
 
 ## Unreleased
 
-### Upgrade notes
-
-- The Compose `gateway` profile runs the upstream LiteLLM image pinned in
-  `docker-compose.yml` instead of building `docker/gateway/Dockerfile`, which is
-  removed. Sediment no longer patches, scans, or gates the gateway; you own its
-  updates. Keep your `.env`: the profile, port, keys, and `sediment-delivery`
-  volume are unchanged. A one-shot `gateway-volume` service gives that volume
-  to the gateway's non-root user. Without a database, LiteLLM answers an unknown
-  `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
-  security inventories; retained releases through 0.5.0 keep their gateway
-  evidence, which daily rescans verify and skip. Closes #251.
-
 ### Security
 
 - Keep URL credentials out of notes-push diagnostics. Git hands the `pre-push`
@@ -28,18 +16,40 @@
   `grep -n '://.*@' ~/.sediment/attribution.log*`. If a line shows a password
   or token, rotate that credential and delete the file. A line that shows only
   a login, such as `ssh://git@host/repo.git`, needs no action. Closes #266.
-- Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
-  below 2 without importing it; the gateway's guarded metadata patch declares
-  the tested Hub 2.1.1 for LiteLLM as it does for Tokenizers. The vendor image
-  ships pypdf 6.19.0, oauthlib 4.0.0, and urllib3 2.8.0, so the gateway drops
-  those overrides.
-- Update the gateway to OpenSSL 3.6.5 through Wolfi's OpenSSL 4 transition.
+
+## 0.6.0 — 2026-10-04
+
+### Upgrade notes
+
+- The Compose `gateway` profile runs the upstream LiteLLM image pinned in
+  `docker-compose.yml` instead of building `docker/gateway/Dockerfile`, which is
+  removed. Sediment no longer patches, scans, or gates the gateway; you own its
+  updates. Keep your `.env`: the profile, port, keys, and `sediment-delivery`
+  volume are unchanged. A one-shot `gateway-volume` service gives that volume
+  to the gateway's non-root user. Without a database, LiteLLM answers an unknown
+  `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
+  security inventories; retained releases through 0.5.0 keep their gateway
+  evidence, which rescans verify and skip. Closes #251.
+
+### Security
+
+- Pin the Compose gateway to the upstream LiteLLM 1.104.0 image by digest.
 - Update the API image and CI to Python 3.12.15, and every image and workflow
   to uv 0.12.23.
 - Accept Debian's fixed PCRE2 `10.42-1+deb12u2` build in the API and
   PostgreSQL image reviews while Trivy's Debian data lags.
 - Renew the maintenance catalog and image dispositions through 2026-11-02, and
   drop four Expat dispositions the API image no longer needs.
+- Pause the scheduled retained-release rescan until it checks each release
+  against that release's own reviews (#249). Maintainers run it on demand.
+
+### Project
+
+- Contributions require a signed Contributor License Agreement (`CLA.md`).
+  PAULSEN'S LLC maintains Sediment and holds its copyright; the code stays
+  AGPL-3.0-or-later.
+- The `sediment-cli` PyPI page shows a project description, and the README
+  leads with the PyPI installation.
 
 ## 0.5.0 — 2026-10-03
 
