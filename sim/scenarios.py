@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Tier A scenario harness: Group 1 attribution ground truth.
+"""Scenario harness: Group 1 attribution ground truth.
 
 Runs synthetic scenarios against the real pipeline in-process: the
 generated simcorp-billing repo (``gen_repo.py``) plus scripted capture
@@ -2641,7 +2641,7 @@ if __name__ == "__main__":
     import argparse
     import tempfile
 
-    parser = argparse.ArgumentParser(description="Run the Tier A sim scenarios")
+    parser = argparse.ArgumentParser(description="Run the simulation scenarios")
     parser.add_argument(
         "--workdir", help="working directory (default: a fresh temp dir)"
     )
