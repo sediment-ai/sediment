@@ -441,6 +441,12 @@ def deployment_predicates(config: dict, root: Path = ROOT) -> dict[str, bool]:
             "65532:65532",
             "/data/delivery",
         ]
+        # Root is granted only to the gateway's own image, for that one command.
+        capabilities = (
+            capabilities
+            and services["gateway-volume"].get("image") == gateway.get("image")
+            and not services["gateway-volume"].get("command")
+        )
         scram = f"hba_file={HBA_TARGET}" in pg.get("command", []) and any(
             str(Path(m.get("source", "")).resolve())
             == str((root / "docker/postgres/pg_hba.conf").resolve())

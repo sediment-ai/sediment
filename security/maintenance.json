@@ -2,21 +2,6 @@
   "expires_on": "2026-11-02",
   "owner": "Sediment maintainers",
   "packages": {
-    "apk/libogg-libs": {
-      "basis": "Reviewed the active Wolfi build recipe and signed-repository package in the updated gateway. Rolling distribution maintenance; no fixed upstream support date is inferred.",
-      "evidence": "https://github.com/wolfi-dev/os/blob/main/libogg.yaml",
-      "provider": "Wolfi",
-      "source": "https://github.com/wolfi-dev/os/blob/main/libogg.yaml",
-      "source_package": "libogg",
-      "source_versions": [
-        "1.3.6-r9"
-      ],
-      "status": "maintained",
-      "support_kind": "distribution_maintenance",
-      "versions": [
-        "1.3.6-r9"
-      ]
-    },
     "deb/adduser": {
       "basis": "Debian 12 packaged source receives distribution maintenance. debian-security-support 1:12+2026.06.30 reported no ended, limited, or scheduled early-end exclusions for either final image architecture; full package revisions are required.",
       "evidence": "https://wiki.debian.org/LTS",
@@ -2609,7 +2594,7 @@
       ]
     },
     "pypi/opentelemetry-api": {
-      "basis": "Reviewed 2026-09-29: upstream release 1.45.0 publishes the API for Python >=3.10; PyPI artifacts are unwithdrawn. The client resolves this API through FastAPI 0.142.0. The gateway retains its matched 1.44.0 API/SDK set. This maintenance assessment expires with the catalog.",
+      "basis": "Reviewed 2026-09-29: upstream release 1.45.0 publishes the API for Python >=3.10; PyPI artifacts are unwithdrawn. The client resolves this API through FastAPI 0.142.0. This maintenance assessment expires with the catalog.",
       "evidence": "https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.45.0",
       "provider": "Upstream project",
       "source": "https://github.com/open-telemetry/opentelemetry-python",
@@ -2674,7 +2659,7 @@
       ]
     },
     "pypi/python-dotenv": {
-      "basis": "Reviewed 2026-10-01 against the unwithdrawn 1.2.4 release and upstream security policy. Upstream applies security fixes only to the latest release. The release fixes empty-value parsing and CLI variable expansion while retaining Python >=3.10. The locked API and gateway select 1.2.4; fresh-client resolution must pass the same online latest-stable gate. The catalog expiry remains.",
+      "basis": "Reviewed 2026-10-01 against the unwithdrawn 1.2.4 release and upstream security policy. Upstream applies security fixes only to the latest release. The release fixes empty-value parsing and CLI variable expansion while retaining Python >=3.10. The locked API selects 1.2.4; fresh-client resolution must pass the same online latest-stable gate. The catalog expiry remains.",
       "evidence": "https://github.com/theskumar/python-dotenv/releases/tag/v1.2.4",
       "provider": "Upstream project",
       "source": "https://github.com/theskumar/python-dotenv",

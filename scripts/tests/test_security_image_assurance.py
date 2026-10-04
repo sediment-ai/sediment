@@ -182,12 +182,14 @@ def deployment(root):
         "SEDIMENT_DATABASE_URL": "postgresql+psycopg://sediment_operator:db-operator@postgres:5432/sediment"
     }
     services["api"]["networks"]["edge"] = {}
+    services["gateway"]["image"] = "ghcr.io/berriai/litellm:pinned"
     services["gateway-volume"] = copy.deepcopy(runtime)
     del services["gateway-volume"]["networks"]
     services["gateway-volume"].update(
         user="0:0",
         cap_add=["CHOWN"],
         network_mode="none",
+        image="ghcr.io/berriai/litellm:pinned",
         entrypoint=["chown", "65532:65532", "/data/delivery"],
     )
     services["gateway"].update(
@@ -329,6 +331,14 @@ def test_proxy_cannot_receive_application_credentials(tmp_path, secret):
         ),
         (
             lambda c: c["services"]["gateway"].update(user="0:0"),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway-volume"].update(image="busybox"),
+            "capabilities_confined",
+        ),
+        (
+            lambda c: c["services"]["gateway-volume"].update(command=["-R", "/"]),
             "capabilities_confined",
         ),
         (
