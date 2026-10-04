@@ -16,6 +16,15 @@
 
 ### Security
 
+- The pre-push hook and `sediment repair-notes` sync the notes ref with `origin`
+  only, matched by name or by URL. Earlier, a push to another remote, such as an
+  outside contributor's fork, merged that remote's notes into the local notes
+  ref, and the next push to `origin` published them where the Attribution
+  Derivation reads. The same push also sent every local note to that remote. A
+  push to another remote now syncs no notes and logs `notes-push-skipped`;
+  `repair-notes` refuses it with `notes_remote_not_origin`. If your shared
+  remote has another name, notes stay local until you push to `origin`. The fix
+  doesn't audit notes that a clone already merged from a fork. Closes #264.
 - Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
   below 2 without importing it; the gateway's guarded metadata patch declares
   the tested Hub 2.1.1 for LiteLLM as it does for Tokenizers. The vendor image

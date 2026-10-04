@@ -136,8 +136,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - `sediment_attribution.py` is the stdlib-only notes client; `install --fleet`
   mutates developer git config — an operator action, never a test fixture.
 - `sediment_transcript.py` is the stdlib checkout shim for packaged `sediment transcript`.
-- `repair-notes` fixes a diverged notes ref. It pushes, so keep it out
-  of the unattended allowlist.
+- `repair-notes` fixes a diverged notes ref against `origin` only. It pushes,
+  so keep it out of the unattended allowlist.
 - `doctor [REPO ...]` reports and never repairs. It exits 1 on any FAIL,
   and it is safe to run unattended. Only `--fetch` writes, and it writes one
   tracking ref. An absent agent reports `info`, never FAIL. With pi present,
