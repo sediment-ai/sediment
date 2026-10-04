@@ -14,6 +14,12 @@
   security inventories; retained releases through 0.5.0 keep their gateway
   evidence, which daily rescans verify and skip. Closes #251.
 
+### Installation
+
+- Pass `--force` in the installer's `pipx` method, so a rerun with another
+  `--version` replaces the installed CLI. Before, the rerun reported success
+  and left the earlier version in place. Closes #189.
+
 ### Security
 
 - Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
