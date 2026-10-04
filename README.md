@@ -75,5 +75,6 @@ HTTPS. Then [enroll your team](docs/operate/run-pilot.md).
 
 ## License
 
+Copyright (C) 2026 PAULSEN'S LLC. Sediment is licensed under
 [AGPL-3.0](LICENSE). Harness shims under `shims/` use the
 [MIT license](shims/pi/LICENSE).
