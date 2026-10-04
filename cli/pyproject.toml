@@ -24,7 +24,6 @@ dependencies = [
 
 [project.urls]
 Source = "https://github.com/sediment-ai/sediment"
-Homepage = "https://sediment.so"
 Documentation = "https://docs.sediment.so"
 Issues = "https://github.com/sediment-ai/sediment/issues"
 Changelog = "https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md"
