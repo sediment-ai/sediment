@@ -1,8 +1,10 @@
 name: retained release security
 
 on:
-  schedule:
-    - cron: "23 5 * * *"
+  # ponytail: the daily schedule is paused. Every renewal rebinds dispositions
+  # to the current build, so retained releases fail against current reviews
+  # (#249). Restore the daily cron "23 5 * * *" once a rescan judges each
+  # release by its own retained reviews.
   workflow_dispatch:
 
 permissions:
