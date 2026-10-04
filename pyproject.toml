@@ -4,7 +4,7 @@
 # everything publishes from the members.
 name = "sediment"
 version = "0.5.0"
-description = "Turn AI developer workflow traces into RL-ready training data"
+description = "A self-hosted evidence store for coding agents"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 dependencies = [

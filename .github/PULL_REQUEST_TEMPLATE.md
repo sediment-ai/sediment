@@ -1,3 +1,9 @@
+<!--
+First contribution? Fill in the summary and the checks you ran. If an
+architecture item is unclear, leave it unchecked and say so; a maintainer will
+help you with it during review.
+-->
+
 ## Summary
 
 What does this pull request change, and why?
