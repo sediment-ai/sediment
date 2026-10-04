@@ -49,5 +49,5 @@ it the output of `sediment guide`.
   Claude Code, Codex, Cursor, pi, and Copilot Chat
 - [Source and issues](https://github.com/sediment-ai/sediment)
 
-Sediment is licensed under
+Copyright (C) 2026 PAULSEN'S LLC. Sediment is licensed under
 [AGPL-3.0-or-later](https://github.com/sediment-ai/sediment/blob/main/LICENSE).

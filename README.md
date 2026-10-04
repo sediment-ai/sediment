@@ -49,17 +49,17 @@ attribution_rate    80.0%    60.0%   +20.0%  +0.442    -2.6%   +42.6%    1.69   
 
 ## Get started
 
-On macOS with Homebrew, Debian, or Ubuntu:
+Install the CLI from PyPI with Python 3.12, then start the local server:
 
 ```sh
-curl -fsSL https://sediment.so/install.sh | sh
+pipx install sediment-cli    # or: uv tool install sediment-cli
 sediment server
 ```
 
-To preview the installer's changes, pipe it to `sh -s -- --dry-run` instead.
-
-Or install from PyPI with Python 3.12: `pipx install sediment-cli`, after the
-host libraries listed in the [Quickstart](docs/quickstart.md).
+`sediment server` needs host libraries: `libpq` and `openssl@3` with Homebrew,
+or `git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g` with `apt-get`
+on Debian and Ubuntu. The [installer](install.sh) adds them and the CLI for you:
+`curl -fsSL https://sediment.so/install.sh | sh`.
 
 - [Quickstart](docs/quickstart.md): connect an agent and verify capture.
 - [Integrations](docs/capture/agent-integrations.md): Claude Code, Codex,
@@ -90,5 +90,6 @@ host libraries listed in the [Quickstart](docs/quickstart.md).
 
 ## License
 
+Copyright (C) 2026 PAULSEN'S LLC. Sediment is licensed under
 [AGPL-3.0](LICENSE). Harness shims under `shims/` use the
 [MIT license](shims/pi/LICENSE).
