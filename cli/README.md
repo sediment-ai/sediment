@@ -17,16 +17,18 @@ release documents its upgrade path in the
 
 ## Install
 
-Use Python 3.12 or later:
+Use Python 3.12:
 
 ```sh
-pip install sediment-cli     # or: uv tool install sediment-cli
+pipx install sediment-cli    # or: uv tool install sediment-cli
 ```
 
-`sediment server` runs PostgreSQL locally and needs the PostgreSQL client
-libraries: `libpq` and `openssl@3` from Homebrew, or
-`libpq5 libxml2 libzstd1 liblz4-1 zlib1g` on Debian and Ubuntu. The
-[installer](https://sediment.so/install.sh) adds them for you:
+Inside a virtual environment, `pip install sediment-cli` also works.
+
+`sediment server` downloads a PostgreSQL server that loads shared libraries
+from your system: `libpq` and `openssl@3` with Homebrew, or
+`git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g` with `apt-get` on Debian and Ubuntu. The
+[installer](https://sediment.so/install.sh) installs them for you:
 
 ```sh
 curl -fsSL https://sediment.so/install.sh | sh

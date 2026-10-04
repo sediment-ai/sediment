@@ -42,8 +42,9 @@ releases; each release documents its upgrade path.
 ## See what you get
 
 `sediment report model` compares models by what happened to their output. This
-excerpt comes from synthetic data: 30 Inference calls per model in one
-repository.
+excerpt comes from synthetic data: 30 seeded Inference calls per model in one
+test repository, each committed verbatim when accepted, so `mean_sim` is
+1.000.
 
 ```text
 $ sediment report model --org acme --compare claude-sonnet-4-5 gpt-5-codex
@@ -55,6 +56,7 @@ compare: claude-sonnet-4-5 vs gpt-5-codex
 metric           prop_a   prop_b     diff       h   ci_low  ci_high       z   p_value        sig    n_a    n_b
 ci_pass_rate      87.5%    72.2%   +15.3%  +0.388    -9.3%   +39.8%    1.25    0.2121         no     24     18  small n, less reliable
 attribution_rate    80.0%    60.0%   +20.0%  +0.442    -2.6%   +42.6%    1.69    0.0910         no     30     30
+...
 ```
 
 A row counts only captured evidence. Here, a 20-point gap in Attribution rate
@@ -70,15 +72,17 @@ curl -fsSL https://sediment.so/install.sh | sh
 sediment server
 ```
 
-To install the CLI from PyPI yourself, use Python 3.12 or later:
+To install the CLI from PyPI yourself, use Python 3.12:
 
 ```sh
-pip install sediment-cli     # or: uv tool install sediment-cli
+pipx install sediment-cli    # or: uv tool install sediment-cli
 ```
 
-`sediment server` also needs the PostgreSQL client libraries: `libpq` and
-`openssl@3` from Homebrew, or `libpq5 libxml2 libzstd1 liblz4-1 zlib1g` on
-Debian and Ubuntu. To preview what the installer changes, run
+Inside a virtual environment, `pip install sediment-cli` also works.
+
+`sediment server` downloads a PostgreSQL server that loads shared libraries
+from your system. Install them first: `libpq` and `openssl@3` with Homebrew, or
+`git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g` with `apt-get` on Debian and Ubuntu. To preview what the installer changes, run
 `curl -fsSL https://sediment.so/install.sh | sh -s -- --dry-run`.
 
 Follow the
