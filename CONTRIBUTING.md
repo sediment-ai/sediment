@@ -423,9 +423,9 @@ artifact. Running this procedure by itself never publishes a distribution.
 
 ### Publish a version tag
 
-Before the first release, configure these external controls:
+A release requires these external controls:
 
-- Make the repository public. The workflow rejects a release while the
+- The repository is public. The workflow rejects a release while the
   repository is private.
 - Create a tag ruleset for `v*` that prevents tag updates and deletions. Limit
   tag creation to maintainers who can release.

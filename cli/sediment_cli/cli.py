@@ -87,9 +87,9 @@ from sediment_export import (
 )
 
 # The one-line answer to "what is this?", coder-style, shown beside the
-# version on the root --help title. With the title prefix it fills exactly
-# the pinned 80 columns. Keep in step with the root pyproject description.
-_TAGLINE = "Turn AI developer workflow traces into RL-ready training data."
+# version on the root --help title. Keep in step with the root pyproject
+# description and the README tagline.
+_TAGLINE = "A self-hosted evidence store for coding agents."
 
 _TABLES = [t.value for t in FactTable]
 

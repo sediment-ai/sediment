@@ -6,7 +6,8 @@
 # design (ADR 0001) and `server`/reports/mirror-gc forward into it.
 name = "sediment-cli"
 version = "0.5.0"
-description = "The sediment command: login, install, server, facts, exports"
+description = "A self-hosted evidence store for coding agents: the sediment CLI and local server"
+readme = "README.md"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
@@ -23,7 +24,7 @@ dependencies = [
 
 [project.urls]
 Source = "https://github.com/sediment-ai/sediment"
-Documentation = "https://github.com/sediment-ai/sediment/tree/main/docs"
+Documentation = "https://docs.sediment.so"
 Issues = "https://github.com/sediment-ai/sediment/issues"
 Changelog = "https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md"
 
