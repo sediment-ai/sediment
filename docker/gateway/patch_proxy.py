@@ -11,19 +11,19 @@ from pathlib import Path
 # Any upstream source change needs a fresh review of the removed code paths.
 SOURCES = {
     "proxy_server.py": (
-        "80eba6eb3781eec788657ad4da72fcda1bd2c2c5001c57d65508a2d2926d8e2e",
+        "32bdd5e335da78426935c72e3c06b1417f26d23709eb180aaddbfc56819cc1e2",
         0,
     ),
     "utils.py": (
-        "677f33b4b1c67e1dba0e91cfd400feacd6e12e81bf8ca65d865b90d1421b732a",
+        "81e6fdba0c204a852883ac96a1b47ec2254c9fe97547f7e05bd0110e0d90933f",
         11,
     ),
     "db/exception_handler.py": (
-        "329f721d58e101b7195a2554d81a02cb77962c14fbc1e2869c4435b1ea2c6e36",
+        "e5701120d702824543cf0b88f7c376a46833efd51c59e465f9a0275fed56ba59",
         9,
     ),
     "auth/user_api_key_auth.py": (
-        "e0f27addeafaddaca17ee4f5dec599c13c23770ae3af3f1b4035db92c0deaa9d",
+        "129f2c8d91859bf4898e4cd5f068dc5f2404412da68ffe7495b26c362233270b",
         1,
     ),
 }

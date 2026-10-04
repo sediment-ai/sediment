@@ -92,14 +92,27 @@ def test_vendor_source_drift_is_rejected_without_edit(tmp_path: Path) -> None:
     assert (proxy / "utils.py").read_text() == "# upstream changed\n"
 
 
-def test_tokenizers_metadata_drift_is_rejected_without_edit(tmp_path: Path) -> None:
-    patcher = runpy.run_path(str(ROOT / "docker/gateway/patch_tokenizers.py"))
-    metadata = tmp_path / "METADATA"
+@pytest.mark.parametrize(
+    "name", ["tokenizers-0.23.1.dist-info", "litellm-1.104.0.dist-info"]
+)
+def test_hub_metadata_drift_is_rejected_without_edit(tmp_path: Path, name: str) -> None:
+    patcher = runpy.run_path(str(ROOT / "docker/gateway/patch_hub_metadata.py"))
+    root = tmp_path / name
+    root.mkdir()
+    metadata = root / "METADATA"
     metadata.write_text("Requires-Dist: huggingface-hub>=0.16.4,<2.0\n")
     original = metadata.read_bytes()
     with pytest.raises(ValueError, match="metadata"):
-        patcher["patch_tokenizers"](tmp_path)
+        patcher["patch_hub_metadata"](root)
     assert metadata.read_bytes() == original
+
+
+def test_hub_metadata_rejects_unreviewed_distribution(tmp_path: Path) -> None:
+    patcher = runpy.run_path(str(ROOT / "docker/gateway/patch_hub_metadata.py"))
+    root = tmp_path / "litellm-1.105.0.dist-info"
+    root.mkdir()
+    with pytest.raises(ValueError, match="distribution"):
+        patcher["patch_hub_metadata"](root)
 
 
 @pytest.mark.parametrize("flag", ["--use_prisma_db_push", "--iam_token_db_auth"])

@@ -55,7 +55,7 @@ Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
 ```bash
-uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py \
+uv run --python 3.12.15 --no-project python scripts/create_deploy_env.py \
   --ingest-client alice-laptop --ingest-client bob-laptop
 ```
 
@@ -114,7 +114,7 @@ Build and start the deployment with its source identity:
 ```bash
 set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose up --build --wait --wait-timeout 120
 ```
@@ -337,7 +337,7 @@ From the deployment checkout, build and start the gateway with its source identi
 ```bash
 set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose --profile gateway up --build --wait --wait-timeout 120
 docker compose --profile gateway ps gateway
@@ -416,7 +416,7 @@ prepare its replacement before running Compose against the updated checkout:
      git checkout --detach "$SEDIMENT_REVISION" &&
      test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
      chmod 600 .env &&
-     uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py --output .env.next
+     uv run --python 3.12.15 --no-project python scripts/create_deploy_env.py --output .env.next
    ```
 
 3. In a private editor, copy the existing `POSTGRES_PASSWORD`, `SEDIMENT_ORG_ID`,
@@ -447,7 +447,7 @@ docker compose --profile gateway stop gateway api
 git checkout --detach "$SEDIMENT_REVISION"
 test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose up --build --force-recreate --wait --wait-timeout 120 postgres migrate api
 curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
