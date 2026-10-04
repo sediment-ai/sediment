@@ -48,10 +48,12 @@ def test_database_jobs_run_derived_postgres_and_cleanup():
         assert "docker rm -f sediment-ci-postgres" in workflow
 
 
-def test_daily_rescan_and_all_dependency_ecosystems_are_enabled():
+def test_rescan_and_all_dependency_ecosystems_are_enabled():
     rescan = (ROOT / ".github/workflows/security-rescan.yml").read_text()
-    assert "schedule:" in rescan
+    # The schedule is paused until #249; SECURITY.md says so.
     assert "workflow_dispatch:" in rescan
+    assert ("schedule:" in rescan) != ("#249" in rescan)
+    assert "#249" in (ROOT / "SECURITY.md").read_text()
     assert "scripts/rescan_releases.py scan" in rescan
     assert "contents: read" in rescan
     dependabot = (ROOT / ".github/dependabot.yml").read_text()

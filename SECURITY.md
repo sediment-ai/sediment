@@ -43,8 +43,10 @@ fixed. Unsupported software has no exception. Complete scan reports remain in
 the release evidence.
 
 Release assets include CycloneDX software bills of materials (SBOMs), resolved
-inventories, support metadata, and checksums. A daily job rescans retained SBOMs
-for supported releases without executing historical code. Dependency update
+inventories, support metadata, and checksums. A maintainer-run job rescans
+retained SBOMs for supported releases without executing historical code. Its
+daily schedule is paused until rescans judge each release by its own retained
+reviews ([#249](https://github.com/sediment-ai/sediment/issues/249)). Dependency update
 proposals run daily. GitHub dependency alerts and security update proposals
 supplement the repository's open-source checks; paid scanning features aren't
 a prerequisite.
