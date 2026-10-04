@@ -964,6 +964,35 @@ def test_push_notes_final_failure_logs_event(tmp_path: Path) -> None:
     assert push_event["git_dir"] == str(git_dir(repo))
 
 
+def test_notes_push_failure_omits_url_credentials(tmp_path: Path) -> None:
+    # Git hands pre-push a pushed URL exactly as typed, so the remote
+    # argument can carry a token. Port 1 on loopback refuses the connection:
+    # the notes push fails with no network.
+    secret = "fake-token"
+    repo = make_repo(tmp_path / "r")
+    git(repo, "remote", "add", "origin", "http://127.0.0.1:1/acme/repo.git")
+    url = f"http://x-access-token:{secret}@127.0.0.1:1/acme/repo.git"
+    mark(repo)
+    run_cli(["stamp"], cwd=repo)
+    pushed = run_cli(["push-notes", url], cwd=repo)
+    repaired = run_cli(["repair-notes", url], cwd=repo)
+    assert (pushed.returncode, repaired.returncode) == (0, 1)
+    events = [e for e in log_entries(repo) if e["event"] == "notes-push-failed"]
+    assert [e["remote"] for e in events] == ["http://127.0.0.1:1/acme/repo.git"] * 2
+    assert secret not in attribution_log(repo).read_text()
+    for result in (pushed, repaired):
+        assert "to http://127.0.0.1:1/acme/repo.git failed" in result.stderr
+        assert secret not in result.stderr + result.stdout
+    # Git's own error line can repeat a push URL with its credentials: Git
+    # before 2.27 always, later Git when the userinfo holds an unencoded "/".
+    detail = _load_module()._push_failure_detail
+    for line in (
+        f"error: failed to push some refs to '{url}'",
+        f"fatal: unable to access 'http://u:{secret}/x@127.0.0.1:1/r.git/': rejected",
+    ):
+        assert secret not in detail(subprocess.CompletedProcess([], 1, "", line))
+
+
 def test_push_failure_detail_falls_back_to_stdout() -> None:
     # stderr wins when git prints one; stdout is the fallback when stderr is
     # empty, and the exit code is the last resort when both are empty.

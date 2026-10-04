@@ -57,7 +57,7 @@ A shim without `sediment` on PATH runs `python3 <dir>/sediment_attribution.py ma
 
 All marker writers use short generation transactions; local notes writers share a mutex in the common Git directory.
 [Concurrent marker capture](../explanation/attribution.md#concurrent-marker-capture) defines locks, cleanup, and interruption limits.
-`_CAPTURE_FAILURE_REASONS` in `cli/sediment_cli/attribution.py` owns closed content-free diagnostics; doctor treats their historical log entries as informational.
+`_CAPTURE_FAILURE_REASONS` in `cli/sediment_cli/attribution.py` owns closed content-free diagnostics; doctor treats their historical log entries as informational. `notes-push-failed` carries the remote and Git's error line; `_strip_userinfo` removes URL userinfo from both, and from every printed remote.
 
 ## 3. Edit observations — `sediment.edit_observation` (opt-in)
 
