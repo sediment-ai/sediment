@@ -21,10 +21,13 @@
   `https://<user>:<token>@host/repo.git` printed the token in the push output
   and logged it in `~/.sediment/attribution.log`. `push-notes` and
   `repair-notes` now remove URL userinfo from the remote and from Git's error
-  line, which Git before 2.27 prints with the push URL's credentials. If you
-  pushed to a URL that carries credentials, run
-  `grep -l '://[^ ]*@' ~/.sediment/attribution.log*`, delete each file that
-  matches, and rotate the credential. Closes #266.
+  line, which Git before 2.27 prints with the push URL's credentials. A notes
+  push that times out is now an ordinary failure: `repair-notes` reports it
+  instead of ending in a traceback that prints the URL, and `push-notes` logs
+  it. If you pushed to a URL that carries credentials, run
+  `grep -n '://.*@' ~/.sediment/attribution.log*`. If a line shows a password
+  or token, rotate that credential and delete the file. A line that shows only
+  a login, such as `ssh://git@host/repo.git`, needs no action. Closes #266.
 - Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
   below 2 without importing it; the gateway's guarded metadata patch declares
   the tested Hub 2.1.1 for LiteLLM as it does for Tokenizers. The vendor image

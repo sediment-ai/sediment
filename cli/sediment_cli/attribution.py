@@ -1148,6 +1148,7 @@ def cmd_union_squash_notes(msg_file: str, source: str) -> int:
 # Where the remote's notes land during reconcile. A plain tracking ref, so a
 # failed merge can never damage the real local ref.
 NOTES_REMOTE_TRACKING_REF = "refs/notes/sediment-remote"
+NOTES_PUSH_TIMEOUT_SECONDS = 120
 
 
 def _reconcile_notes(remote: str) -> bool:
@@ -1219,32 +1220,45 @@ def _reconciled_push(remote: str) -> subprocess.CompletedProcess:
             return subprocess.CompletedProcess(
                 ["git", "push"], 1, "", "notes_reconcile_incomplete"
             )
-        result = subprocess.run(
-            ["git", "push", remote, f"{NOTES_REF}:{NOTES_REF}"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "push", remote, f"{NOTES_REF}:{NOTES_REF}"],
+                capture_output=True,
+                text=True,
+                timeout=NOTES_PUSH_TIMEOUT_SECONDS,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            # Never surfaced: the exception text holds git's arguments, and
+            # ``remote`` can be a URL with credentials.
+            return subprocess.CompletedProcess(
+                ["git", "push"],
+                1,
+                "",
+                f"git push timed out after {NOTES_PUSH_TIMEOUT_SECONDS}s",
+            )
         if result.returncode == 0:
             break
     return result
 
 
-# ponytail: everything up to the last "@" counts as userinfo, so an "@" in a
-# URL path over-strips: ``https://host/a@b`` shows as ``https://b``. That is
-# the safe side, because Git prints ``scheme://user:pa/ss@host`` unchanged.
-# Parse the authority if a hidden path segment ever matters.
-_URL_USERINFO_RE = re.compile(r"://\S*@")
+# ponytail: everything from "://" to the last "@" counts as userinfo, so an
+# "@" in a URL path, or later in the text, over-strips: ``https://host/a@b``
+# shows as ``https://b``. That is the safe side: a pattern that stops at "/"
+# or at whitespace passes ``scheme://user:pa/ss@host`` and
+# ``scheme://user:pass word@host`` through as typed. Parse the authority if
+# a hidden path segment ever matters.
+_URL_USERINFO_RE = re.compile(r"://.*@", re.DOTALL)
 
 
 def _strip_userinfo(text: str) -> str:
-    """``text`` with the userinfo cut from every URL in it.
+    """``text`` with the userinfo cut from the URL in it.
 
     Git hands ``pre-push`` a pushed URL exactly as typed, and Git before
     2.27 repeats a push URL unchanged in its error line, so the remote
     argument and the push diagnostic can each carry a credential. A remote
-    name, a path, and an scp-like ``user@host:path`` pass through.
+    name, a bare path, and an scp-like ``user@host:path`` hold no ``://``
+    and pass through.
     """
     return _URL_USERINFO_RE.sub("://", text)
 
