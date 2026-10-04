@@ -160,7 +160,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        artifact: [api, postgres, gateway]
+        artifact: [api, postgres]
         architecture: [amd64, arm64]
         include:
           - architecture: amd64
@@ -175,8 +175,6 @@ jobs:
             dockerfile: Dockerfile
           - artifact: postgres
             dockerfile: docker/postgres/Dockerfile
-          - artifact: gateway
-            dockerfile: docker/gateway/Dockerfile
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     env:
@@ -216,11 +214,6 @@ jobs:
             --build-arg "SEDIMENT_SOURCE_DIGEST=$source_digest" .
           uv run --no-project python scripts/security_scan.py image \
             --image "$image" --artifact "$ARTIFACT" --architecture "$ARCHITECTURE" --out security-evidence
-      - name: Test the scanned gateway runtime
-        if: matrix.artifact == 'gateway'
-        env:
-          SEDIMENT_TEST_GATEWAY_IMAGE: sediment-security:gateway-${{ matrix.architecture }}
-        run: uv run --locked pytest -q scripts/tests/test_container_images.py -k gateway
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

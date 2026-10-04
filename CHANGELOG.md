@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Upgrade notes
+
+- The Compose `gateway` profile runs the upstream LiteLLM image pinned in
+  `docker-compose.yml` instead of building `docker/gateway/Dockerfile`, which is
+  removed. Sediment no longer patches, scans, or gates the gateway; you own its
+  updates. Keep your `.env`: the profile, port, keys, and `sediment-delivery`
+  volume are unchanged. A one-shot `gateway-volume` service gives that volume
+  to the gateway's non-root user. Without a database, LiteLLM answers an unknown
+  `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
+  security inventories; retained releases through 0.5.0 keep their gateway
+  evidence, which daily rescans verify and skip. Closes #251.
+
 ### Security
 
 - Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub

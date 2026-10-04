@@ -34,11 +34,22 @@ updates:
         update-types: [minor, patch]
     commit-message:
       prefix: chore(deps)
+  # The Compose gateway pins the upstream LiteLLM image; Sediment doesn't
+  # build or scan it, so its updates arrive here instead of the security gate.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      routine:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: chore(deps)
   - package-ecosystem: docker
     directories:
       - /
       - /docker/postgres
-      - /docker/gateway
       - /docker/proxy
     # Runtime-line migrations require a separate compatibility review.
     ignore:

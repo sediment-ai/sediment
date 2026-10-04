@@ -30,8 +30,9 @@ and record deployed versions.
 ## Release checks
 
 Release publication requires checks of the exact resolved client installation,
-production pi dependencies, and final API, PostgreSQL, and optional gateway
-images on each offered architecture. The checks cover known vulnerabilities,
+production pi dependencies, and final API and PostgreSQL images on each offered
+architecture. The optional Compose gateway runs an upstream LiteLLM image that
+these checks don't cover; its operator applies LiteLLM's updates. The checks cover known vulnerabilities,
 reviewed maintenance policies, runtime support, local static rules, and existing
 secret scanning. Scanner failures and missing evidence fail the checks.
 

@@ -588,16 +588,11 @@ sandbox native parsing. A compromised database process can still affect the
 Fact volume and database availability. Review each advisory's affected function
 against the exact distribution source before assigning a disposition.
 
-For the gateway zlib disposition, review the exact image's Python callers as
-well as native symbols. The `gzip_write_api_unreachable` check doesn't inspect
-filename arguments to permitted SAML (Security Assertion Markup Language)
-extensions. Compare `gateway_caller_files` with the reviewed LiteLLM and
-`onelogin/saml2` sources. Changed files require another source review; matching
-hashes establish integrity, not approval. Retain that review with the image evidence.
-
-The gateway pins a Wolfi Python 3.13 build from the CPython maintenance branch.
-Before you change the pin, compare the build's reported commit with the
-upstream release tag, and confirm which OpenSSL release the build links.
+The Compose gateway runs the upstream LiteLLM image pinned in
+`docker-compose.yml`. Sediment doesn't build, patch, or scan it, so the security
+gate doesn't cover it. Dependabot proposes pin updates. Before you accept one,
+run `scripts/tests/test_container_images.py -k gateway` and the pilot Compose
+test against the new image.
 
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
@@ -1098,7 +1093,7 @@ gateway capture, the API, and private records inside your perimeter.
    credentials. Keep retrieval disabled until the source Session exists.
    Configure a separate LiteLLM gateway with an OpenAI-compatible route to the
    local model and the existing `litellm/sediment_callback.py` capture callback.
-   The bundled Anthropic gateway recipe doesn't provide this model route.
+   The Compose gateway's Anthropic recipe doesn't provide this model route.
    Disable gateway retries and fallbacks. Configure the model context to 16,384
    tokens and allow one request at a time. Record the Ollama version, backend model
    alias, installed model digest, and exact template SHA-256 hash alongside the

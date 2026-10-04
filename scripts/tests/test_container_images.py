@@ -22,6 +22,8 @@ RESTRICTED_RUNTIME = (
     "--cpus=2",
     "--pids-limit=256",
 )
+# docker-compose.yml runs the upstream LiteLLM image as this user.
+GATEWAY_RUNTIME = ("--user=65532:65532", "--env=HOME=/tmp")
 
 
 def docker(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -213,6 +215,7 @@ def test_gateway_nonroot_and_standalone_callback_delivery() -> None:
         "run",
         "--rm",
         *RESTRICTED_RUNTIME,
+        *GATEWAY_RUNTIME,
         "--tmpfs=/tmp:rw,noexec,nosuid,size=512m",
         "--entrypoint",
         "python",
@@ -229,12 +232,9 @@ def test_gateway_nonroot_and_standalone_callback_delivery() -> None:
         image("GATEWAY"),
         "-c",
         r"""
-import asyncio,ctypes.util,json,os,pathlib,shutil,threading
+import asyncio,json,os,threading
 from http.server import BaseHTTPRequestHandler,HTTPServer
 assert os.getuid() != 0
-assert shutil.which('pgbouncer') is None
-assert not pathlib.Path('/usr/local/bin/pgbouncer').exists()
-assert ctypes.util.find_library('event') is None
 received=[]
 class Receiver(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -262,324 +262,6 @@ print('standalone callback delivered')
     assert "standalone callback delivered" in result.stdout
 
 
-def test_gateway_supported_protocol_dependencies_interoperate() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network",
-        "none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        r"""
-from importlib.metadata import version
-assert tuple(map(int,version('protobuf').split('.'))) >= (6,33,6)
-assert tuple(map(int,version('grpcio').split('.'))) >= (1,83,1)
-assert tuple(map(int,version('grpcio-status').split('.'))) >= (1,83,1)
-from google.cloud.kms_v1.types import EncryptRequest
-from google.rpc.status_pb2 import Status
-from grpc_status import rpc_status
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
-request=EncryptRequest(name='projects/test/locations/global/keyRings/test/cryptoKeys/test',plaintext=b'probe')
-assert EncryptRequest.deserialize(EncryptRequest.serialize(request)) == request
-assert rpc_status.from_call is not None
-assert rpc_status.to_status(Status(code=0)).details == ''
-assert ExportTraceServiceRequest.FromString(ExportTraceServiceRequest().SerializeToString()) == ExportTraceServiceRequest()
-exporter=OTLPSpanExporter(endpoint='127.0.0.1:4317',insecure=True)
-exporter.shutdown()
-assert FastAPIInstrumentor().instrumentation_dependencies()
-# LiteLLM 1.103.0 requires MCP 2 for its proxy and httpx[http2] at its base.
-import httpx
-from litellm.proxy._experimental.mcp_server import server as mcp_server
-assert mcp_server.MCP_AVAILABLE
-httpx.Client(http2=True).close()
-print('protocol consumers interoperate')
-""",
-    )
-    assert "protocol consumers interoperate" in result.stdout
-
-
-def test_gateway_oauth_client_works_without_jsonp_revocation() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network",
-        "none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        r"""
-import asyncio
-from urllib.parse import parse_qs, urlsplit
-from oauthlib.oauth2 import RequestValidator, RevocationEndpoint
-from fastapi_sso.sso.google import GoogleSSO
-
-# The vulnerable JSONP option must be unavailable even when explicitly enabled.
-try:
-    RevocationEndpoint(RequestValidator(), enable_jsonp=True)
-except TypeError:
-    pass
-else:
-    raise AssertionError('unsafe JSONP revocation remains available')
-
-# FastAPI SSO retains its authorization-code client interface.
-async def check_clients():
-    async with GoogleSSO('client-id', 'client-secret', 'https://client.example/callback') as client:
-        assert client.oauth_client.client_id == 'client-id'
-        url = client.oauth_client.prepare_request_uri(
-            'https://provider.example/authorize', redirect_uri=client.redirect_uri, state='state'
-        )
-        query = parse_qs(urlsplit(url).query)
-        assert query['client_id'] == ['client-id']
-        assert query['redirect_uri'] == ['https://client.example/callback']
-        assert query['response_type'] == ['code']
-        assert query['state'] == ['state']
-        token = client.oauth_client.parse_request_body_response(
-            '{"access_token":"test-token","token_type":"Bearer"}'
-        )
-        assert token['access_token'] == 'test-token'
-
-asyncio.run(check_clients())
-print('OAuth client interoperates without JSONP revocation')
-""",
-    )
-    assert "OAuth client interoperates without JSONP revocation" in result.stdout
-
-
-def test_gateway_tokenizers_and_hub2_download_and_count_tokens() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        r"""
-import os
-os.environ['LITELLM_LOCAL_MODEL_COST_MAP']='True'
-os.environ['HF_HUB_DISABLE_XET']='1'
-os.environ['HF_HUB_DISABLE_TELEMETRY']='1'
-import tempfile, threading, json, hashlib, base64, csv, io
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-from importlib.metadata import distribution, version
-calls=[]
-body_holder={}
-class Handler(BaseHTTPRequestHandler):
-    def log_message(self,*args): pass
-    def do_HEAD(self): self.respond(False)
-    def do_GET(self): self.respond(True)
-    def respond(self,send_body):
-        calls.append({'method':self.command,'path':self.path,'authorization':self.headers.get('Authorization')})
-        body=body_holder['body']
-        self.send_response(200)
-        self.send_header('Content-Length',str(len(body)))
-        self.send_header('ETag','"'+hashlib.sha1(body).hexdigest()+'"')
-        self.send_header('X-Repo-Commit','a'*40)
-        self.end_headers()
-        if send_body: self.wfile.write(body)
-server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
-os.environ['HF_ENDPOINT']=f'http://127.0.0.1:{server.server_port}'
-os.environ['HF_HUB_CACHE']=tempfile.mkdtemp(prefix='hub2-cache-')
-thread=threading.Thread(target=server.serve_forever,daemon=True)
-thread.start()
-from tokenizers import Tokenizer, models, pre_tokenizers
-import huggingface_hub, httpx, httpx2
-source=Tokenizer(models.WordLevel({'[UNK]':0,'hello':1,'pilot':2},unk_token='[UNK]'))
-source.pre_tokenizer=pre_tokenizers.Whitespace()
-body_holder['body']=source.to_str().encode()
-for name,token in [('anonymous',None),('authorized','local-review-token')]:
-    tokenizer=Tokenizer.from_pretrained('sediment/'+name,revision='pilot-revision',token=token)
-    assert tokenizer.encode('hello pilot').ids==[1,2]
-    assert tokenizer.decode([1,2])=='hello pilot'
-    selected=[call for call in calls if '/'+name+'/' in call['path']]
-    assert {call['method'] for call in selected}=={'HEAD','GET'},selected
-    assert all(call['path']==f'/sediment/{name}/resolve/pilot-revision/tokenizer.json' for call in selected),selected
-    expected=None if token is None else 'Bearer '+token
-    assert all(call['authorization']==expected for call in selected),selected
-import litellm
-from litellm.utils import _huggingface_tokenizer_backend, _load_huggingface_tokenizer
-local=_load_huggingface_tokenizer('anthropic',_huggingface_tokenizer_backend())
-assert isinstance(local,Tokenizer),type(local)
-assert local.decode(local.encode('hello pilot').ids)=='hello pilot'
-ids=litellm.encode(model='claude-2',text='hello pilot')
-assert ids and litellm.decode(model='claude-2',tokens=ids)=='hello pilot'
-assert litellm.token_counter(model='claude-2',text='hello pilot')>0
-for name in ('tokenizers','litellm'):
-    p=distribution(name)._path/'METADATA'
-    assert 'Requires-Dist: huggingface-hub==2.1.1\n' in p.read_text(),name
-    row=next(row for row in csv.reader(io.StringIO((p.parent/'RECORD').read_text())) if row[0]==p.parent.name+'/METADATA')
-    expected_hash='sha256='+base64.urlsafe_b64encode(hashlib.sha256(p.read_bytes()).digest()).rstrip(b'=').decode()
-    assert row[1:]==[expected_hash,str(p.stat().st_size)],name
-p=distribution('tokenizers')._path/'METADATA'
-print(json.dumps({'result':'PASS','versions':{n:version(n) for n in ('litellm','tokenizers','huggingface-hub','httpx','httpcore','httpx2','httpcore2','truststore')},'tokenizers_metadata_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'request_methods':[c['method'] for c in calls],'checks':['real Rust Tokenizer.from_pretrained','real Hub 2 hf_hub_download against loopback HTTP server','HEAD/GET revision routing','anonymous requests omit Authorization','string token propagated as Bearer','local Claude tokenizer encode/decode','LiteLLM Claude encode/decode/token_counter','Tokenizers and LiteLLM METADATA RECORD integrity','HTTPX and HTTPX2 module coexistence']},indent=2))
-server.shutdown()
-""",
-    )
-    assert '"result": "PASS"' in result.stdout
-
-
-def test_gateway_compression_uses_reviewed_released_zlib() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        "import pathlib,zlib; "
-        "world=pathlib.Path('/etc/apk/world').read_text().splitlines(); "
-        "assert 'zlib=1.3.2-r7' in world, world; "
-        "assert zlib.ZLIB_RUNTIME_VERSION == '1.3.2'; "
-        "payload=b'gateway compression probe'*128; "
-        "assert zlib.decompress(zlib.compress(payload)) == payload",
-    )
-    assert result.returncode == 0
-
-
-def test_gateway_prisma_classifiers_answer_without_prisma() -> None:
-    # patch_proxy.py returns each classifier's no-Prisma answer by its type.
-    result = docker(
-        "run",
-        "--rm",
-        *RESTRICTED_RUNTIME,
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        "from litellm.proxy.db.exception_handler import PrismaDBExceptionHandler; "
-        "from litellm.proxy.db.db_spend_update_writer import "
-        "_spend_commit_failure_is_requeue_safe; "
-        "error=ValueError('not a database error'); "
-        "assert PrismaDBExceptionHandler.is_prisma_error(error) is False; "
-        "assert PrismaDBExceptionHandler.postgres_sqlstate(error) is None; "
-        "assert _spend_commit_failure_is_requeue_safe(error) is True",
-    )
-    assert result.returncode == 0
-
-
-def test_gateway_tls_uses_reviewed_openssl_packages() -> None:
-    catalog = json.loads((ROOT / "security/maintenance.json").read_text())
-    reviewed = {
-        name: catalog["packages"]["apk/" + name]["versions"]
-        for name in ("openssl", "libcrypto3", "libssl3")
-    }
-    result = docker(
-        "run",
-        "--rm",
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        r"""
-import json, pathlib, ssl, sys
-installed = {}
-for record in pathlib.Path('/lib/apk/db/installed').read_text().split('\n\n'):
-    fields = dict(line.split(':', 1) for line in record.splitlines() if ':' in line)
-    if 'P' in fields:
-        installed[fields['P']] = fields['V']
-world = pathlib.Path('/etc/apk/world').read_text().splitlines()
-for name, versions in json.loads(sys.argv[1]).items():
-    assert installed[name] in versions, (name, installed[name], versions)
-    assert name + '=' + installed[name] in world, name
-assert ssl.OPENSSL_VERSION.startswith('OpenSSL ' + installed['libssl3'].split('-r')[0] + ' ')
-context = ssl.create_default_context()
-assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
-assert context.get_ca_certs()
-""",
-        json.dumps(reviewed),
-    )
-    assert result.returncode == 0
-
-
-def test_gateway_tar_filters_keep_relocated_hardlinks_inside_destination() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        r"""
-import io,pathlib,tarfile,tempfile
-for extraction_filter in ('data', 'tar'):
-    with tempfile.TemporaryDirectory() as directory:
-        root=pathlib.Path(directory)
-        outside=root/'escape'
-        outside.write_bytes(b'private outside file')
-        outside.chmod(0o600)
-        before=outside.stat()
-        destination=root/'extracted'
-        destination.mkdir()
-        archive=io.BytesIO()
-        with tarfile.open(fileobj=archive,mode='w') as writer:
-            regular=tarfile.TarInfo('a/escape')
-            regular.size=len(b'decoy')
-            writer.addfile(regular,io.BytesIO(b'decoy'))
-            symlink=tarfile.TarInfo('a/b/s')
-            symlink.type=tarfile.SYMTYPE
-            symlink.linkname='../escape'
-            writer.addfile(symlink)
-            hardlink=tarfile.TarInfo('s')
-            hardlink.type=tarfile.LNKTYPE
-            hardlink.linkname='a/b/s'
-            hardlink.mode=0o777
-            writer.addfile(hardlink)
-        archive.seek(0)
-        with tarfile.open(fileobj=archive) as reader:
-            reader.extractall(destination,filter=extraction_filter)
-        relocated=destination/'s'
-        assert not relocated.is_symlink(), extraction_filter
-        assert relocated.read_bytes()==b'decoy', extraction_filter
-        after=outside.stat()
-        assert (after.st_mode,after.st_mtime_ns)==(before.st_mode,before.st_mtime_ns)
-        assert outside.read_bytes()==b'private outside file'
-print('tar extraction filters preserve the destination boundary')
-""",
-    )
-    assert "tar extraction filters preserve the destination boundary" in result.stdout
-
-
-def test_gateway_pdf_reader_bounds_alphabetical_page_labels() -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "--network=none",
-        "--entrypoint",
-        "python",
-        image("GATEWAY"),
-        "-c",
-        """
-from io import BytesIO
-from pypdf import PdfReader, PdfWriter
-from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObject
-writer = PdfWriter()
-writer.add_blank_page(width=72, height=72)
-writer._root_object[NameObject('/PageLabels')] = DictionaryObject({
-    NameObject('/Nums'): ArrayObject([NumberObject(0), DictionaryObject({
-        NameObject('/S'): NameObject('/A'), NameObject('/St'): NumberObject(15000)
-    })])
-})
-encoded = BytesIO()
-writer.write(encoded)
-encoded.seek(0)
-reader = PdfReader(encoded)
-assert len(reader.pages) == 1
-assert reader.page_labels == ['1'], 'Oversized alphabetical label must fall back'
-""",
-    )
-    assert result.returncode == 0
-
-
 def test_postgres_entrypoint_patch_fails_closed(tmp_path: Path) -> None:
     entrypoint = tmp_path / "entrypoint.sh"
     original = '#!/bin/bash\nexec gosu postgres "$BASH_SOURCE" "$@"\n'
@@ -602,6 +284,7 @@ def test_gateway_starts_routes_completion_and_captures(streaming: bool) -> None:
         "run",
         "--rm",
         *RESTRICTED_RUNTIME,
+        *GATEWAY_RUNTIME,
         "--tmpfs=/tmp:rw,noexec,nosuid,size=512m",
         "--entrypoint",
         "python",
@@ -622,21 +305,10 @@ def test_gateway_starts_routes_completion_and_captures(streaming: bool) -> None:
         image("GATEWAY"),
         "-c",
         r"""
-import importlib.util,json,os,subprocess,sys,tempfile,threading,time,urllib.error,urllib.request
+import json,os,subprocess,sys,tempfile,threading,time,urllib.error,urllib.request
 from http.server import BaseHTTPRequestHandler,HTTPServer
 streaming = sys.argv[1] == 'True'
 assert os.getuid() != 0
-assert importlib.util.find_spec('langfuse') is None
-assert importlib.util.find_spec('prisma') is None
-assert importlib.util.find_spec('backoff') is None
-for package in ('psycopg','psycopg_binary','aws_sdk_bedrock_runtime','aws_sdk_signers',
-                'smithy_aws_core','smithy_aws_event_stream','smithy_core',
-                'smithy_http','smithy_json','awscrt','ijson',
-                'google.cloud.speech'):
-    assert importlib.util.find_spec(package) is None, package
-assert not os.path.exists('/opt/prisma')
-import shutil
-assert shutil.which('node') is None
 captured=[]
 upstream=[]
 class Receiver(BaseHTTPRequestHandler):
@@ -697,7 +369,7 @@ general_settings:
         + '"""'
         + r""")
     with tempfile.TemporaryFile(mode='w+') as log:
-        process=subprocess.Popen(['python','/usr/local/bin/sediment-gateway.py','--config',config,'--port','14000'],stdout=log,stderr=log)
+        process=subprocess.Popen(['/app/docker/prod_entrypoint.sh','--config',config,'--port','14000'],stdout=log,stderr=log)
         try:
             for _ in range(120):
                 if process.poll() is not None: raise RuntimeError('gateway exited during startup')
@@ -711,7 +383,8 @@ general_settings:
                 try:
                     urllib.request.urlopen(denied, timeout=5)
                 except urllib.error.HTTPError as exc:
-                    assert exc.code == 401, (key, exc.code)
+                    # Without a database, upstream denies unknown keys with 400.
+                    assert exc.code in (400, 401), (key, exc.code)
                 else:
                     raise AssertionError('gateway accepted an invalid credential')
             assert not upstream
@@ -762,23 +435,6 @@ print('gateway routed and captured completion')
         str(streaming),
     )
     assert "gateway routed and captured completion" in result.stdout
-
-
-@pytest.mark.parametrize("name", ["DATABASE_URL", "LITELLM_PGBOUNCER_ENABLED"])
-def test_gateway_image_entrypoint_rejects_database_secrets(name: str) -> None:
-    result = docker(
-        "run",
-        "--rm",
-        "-e",
-        f"{name}=secret",
-        image("GATEWAY"),
-        "--config",
-        "/not-loaded.yaml",
-        check=False,
-    )
-    assert result.returncode != 0
-    assert "does not support database configuration" in result.stderr
-    assert "secret" not in result.stderr
 
 
 def test_capture_http_hook_runs_without_libpq() -> None:

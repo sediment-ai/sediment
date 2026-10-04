@@ -84,8 +84,10 @@ normalizes it into an `InferenceCall`. The repository registers only the
 LiteLLM adapter. Other gateway names in the schema identify the namespace; they
 don't claim an implemented integration.
 
-Bundled LiteLLM is the tested on-ramp for a team that doesn't operate a
-gateway. Its default configuration authenticates clients, maps requested
+The Compose `gateway` profile is the tested on-ramp for a team that doesn't
+operate a gateway. It runs the upstream LiteLLM image with Sediment's callback;
+Sediment pins and tests that image but doesn't build or scan it. Its default
+configuration authenticates clients, maps requested
 `claude-*` names to the matching Anthropic model, and forwards successful-call
 payloads to Sediment. It doesn't configure model substitution, fallbacks,
 caching, guardrails, or prompt rewriting. It is enabling infrastructure for

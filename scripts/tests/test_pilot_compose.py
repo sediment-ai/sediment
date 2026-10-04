@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Opt-in pilot acceptance with real containers, local TLS, and synthetic inference.
 
-Set SEDIMENT_TEST_COMPOSE=1 and SEDIMENT_TEST_{API,POSTGRES,GATEWAY,PROXY}_IMAGE.
+Set SEDIMENT_TEST_COMPOSE=1 and SEDIMENT_TEST_{API,POSTGRES,PROXY}_IMAGE. The gateway
+runs the upstream LiteLLM image pinned in docker-compose.yml.
 No public DNS, certificate authority, or model provider receives test traffic.
 """
 
@@ -31,7 +32,7 @@ DOMAIN = "sediment.example.com"
 )
 def test_pilot_https_capture_auth_streaming_and_restart(tmp_path):
     images = {}
-    for kind in ("API", "POSTGRES", "GATEWAY", "PROXY"):
+    for kind in ("API", "POSTGRES", "PROXY"):
         images[kind.lower()] = os.environ.get(f"SEDIMENT_TEST_{kind}_IMAGE")
         assert images[kind.lower()], f"Set SEDIMENT_TEST_{kind}_IMAGE"
     project = "sediment-pilot-test-" + uuid4().hex[:12]
@@ -93,7 +94,9 @@ def test_pilot_https_capture_auth_streaming_and_restart(tmp_path):
     for name, service in services.items():
         service.pop("build", None)
         service.pop("profiles", None)
-        service["image"] = images["api" if name == "migrate" else name]
+        service["image"] = (
+            images.get("api" if name == "migrate" else name) or (service["image"])
+        )
         for port in service.get("ports", []):
             port["host_ip"] = "127.0.0.1"
             port["published"] = "0"
@@ -241,7 +244,9 @@ def test_pilot_https_capture_auth_streaming_and_restart(tmp_path):
             == 403
         )
         assert request("/llm/v1/models")[0] == 401
-        assert request("/llm/v1/models", token="sk-incorrect")[0] == 401
+        # Without a database, upstream LiteLLM denies an unknown key with 400
+        # "No connected db." instead of 401.
+        assert request("/llm/v1/models", token="sk-incorrect")[0] in (400, 401)
         assert (
             request("/llm/v1/models", token=credentials["LITELLM_MASTER_KEY"])[0] == 200
         )
