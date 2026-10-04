@@ -25,8 +25,6 @@ You can't tell which agent output developers kept, which commits it reached, or
 whether it passed CI. Sediment records model calls, code changes, developer
 decisions, and check results on your infrastructure, and links them.
 
-**Status:** pre-alpha (0.5.0). Interfaces and storage can change between releases.
-
 - [Evaluate agent work](docs/operate/measure-agent-work.md): compare models by
   decisions, retained code, and CI.
 - [Reuse context](docs/operate/resume-with-evidence.md): give agents evidence
@@ -48,9 +46,6 @@ metric           prop_a   prop_b     diff       h   ci_low  ci_high       z   p_
 ci_pass_rate      87.5%    72.2%   +15.3%  +0.388    -9.3%   +39.8%    1.25    0.2121         no     24     18  small n, less reliable
 attribution_rate    80.0%    60.0%   +20.0%  +0.442    -2.6%   +42.6%    1.69    0.0910         no     30     30
 ```
-
-The 20-point Attribution rate gap isn't significant at this sample size, and the
-report says so.
 
 ## Get started
 
