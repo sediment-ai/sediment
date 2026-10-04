@@ -2,11 +2,6 @@
 
 ## Unreleased
 
-### Fixed
-
-- The installer's `pipx` method replaces an existing installation so that
-  `--version` upgrades or downgrades the CLI to the requested release. Closes #189.
-
 ### Upgrade notes
 
 - The Compose `gateway` profile runs the upstream LiteLLM image pinned in
@@ -18,6 +13,11 @@
   `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
   security inventories; retained releases through 0.5.0 keep their gateway
   evidence, which daily rescans verify and skip. Closes #251.
+
+### Installation
+
+- The installer's `pipx` method replaces an existing installation so that
+  `--version` upgrades or downgrades the CLI to the requested release. Closes #189.
 
 ### Security
 
