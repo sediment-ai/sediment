@@ -101,6 +101,11 @@ _STANDARD_NORMAL = NormalDist()
 _DIFF_SIZE_BUCKET_LIMITS = (0, 5, 10, 25, 50, 100, 200, 500, 1000)
 logger = logging.getLogger(__name__)
 
+# Label for a failed CI run whose sender omitted ``workflow_name``. Keeping the
+# empty string as a key would render as "=3" in the table and {"": 3} in the
+# JSON; Sediment shows absent values visibly and never guesses them.
+UNNAMED_WORKFLOW_LABEL = "unnamed"
+
 
 def _report_now(now: datetime | None, context: RepositoryContext | None) -> datetime:
     boundary = (
@@ -2033,6 +2038,9 @@ def build_model_report(
     ``CIOutcome`` has a unique ``outcome_id`` regardless of how many attributed completions
     it got attached to, so keying a dict on it collapses the duplicates
     before ``workflow_name`` frequencies are counted.
+    A failed run whose sender omitted ``workflow_name`` counts under
+    ``UNNAMED_WORKFLOW_LABEL`` rather than the empty key, so both renderings
+    carry a visible label; the table and the JSON read from this same mapping.
     ``explicit_rejects_by_agent_harness`` counts explicit
     rejected decisions keyed by ``DeveloperDecision.agent_harness``.
 
@@ -2166,7 +2174,11 @@ def build_model_report(
                     workflow.workflow_path,
                     workflow.workflow_name,
                 )
-                failed_workflows[workflow_key] = workflow.workflow_name
+                # A generic /ingest/ci sender may omit the name; keying on ""
+                # would print an unlabeled "=N" row.
+                failed_workflows[workflow_key] = (
+                    workflow.workflow_name or UNNAMED_WORKFLOW_LABEL
+                )
         ci_failures_by_workflow = Counter(failed_workflows.values())
 
         model_decisions = (

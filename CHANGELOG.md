@@ -26,6 +26,13 @@
   to uv 0.12.23.
 - Accept Debian's fixed PCRE2 `10.42-1+deb12u2` build in the API and
   PostgreSQL image reviews while Trivy's Debian data lags.
+
+### Operational evidence
+
+- Label a failed CI run that omits `workflow_name` as `unnamed` in
+  `sediment report model`, rather than printing an unlabeled `=N` entry and
+  emitting `{"": N}` in JSON. The table and the JSON both read
+  `ci_failures_by_workflow`, so both carry the label. Closes #257.
 - Renew the maintenance catalog and image dispositions through 2026-11-02, and
   drop four Expat dispositions the API image no longer needs.
 
