@@ -65,7 +65,16 @@ elif name in ("uv", "pipx", "python3", "python3.12"):
                               str(pathlib.Path(os.environ["HOME"]) / ".local/bin"))
         target.mkdir(parents=True, exist_ok=True)
         executable = target / "sediment"
+        if name == "pipx" and executable.exists() and "--force" not in args:
+            print("already seems to be installed. Not modifying existing installation")
+            sys.exit(0)
+        version = next((arg.split("==", 1)[1] for arg in args
+                        if arg.startswith("sediment-cli==")), "latest")
         executable.write_text("""#!/bin/sh
+if [ "$1" = --version ]; then
+    echo 'sediment """ + version + """'
+    exit 0
+fi
 [ "${TEST_FAIL:-}" != verify ] || exit 1
 if [ "$1" = guide ] && [ "${TEST_GUIDE_SUPPORTED:-1}" = 0 ]; then
     echo "invalid command: guide" >&2
@@ -278,7 +287,7 @@ def test_older_release_installs_without_advertising_an_unavailable_guide(install
     "method,expected",
     [
         ("uv", "uv tool install --python 3.12 --upgrade sediment-cli==0.2.0"),
-        ("pipx", "pipx install --python python3.12 sediment-cli==0.2.0"),
+        ("pipx", "pipx install --force --python python3.12 sediment-cli==0.2.0"),
         ("pip", "python3.12 -m pip install --user sediment-cli==0.2.0"),
     ],
 )
@@ -310,7 +319,7 @@ def test_env_method_is_preserved(installer):
     run, _, _, _, _ = installer
     result = run("--dry-run", changes={"SEDIMENT_INSTALL_METHOD": "pipx"})
     assert result.returncode == 0
-    assert "pipx install --python python3.12" in result.stdout
+    assert "pipx install --force --python python3.12" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -347,6 +356,34 @@ def test_explicit_alternate_method_installs_and_verifies(installer, method):
     result = run("--method", method)
     assert result.returncode == 0, result.stderr
     assert (home / ".local/bin/sediment").is_file()
+
+
+@pytest.mark.parametrize(
+    "installed,requested", [("0.2.0", "0.3.0"), ("0.3.0", "0.2.0")]
+)
+def test_pipx_reinstall_switches_to_requested_version(installer, installed, requested):
+    run, commands, home, tools, _ = installer
+    for command in ("python3.12", "pipx"):
+        target = tools / command
+        target.write_text(f"#!{sys.executable}\n{FAKE_TOOL}")
+        target.chmod(0o755)
+
+    result = run("--capture-only", "--method", "pipx", "--version", installed)
+    assert result.returncode == 0, result.stderr
+    result = run("--capture-only", "--method", "pipx", "--version", requested)
+    assert result.returncode == 0, result.stderr
+    version = subprocess.check_output(
+        [str(home / ".local/bin/sediment"), "--version"], text=True
+    )
+    assert version.strip() == f"sediment {requested}"
+    assert [
+        "pipx",
+        "install",
+        "--force",
+        "--python",
+        "python3.12",
+        f"sediment-cli=={requested}",
+    ] in commands()
 
 
 @pytest.mark.parametrize("method", ["pipx", "pip"])

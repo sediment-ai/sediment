@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- The installer's `pipx` method replaces an existing installation so that
+  `--version` upgrades or downgrades the CLI to the requested release. Closes #189.
+
 ### Upgrade notes
 
 - The Compose `gateway` profile runs the upstream LiteLLM image pinned in
