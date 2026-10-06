@@ -73,11 +73,14 @@ on Debian and Ubuntu. The [installer](install.sh) adds them and the CLI for you:
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Agent, gateway, and repository events flow into Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/data-flow-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/data-flow-light.svg">
+    <img alt="A coding agent, Git, and CI send Facts to Sediment. Sediment derives an Attributed completion for reports and training rows. Agent context reads the Facts." src=".github/assets/data-flow-light.svg" width="782">
   </picture>
 </p>
+
+Each observation arrives from a different system. Sediment appends each one as
+a Fact in PostgreSQL and derives the joined result on demand.
 
 [Architecture and network boundaries](docs/explanation/architecture.md) ·
 [Captured data and privacy](docs/explanation/how-capture-works.md)
