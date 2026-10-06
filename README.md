@@ -79,8 +79,9 @@ on Debian and Ubuntu. The [installer](install.sh) adds them and the CLI for you:
   </picture>
 </p>
 
-Each observation arrives from a different system. Sediment appends each one as
-a Fact in PostgreSQL and derives the joined result on demand.
+Evidence about one piece of agent output arrives from separate systems.
+Sediment appends each observation as a Fact in PostgreSQL and derives the
+joined result on demand.
 
 [Architecture and network boundaries](docs/explanation/architecture.md) ·
 [Captured data and privacy](docs/explanation/how-capture-works.md)

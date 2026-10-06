@@ -164,7 +164,7 @@ def build(theme: str) -> str:
     for i, (emit, land, (source, fact, row)) in enumerate(zip(emits, lands, FACTS)):
         naming = sheet.add(shown((emit, emit + GAP)))
         labels.append(text(16, source + 16, fact, naming, transient=True))
-        chip = sheet.add(slide(emit, 178, 241, source), shown((emit, land)))
+        chip = sheet.add(slide(emit, 178, 228, source), shown((emit, land)))
         chips.append(
             f'<g{_cls(chip, True)}><rect x="-13" y="-9" width="26" height="18" fill="{ink}"/>'
             f'<path d="M-8-4h14M-8 0h10M-8 4h12" stroke="{PAPER[theme]}" stroke-width="2"/></g>'
