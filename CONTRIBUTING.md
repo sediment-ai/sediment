@@ -265,6 +265,7 @@ uv run python scripts/gen_cli_docs.py --check
 uv run python scripts/gen_api_docs.py --check
 uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
 uv run python scripts/gen_compatibility_docs.py --check
+uv run python scripts/gen_data_flow_figure.py --check
 uv run pytest -q -m cluster_roles --durations=10
 uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
 uv run pytest -q -m serial --durations=10

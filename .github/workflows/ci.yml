@@ -90,6 +90,9 @@ jobs:
       # artifact, or training row cannot ship undocumented or mutate an
       # already-published id/version contract.
       - run: uv run python scripts/gen_schema_docs.py --check ${{ github.event_name == 'pull_request' && format('--compatibility-base origin/{0}', github.base_ref) || '' }}
+      # README figure freshness: both theme SVGs are compiled from one
+      # timeline, so a hand edit or a one-theme change cannot ship.
+      - run: uv run python scripts/gen_data_flow_figure.py --check
       - name: Start the maintained PostgreSQL test image
         if: steps.scope.outputs.full == 'true'
         run: |
