@@ -1438,12 +1438,14 @@
       "source": "https://sources.debian.org/src/perl/",
       "source_package": "perl",
       "source_versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ]
     },
     "deb/libpq5": {
@@ -2070,12 +2072,14 @@
       "source": "https://sources.debian.org/src/perl/",
       "source_package": "perl",
       "source_versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ]
     },
     "deb/perl-base": {
@@ -2085,12 +2089,14 @@
       "source": "https://sources.debian.org/src/perl/",
       "source_package": "perl",
       "source_versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ]
     },
     "deb/perl-modules-5.36": {
@@ -2100,12 +2106,14 @@
       "source": "https://sources.debian.org/src/perl/",
       "source_package": "perl",
       "source_versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "5.36.0-7+deb12u3"
+        "5.36.0-7+deb12u3",
+        "5.36.0-7+deb12u4"
       ]
     },
     "deb/pinentry-curses": {
@@ -2594,16 +2602,17 @@
       ]
     },
     "pypi/opentelemetry-api": {
-      "basis": "Reviewed 2026-09-29: upstream release 1.45.0 publishes the API for Python >=3.10; PyPI artifacts are unwithdrawn. The client resolves this API through FastAPI 0.142.0. This maintenance assessment expires with the catalog.",
-      "evidence": "https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.45.0",
+      "basis": "Reviewed 2026-10-06: upstream patch release 1.45.1 publishes the API for Python >=3.10; PyPI artifacts are unwithdrawn. The client resolves this API through FastAPI 0.142.2. This maintenance assessment expires with the catalog.",
+      "evidence": "https://github.com/open-telemetry/opentelemetry-python/releases/tag/v1.45.1",
       "provider": "Upstream project",
       "source": "https://github.com/open-telemetry/opentelemetry-python",
-      "source_updated_at": "2026-09-29T19:48:06Z",
+      "source_updated_at": "2026-10-06T18:03:28Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "1.44.0",
-        "1.45.0"
+        "1.45.0",
+        "1.45.1"
       ]
     },
     "pypi/psycopg": {
