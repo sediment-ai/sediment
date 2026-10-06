@@ -35,7 +35,6 @@ FACTS = [
     (FORGE, "Push", ("Commit", "a1b2c3d")),
     (FORGE, "CI outcome", ("CI outcome", "passed")),
 ]
-IDLE = {AGENT: "in a Session", FORGE: "from your forge"}
 DERIVE = ("M388 78H438", 50)  # the edge from Facts to the Derivation
 # (pulse start, edge, edge length, arrowhead, box x, box width, label)
 OUTPUTS = [
@@ -47,11 +46,11 @@ ALT = (
     "Evidence about one piece of agent output arrives from separate systems. "
     "A coding agent sends an Inference call, a Developer decision, and an Edit "
     "observation. Git and CI send a Push and a CI outcome. Sediment appends "
-    "each one as a Fact, and the stored count rises from 0 to 5. From those "
-    "Facts, Sediment derives an Attributed completion: Developer decision "
-    "accepted, Edit retention score 0.92, Commit a1b2c3d, CI outcome passed. "
-    "Reports and Training rows read the Derivation. Agent context reads the "
-    "Facts."
+    "each one as a Fact in PostgreSQL, and the stored count rises from 0 to 5. "
+    "From those Facts, Sediment derives an Attributed completion: Developer "
+    "decision accepted, Edit retention score 0.92, Commit a1b2c3d, CI outcome "
+    "passed. Reports and Training rows read the Derivation. Agent context "
+    "reads the Facts."
 )
 
 Track = tuple[str, str, list[tuple[float, str]]]
@@ -132,9 +131,8 @@ def build(theme: str) -> str:
         text(16, 28, "Coding agent", size=14, bold=True),
         text(16, 116, "Git and CI", size=14, bold=True),
         text(244, 28, "Facts", size=14, bold=True),
-        text(244, 48, "append-only", dim=True),
+        text(244, 48, "PostgreSQL", dim=True),
         text(454, 28, "Attributed completion", size=14, bold=True),
-        text(454, 48, "derived, never stored", dim=True),
     ]
     flashes, pulses, chips = [], [], []
 
@@ -162,11 +160,6 @@ def build(theme: str) -> str:
 
     emits = [0.5 + i * GAP for i in range(len(FACTS))]
     lands = [t + TRAVEL for t in emits]
-    for source, idle in IDLE.items():
-        mine = [t for t, (src, _, _) in zip(emits, FACTS) if src == source]
-        quiet = sheet.add(shown((0.0, mine[0]), (mine[-1] + GAP, LOOP)))
-        labels.append(text(16, source + 16, idle, quiet, dim=True))
-
     rows = 0
     for i, (emit, land, (source, fact, row)) in enumerate(zip(emits, lands, FACTS)):
         naming = sheet.add(shown((emit, emit + GAP)))
@@ -186,7 +179,7 @@ def build(theme: str) -> str:
         labels.append(text(244, 70, f"{i} stored", count, transient=True))
         if row is None:
             continue
-        y, reveal = 76 + rows * 22, pulse(land, *DERIVE)
+        y, reveal = 64 + rows * 24, pulse(land, *DERIVE)
         rows += 1
         flash(reveal, FLASH, 442, y - 15, 334, 22)
         derived = sheet.add(shown((reveal, RESET)))
