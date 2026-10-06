@@ -55,6 +55,11 @@ def _isolate_real_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
         "SEDIMENT_API_BEARER_TOKEN",
         "OTEL_EXPORTER_OTLP_HEADERS",
         "SEDIMENT_DELIVERY_DIR",
+        # _reconciled_push sets this recursion guard around its own
+        # `git push`. Left exported, it makes cmd_push_notes return before
+        # pushing, so every test that expects a notes push fails with an
+        # error that never names the variable.
+        "SEDIMENT_NOTES_PUSH_IN_PROGRESS",
     ):
         monkeypatch.delenv(name, raising=False)
 

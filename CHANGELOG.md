@@ -14,6 +14,12 @@
   remote has another name, notes stay local until you push to `origin`. The fix
   doesn't audit notes that a clone already merged from a fork. Closes #264.
 
+### Contributor checks
+
+- Replace the static README architecture diagram with an animated data-flow
+  figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
+  timeline, and continuous integration (CI) runs its `--check`.
+
 ## 0.6.0 — 2026-10-04
 
 ### Upgrade notes

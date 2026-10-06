@@ -157,7 +157,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   there, never inside `main`**, or the page documents them as absent.
   `gen_schema_docs.py` renders the schema reference, Draft 2020-12 schemas, and
   catalog from one registry. It fails on undocumented fields; CI checks
-  freshness and every versioned schema under `schemas/` at the compatibility base, including inactive versions absent from its catalog. Invalid Git bases fail; a valid revision before schema publication has an empty inventory. Published files remain immutable, and the catalog indexes active contracts. Missing map entries fail.
+  freshness and every versioned schema under `schemas/` at the compatibility base, including inactive versions absent from its catalog. Invalid Git bases fail; a valid revision before schema publication has an empty inventory. Published files remain immutable, and the catalog indexes active contracts. Missing map entries fail. `gen_data_flow_figure.py` compiles the README's animated figure, one script-free SVG per theme, from its `FACTS` and `OUTPUTS` timeline; CI checks freshness.
 - `second_review.py` runs the cross-model closeout pass from
   `docs/agents/review.md` in an empty temporary workspace. It calls the codex
   CLI and spends codex credits, so do not run it unattended. Missing or malformed final review results exit 2 even when the CLI exits zero; a completed pass can still contain findings.
