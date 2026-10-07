@@ -12,6 +12,27 @@ from pathlib import Path
 import pytest
 
 INSTALL_SH = Path(__file__).parents[2] / "install.sh"
+
+# The distributions a release candidate pins at the same pre-release, in the
+# order `sediment_cli.install_command` names them.
+FIRST_PARTY_DEPENDENCIES = (
+    "sediment-api",
+    "sediment-capture",
+    "sediment-core",
+    "sediment-derive",
+    "sediment-export",
+)
+
+
+def candidate_pins(version: str) -> list[str]:
+    """The `--with <name>==<version>` arguments the installer must add."""
+    return [
+        argument
+        for name in FIRST_PARTY_DEPENDENCIES
+        for argument in ("--with", f"{name}=={version}")
+    ]
+
+
 FAKE_TOOL = r'''
 import json
 import os
@@ -272,6 +293,52 @@ def test_older_release_installs_without_advertising_an_unavailable_guide(install
         "--upgrade",
         "sediment-cli==0.3.0",
     ] in commands()
+
+
+def test_release_candidate_pins_every_first_party_distribution(installer):
+    run, commands, _, _, _ = installer
+    result = run("--capture-only", "--version", "0.4.0rc1")
+    assert result.returncode == 0, result.stderr
+    assert [
+        "uv",
+        "tool",
+        "install",
+        "--python",
+        "3.12",
+        "--upgrade",
+        "sediment-cli==0.4.0rc1",
+        *candidate_pins("0.4.0rc1"),
+    ] in commands()
+
+
+def test_final_release_pins_only_the_cli(installer):
+    run, commands, _, _, _ = installer
+    result = run("--capture-only", "--version", "0.4.0")
+    assert result.returncode == 0, result.stderr
+    assert [
+        "uv",
+        "tool",
+        "install",
+        "--python",
+        "3.12",
+        "--upgrade",
+        "sediment-cli==0.4.0",
+    ] in commands()
+    assert not any("--with" in call for call in commands())
+
+
+def test_dry_run_shows_the_release_candidate_pins(installer):
+    run, commands, home, _, _ = installer
+    result = run("--dry-run", "--method", "uv", "--version", "0.4.0rc1")
+    assert result.returncode == 0, result.stderr
+    assert (
+        "uv tool install --python 3.12 --upgrade sediment-cli==0.4.0rc1 "
+        + " ".join(f"--with {name}==0.4.0rc1" for name in FIRST_PARTY_DEPENDENCIES)
+    ) in result.stdout
+    assert not (home / ".local").exists()
+    assert not any(
+        call[0] in ("apt-get", "brew", "sudo", "curl", "uv") for call in commands()
+    )
 
 
 @pytest.mark.parametrize(
