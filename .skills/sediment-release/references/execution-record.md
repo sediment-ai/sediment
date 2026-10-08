@@ -1,5 +1,48 @@
 # Execution record
 
+## 0.6.0 publication — 2026-10-04
+
+- [Release issue](https://github.com/sediment-ai/sediment/issues/269) and
+  [preparation pull request](https://github.com/sediment-ai/sediment/pull/270).
+  The maintainer requested the release. Work used an isolated worktree from
+  `dcd95c6`; `main` gained #256 during review, so the branch merged
+  `1521c1a` before its final hosted checks.
+- Decision: 0.6.0, a minor release, because the Compose `gateway` profile runs
+  the upstream LiteLLM image instead of building `docker/gateway/Dockerfile`
+  (#252). No database schema changed since 0.5.0.
+- Local `uv lock` raised the lockfile `revision` from 3 to 5 with the pinned
+  uv 0.12.23. Restoring 3 passed `uv lock --check`, and the parsed lockfile then
+  differed from `main` only in seven first-party version labels. All 61
+  dispositions matched `main`'s digest
+  `fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41` and are
+  bound to `55d975317019d8d1013a0292a717e486c88870949dac0f3e93fb325df708a262`
+  with dates, expiry, targets, predicates, and decisions unchanged.
+- The changelog's two gateway Security entries described the patched gateway
+  image that #252 removed; the release entry states the shipped pin instead.
+- Local checks pass: the release check list, 396 focused tests, and the
+  complete no-publish rehearsal on disposable PostgreSQL 17.11 with Python
+  3.12.15. Hosted preparation checks pass on `b4c1637`.
+- The preparation merge is `cc6a0c5ecfb476fb0ca74e4384386932e5118b07`; its tree
+  matches `b4c1637`. This session's git proxy refused the tag push with HTTP
+  403 again. The maintainer's GitHub account rejects password authentication,
+  so the maintainer pushed annotated tag `v0.6.0` over SSH or the GitHub CLI.
+- [Publication workflow](https://github.com/sediment-ai/sediment/actions/runs/37239202706)
+  succeeds. The maintainer approved the waiting `pypi` deployment.
+- [v0.6.0](https://github.com/sediment-ai/sediment/releases/tag/v0.6.0) is the
+  latest immutable release, published at `2026-10-04T22:18:50Z`. All 69 GitHub
+  assets download; `SHA256SUMS` verifies the other 68. The maintained
+  `rescan_releases.verify_release` validates all six security inventories.
+- The twelve distribution hashes match byte for byte across the local
+  rehearsal, the GitHub Release assets, and the six PyPI version records. Each
+  project has one wheel and one source distribution; none is yanked.
+- A fresh Python 3.12.15 installation from PyPI with source builds disabled
+  reports all six distributions at 0.6.0. Version, command help, and server help
+  pass, and bundled pi resources are present. PyPI shows the `sediment-cli`
+  project description as Markdown for the first time.
+- The README uses `release=0.6.0` on the dynamic Shields endpoint, whose SVG
+  reports `pypi: v0.6.0`. The task-owned PostgreSQL 17 container stopped after
+  local verification.
+
 ## 0.5.0 publication — 2026-10-03
 
 - [Release issue](https://github.com/sediment-ai/sediment/issues/243) and

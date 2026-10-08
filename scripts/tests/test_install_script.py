@@ -12,6 +12,27 @@ from pathlib import Path
 import pytest
 
 INSTALL_SH = Path(__file__).parents[2] / "install.sh"
+
+# The distributions a release candidate pins at the same pre-release, in the
+# order `sediment_cli.install_command` names them.
+FIRST_PARTY_DEPENDENCIES = (
+    "sediment-api",
+    "sediment-capture",
+    "sediment-core",
+    "sediment-derive",
+    "sediment-export",
+)
+
+
+def candidate_pins(version: str) -> list[str]:
+    """The `--with <name>==<version>` arguments the installer must add."""
+    return [
+        argument
+        for name in FIRST_PARTY_DEPENDENCIES
+        for argument in ("--with", f"{name}=={version}")
+    ]
+
+
 FAKE_TOOL = r'''
 import json
 import os
@@ -65,7 +86,10 @@ elif name in ("uv", "pipx", "python3", "python3.12"):
                               str(pathlib.Path(os.environ["HOME"]) / ".local/bin"))
         target.mkdir(parents=True, exist_ok=True)
         executable = target / "sediment"
-        executable.write_text("""#!/bin/sh
+        # Real pipx keeps an existing installation and exits 0 without --force.
+        if name == "pipx" and executable.exists() and "--force" not in args:
+            sys.exit(0)
+        executable.write_text("#!/bin/sh\n# installed: " + args[-1] + """
 [ "${TEST_FAIL:-}" != verify ] || exit 1
 if [ "$1" = guide ] && [ "${TEST_GUIDE_SUPPORTED:-1}" = 0 ]; then
     echo "invalid command: guide" >&2
@@ -274,11 +298,57 @@ def test_older_release_installs_without_advertising_an_unavailable_guide(install
     ] in commands()
 
 
+def test_release_candidate_pins_every_first_party_distribution(installer):
+    run, commands, _, _, _ = installer
+    result = run("--capture-only", "--version", "0.4.0rc1")
+    assert result.returncode == 0, result.stderr
+    assert [
+        "uv",
+        "tool",
+        "install",
+        "--python",
+        "3.12",
+        "--upgrade",
+        "sediment-cli==0.4.0rc1",
+        *candidate_pins("0.4.0rc1"),
+    ] in commands()
+
+
+def test_final_release_pins_only_the_cli(installer):
+    run, commands, _, _, _ = installer
+    result = run("--capture-only", "--version", "0.4.0")
+    assert result.returncode == 0, result.stderr
+    assert [
+        "uv",
+        "tool",
+        "install",
+        "--python",
+        "3.12",
+        "--upgrade",
+        "sediment-cli==0.4.0",
+    ] in commands()
+    assert not any("--with" in call for call in commands())
+
+
+def test_dry_run_shows_the_release_candidate_pins(installer):
+    run, commands, home, _, _ = installer
+    result = run("--dry-run", "--method", "uv", "--version", "0.4.0rc1")
+    assert result.returncode == 0, result.stderr
+    assert (
+        "uv tool install --python 3.12 --upgrade sediment-cli==0.4.0rc1 "
+        + " ".join(f"--with {name}==0.4.0rc1" for name in FIRST_PARTY_DEPENDENCIES)
+    ) in result.stdout
+    assert not (home / ".local").exists()
+    assert not any(
+        call[0] in ("apt-get", "brew", "sudo", "curl", "uv") for call in commands()
+    )
+
+
 @pytest.mark.parametrize(
     "method,expected",
     [
         ("uv", "uv tool install --python 3.12 --upgrade sediment-cli==0.2.0"),
-        ("pipx", "pipx install --python python3.12 sediment-cli==0.2.0"),
+        ("pipx", "pipx install --force --python python3.12 sediment-cli==0.2.0"),
         ("pip", "python3.12 -m pip install --user sediment-cli==0.2.0"),
     ],
 )
@@ -310,7 +380,7 @@ def test_env_method_is_preserved(installer):
     run, _, _, _, _ = installer
     result = run("--dry-run", changes={"SEDIMENT_INSTALL_METHOD": "pipx"})
     assert result.returncode == 0
-    assert "pipx install --python python3.12" in result.stdout
+    assert "pipx install --force --python python3.12" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -347,6 +417,20 @@ def test_explicit_alternate_method_installs_and_verifies(installer, method):
     result = run("--method", method)
     assert result.returncode == 0, result.stderr
     assert (home / ".local/bin/sediment").is_file()
+
+
+@pytest.mark.parametrize("first,second", [("0.2.0", "0.3.0"), ("0.3.0", "0.2.0")])
+def test_pipx_rerun_replaces_the_installed_version(installer, first, second):
+    run, _, home, tools, _ = installer
+    for command in ("python3.12", "pipx"):
+        target = tools / command
+        target.write_text(f"#!{sys.executable}\n{FAKE_TOOL}")
+        target.chmod(0o755)
+    for version in (first, second):
+        result = run("--method", "pipx", "--version", version)
+        assert result.returncode == 0, result.stderr
+    installed = (home / ".local/bin/sediment").read_text()
+    assert f"# installed: sediment-cli=={second}\n" in installed
 
 
 @pytest.mark.parametrize("method", ["pipx", "pip"])

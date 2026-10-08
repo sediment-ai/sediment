@@ -1596,9 +1596,10 @@ class _ArgumentParser(argparse.ArgumentParser):
 def _print_dispatched_help(parser: argparse.ArgumentParser, *, prog: str) -> int:
     """Render a forwarded command through the public CLI help contract.
 
-    Report, mirror-GC, and attribution modules keep standalone parsers because
-    their execution seams have different dependency constraints. The installed
-    command still owns their public path and presentation.
+    Report, mirror-GC, attribution, and transcript modules keep standalone
+    parsers because their execution seams have different dependency
+    constraints. The installed command still owns their public path and
+    presentation.
     """
     parser.prog = prog
     parser.formatter_class = _CoderFormatter
@@ -1815,8 +1816,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_qc.add_argument("--reason", required=True)
     p_qc.set_defaults(func=cmd_quarantine_inference_calls)
 
-    # Stubs for --help only — the attribution dispatch in main() runs first
-    # (the report/mirror-gc pattern).
+    # Stubs for --help only — the attribution and transcript dispatch in
+    # main() runs first (the report/mirror-gc pattern).
     sub.add_parser(
         "install",
         help="wire a repo + this machine: git hooks, agent hooks, telemetry "
@@ -1826,6 +1827,15 @@ def build_parser() -> argparse.ArgumentParser:
         "uninstall", help="remove the per-repo git hooks (--agents: user-level too)"
     )
     sub.add_parser("doctor", help="check attribution + server health on this machine")
+    # The docs tell people to run these three by hand; hooks also run `stamp`
+    # and `transcript`.
+    sub.add_parser(
+        "repair-notes", help="reconcile a behind or diverged notes ref and push it"
+    )
+    sub.add_parser("stamp", help="write pending Session markers to the note on HEAD")
+    sub.add_parser(
+        "transcript", help="send one Session's Edit observations from its transcript"
+    )
 
     p_server = sub.add_parser(
         "server", help="run a local API server with managed PostgreSQL"
@@ -2030,9 +2040,10 @@ def build_parser() -> argparse.ArgumentParser:
 # store and never construct Settings.
 _REMOTE_VERBS = {"login", "logout", "commit", "facts", "demo", "evidence"}
 
-# Dispatched pre-argparse to the stdlib-only attribution module.
-# install/uninstall/doctor get help stubs; the hook-plumbing verbs are
-# execution-only (hidden from --help).
+# Dispatched pre-argparse to the stdlib-only attribution module. The verbs
+# that people run by hand (install, uninstall, doctor, stamp, repair-notes)
+# get help stubs; the hook-only verbs (cursor-hook, mark, union-squash-notes,
+# push-notes) are execution-only and stay out of --help.
 _ATTRIBUTION_VERBS = {
     "cursor-hook",
     "install",
@@ -2082,17 +2093,27 @@ def main(argv: list[str] | None = None) -> int:
             return _fail(str(exc))
     if argv[:1] == ["transcript"]:
         module = importlib.import_module("sediment_cli.transcript")
+        # The hook entry point hand-parses argv and always exits 0, so help
+        # returns here, before it reads capture configuration or stdin. No
+        # hook passes a help flag.
+        if {"-h", "--help"} & set(argv[1:]):
+            return _print_dispatched_help(
+                module.build_parser(), prog="sediment transcript"
+            )
         return _public_status(module.main(argv[1:]))
     if argv[:1] and argv[0] in _ATTRIBUTION_VERBS:
         # Forwarded verbatim to the attribution module's own parser —
-        # stdlib-only, never constructs Settings. The plumbing verbs (mark,
-        # stamp, union-squash-notes, push-notes, repair-notes) get no help
+        # stdlib-only, never constructs Settings. The hook-only verbs
+        # (cursor-hook, mark, union-squash-notes, push-notes) get no help
         # stub: hooks invoke them, humans don't.
         module = importlib.import_module("sediment_cli.attribution")
-        if argv[0] in {"install", "uninstall", "doctor"} and argv[1:] in (
-            ["-h"],
-            ["--help"],
-        ):
+        if argv[0] in {
+            "install",
+            "uninstall",
+            "doctor",
+            "stamp",
+            "repair-notes",
+        } and argv[1:] in (["-h"], ["--help"]):
             action = _subparsers_action(module.build_parser())
             return _print_dispatched_help(
                 action.choices[argv[0]], prog=f"sediment {argv[0]}"

@@ -52,9 +52,12 @@ Global options:
 - [`sediment export sft`](#sediment-export-sft)
 - [`sediment export diff-sft`](#sediment-export-diff-sft)
 - [`sediment export recovery`](#sediment-export-recovery)
+- [`sediment stamp`](#sediment-stamp)
+- [`sediment repair-notes`](#sediment-repair-notes)
 - [`sediment doctor`](#sediment-doctor)
 - [`sediment install`](#sediment-install)
 - [`sediment uninstall`](#sediment-uninstall)
+- [`sediment transcript`](#sediment-transcript)
 - [`sediment mirror-gc`](#sediment-mirror-gc)
 - [`sediment delivery`](#sediment-delivery)
 - [`sediment delivery enqueue`](#sediment-delivery-enqueue)
@@ -491,6 +494,28 @@ Options:
 | `--out` | — | output directory **(required)** |
 | `--recipe` | `recovery_ci` | evidence recipe (default: recovery_ci) (choices: `recovery_ci`) |
 
+## sediment stamp
+
+Write this repository's pending Session markers to the note on HEAD under refs/notes/sediment, then clear the markers that it wrote. The post-commit hook runs this command after each commit. Run it yourself only to recover a pending stamp, while HEAD is still the commit that the markers belong to. The command always exits 0, prints each failure on stderr, and logs it to ~/.sediment/attribution.log.
+
+```text
+sediment stamp [-h]
+```
+
+## sediment repair-notes
+
+Fetch refs/notes/sediment from the remote, union-merge it into the local notes ref, and push the result. Run it inside a repository when `sediment doctor --fetch` reports a notes ref that is behind or diverged. Unlike the pre-push hook, the command exits 1 when it can't reconcile or push.
+
+```text
+sediment repair-notes [-h] [remote]
+```
+
+Arguments:
+
+| Name | Default | Description |
+|---|---|---|
+| `remote` | `origin` | remote to fetch from and push to; use origin, the remote that doctor checks (default: origin) |
+
 ## sediment doctor
 
 ```text
@@ -549,13 +574,33 @@ Arguments:
 
 | Name | Default | Description |
 |---|---|---|
-| `repo` | `.` | — |
+| `repo` | `.` | repository to remove the git hooks from (default: current directory) |
 
 Options:
 
 | Name | Default | Description |
 |---|---|---|
 | `--agents` | `false` | also remove user-level agent hooks, generated env, and managed Codex telemetry |
+
+## sediment transcript
+
+Read one hook event on stdin: a JSON object with session_id and transcript_path. Extract the Session's Edit observations from that agent transcript, and send them to SEDIMENT_OTLP_ENDPOINT. For Claude Code, also send Rejected edits and Retry linkages. Agent session-end hooks run this command. Run it yourself to recover a Session that ended without its extractor. The command always exits 0 and reports problems on stderr. If SEDIMENT_OTLP_ENDPOINT is unset, it does nothing.
+
+```text
+sediment transcript [-h] [snapshot] --agent {claude-code,codex,pi}
+```
+
+Arguments:
+
+| Name | Default | Description |
+|---|---|---|
+| `snapshot` | — | run as the PreToolUse hook instead: record line hashes around one edit call in a local cache; must come before --agent |
+
+Options:
+
+| Name | Default | Description |
+|---|---|---|
+| `--agent` | — | agent harness that wrote the transcript (choices: `claude-code`, `codex`, `pi`) **(required)** |
 
 ## sediment mirror-gc
 

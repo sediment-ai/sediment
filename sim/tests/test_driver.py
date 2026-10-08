@@ -297,7 +297,7 @@ def test_a_source_with_no_traffic_is_unobserved_not_drift() -> None:
     assert [(f.source, f.kind) for f in findings] == [(source, "unobserved")]
 
 
-def test_baseline_covers_the_agents_tier_b_drives() -> None:
+def test_baseline_covers_the_agents_the_driver_drives() -> None:
     # If a translator stops producing facts from its own frozen fixture, the
     # drift report silently loses that source's coverage — and would then
     # report "no drift" forever.

@@ -20,7 +20,8 @@ Usage:
 Emits ``<out>/simcorp-billing`` (the repo) and ``<out>/sim_repo_manifest.json``
 (head SHA, commit count, executable pairs with base/gold SHAs and their
 ``verification_command``, notable paths). The manifest is generator output, not
-pipeline ground truth — scenario ground truth lives in the Tier A manifest.
+pipeline ground truth — scenario ground truth lives in the ground-truth manifest
+that ``scenarios.py`` writes.
 """
 
 from __future__ import annotations

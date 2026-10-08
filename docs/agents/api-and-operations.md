@@ -85,7 +85,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
   Pipes, `NO_COLOR`, and `TERM=dumb` use plain text, as do direct and fleet scripts. The CLI removes nonprintable characters from server error details and displayed organization identifiers through `ui.printable_text`; standalone doctor applies the same filter. Stored identity stays unchanged.
   `--version` shows the static knot in the terminal's own text color, followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
-  The banner adds no dependency or network request. Help names the full installed command path. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
+  The banner adds no dependency or network request. Help names the full installed command path. `--help` and the generated reference list each command that the docs tell you to run by hand, including the capture commands `stamp`, `repair-notes`, and `transcript`. The hook-only verbs `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay out of both. The `transcript` hook entry parses its arguments by hand and always exits 0, so `transcript.build_parser` describes the command for help and the reference only. `cli.py` prints that help before the hook entry reads capture configuration or stdin. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works
   without a valid `SEDIMENT_ORG_ID`. `export dpo` defaults to `dpo_human`;
   `export sft` and `export diff-sft` default to `sft_curated`. Operators must
@@ -136,8 +136,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - `sediment_attribution.py` is the stdlib-only notes client; `install --fleet`
   mutates developer git config — an operator action, never a test fixture.
 - `sediment_transcript.py` is the stdlib checkout shim for packaged `sediment transcript`.
-- `repair-notes` fixes a diverged notes ref. It pushes, so keep it out
-  of the unattended allowlist.
+- `repair-notes` fixes a diverged notes ref against `origin` only. It pushes,
+  so keep it out of the unattended allowlist.
 - `doctor [REPO ...]` reports and never repairs. It exits 1 on any FAIL,
   and it is safe to run unattended. Only `--fetch` writes, and it writes one
   tracking ref. An absent agent reports `info`, never FAIL. With pi present,

@@ -2,7 +2,8 @@ USAGE:
   sediment uninstall [-h] [--agents] [repo]
 
 ARGUMENTS:
-  repo
+  repo        repository to remove the git hooks from (default: current
+              directory)
 
 OPTIONS:
   -h, --help  show this help message and exit

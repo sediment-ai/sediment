@@ -246,7 +246,7 @@ commit. Place `config.json` beside the fleet stamper:
 The matcher normalizes HTTPS and SSH remotes and matches whole path segments.
 
 The allowlist is a security boundary: the pre-push hook sends Session
-identifiers to the remote, so never list third-party owners. An allowlisted
+identifiers to the repository's `origin`, so never list third-party owners. An allowlisted
 repository reinstalls its hooks after a manual uninstall, so remove the owner
 from the list first.
 
