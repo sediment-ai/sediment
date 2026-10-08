@@ -1152,6 +1152,7 @@ def cmd_union_squash_notes(msg_file: str, source: str) -> int:
 # Where the remote's notes land during reconcile. A plain tracking ref, so a
 # failed merge can never damage the real local ref.
 NOTES_REMOTE_TRACKING_REF = "refs/notes/sediment-remote"
+NOTES_PUSH_TIMEOUT_SECONDS = 120
 
 
 def _is_notes_remote(remote: str) -> bool:
@@ -1246,16 +1247,47 @@ def _reconciled_push(remote: str) -> subprocess.CompletedProcess:
             return subprocess.CompletedProcess(
                 ["git", "push"], 1, "", "notes_reconcile_incomplete"
             )
-        result = subprocess.run(
-            ["git", "push", remote, f"{NOTES_REF}:{NOTES_REF}"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
+        try:
+            result = subprocess.run(
+                ["git", "push", remote, f"{NOTES_REF}:{NOTES_REF}"],
+                capture_output=True,
+                text=True,
+                timeout=NOTES_PUSH_TIMEOUT_SECONDS,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            # Never surfaced: the exception text holds git's arguments, and
+            # ``remote`` can be a URL with credentials.
+            return subprocess.CompletedProcess(
+                ["git", "push"],
+                1,
+                "",
+                f"git push timed out after {NOTES_PUSH_TIMEOUT_SECONDS}s",
+            )
         if result.returncode == 0:
             break
     return result
+
+
+# ponytail: everything from "://" to the last "@" counts as userinfo, so an
+# "@" in a URL path, or later in the text, over-strips: ``https://host/a@b``
+# shows as ``https://b``. That is the safe side: a pattern that stops at "/"
+# or at whitespace passes ``scheme://user:pa/ss@host`` and
+# ``scheme://user:pass word@host`` through as typed. Parse the authority if
+# a hidden path segment ever matters.
+_URL_USERINFO_RE = re.compile(r"://.*@", re.DOTALL)
+
+
+def _strip_userinfo(text: str) -> str:
+    """``text`` with the userinfo cut from the URL in it.
+
+    Git hands ``pre-push`` a pushed URL exactly as typed, and Git before
+    2.27 repeats a push URL unchanged in its error line, so the remote
+    argument and the push diagnostic can each carry a credential. A remote
+    name, a bare path, and an scp-like ``user@host:path`` hold no ``://``
+    and pass through.
+    """
+    return _URL_USERINFO_RE.sub("://", text)
 
 
 def _push_failure_detail(result: subprocess.CompletedProcess) -> str:
@@ -1266,10 +1298,10 @@ def _push_failure_detail(result: subprocess.CompletedProcess) -> str:
     """
     stderr = result.stderr.strip().splitlines()
     if stderr:
-        return stderr[-1]
+        return _strip_userinfo(stderr[-1])
     stdout = result.stdout.strip().splitlines()
     if stdout:
-        return stdout[-1]
+        return _strip_userinfo(stdout[-1])
     return f"exit {result.returncode}"
 
 
@@ -1277,9 +1309,10 @@ def _log_push_failure(remote: str, detail: str) -> None:
     """Log a ``notes-push-failed`` event naming the checkout when known.
 
     ``git_dir`` matches ``unhooked-repo`` so ``doctor`` can point at the
-    failing checkout the way it points at unhooked ones.
+    failing checkout the way it points at unhooked ones. ``remote`` is
+    logged without URL userinfo.
     """
-    fields: dict[str, str] = {"remote": remote, "detail": detail}
+    fields: dict[str, str] = {"remote": _strip_userinfo(remote), "detail": detail}
     git_dir = _git_dir(os.getcwd())
     if git_dir is not None:
         fields["git_dir"] = str(git_dir)
@@ -1314,8 +1347,8 @@ def cmd_push_notes(remote: str) -> int:
         if result.returncode != 0:
             detail = _push_failure_detail(result)
             print(
-                f"sediment-attribution: notes push to {remote} failed "
-                f"(push continues): {detail}",
+                f"sediment-attribution: notes push to {_strip_userinfo(remote)} "
+                f"failed (push continues): {detail}",
                 file=sys.stderr,
             )
             _log_push_failure(remote, detail)
@@ -1337,20 +1370,21 @@ def cmd_repair_notes(remote: str) -> int:
     if _git(["rev-parse", "--is-inside-work-tree"]) != "true":
         print("repair-notes: not inside a git work tree", file=sys.stderr)
         return 1
+    shown = _strip_userinfo(remote)
     if not _reconcile_notes(remote):
         return 1
     if _git(["rev-parse", "--verify", "--quiet", NOTES_REF]) is None:
-        print(f"repair-notes: no notes ref locally or on {remote}; nothing to do")
+        print(f"repair-notes: no notes ref locally or on {shown}; nothing to do")
         return 0
     result = _reconciled_push(remote)
     if result.returncode != 0:
         detail = _push_failure_detail(result)
-        print(f"repair-notes: push to {remote} failed: {detail}", file=sys.stderr)
+        print(f"repair-notes: push to {shown} failed: {detail}", file=sys.stderr)
         _log_push_failure(remote, detail)
         return 1
     print(
         f"{ui.glyph('✓', 'phosphor')}repair-notes: notes ref reconciled "
-        f"and pushed to {remote}"
+        f"and pushed to {shown}"
     )
     return 0
 

@@ -4,6 +4,18 @@
 
 ### Security
 
+- Keep URL credentials out of notes-push diagnostics. Git hands the `pre-push`
+  hook a pushed URL exactly as typed, so a failed notes push to
+  `https://<user>:<token>@host/repo.git` printed the token in the push output
+  and logged it in `~/.sediment/attribution.log`. `push-notes` and
+  `repair-notes` now remove URL userinfo from the remote and from Git's error
+  line, which Git before 2.27 prints with the push URL's credentials. A notes
+  push that times out is now an ordinary failure: `repair-notes` reports it
+  instead of ending in a traceback that prints the URL, and `push-notes` logs
+  it. If you pushed to a URL that carries credentials, run
+  `grep -n '://.*@' ~/.sediment/attribution.log*`. If a line shows a password
+  or token, rotate that credential and delete the file. A line that shows only
+  a login, such as `ssh://git@host/repo.git`, needs no action. Closes #266.
 - The pre-push hook and `sediment repair-notes` sync the notes ref with `origin`
   only, matched by name or by URL. Earlier, a push to another remote, such as an
   outside contributor's fork, merged that remote's notes into the local notes
