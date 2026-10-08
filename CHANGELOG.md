@@ -60,6 +60,14 @@
 - The `sediment-cli` PyPI page shows a project description, and the README
   leads with the PyPI installation.
 
+### Command line
+
+- List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the
+  CLI reference. Each `--help` says what the command does and describes its
+  arguments, and `uninstall --help` describes `repo`. The hook-only verbs
+  `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay hidden.
+  Closes #172.
+
 ## 0.5.0 — 2026-10-03
 
 ### Upgrade notes
