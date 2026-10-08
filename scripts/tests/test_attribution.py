@@ -1011,6 +1011,88 @@ def test_push_notes_final_failure_logs_event(tmp_path: Path) -> None:
     assert push_event["git_dir"] == str(git_dir(repo))
 
 
+def test_notes_push_failure_omits_url_credentials(tmp_path: Path) -> None:
+    # Git hands pre-push a pushed URL exactly as typed, so the remote
+    # argument can carry a token. Port 1 on loopback refuses the connection:
+    # the notes push fails with no network.
+    secret = "fake-token"
+    shown = "http://127.0.0.1:1/acme/repo.git"
+    url = f"http://x-access-token:{secret}@127.0.0.1:1/acme/repo.git"
+    repo = make_repo(tmp_path / "r")
+    git(repo, "remote", "add", "origin", shown)
+    nothing = run_cli(["repair-notes", url], cwd=repo)
+    assert f"on {shown}; nothing to do" in nothing.stdout
+    mark(repo)
+    run_cli(["stamp"], cwd=repo)
+    pushed = run_cli(["push-notes", url], cwd=repo)
+    repaired = run_cli(["repair-notes", url], cwd=repo)
+    assert (pushed.returncode, repaired.returncode) == (0, 1)
+    events = [e for e in log_entries(repo) if e["event"] == "notes-push-failed"]
+    assert [e["remote"] for e in events] == [shown] * 2
+    for result in (pushed, repaired):
+        assert f"to {shown} failed" in result.stderr
+    # Userinfo that Git rejects, here a space and a "/", still arrives as the
+    # argument when the command runs directly.
+    malformed = run_cli(
+        ["repair-notes", f"http://u:{secret} x/y@127.0.0.1:1/r.git"], cwd=repo
+    )
+    # A push that lands prints the remote too.
+    bare = tmp_path / "bare.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    git(repo, "remote", "set-url", "origin", str(bare))
+    git(repo, "config", f"url.{bare}.insteadOf", url)
+    landed = run_cli(["repair-notes", url], cwd=repo)
+    assert f"pushed to {shown}" in landed.stdout
+    for result in (nothing, pushed, repaired, malformed, landed):
+        assert secret not in result.stderr + result.stdout
+    assert secret not in attribution_log(repo).read_text()
+    # Git's own error line can repeat a push URL with its credentials: Git
+    # before 2.27 always, later Git when the userinfo holds an unencoded "/".
+    detail = _load_module()._push_failure_detail
+    for line in (
+        f"error: failed to push some refs to '{url}'",
+        f"fatal: unable to access 'http://u:{secret}/x@127.0.0.1:1/r.git/': rejected",
+    ):
+        for stdout, stderr in ((line, ""), ("", line)):
+            failed = subprocess.CompletedProcess([], 1, stdout, stderr)
+            assert secret not in detail(failed)
+
+
+def test_notes_push_timeout_is_a_failure_without_the_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    # TimeoutExpired's text holds git's whole argument list, the pushed URL
+    # included: uncaught, repair-notes ended in a traceback that printed it,
+    # and push-notes recorded nothing.
+    secret = "fake-token"
+    repo = make_repo(tmp_path / "r")
+    git(repo, "remote", "add", "origin", "http://127.0.0.1:1/acme/repo.git")
+    mark(repo)
+    run_cli(["stamp"], cwd=repo)
+    fakebin = tmp_path / "fakebin"
+    fakebin.mkdir()
+    real_git = shutil.which("git")
+    assert real_git is not None
+    (fakebin / "git").write_text(
+        f'#!/bin/sh\nif [ "$1" = "push" ]; then exec sleep 5; fi\n'
+        f'exec "{real_git}" "$@"\n'
+    )
+    (fakebin / "git").chmod(0o755)
+    mod = _load_module()
+    monkeypatch.setattr(mod, "NOTES_PUSH_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setenv("PATH", f"{fakebin}:{os.environ['PATH']}")
+    monkeypatch.chdir(repo)
+    url = f"http://x-access-token:{secret}@127.0.0.1:1/acme/repo.git"
+    assert mod.main(["push-notes", url]) == 0
+    assert mod.main(["repair-notes", url]) == 1
+    output = capsys.readouterr()
+    assert output.err.count("git push timed out after 0.2s") == 2
+    assert secret not in output.err + output.out
+    log = (tmp_path / "attribution.log").read_text()
+    assert log.count('"event": "notes-push-failed"') == 2
+    assert secret not in log
+
+
 def test_push_failure_detail_falls_back_to_stdout() -> None:
     # stderr wins when git prints one; stdout is the fallback when stderr is
     # empty, and the exit code is the last resort when both are empty.
