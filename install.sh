@@ -140,7 +140,9 @@ case "$METHOD" in
     pipx)
         BIN_DIR="${PIPX_BIN_DIR:-$BIN_DIR}"
         export PIPX_BIN_DIR="$BIN_DIR"
-        set -- pipx install --python "$PYTHON" "$SPEC"
+        # Without --force, pipx leaves an existing installation unchanged and
+        # exits 0, so a rerun with another --version would report success.
+        set -- pipx install --force --python "$PYTHON" "$SPEC"
         ;;
     pip)
         if [ "$DRY_RUN" = 0 ]; then BIN_DIR="$("$PYTHON" -m site --user-base)/bin"; fi
