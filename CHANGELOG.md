@@ -16,6 +16,21 @@
   `grep -n '://.*@' ~/.sediment/attribution.log*`. If a line shows a password
   or token, rotate that credential and delete the file. A line that shows only
   a login, such as `ssh://git@host/repo.git`, needs no action. Closes #266.
+- The pre-push hook and `sediment repair-notes` sync the notes ref with `origin`
+  only, matched by name or by URL. Earlier, a push to another remote, such as an
+  outside contributor's fork, merged that remote's notes into the local notes
+  ref, and the next push to `origin` published them where the Attribution
+  Derivation reads. The same push also sent every local note to that remote. A
+  push to another remote now syncs no notes and logs `notes-push-skipped`;
+  `repair-notes` refuses it with `notes_remote_not_origin`. If your shared
+  remote has another name, notes stay local until you push to `origin`. The fix
+  doesn't audit notes that a clone already merged from a fork. Closes #264.
+
+### Contributor checks
+
+- Replace the static README architecture diagram with an animated data-flow
+  figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
+  timeline, and continuous integration (CI) runs its `--check`.
 
 ## 0.6.0 — 2026-10-04
 
@@ -30,6 +45,12 @@
   `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
   security inventories; retained releases through 0.5.0 keep their gateway
   evidence, which rescans verify and skip. Closes #251.
+
+### Installation
+
+- Pass `--force` in the installer's `pipx` method, so a rerun with another
+  `--version` replaces the installed CLI. Before, the rerun reported success
+  and left the earlier version in place. Closes #189.
 
 ### Security
 
@@ -50,6 +71,14 @@
   AGPL-3.0-or-later.
 - The `sediment-cli` PyPI page shows a project description, and the README
   leads with the PyPI installation.
+
+### Command line
+
+- List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the
+  CLI reference. Each `--help` says what the command does and describes its
+  arguments, and `uninstall --help` describes `repo`. The hook-only verbs
+  `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay hidden.
+  Closes #172.
 
 ## 0.5.0 — 2026-10-03
 

@@ -124,11 +124,25 @@ case "$METHOD" in
         export UV_TOOL_BIN_DIR="$BIN_DIR"
         if ! command -v uv >/dev/null 2>&1; then bootstrap_uv; fi
         set -- uv tool install --python 3.12 --upgrade "$SPEC"
+        # A release candidate pins every first-party distribution at the same
+        # pre-release, and uv admits a pre-release only when a direct
+        # requirement names it, so naming sediment-cli alone fails to resolve.
+        # `sediment_cli.install_command` prints the same command form.
+        case "$VERSION" in
+            *rc[0-9]*)
+                for dep in sediment-api sediment-capture sediment-core \
+                           sediment-derive sediment-export; do
+                    set -- "$@" --with "$dep==$VERSION"
+                done
+                ;;
+        esac
         ;;
     pipx)
         BIN_DIR="${PIPX_BIN_DIR:-$BIN_DIR}"
         export PIPX_BIN_DIR="$BIN_DIR"
-        set -- pipx install --python "$PYTHON" "$SPEC"
+        # Without --force, pipx leaves an existing installation unchanged and
+        # exits 0, so a rerun with another --version would report success.
+        set -- pipx install --force --python "$PYTHON" "$SPEC"
         ;;
     pip)
         if [ "$DRY_RUN" = 0 ]; then BIN_DIR="$("$PYTHON" -m site --user-base)/bin"; fi

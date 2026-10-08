@@ -33,16 +33,19 @@ Stdlib only, no daemon. Nine subcommands:
                      and unions their already-written notes back into the
                      local marker file, so the post-commit ``stamp`` step
                      above writes a correct note on the squash commit too
-  push-notes REMOTE  pre-push hook: reconciles the notes ref with the remote
-                     (fetch + ``cat_sort_uniq`` union merge), then pushes it
-                     alongside the push, retrying once if the remote moved;
-                     a final failure is logged to
-                     ``~/.sediment/attribution.log``
+  push-notes REMOTE  pre-push hook: when the push goes to ``origin``,
+                     reconciles the notes ref with it (fetch +
+                     ``cat_sort_uniq`` union merge), then pushes it alongside
+                     the push, retrying once if the remote moved; a final
+                     failure is logged to ``~/.sediment/attribution.log``.
+                     A push to any other remote, such as a fork, syncs
+                     nothing and logs ``notes-push-skipped``
   repair-notes [REMOTE]
                      operator command (not a hook, NOT best-effort): the same
                      reconcile + push on demand, for a machine whose notes
                      ref already diverged, or a fresh machine adopting
-                     the remote's notes; exits non-zero on failure
+                     the remote's notes; exits non-zero on failure, and
+                     refuses a REMOTE that is not ``origin``
   doctor [REPO ...]  operator command: one-shot health check of everything
                      attribution needs on this machine — agent hook entries,
                      the fleet git template, the attribution log's recorded
@@ -748,6 +751,7 @@ _CAPTURE_FAILURE_REASONS = (
     "stamp_cleanup_unconfirmed",
     "notes_reconcile_busy",
     "notes_reconcile_failed",
+    "notes_remote_not_origin",
     "notes_lock_failed",
 )
 
@@ -1151,6 +1155,24 @@ NOTES_REMOTE_TRACKING_REF = "refs/notes/sediment-remote"
 NOTES_PUSH_TIMEOUT_SECONDS = 120
 
 
+def _is_notes_remote(remote: str) -> bool:
+    """True when ``remote`` is this repository's ``origin``, by name or URL.
+
+    Git hands ``pre-push`` whatever the developer pushes to. Reconciling
+    with a fork would union-merge notes its owner wrote into the ref the
+    server-side Attribution Derivation reads, and publish every local note
+    to that fork.
+    """
+    # ponytail: origin is the one notes remote, as in doctor and the owner
+    # allowlist; a git config key if a shared remote ever has another name.
+    origin = _git(["remote", "get-url", "origin"])
+    if not origin:
+        return False
+    # Expands a remote name or a URL alike, applying url.<base>.insteadOf.
+    url = _git(["ls-remote", "--get-url", remote]) or remote
+    return _normalize_remote(url) == _normalize_remote(origin)
+
+
 def _reconcile_notes(remote: str) -> bool:
     """Union-merge the remote's notes ref into the local one, best-effort.
 
@@ -1177,6 +1199,11 @@ def _reconcile_notes(remote: str) -> bool:
 
 def _reconcile_notes_locked(remote: str) -> bool:
     """The caller owns the common notes mutex, including the tracking-ref fetch."""
+    # The one guard every notes sync passes. The refusal makes
+    # ``_reconcile_notes`` return False, which also stops
+    # ``_reconciled_push`` before its push.
+    if not _is_notes_remote(remote):
+        raise _CaptureFailure("notes_remote_not_origin")
     if _git(["fetch", remote, f"+{NOTES_REF}:{NOTES_REMOTE_TRACKING_REF}"]) is None:
         return True  # remote unreachable or has no notes ref yet — the push decides
     if _git(["rev-parse", "--verify", "--quiet", NOTES_REF]) is None:
@@ -1295,6 +1322,9 @@ def _log_push_failure(remote: str, detail: str) -> None:
 def cmd_push_notes(remote: str) -> int:
     """pre-push: reconcile then push the notes ref, best-effort.
 
+    Syncs with ``origin`` only (``_is_notes_remote``); a push to any other
+    remote logs ``notes-push-skipped`` and leaves both notes refs untouched.
+
     A final failure prints one stderr line and logs a ``notes-push-failed``
     event to the local attribution log — a stderr line inside ``git push``
     output is not a signal anyone sees.
@@ -1308,6 +1338,11 @@ def cmd_push_notes(remote: str) -> int:
             return 0
         if _git(["rev-parse", "--verify", "--quiet", NOTES_REF]) is None:
             return 0  # nothing to push
+        if not _is_notes_remote(remote):
+            # A push to a fork is ordinary, so it is a skip and no failure.
+            # Content-free: a pushed URL can carry credentials.
+            _log_event("notes-push-skipped", git_dir=str(_git_dir(os.getcwd()) or ""))
+            return 0
         result = _reconciled_push(remote)
         if result.returncode != 0:
             detail = _push_failure_detail(result)
@@ -1327,7 +1362,8 @@ def cmd_repair_notes(remote: str) -> int:
 
     The on-demand fix for a machine already in the diverged state, safe to
     run any time — fetch, union merge, push are each idempotent. On a fresh
-    machine with no local notes ref it adopts the remote's. Unlike the
+    machine with no local notes ref it adopts the remote's. A ``remote``
+    other than ``origin`` is refused (``notes_remote_not_origin``). Unlike the
     hooks this is NOT best-effort: it reports what happened and exits
     non-zero on failure so operators and scripts can trust the result.
     """
@@ -3792,7 +3828,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--tool", required=True, choices=["claude-code", "codex", "cursor", "pi"]
     )
 
-    sub.add_parser("stamp", help="write the attribution note on HEAD (post-commit)")
+    sub.add_parser(
+        "stamp",
+        help="write the attribution note on HEAD (post-commit)",
+        description="Write this repository's pending Session markers to the "
+        "note on HEAD under refs/notes/sediment, then clear the markers that "
+        "it wrote. The post-commit hook runs this command after each commit. "
+        "Run it yourself only to recover a pending stamp, while HEAD is still "
+        "the commit that the markers belong to. The command always exits 0, "
+        "prints each failure on stderr, and logs it to "
+        "~/.sediment/attribution.log.",
+    )
 
     p_squash = sub.add_parser(
         "union-squash-notes",
@@ -3809,9 +3855,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_repair = sub.add_parser(
         "repair-notes",
-        help="reconcile the notes ref with a remote and push (operator fix)",
+        help="reconcile a behind or diverged notes ref and push it (operator fix)",
+        description="Fetch refs/notes/sediment from the remote, union-merge it "
+        "into the local notes ref, and push the result. Run it inside a "
+        "repository when `sediment doctor --fetch` reports a notes ref that "
+        "is behind or diverged. Unlike the pre-push hook, the command exits 1 "
+        "when it can't reconcile or push.",
     )
-    p_repair.add_argument("remote", nargs="?", default="origin")
+    p_repair.add_argument(
+        "remote",
+        nargs="?",
+        default="origin",
+        help="remote to fetch from and push to; use origin, the remote that "
+        "doctor checks (default: origin)",
+    )
 
     p_doctor = sub.add_parser(
         "doctor",
@@ -3910,7 +3967,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_uninstall = sub.add_parser("uninstall", help="remove hooks from a repo")
-    p_uninstall.add_argument("repo", nargs="?", default=".")
+    p_uninstall.add_argument(
+        "repo",
+        nargs="?",
+        default=".",
+        help="repository to remove the git hooks from (default: current directory)",
+    )
     p_uninstall.add_argument(
         "--agents",
         action="store_true",

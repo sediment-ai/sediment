@@ -24,13 +24,26 @@ import pytest
 from sediment_cli.cli import _REPORTS, build_parser, main
 
 GOLDEN_DIR = Path(__file__).parent / "testdata" / "help"
-_DISPATCH_ONLY = {"report", "mirror-gc", "install", "uninstall", "doctor", "delivery"}
+_DISPATCH_ONLY = {
+    "report",
+    "mirror-gc",
+    "install",
+    "uninstall",
+    "doctor",
+    "stamp",
+    "repair-notes",
+    "transcript",
+    "delivery",
+}
 _DISPATCH_PATHS = [
     ("report",),
     ("mirror-gc",),
     ("install",),
     ("uninstall",),
     ("doctor",),
+    ("stamp",),
+    ("repair-notes",),
+    ("transcript",),
     ("delivery",),
     *(("delivery", name) for name in ("enqueue", "status", "replay")),
     *(("report", name) for name in _REPORTS),
@@ -135,6 +148,42 @@ def test_dispatched_runtime_help_uses_public_command_path(path) -> None:
 
     assert captured.stdout.startswith("USAGE:\n")
     assert f"sediment {' '.join(path)}" in captured.stdout.splitlines()[1]
+
+
+def test_hook_only_verbs_stay_out_of_help() -> None:
+    # Hooks invoke these; listing them invites hand-running them. The docs
+    # tell people to run the other three, so those are listed.
+    commands = set(_subparsers_action(build_parser()).choices)
+
+    assert not commands & {"mark", "cursor-hook", "union-squash-notes", "push-notes"}
+    assert {"stamp", "repair-notes", "transcript"} <= commands
+
+
+@pytest.mark.parametrize(
+    "argv", (["--help"], ["-h"], ["snapshot", "--agent", "pi", "--help"])
+)
+def test_transcript_help_returns_before_the_hook_reads_anything(
+    argv, monkeypatch, capsys
+) -> None:
+    from sediment_cli import transcript
+
+    touched: list[str] = []
+
+    class _Stdin:
+        def read(self):
+            touched.append("stdin")
+            return "{}"
+
+    # A configured endpoint, so a regression into the hook path would go on
+    # to read stdin; the hook's own fail-soft would hide a raised error.
+    monkeypatch.setattr(
+        transcript, "_endpoint", lambda: touched.append("config") or "http://127.0.0.1"
+    )
+    monkeypatch.setattr(sys, "stdin", _Stdin())
+
+    assert main(["transcript", *argv]) == 0
+    assert touched == []
+    assert capsys.readouterr().out.startswith("USAGE:\n  sediment transcript ")
 
 
 def test_report_registry_uses_attribution_vocabulary() -> None:

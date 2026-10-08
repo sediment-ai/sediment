@@ -1,0 +1,12 @@
+USAGE:
+  sediment stamp [-h]
+
+  Write this repository's pending Session markers to the note on HEAD under
+  refs/notes/sediment, then clear the markers that it wrote. The post-commit
+  hook runs this command after each commit. Run it yourself only to recover a
+  pending stamp, while HEAD is still the commit that the markers belong to.
+  The command always exits 0, prints each failure on stderr, and logs it to
+  ~/.sediment/attribution.log.
+
+OPTIONS:
+  -h, --help  show this help message and exit

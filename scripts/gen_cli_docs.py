@@ -9,10 +9,14 @@ Three parser sources, because the CLI dispatches three ways:
 
 - ``sediment_cli.cli.build_parser`` — the argparse tree (`facts`, `login`,
   `export …`, quarantine verbs, `server`).
-- ``sediment_cli.attribution.build_parser`` — `install`/`uninstall`/`doctor`,
-  whose flags live only there; `cli.py` carries help stubs.
-- the report modules and ``sediment_api.mirror_gc``, dispatched pre-argparse
-  with argv forwarded verbatim to each module's own ``build_parser``.
+- ``sediment_cli.attribution.build_parser`` — `install`/`uninstall`/`doctor`/
+  `stamp`/`repair-notes`, whose arguments live only there; `cli.py` carries
+  help stubs.
+- the report modules, ``sediment_api.mirror_gc``, ``sediment_cli.delivery``,
+  and ``sediment_cli.transcript``, dispatched pre-argparse with argv
+  forwarded verbatim. Each module's own ``build_parser`` describes it; the
+  transcript hook hand-parses argv, so its parser serves help and this page
+  only.
 
 Report defaults that read the environment (``--org`` from
 ``$SEDIMENT_ORG_ID``, storage from ``$SEDIMENT_DATABASE_URL`` /
@@ -20,9 +24,9 @@ Report defaults that read the environment (``--org`` from
 is generated with those unset — it documents the contract a reader gets on
 a bare shell, not one machine's environment.
 
-The hook-plumbing verbs (`cursor-hook`, `mark`, `stamp`,
-`union-squash-notes`, `push-notes`, `repair-notes`) are omitted: hooks invoke
-them, humans do not, and they are already hidden from `--help`.
+The hook-only verbs (`cursor-hook`, `mark`, `union-squash-notes`,
+`push-notes`) are omitted: hooks invoke them, humans do not, and they are
+already hidden from `--help`.
 """
 
 from __future__ import annotations
@@ -37,20 +41,23 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH = REPO_ROOT / "docs" / "reference" / "cli.md"
 
-_PLUMBING = {
-    "cursor-hook",
-    "mark",
-    "stamp",
-    "union-squash-notes",
-    "push-notes",
-    "repair-notes",
-}
+_PLUMBING = {"cursor-hook", "mark", "union-squash-notes", "push-notes"}
 
 # Help stubs in cli.py whose real parser lives elsewhere: install/uninstall/
-# doctor come from the attribution tree, mirror-gc and each report from
-# their own module's build_parser. Rendering the stub would document a verb
-# as flagless.
-_STUBS = {"install", "uninstall", "doctor", "report", "mirror-gc", "delivery"}
+# doctor/stamp/repair-notes come from the attribution tree; transcript,
+# mirror-gc, delivery, and each report from their own module's build_parser.
+# Rendering the stub would document a verb as flagless.
+_STUBS = {
+    "install",
+    "uninstall",
+    "doctor",
+    "stamp",
+    "repair-notes",
+    "transcript",
+    "report",
+    "mirror-gc",
+    "delivery",
+}
 
 _HEADER = """# CLI reference
 
@@ -80,12 +87,16 @@ def _subparsers(parser: argparse.ArgumentParser):
 
 
 def _usage(parser: argparse.ArgumentParser, path: tuple[str, ...]) -> str:
-    """A usage line with the real command path, not argparse's prog."""
+    """A usage line with the real command path, not argparse's prog.
+
+    A parser's own ``usage`` wins, as it does in ``--help``: `transcript`
+    declares one because its positional precedes its option.
+    """
     formatter = argparse.HelpFormatter(prog=" ".join(("sediment", *path)))
     optionals = [a for a in parser._actions if a.option_strings]
     positionals = [a for a in parser._actions if not a.option_strings]
     usage = formatter._format_usage(
-        None, optionals + positionals, parser._mutually_exclusive_groups, ""
+        parser.usage, optionals + positionals, parser._mutually_exclusive_groups, ""
     )
     return " ".join(usage.split())
 
@@ -169,8 +180,9 @@ def render() -> str:
     lines: list[str] = []
     lines += _render(cli.build_parser(), ())
 
-    # install/uninstall/doctor: cli.py holds help stubs, the real flags are
-    # in the attribution parser. Rendered here so the page is complete.
+    # install/uninstall/doctor/stamp/repair-notes: cli.py holds help stubs,
+    # the real arguments are in the attribution parser. Rendered here so the
+    # page is complete.
     attribution_tree = attribution.build_parser()
     action = _subparsers(attribution_tree)
     for name, child in action.choices.items():
@@ -178,8 +190,10 @@ def render() -> str:
             continue
         lines += _render(child, (name,))
 
-    # mirror-gc and the reports dispatch pre-argparse; each module owns its
-    # parser, so they render from those rather than cli.py's help stubs.
+    # transcript, mirror-gc, delivery, and the reports dispatch pre-argparse;
+    # each module owns its parser, so they render from those rather than
+    # cli.py's help stubs.
+    lines += _render(_module_parser("sediment_cli.transcript"), ("transcript",))
     lines += _render(_module_parser("sediment_api.mirror_gc"), ("mirror-gc",))
     lines += _render(_module_parser("sediment_cli.delivery"), ("delivery",))
     lines += [
