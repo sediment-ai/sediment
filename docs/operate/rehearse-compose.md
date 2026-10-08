@@ -55,7 +55,7 @@ Create `.env` with separate generated credentials and owner-only permissions
 before any secret reaches the file:
 
 ```bash
-uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py \
+uv run --python 3.12.15 --no-project python scripts/create_deploy_env.py \
   --ingest-client alice-laptop --ingest-client bob-laptop
 ```
 
@@ -114,7 +114,7 @@ Build and start the deployment with its source identity:
 ```bash
 set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose up --build --wait --wait-timeout 120
 ```
@@ -127,7 +127,7 @@ curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
 ```
 
 ```text
-{"status":"ok","version":"0.4.0"}
+{"status":"ok","version":"0.6.0"}
 ```
 
 Compose waits for PostgreSQL to pass its health check, then runs `migrate` to
@@ -185,7 +185,7 @@ loopback hosts.
 2. [Configure GitHub webhooks](../capture/managed-capture.md#configure-push-and-ci-capture)
    for Pushes, pull requests, repository changes, and continuous integration (CI)
    outcomes.
-3. Optional: [Enable bundled LiteLLM](#enable-bundled-litellm) or
+3. Optional: [Enable the LiteLLM gateway](#enable-the-litellm-gateway) or
    [connect an existing gateway](#connect-an-existing-litellm-gateway)
    for Inference calls. Keep the developer's selected model unchanged.
 
@@ -278,9 +278,6 @@ protocol carrier. The API skips unresolved calls and logs
 `gateway_ingest_skipped_no_session`. Upgrade the server before clients when
 identity parsing changes.
 
-Optional: to prune superseded tool output from model requests, follow
-[Enable pruning in an existing LiteLLM gateway](../capture/managed-capture.md#enable-pruning-in-an-existing-litellm-gateway).
-
 ## Verify the deployment
 
 For remote clients, check the public health endpoint. For Docker Desktop
@@ -320,32 +317,34 @@ rerun provisioning. To stop and resume the same deployment, run
 `docker compose down`, then `docker compose up --wait --wait-timeout 120`.
 Keep `.env` and omit `--volumes` to retain credentials and Facts.
 
-### Enable bundled LiteLLM
+### Enable the LiteLLM gateway
 
-If you need the bundled Anthropic gateway, add `ANTHROPIC_API_KEY` to `.env`.
-Keep the generated `LITELLM_MASTER_KEY` and gateway ingest token. The gateway
-supports `claude-*` routing; other providers require a separate gateway
-configuration. See the [gateway boundary](../../docker/gateway/README.md).
+The `gateway` profile runs the upstream LiteLLM image that `docker-compose.yml`
+pins, with Sediment's callback and `litellm/config.yaml` mounted read-only.
+Sediment doesn't build, patch, or scan that image, and release scans don't
+cover it. You own its updates and its vulnerability response.
+
+To enable it, add `ANTHROPIC_API_KEY` to `.env`. Keep the generated
+`LITELLM_MASTER_KEY` and gateway ingest token. The supplied configuration routes
+`claude-*` models to Anthropic; edit `litellm/config.yaml` for other providers.
 Agents authenticate with `LITELLM_MASTER_KEY`, which also administers the
-gateway. [Distribute gateway routing](../capture/managed-capture.md#distribute-gateway-routing)
+gateway. Without a database, LiteLLM rejects any other key, answering an
+unknown `sk-` key with 400 `No connected db.` [Distribute gateway routing](../capture/managed-capture.md#distribute-gateway-routing)
 defines how agents reach it.
 
 If you agree to store unredacted capture payloads on disk, set
 `SEDIMENT_DELIVERY_DIR=/data/delivery/pending` in `.env`. The gateway uses the
 `sediment-delivery` named volume and owns a replay worker for its process
-lifetime. Leave the setting empty for direct best-effort delivery.
+lifetime. A one-shot `gateway-volume` service gives that volume to the gateway's
+non-root user before the gateway starts. Leave the setting empty for direct best-effort delivery.
 
-If you want the gateway to prune superseded tool output from model requests,
-set `SEDIMENT_CONTEXT_PRUNE=supersede` in `.env`. Leave it empty to keep the
-gateway a pass-through. See
-[Prune superseded tool output](../capture/managed-capture.md#prune-superseded-tool-output).
-
-From the deployment checkout, build and start the gateway with its source identity:
+From the deployment checkout, build the Sediment images with their source
+identity and start the gateway profile:
 
 ```bash
 set -e
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose --profile gateway up --build --wait --wait-timeout 120
 docker compose --profile gateway ps gateway
@@ -354,7 +353,7 @@ docker compose --profile gateway ps gateway
 Compose checks gateway liveness. Also require a successful authenticated model
 request and captured Inference call before declaring that path ready.
 If you use external ingress, route its HTTPS gateway hostname to
-`http://127.0.0.1:4000`. The bundled proxy instead serves the gateway at `/llm`
+`http://127.0.0.1:4000`. The supplied proxy instead serves the gateway at `/llm`
 on the API hostname. The gateway receives provider and ingest credentials, but no
 database credentials. Its callback sends Inference calls to `http://api:8000`.
 A capture failure doesn't retract a successful model response.
@@ -424,7 +423,7 @@ prepare its replacement before running Compose against the updated checkout:
      git checkout --detach "$SEDIMENT_REVISION" &&
      test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION" &&
      chmod 600 .env &&
-     uv run --python 3.12.14 --no-project python scripts/create_deploy_env.py --output .env.next
+     uv run --python 3.12.15 --no-project python scripts/create_deploy_env.py --output .env.next
    ```
 
 3. In a private editor, copy the existing `POSTGRES_PASSWORD`, `SEDIMENT_ORG_ID`,
@@ -455,7 +454,7 @@ docker compose --profile gateway stop gateway api
 git checkout --detach "$SEDIMENT_REVISION"
 test "$(git rev-parse HEAD)" = "$SEDIMENT_REVISION"
 SEDIMENT_SOURCE_REVISION="$(git rev-parse HEAD)"
-SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.14 --no-project python scripts/security_image_assurance.py source-digest)"
+SEDIMENT_SOURCE_DIGEST="$(uv run --python 3.12.15 --no-project python scripts/security_image_assurance.py source-digest)"
 export SEDIMENT_SOURCE_REVISION SEDIMENT_SOURCE_DIGEST
 docker compose up --build --force-recreate --wait --wait-timeout 120 postgres migrate api
 curl --retry 30 --retry-connrefused --retry-delay 2 --max-time 5 \
@@ -551,7 +550,7 @@ archive and connection options. Record the backup timestamp, restore result,
 and recovery duration. Test restoration before enrollment and after
 schema or backup-tool changes.
 
-If you enable the bundled gateway, review unresolved completion identity:
+If you enable the gateway, review unresolved completion identity:
 
 ```bash
 docker compose logs api | grep gateway_ingest_skipped_no_session
@@ -695,10 +694,10 @@ images, and dependencies inside your network.
 - **Compose recreates another checkout's containers:** both checkouts selected
   the same project name. Keep the original deployment's `.env` intact. Set a
   distinct project name and ports in the evaluation checkout before starting it.
-- **The bundled gateway exits during startup:** run
-  `docker compose logs gateway`. Its entrypoint names a missing
+- **The gateway exits during startup:** run
+  `docker compose logs gateway-volume gateway`. Its entrypoint names a missing
   `ANTHROPIC_API_KEY` or `LITELLM_MASTER_KEY` before LiteLLM starts.
-- **An agent receives no model response through the bundled gateway:** inspect
+- **An agent receives no model response through the gateway:** inspect
   `docker compose logs gateway` for client authentication, model routing, or
   Anthropic errors. The Sediment callback doesn't run until a model call
   succeeds.

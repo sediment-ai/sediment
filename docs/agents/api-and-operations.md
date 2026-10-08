@@ -13,7 +13,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 | `sediment_api/services/operational_reports.py` | Delivery-neutral lifecycle report request, result envelope, and canonical JSON serialization |
 | `sediment_api/routers/` | `gateway.py`, `forge.py` (push/CI/pull-request merge/repository rename + mirror-refresh background chain), `otlp.py`, `query.py`, `ci_vendor.py`, `v1.py` (read-only probes), and `reports.py` (bounded operational reports) |
 | `cli/sediment_cli/` (top-level member) + `sediment_api/reports/`, `mirror_gc.py` | the `sediment` command: `cli.py` verbs, `client.py` HTTP seam, `evidence.py` selection validation and private packet publication, `attribution.py` stamper, installer, and Cursor hook adapter, `transcript.py` client-side transcript parser, `ui.py` brand-palette styling; reports/GC stay api-side, the CLI forwards; ships in the API image and as the `sediment-cli` PyPI distribution |
-| `litellm/sediment_callback.py`; `contrib/erode/` | Forwarder with stable capture metadata and optional process-owned replay worker; identity extraction stays server-side (`session_identity.py`). Opt-in `SEDIMENT_CONTEXT_PRUNE=supersede` request transform (ADR 0028): the callback's `async_pre_call_hook` calls the MIT, stdlib-only erode package (core, LiteLLM hook, `erode proxy`), which imports nothing from Sediment |
+| `litellm/sediment_callback.py` | Forwarder with stable capture metadata and optional process-owned replay worker; identity extraction stays server-side (`session_identity.py`) |
 | `cli/sediment_cli/local_postgres.py` | Checksum-pinned native PostgreSQL download, private cluster initialization, readiness, root ownership lock, and owned-process shutdown for `sediment server` |
 | `cli/sediment_cli/delivery.py` | Shared stdlib HTTP acknowledgment and private prepared-payload buffer; `sediment delivery enqueue/status/replay`; enqueue's `--fallback-direct` selects shared best-effort storage-fault delivery. Checkout entry `scripts/sediment_delivery.py`; copy the implementation for standalone deployment (ADR 0017) |
 | `scripts/smoke.py` | Fires capture's frozen fixtures at a running deployment |
@@ -85,7 +85,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Styling lives in `cli/sediment_cli/ui.py` and applies to a TTY only (`cli/tests/test_cli_ui.py`).
   Pipes, `NO_COLOR`, and `TERM=dumb` use plain text, as do direct and fleet scripts. The CLI removes nonprintable characters from server error details and displayed organization identifiers through `ui.printable_text`; standalone doctor applies the same filter. Stored identity stays unchanged.
   `--version` shows the static knot in the terminal's own text color, followed by the version number, without a name or website footer, on terminals with at least 30 columns and a compatible text encoding; unsupported output retains the version line.
-  The banner adds no dependency or network request. Help names the full installed command path. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
+  The banner adds no dependency or network request. Help names the full installed command path. `--help` and the generated reference list each command that the docs tell you to run by hand, including the capture commands `stamp`, `repair-notes`, and `transcript`. The hook-only verbs `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay out of both. The `transcript` hook entry parses its arguments by hand and always exits 0, so `transcript.build_parser` describes the command for help and the reference only. `cli.py` prints that help before the hook entry reads capture configuration or stdin. Remote verbs (once per process) and `doctor` compare `/v1/me`'s version through `sediment_cli.version_skew_advice`, which returns the installer's pinned `uv tool install` for the server's release in either direction; only an `X.Y.Z` or `X.Y.ZrcN` server string reaches that command, and a remote verb's failed probe stays silent.
 - `main()` defers the `sediment_api/config.py` import, so `--help` works
   without a valid `SEDIMENT_ORG_ID`. `export dpo` defaults to `dpo_human`;
   `export sft` and `export diff-sft` default to `sft_curated`. Operators must
@@ -136,8 +136,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - `sediment_attribution.py` is the stdlib-only notes client; `install --fleet`
   mutates developer git config — an operator action, never a test fixture.
 - `sediment_transcript.py` is the stdlib checkout shim for packaged `sediment transcript`.
-- `repair-notes` fixes a diverged notes ref. It pushes, so keep it out
-  of the unattended allowlist.
+- `repair-notes` fixes a diverged notes ref against `origin` only. It pushes,
+  so keep it out of the unattended allowlist.
 - `doctor [REPO ...]` reports and never repairs. It exits 1 on any FAIL,
   and it is safe to run unattended. Only `--fetch` writes, and it writes one
   tracking ref. An absent agent reports `info`, never FAIL. With pi present,
@@ -157,7 +157,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   there, never inside `main`**, or the page documents them as absent.
   `gen_schema_docs.py` renders the schema reference, Draft 2020-12 schemas, and
   catalog from one registry. It fails on undocumented fields; CI checks
-  freshness and every versioned schema under `schemas/` at the compatibility base, including inactive versions absent from its catalog. Invalid Git bases fail; a valid revision before schema publication has an empty inventory. Published files remain immutable, and the catalog indexes active contracts. Missing map entries fail.
+  freshness and every versioned schema under `schemas/` at the compatibility base, including inactive versions absent from its catalog. Invalid Git bases fail; a valid revision before schema publication has an empty inventory. Published files remain immutable, and the catalog indexes active contracts. Missing map entries fail. `gen_data_flow_figure.py` compiles the README's animated figure, one script-free SVG per theme, from its `FACTS` and `OUTPUTS` timeline; CI checks freshness.
 - `second_review.py` runs the cross-model closeout pass from
   `docs/agents/review.md` in an empty temporary workspace. It calls the codex
   CLI and spends codex credits, so do not run it unattended. Missing or malformed final review results exit 2 even when the CLI exits zero; a completed pass can still contain findings.
@@ -173,8 +173,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   identity survives the no-SLO path), the POST, and one broad try/except. It
   parses nothing. Put a new identity path in `session_identity.py`, never in
   this file. An inference call without a Session identifier still POSTs, and
-  the server skips it observably. Its pre-call hook fails open, updates the logged messages, and adds erode's report as `payload.sediment_context`; the core stays a pure function of the request.
+  the server skips it observably.
 - `SEDIMENT_GITHUB_HOST` defaults to `github.com` and supplies the trusted forge namespace. Request headers and clone URLs never supply it; representing another host does not certify its capture adapter.
 - Environment prefixes are `SEDIMENT_`, `SEDIMENT_LABEL_CONFIDENCE_*`, `SEDIMENT_OPENENV_*`, `SEDIMENT_NEMO_GYM_*`, and `SEDIMENT_CAPTURE_DIR`. Settings ignore extra values.
-  Compose passes settings only to their consumers. The contributor `https` profile includes the API, PostgreSQL, LiteLLM, and a socket-free Traefik proxy; see [Rehearse the single-host Compose deployment](../operate/rehearse-compose.md). [Deploy Sediment on EC2 with Traefik](../operate/deploy-ec2.md) installs the published package with the upstream PostgreSQL and Traefik images. Gateway startup names missing keys and checks readiness. API-only deployment needs neither key. `scripts/tests/test_pilot_compose.py` exercises TLS, capture, auth, throttling, and persistence. Settings silently ignore unknown variable names.
+  Compose passes settings only to their consumers. The contributor `https` profile includes the API, PostgreSQL, LiteLLM, and a socket-free Traefik proxy; see [Rehearse the single-host Compose deployment](../operate/rehearse-compose.md). [Deploy Sediment on EC2 with Traefik](../operate/deploy-ec2.md) installs the published package with the upstream PostgreSQL and Traefik images. The gateway runs the upstream LiteLLM image that Compose pins; its startup names missing keys and checks readiness. API-only deployment needs neither key. `scripts/tests/test_pilot_compose.py` exercises TLS, capture, auth, throttling, and persistence. Settings silently ignore unknown variable names.
 - The contributor Docker image uses a non-root user and pre-creates `/data/{mirror,export}`. Compose scopes image tags to `COMPOSE_PROJECT_NAME`; `SEDIMENT_API_PORT` and `SEDIMENT_GATEWAY_PORT` change host ports while retaining loopback bindings. Operator commands depend on PostgreSQL health without starting provisioning. [Docker rehearsal](../../CONTRIBUTING.md#maintainer-container-acceptance) exercises installation and restart in an isolated project.

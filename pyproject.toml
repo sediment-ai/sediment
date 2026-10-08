@@ -3,17 +3,17 @@
 # top-level cli/ member (distribution `sediment-cli`, command `sediment`);
 # everything publishes from the members.
 name = "sediment"
-version = "0.4.0"
-description = "Turn AI developer workflow traces into RL-ready training data"
+version = "0.6.0"
+description = "A self-hosted evidence store for coding agents"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 dependencies = [
-    "sediment-core==0.4.0",
-    "sediment-capture==0.4.0",
-    "sediment-derive==0.4.0",
-    "sediment-export==0.4.0",
-    "sediment-api==0.4.0",
-    "sediment-cli==0.4.0",
+    "sediment-core==0.6.0",
+    "sediment-capture==0.6.0",
+    "sediment-derive==0.6.0",
+    "sediment-export==0.6.0",
+    "sediment-api==0.6.0",
+    "sediment-cli==0.6.0",
 ]
 
 [dependency-groups]
@@ -50,7 +50,7 @@ include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
 select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm", "contrib"]
+testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm"]
 markers = [
     "cluster_roles: run first, before any test provisions deployment roles",
     "serial: run after the parallel pass without concurrent test load",

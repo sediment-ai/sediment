@@ -2,9 +2,13 @@
 
 Implementation tracker: [Issue #134](https://github.com/sediment-ai/sediment/issues/134).
 Evidence: the Phase 2 and Phase 3 designs and results on issue #134.
-Status: stage A, A.1, and A.2 are built. E0 failed its gate on the issue #134
-recordings; see [E0 result](#e0-result-fails-its-gate). E1 now replays recorded
-real Sessions instead of rerunning the issue #134 harness.
+Status: withdrawn. Stages A, A.1, and A.2 were built and shipped in 0.4.0 as
+the erode package. E0 failed its gate on the issue #134 recordings; see
+[E0 result](#e0-result-fails-its-gate). E1 failed its gate on recorded real
+Claude Code Sessions, and the stubs it applied would have raised billed cost;
+see [E1 result](#e1-result-fails-its-gate). The evaluation stopped before E2,
+and Sediment removed erode and the gateway hook. This spec records the design
+and the evidence; nothing in this repository implements it.
 
 ## Thesis
 
@@ -369,13 +373,20 @@ provider's actual prices.
    5 Sessions).** This replaces the original E1, which reran the issue #134
    harness and fixtures: E0 showed that their tool output is too small to prune.
    - **Record.** Run Claude Code on a frontier model, with its default settings,
-     on SWE-bench Verified instances drawn with E2's seed procedure but outside
-     E2's 50-instance subset, so E2 stays held out. Route each run through a
-     recorder: `erode.proxy.make_server(upstream, prune=False)`, wrapped to save
-     each `POST /v1/messages` body before forwarding it, as the stage A.2 Codex
-     recordings were made. The proxy changes nothing, so the traffic is the
-     agent's own. Keep the recordings private: they hold prompts and repository
-     content, and reports carry counts only.
+     on open issues in this repository that need changes across several files,
+     one issue per run. This workload is a mid-sized Python repository with
+     real history, so Sessions are long and read large files. E2 keeps its
+     SWE-bench Verified subset, so E2 stays held out, and E1 says nothing about
+     SWE-bench traffic. Route each run through the recorder, `erode_record.py`,
+     which runs `erode.proxy.make_server(upstream, prune=False)` and saves each
+     `POST /v1/messages` body before forwarding it. The recorder changes only
+     transport: it drops `Accept-Encoding` so it can read the response. It also
+     writes each response's `usage` token counts to `usage.jsonl`, so a later
+     replay step can estimate billed cost from cache reads, cache writes, and
+     where new stubs would break the cached prefix. Bodies of requests the
+     upstream refused are kept apart, because the provider doesn't bill them
+     and the agent retries them. Keep the recordings private: they hold prompts
+     and repository content, and reports carry counts only.
    - **Group requests into Sessions.** One run through the proxy interleaves
      the main agent's conversation with subagent (`Task`) conversations, small
      side requests, and compaction requests. A Session is one main-agent
@@ -417,15 +428,20 @@ provider's actual prices.
 2. **E2, the public result (about 1 week, plus model spend).** A fixed-seed
    random 50-instance subset of SWE-bench Verified, run with Claude Code on a
    frontier model through the stage A.1 proxy. The comparison is against what
-   the agent already does by default:
+   the agent already does by default, and against the provider's own tool-result
+   clearing, which is what most users would try first:
 
    | Arm | Setup |
    | --- | --- |
    | Default | The agent as shipped: provider prompt caching and its own automatic compaction on; the proxy forwards unchanged |
    | Pruned | The same agent and settings, with the proxy applying stage A |
+   | Provider clearing | The same agent and settings, with pruning off and the proxy adding Anthropic context editing to each `POST /v1/messages` request: `context_management` with one `clear_tool_uses_20250919` edit at its default settings, and the `context-management-2025-06-27` beta header. The API clears the oldest tool results past its threshold, by age rather than by supersession |
 
-   The same model, settings, subset, and seed apply to both arms. Report per
-   instance:
+   The same model, settings, subset, and seed apply to all three arms. The
+   provider-clearing arm changes only the request the proxy forwards; erode
+   leaves a request with `context_management` unpruned, so the arms never
+   combine. If the agent already sends `context_management`, report that and
+   leave its request as sent. Report per instance:
    - resolved or not;
    - **billed cost**, taken from the provider's usage fields (uncached input,
      cache writes, cache reads, and output), each at the provider's published
@@ -433,7 +449,10 @@ provider's actual prices.
    - calls, compactions, and latency.
 
    Targets: billed cost at least 30% lower than Default, and resolved instances
-   within 2 of Default. Publish the harness, subset, prices, and raw counts. A
+   within 2 of Default. Report Pruned against Provider clearing on the same
+   measures, with no target: it says whether stage A earns its place next to a
+   feature the API already offers. Publish the harness, subset, prices, and raw
+   counts. A
    plain pass-through run without compaction is a secondary diagnostic, not the
    comparison.
 
@@ -471,6 +490,75 @@ traffic would look the same. These are small synthetic workspaces of about
 18 KB, so the result says nothing about real long Sessions with large file
 reads. Measuring the opportunity again needs recordings of such Sessions, which
 the revised E1 makes.
+
+### E1 result: fails its gate
+
+E1 recorded five Claude Code Sessions on 2026-10-03, one per open issue in this
+repository (#46, #204, #33, #50, and #172), with a frontier model and the
+agent's default settings in headless mode. The model spend was $7.82. Every
+Session was long (25 to 86 requests), had one segment and no compactions, and
+used no subagents. The recordings stay private; the replay reports hold
+counts only.
+
+The recorder (`erode_record.py`) and the replay (`erode_replay.py`) were never
+merged; they are in pull requests #237 and #218. Two defects hid the result on the first replay. Both were fixed for
+the replay that produced the result:
+
+- Claude Code sends `context_management` with one `clear_thinking_20251015`
+  edit (`keep: all`) on every request. erode passed any request with
+  `context_management` through, so it pruned nothing. The fix, in pull request
+  #240, passed a request through only when an edit clears tool results or
+  compacts, or the field has a shape erode doesn't recognize
+  (`PrunePolicy.policy_version` `"5"`).
+- Claude Code ends every request with a `system`-role message that the next
+  request doesn't carry, so no request extended the previous one. The replay
+  dropped trailing `system` messages before grouping and reported them: 223
+  messages, 82 KB in total.
+
+After the fixes, the replay was deterministic, preserved tool-call pairing, and
+had no stub regressions or unexplained prefix breaks in all 223 requests.
+
+| Session | Requests | Removed / sent | No thresholds, no protected turns | Cache breaks |
+| --- | --- | --- | --- | --- |
+| #204 | 39 | 23.5% | 23.6% | 2 (requests 10, 15) |
+| #33 | 38 | 8.7% | 8.7% | 1 (request 12) |
+| #46 | 86 | 0.16% | 0.47% | 1 (request 78) |
+| #172 | 25 | 0% | 0.30% | 0 |
+| #50 | 35 | 0% | 0% | 0 |
+
+The median is 0.16% against the 20% gate. Turning the thresholds off barely
+moves it, so the policy isn't too strict: the Sessions rarely supersede their
+own tool output.
+
+- **Why so little.** Tool results were 31% to 43% of input bytes, and tool
+  schemas another 21% to 36%. In #46, #50, and #172, `Bash` produced 95% to 98%
+  of tool-result bytes: test and command runs whose commands differ from run
+  to run, so no later call supersedes them. In each final request, most
+  tool-result bytes were never superseded (159 KB of 183 KB in #46). #204 is the
+  exception: `Read` produced most of its bytes, and the agent re-read files.
+  No stubbed target was read again in any Session.
+- **Billed cost.** In every Session, the responses' `usage` counts at the
+  provider's published prices reproduce the agent's reported cost to the cent.
+  Almost all input was cache reads; uncached input was 2 tokens per request.
+  Cache reads were 37% to 56% of each Session's cost, cache writes 22% to 32%,
+  and output 22% to 36%. A stub
+  rewrites every cached token after it at the cache-write price, 25 times the
+  read price, so a stub saves money only when the tokens it removes, times the
+  requests left, exceed about 24 times the tokens it rewrites. An estimate at 4
+  bytes per token puts every Session with stubs at a net loss: #204 saves about
+  $0.10 of cache reads and adds about $0.23 of rewrites, #33 adds about $0.14
+  net, and #46 about $0.21 net.
+- **The ceiling.** Stubbing every tool result with no rewrite cost would save at
+  most about a quarter of billed cost, because tool results are at most 43% of
+  input bytes and cache reads at most 56% of cost.
+
+Following the gate, the evaluation stops before E2. These Sessions are short
+for agent work, so the result doesn't cover Sessions of several hundred
+requests, where one batched rewrite can buy many cheaper reads. That is the
+case for age-based clearing in rare large batches, such as `clear_tool_uses`
+with its trigger settings, not for supersession. Claude Code already sends
+`context_management`, so an E2 provider-clearing arm would add its edit to the
+agent's list rather than set the field.
 
 ## Effort, debt, and risk
 

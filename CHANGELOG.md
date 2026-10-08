@@ -4,6 +4,89 @@
 
 ### Security
 
+- The pre-push hook and `sediment repair-notes` sync the notes ref with `origin`
+  only, matched by name or by URL. Earlier, a push to another remote, such as an
+  outside contributor's fork, merged that remote's notes into the local notes
+  ref, and the next push to `origin` published them where the Attribution
+  Derivation reads. The same push also sent every local note to that remote. A
+  push to another remote now syncs no notes and logs `notes-push-skipped`;
+  `repair-notes` refuses it with `notes_remote_not_origin`. If your shared
+  remote has another name, notes stay local until you push to `origin`. The fix
+  doesn't audit notes that a clone already merged from a fork. Closes #264.
+
+### Contributor checks
+
+- Replace the static README architecture diagram with an animated data-flow
+  figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
+  timeline, and continuous integration (CI) runs its `--check`.
+
+## 0.6.0 — 2026-10-04
+
+### Upgrade notes
+
+- The Compose `gateway` profile runs the upstream LiteLLM image pinned in
+  `docker-compose.yml` instead of building `docker/gateway/Dockerfile`, which is
+  removed. Sediment no longer patches, scans, or gates the gateway; you own its
+  updates. Keep your `.env`: the profile, port, keys, and `sediment-delivery`
+  volume are unchanged. A one-shot `gateway-volume` service gives that volume
+  to the gateway's non-root user. Without a database, LiteLLM answers an unknown
+  `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
+  security inventories; retained releases through 0.5.0 keep their gateway
+  evidence, which rescans verify and skip. Closes #251.
+
+### Installation
+
+- Pass `--force` in the installer's `pipx` method, so a rerun with another
+  `--version` replaces the installed CLI. Before, the rerun reported success
+  and left the earlier version in place. Closes #189.
+
+### Security
+
+- Pin the Compose gateway to the upstream LiteLLM 1.104.0 image by digest.
+- Update the API image and CI to Python 3.12.15, and every image and workflow
+  to uv 0.12.23.
+- Accept Debian's fixed PCRE2 `10.42-1+deb12u2` build in the API and
+  PostgreSQL image reviews while Trivy's Debian data lags.
+- Renew the maintenance catalog and image dispositions through 2026-11-02, and
+  drop four Expat dispositions the API image no longer needs.
+- Pause the scheduled retained-release rescan until it checks each release
+  against that release's own reviews (#249). Maintainers run it on demand.
+
+### Project
+
+- Contributions require a signed Contributor License Agreement (`CLA.md`).
+  PAULSEN'S LLC maintains Sediment and holds its copyright; the code stays
+  AGPL-3.0-or-later.
+- The `sediment-cli` PyPI page shows a project description, and the README
+  leads with the PyPI installation.
+
+### Command line
+
+- List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the
+  CLI reference. Each `--help` says what the command does and describes its
+  arguments, and `uninstall --help` describes `repo`. The hook-only verbs
+  `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay hidden.
+  Closes #172.
+
+## 0.5.0 — 2026-10-03
+
+### Upgrade notes
+
+- Context pruning and the erode package are removed. If your gateway sets
+  `SEDIMENT_CONTEXT_PRUNE`, delete it: the gateway ignores it and forwards
+  requests unchanged. Captured Inference calls no longer carry a
+  `sediment_context` report on `raw`. If you run `erode proxy`, point your
+  agents back at the provider or gateway.
+
+### Security
+
+- Update the gateway's Python to Wolfi's CPython 3.13.16 build, which fixes
+  CVE-2026-19672, CVE-2026-87910, and CVE-2026-15310. CPython 3.13.16 also
+  includes the CVE-2026-82049 fix, so the gateway drops its tarfile backport and
+  that disposition. Record maintenance reviews for markupsafe 3.0.4, SQLAlchemy
+  2.1.3, and the rebuilt Wolfi `py3-pip-wheel`, which client installations and
+  the gateway resolve. Update the gateway to MCP 2.3.0 and WebSockets 17.2, the
+  latest releases their upstream support policies cover. Closes #239.
 - Update the gateway to LiteLLM 1.103.2, PyJWT 2.15.1, and urllib3 2.8.0.
   Retain the guarded proxy and Python fixes, and align the client and API
   python-dotenv dependency with the reviewed 1.2.4 release.
@@ -16,6 +99,12 @@
 
 ### Capture
 
+- Remove opt-in context pruning: the erode package, the LiteLLM pre-call hook,
+  and `SEDIMENT_CONTEXT_PRUNE` (ADR 0028, now withdrawn). On five recorded
+  Claude Code Sessions, pruning removed a median 0.16% of input bytes against
+  its 20% target. Where it fired, its stubs forced cache rewrites that cost more
+  than the cache reads they saved. See the
+  [E1 result](docs/superpowers/specs/2026-09-28-gateway-context-pruning-design.md#e1-result-fails-its-gate).
 - Remove `user.email`, `user.account_id`, and `user.account_uuid` record
   attributes from Claude Code Developer decisions before storage, matching the
   Codex privacy boundary.
@@ -78,14 +167,16 @@
   `contrib/erode` that is meant to move to its own repository. The bundled
   gateway mounts it and passes the variable through. For other gateways, or
   agents that call a provider directly, run `erode proxy`. See
-  [Prune superseded tool output](docs/capture/managed-capture.md#prune-superseded-tool-output).
+  [Prune superseded tool output](https://github.com/sediment-ai/sediment/blob/v0.4.0/docs/capture/managed-capture.md#prune-superseded-tool-output)
+  (0.4.0).
 - Add Codex CLI support to erode. The proxy prunes `POST /v1/responses`, and a
   Responses adapter parses Codex CLI 0.158.0's JavaScript `exec` calls with a
   strict grammar: it recognizes `cat`, `nl -ba`, `head`, `tail`, and `sed -n`
   reads and `apply_patch` edits, and stubs individual results inside a bundled
   output. Any other call shape passes through unchanged. Three recorded Codex
   Sessions are the test fixtures. See
-  [Use erode with Codex CLI](contrib/erode/README.md#use-erode-with-codex-cli).
+  [Use erode with Codex CLI](https://github.com/sediment-ai/sediment/blob/v0.4.0/contrib/erode/README.md#use-erode-with-codex-cli)
+  (0.4.0).
 
 ### Command line
 

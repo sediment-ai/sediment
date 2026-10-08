@@ -21,7 +21,7 @@ def module():
     return loaded
 
 
-def evidence(directory):
+def evidence(directory, gateways=()):
     wheel_hashes = {}
     for package in ("api", "capture", "cli", "core", "derive", "export"):
         wheel = directory / f"sediment_{package}-0.1.0-py3-none-any.whl"
@@ -42,11 +42,8 @@ def evidence(directory):
         )
     )
     for artifact, architecture in [
-        *(
-            (a, arch)
-            for a in ("api", "postgres", "gateway")
-            for arch in ("amd64", "arm64")
-        ),
+        *((a, arch) for a in ("api", "postgres") for arch in ("amd64", "arm64")),
+        *(("gateway", arch) for arch in gateways),
         ("client", "x86_64"),
         ("pi", "x86_64"),
     ]:
@@ -69,19 +66,89 @@ def evidence(directory):
         (directory / f"{name}.gate.json").write_text('{"errors":[]}')
 
 
-def test_bundle_requires_all_eight_artifact_inventories(tmp_path):
+def test_bundle_requires_all_six_artifact_inventories(tmp_path):
     script = module()
     evidence(tmp_path)
     script.bundle(tmp_path, "v0.1.0", "a" * 40, today=date(2026, 9, 12))
     metadata = json.loads((tmp_path / "security-support.json").read_text())
-    assert len(metadata["inventories"]) == 8
+    assert len(metadata["inventories"]) == 6
     assert metadata["support"]["ends_on"] == "2026-12-11"
     assert "security_update_target_days" not in metadata["support"]
     assert "security-support.json" in (tmp_path / "SHA256SUMS").read_text()
     script.verify_release(tmp_path, "v0.1.0", today=date(2026, 9, 12))
-    (tmp_path / "gateway-arm64.inventory.json").unlink()
+    (tmp_path / "api-arm64.inventory.json").unlink()
     with pytest.raises(script.ReleaseFailure):
         script.bundle(tmp_path, "v0.1.0", "a" * 40, today=date(2026, 9, 12))
+
+
+def test_new_releases_cannot_bundle_retired_gateway_evidence(tmp_path):
+    script = module()
+    evidence(tmp_path, gateways=("amd64", "arm64"))
+    with pytest.raises(script.ReleaseFailure):
+        script.bundle(tmp_path, "v0.1.0", "a" * 40, today=date(2026, 9, 12))
+
+
+def retained_release(directory, gateways):
+    """Bundle evidence the way releases through 0.5.0 did."""
+    legacy = module()
+    legacy.EXPECTED = legacy.EXPECTED | {("gateway", arch) for arch in gateways}
+    legacy.RETIRED = set()
+    evidence(directory, gateways)
+    legacy.bundle(directory, "v0.5.0", "a" * 40, today=date(2026, 9, 12))
+
+
+def test_retained_release_with_both_gateway_inventories_verifies(tmp_path):
+    retained_release(tmp_path, ("amd64", "arm64"))
+    inventories = module().verify_release(tmp_path, "v0.5.0", today=date(2026, 9, 12))
+    assert len(inventories) == 8
+
+
+def test_retained_release_with_one_gateway_inventory_fails(tmp_path):
+    retained_release(tmp_path, ("amd64",))
+    script = module()
+    with pytest.raises(script.ReleaseFailure):
+        script.verify_release(tmp_path, "v0.5.0", today=date(2026, 9, 12))
+
+
+def test_daily_rescan_skips_and_counts_retired_gateway_inventories(
+    tmp_path, monkeypatch
+):
+    script = module()
+    releases = [
+        {
+            "id": 5,
+            "tag_name": "v0.5.0",
+            "draft": False,
+            "published_at": "2026-09-10T00:00:00Z",
+            "assets": [],
+        }
+    ]
+    monkeypatch.setattr(script, "list_releases", lambda repository: releases)
+    monkeypatch.setattr(
+        script,
+        "download_release",
+        lambda repository, release, directory: retained_release(
+            directory, ("amd64", "arm64")
+        ),
+    )
+    scanned = []
+    monkeypatch.setattr(
+        script,
+        "run",
+        lambda command, **kwargs: scanned.append(
+            command[command.index("--inventory") + 1]
+        ),
+    )
+    assert (
+        script.scan("sediment-ai/sediment", tmp_path, "trivy", today=date(2026, 9, 12))
+        == 0
+    )
+    assert len(scanned) == 6
+    assert not any("gateway" in Path(path).name for path in scanned)
+    report = json.loads((tmp_path / "retained-releases.json").read_text())
+    assert report["supported"] == [
+        {"tag": "v0.5.0", "inventories": 6, "retired_inventories": 2}
+    ]
 
 
 @pytest.mark.parametrize(

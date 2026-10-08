@@ -196,13 +196,20 @@ belong in [ADRs](docs/adr/), and domain vocabulary belongs in
 [CONTEXT.md](CONTEXT.md). Behavior-changing pull requests follow the
 [review contract](docs/agents/review.md).
 
-## License
+## License and Contributor License Agreement
 
-Contributions are accepted under the repository license
-(AGPL-3.0-or-later), except contributions to `shims/`, which are accepted
-under MIT (`shims/pi/LICENSE`). Submitting a PR certifies you have the
-right to contribute the code under the license that covers the paths you
-touched.
+Sediment is licensed under AGPL-3.0-or-later; `shims/` uses MIT
+(`shims/pi/LICENSE`).
+
+Before a maintainer can merge your first pull request, sign the
+[Contributor License Agreement](CLA.md). A bot
+comments on the pull request with the exact reply to post; one signature
+covers all your later contributions. The CLA grants PAULSEN'S LLC, which
+maintains Sediment, a license to your contribution, including the right to
+offer the Project under other license terms; you keep the copyright. The CLA
+lets PAULSEN'S LLC assign that license to a successor company formed to develop
+Sediment. If you contribute for an employer, confirm that you have its
+permission first.
 
 
 
@@ -258,6 +265,7 @@ uv run python scripts/gen_cli_docs.py --check
 uv run python scripts/gen_api_docs.py --check
 uv run python scripts/gen_schema_docs.py --check --compatibility-base origin/main
 uv run python scripts/gen_compatibility_docs.py --check
+uv run python scripts/gen_data_flow_figure.py --check
 uv run pytest -q -m cluster_roles --durations=10
 uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
 uv run pytest -q -m serial --durations=10
@@ -416,9 +424,9 @@ artifact. Running this procedure by itself never publishes a distribution.
 
 ### Publish a version tag
 
-Before the first release, configure these external controls:
+A release requires these external controls:
 
-- Make the repository public. The workflow rejects a release while the
+- The repository is public. The workflow rejects a release while the
   repository is private.
 - Create a tag ruleset for `v*` that prevents tag updates and deletions. Limit
   tag creation to maintainers who can release.
@@ -497,16 +505,16 @@ for the publisher-to-project relationship.
 
 ### Reproduce the checks
 
-Run the commands from the release source checkout. Use Python 3.12.14 and uv
-0.12.19. Install the exact Trivy version and verified checksum specified in
+Run the commands from the release source checkout. Use Python 3.12.15 and uv
+0.12.23. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.
 
 ```sh
-uv run --python 3.12.14 --no-project python scripts/security_static.py --out security-evidence
+uv run --python 3.12.15 --no-project python scripts/security_static.py --out security-evidence
 uv build --all-packages --wheel --out-dir dist
-uv run --python 3.12.14 --no-project python scripts/security_scan.py client \
+uv run --python 3.12.15 --no-project python scripts/security_scan.py client \
   --wheels dist --out security-evidence
 ```
 
@@ -526,7 +534,7 @@ With Node 24.21.0 on `PATH`, run the pi check inside the shim directory:
 (
   cd shims/pi
   npm exec --yes --package=npm@12.0.2 -- \
-    uv run --python 3.12.14 --no-project python ../../scripts/security_scan.py pi \
+    uv run --python 3.12.15 --no-project python ../../scripts/security_scan.py pi \
     --out ../../security-evidence
 )
 ```
@@ -544,7 +552,7 @@ checks that it belongs to the source under review.
 To rescan one retained inventory, keep its referenced evidence files beside it:
 
 ```sh
-uv run --python 3.12.14 --no-project python scripts/security_scan.py rescan \
+uv run --python 3.12.15 --no-project python scripts/security_scan.py rescan \
   --inventory retained/api-amd64.inventory.json --out rescanned
 ```
 
@@ -588,18 +596,11 @@ sandbox native parsing. A compromised database process can still affect the
 Fact volume and database availability. Review each advisory's affected function
 against the exact distribution source before assigning a disposition.
 
-For the gateway zlib disposition, review the exact image's Python callers as
-well as native symbols. The `gzip_write_api_unreachable` check doesn't inspect
-filename arguments to permitted SAML (Security Assertion Markup Language)
-extensions. Compare `gateway_caller_files` with the reviewed LiteLLM and
-`onelogin/saml2` sources. Changed files require another source review; matching
-hashes establish integrity, not approval. Retain that review with the image evidence.
-
-The gateway backports CPython's CVE-2026-82049 fix to the released runtime.
-Its package version remains visible in scanner reports. The
-`tarfile_hardlink_fix` condition requires the exact patched source hash and no
-cached bytecode. Review the upstream patch and both architecture tests before
-approving a disposition for that package.
+The Compose gateway runs the upstream LiteLLM image pinned in
+`docker-compose.yml`. Sediment doesn't build, patch, or scan it, so the security
+gate doesn't cover it. Dependabot proposes pin updates. Before you accept one,
+run `scripts/tests/test_container_images.py -k gateway` and the pilot Compose
+test against the new image.
 
 Run the security workflow and the normal test suite after updating the policy.
 A stale review, unsupported version, incomplete inventory, unavailable metadata
@@ -1100,7 +1101,7 @@ gateway capture, the API, and private records inside your perimeter.
    credentials. Keep retrieval disabled until the source Session exists.
    Configure a separate LiteLLM gateway with an OpenAI-compatible route to the
    local model and the existing `litellm/sediment_callback.py` capture callback.
-   The bundled Anthropic gateway recipe doesn't provide this model route.
+   The Compose gateway's Anthropic recipe doesn't provide this model route.
    Disable gateway retries and fallbacks. Configure the model context to 16,384
    tokens and allow one request at a time. Record the Ollama version, backend model
    alias, installed model digest, and exact template SHA-256 hash alongside the

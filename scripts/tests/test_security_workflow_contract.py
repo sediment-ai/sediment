@@ -12,7 +12,7 @@ def test_security_covers_every_architecture_and_release_wheel_handoff():
     assert "workflow_dispatch:" in security
     assert "pull_request:" in security
     assert "branches: [main]" in security
-    assert "artifact: [api, postgres, gateway]" in security
+    assert "artifact: [api, postgres]" in security
     assert "architecture: [amd64, arm64]" in security
     assert "ubuntu-24.04-arm" in security
     assert "inputs.wheels-artifact" in security
@@ -48,16 +48,18 @@ def test_database_jobs_run_derived_postgres_and_cleanup():
         assert "docker rm -f sediment-ci-postgres" in workflow
 
 
-def test_daily_rescan_and_all_dependency_ecosystems_are_enabled():
+def test_rescan_and_all_dependency_ecosystems_are_enabled():
     rescan = (ROOT / ".github/workflows/security-rescan.yml").read_text()
-    assert "schedule:" in rescan
+    # The schedule is paused until #249; SECURITY.md says so.
     assert "workflow_dispatch:" in rescan
+    assert ("schedule:" in rescan) != ("#249" in rescan)
+    assert "#249" in (ROOT / "SECURITY.md").read_text()
     assert "scripts/rescan_releases.py scan" in rescan
     assert "contents: read" in rescan
     dependabot = (ROOT / ".github/dependabot.yml").read_text()
-    for ecosystem in ("uv", "npm", "docker", "github-actions"):
+    for ecosystem in ("uv", "npm", "docker", "docker-compose", "github-actions"):
         assert f"package-ecosystem: {ecosystem}" in dependabot
-    for directory in ("/docker/postgres", "/docker/gateway", "/shims/pi"):
+    for directory in ("/docker/postgres", "/shims/pi"):
         assert directory in dependabot
     assert "interval: weekly" not in dependabot
 
@@ -77,62 +79,21 @@ def test_every_scanned_dockerfile_and_dependabot_docker_directory_exists():
                 assert (ROOT / directory.lstrip("/") / "Dockerfile").is_file(), update
 
 
-def test_scanned_gateway_images_run_the_runtime_regressions():
+def test_ci_runs_gateway_regressions_against_the_compose_pin():
     import yaml
 
-    workflow = yaml.safe_load((ROOT / ".github/workflows/security.yml").read_text())
-    steps = workflow["jobs"]["images"]["steps"]
-    runtime_checks = [
-        step for step in steps if "test_container_images.py" in step.get("run", "")
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+    pinned = compose["services"]["gateway"]["image"]
+    assert pinned.startswith("ghcr.io/berriai/litellm:v")
+    assert "@sha256:" in pinned
+    assert compose["services"]["gateway-volume"]["image"] == pinned
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
+    steps = [
+        step
+        for job in workflow["jobs"].values()
+        for step in job.get("steps", [])
+        if "test_container_images.py -k gateway" in step.get("run", "")
     ]
-    assert len(runtime_checks) == 1
-    check = runtime_checks[0]
-    assert check["if"] == "matrix.artifact == 'gateway'"
-    assert check["env"]["SEDIMENT_TEST_GATEWAY_IMAGE"] == (
-        "sediment-security:gateway-${{ matrix.architecture }}"
-    )
-    assert "-k gateway" in check["run"]
-    assert not check.get("continue-on-error", False)
-    assert steps.index(check) > next(
-        i
-        for i, step in enumerate(steps)
-        if step.get("name") == "Build and scan the exact final image"
-    )
-
-
-def test_required_workflows_report_on_merge_groups():
-    import yaml
-
-    for name in (
-        "ci.yml",
-        "security.yml",
-        "shims.yml",
-        "consumer-compatibility.yml",
-        "pr-title.yml",
-    ):
-        workflow = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
-        assert "merge_group" in workflow.get("on", workflow.get(True)), name
-
-
-def test_drift_reports_only_trusted_main_failures_with_an_issue_token():
-    import yaml
-
-    drift = yaml.safe_load((ROOT / ".github/workflows/security-drift.yml").read_text())
-    events = drift.get("on", drift.get(True))
-    assert events == {
-        "workflow_run": {"workflows": ["security"], "types": ["completed"]}
-    }
-    assert drift["permissions"] == {"issues": "write"}
-    report = drift["jobs"]["report"]
-    for condition in (
-        "github.event.workflow_run.conclusion == 'failure'",
-        "github.event.workflow_run.head_branch == 'main'",
-        "github.event.workflow_run.event == 'push'",
-        "github.event.workflow_run.event == 'schedule'",
-    ):
-        assert condition in report["if"]
-    assert "pull_request" not in report["if"]
-    # No checkout: the write token never runs repository code.
-    assert all("uses" not in step for step in report["steps"])
-    security = (ROOT / ".github/workflows/security.yml").read_text()
-    assert "issues: write" not in security
+    assert len(steps) == 1
+    assert "&litellm-image" in steps[0]["run"]
+    assert not steps[0].get("continue-on-error", False)

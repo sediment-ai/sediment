@@ -5,8 +5,9 @@
 # Depends on sediment-api deliberately: the operator verbs are DB-local by
 # design (ADR 0001) and `server`/reports/mirror-gc forward into it.
 name = "sediment-cli"
-version = "0.4.0"
-description = "The sediment command: login, install, server, facts, exports"
+version = "0.6.0"
+description = "A self-hosted evidence store for coding agents: the sediment CLI and local server"
+readme = "README.md"
 requires-python = ">=3.12"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
@@ -14,16 +15,16 @@ license-files = ["LICENSE"]
 # so an install never mixes member versions (the release workflow asserts
 # the versions agree before publishing).
 dependencies = [
-    "sediment-core==0.4.0",
-    "sediment-derive==0.4.0",
-    "sediment-export==0.4.0",
-    "sediment-api==0.4.0",
+    "sediment-core==0.6.0",
+    "sediment-derive==0.6.0",
+    "sediment-export==0.6.0",
+    "sediment-api==0.6.0",
     "httpx>=0.27",
 ]
 
 [project.urls]
 Source = "https://github.com/sediment-ai/sediment"
-Documentation = "https://github.com/sediment-ai/sediment/tree/main/docs"
+Documentation = "https://docs.sediment.so"
 Issues = "https://github.com/sediment-ai/sediment/issues"
 Changelog = "https://github.com/sediment-ai/sediment/blob/main/CHANGELOG.md"
 

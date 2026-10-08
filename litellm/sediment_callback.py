@@ -22,11 +22,6 @@ call id. Upgrade order for fleets: server before this file
 
 A logging callback must never break the proxy: everything is wrapped in a
 broad try/except and failures are logged, never raised.
-
-With ``SEDIMENT_CONTEXT_PRUNE=supersede`` and the MIT ``erode`` package
-importable, ``async_pre_call_hook`` also stubs superseded tool output before
-the model call (ADR 0028). The logged messages are then the pruned request,
-and the payload carries erode's count-only report under ``sediment_context``.
 """
 
 from __future__ import annotations
@@ -64,19 +59,6 @@ except ImportError:
         delivery = None
         logger.warning("sediment_delivery reason=helper_unavailable")
 
-try:
-    from erode.litellm_hook import apply as erode_apply
-except ImportError:
-    erode_apply = None
-
-# Off unless set to exactly "supersede"; ADR 0028 keeps the transform opt-in.
-CONTEXT_PRUNE = os.environ.get("SEDIMENT_CONTEXT_PRUNE", "").strip()
-if CONTEXT_PRUNE and CONTEXT_PRUNE != "supersede":
-    logger.warning("sediment_context_prune reason=unknown_mode mode=%s", CONTEXT_PRUNE)
-elif CONTEXT_PRUNE and erode_apply is None:
-    logger.warning("sediment_context_prune reason=module_unavailable")
-# The key the hook's report travels under, from the logging kwargs to raw.
-CONTEXT_REPORT_KEY = "sediment_context"
 
 SEDIMENT_INGEST_URL = os.environ.get(
     "SEDIMENT_INGEST_URL", "http://localhost:8000"
@@ -235,19 +217,6 @@ class SedimentCallback(CustomLogger):
             self._worker.join(timeout=6)
         atexit.unregister(self.close_delivery)
 
-    async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
-        """Let erode stub superseded tool output; it fails open on its own."""
-        if CONTEXT_PRUNE != "supersede" or erode_apply is None:
-            return None
-        report = erode_apply(data)
-        if report is None:
-            return None
-        # The logging object's details become this callback's success kwargs.
-        details = getattr(data.get("litellm_logging_obj"), "model_call_details", None)
-        if isinstance(details, dict):
-            details[CONTEXT_REPORT_KEY] = report
-        return data
-
     async def async_log_success_event(
         self, kwargs, response_obj, start_time, end_time
     ) -> None:
@@ -273,9 +242,6 @@ class SedimentCallback(CustomLogger):
             payload = slo or self._fallback_payload(
                 kwargs, response_obj, start_time, end_time
             )
-            report = kwargs.get(CONTEXT_REPORT_KEY)
-            if isinstance(report, dict):
-                payload = {**payload, CONTEXT_REPORT_KEY: report}
             environment = self._environment()
             request = delivery.prepare_request(
                 "gateway",

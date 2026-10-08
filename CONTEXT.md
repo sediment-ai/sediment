@@ -331,7 +331,7 @@ The frozen dataclass of knobs a Derivation is versioned by.
 completions and Rollouts. It contains `attribution.git_notes`,
 `attribution.jaccard`, and `split`. Component policies include
 `AttributionPolicy`, `CIResolutionPolicy`, `RolloutPolicy`, `RecoveryPolicy`, `AttributedCompletionPolicy`,
-`ContextRetrievalPolicy` and `ContextDiscoveryPolicy` (read-only evidence selection), `PrunePolicy` (the opt-in request transform in the MIT `erode` package, `contrib/erode`), `OutcomeReportPolicy`, `LabelConfidencePolicy`, `FatePolicy`, and `AttributionSharePolicy`. Tuning any knob bumps
+`ContextRetrievalPolicy` and `ContextDiscoveryPolicy` (read-only evidence selection), `OutcomeReportPolicy`, `LabelConfidencePolicy`, `FatePolicy`, and `AttributionSharePolicy`. Tuning any knob bumps
 `policy_version`. A policy embedding another (`default_factory`) does not
 share its tuning — each embed is tuned separately. _Avoid:_ "config",
 "settings" (env-loaded `BaseSettings` are a different layer).
@@ -425,7 +425,7 @@ kind of extension point.
 
 ### Harness
 The word names four distinct runners here, so never write "the harness"
-bare — qualify every use. **Sim harness:** the Tier A scenario runner
+bare — qualify every use. **Sim harness:** the scenario runner
 (`sim/scenarios.py`) that replays scripted traffic through the real
 pipeline against a ground-truth manifest; `sim/README.md` explains the
 scenarios. **Precision

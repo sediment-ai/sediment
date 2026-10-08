@@ -32,7 +32,7 @@ the example version with the release that you want. Optional: check the
 release first with [Verify a release](security.md#verify-a-release).
 
 ```bash
-SEDIMENT_VERSION=0.4.0
+SEDIMENT_VERSION=0.6.0
 SEDIMENT_INSTALLER="$(mktemp)" &&
   curl -fsSL https://sediment.so/install.sh -o "$SEDIMENT_INSTALLER" &&
   UV_NO_BUILD=1 sh "$SEDIMENT_INSTALLER" --method uv --version "$SEDIMENT_VERSION" &&

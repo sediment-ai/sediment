@@ -124,10 +124,11 @@ Follow [Secure a deployment](security.md) when handling secrets.
 
 Capture can leave the developer machine in these forms:
 
-- The pre-push hook sends the whole notes ref to each push remote, including
-  forks, even during `git push --dry-run`. Notes contain commit SHAs, agent
-  names, Session identifiers, and timestamps, including other branches' notes.
-  They don't contain prompts, diffs, file paths, model names, or hostnames.
+- The pre-push hook sends the whole notes ref to `origin` only, even during
+  `git push --dry-run`. A push to any other remote, such as a fork, sends and
+  fetches no notes. Notes contain commit SHAs, agent names, Session
+  identifiers, and timestamps, including other branches' notes. They don't
+  contain prompts, diffs, file paths, model names, or hostnames.
 - Agent telemetry goes to the Sediment server. Claude Code tool details can
   include paths, shell commands, edit text, and the Claude account email.
   Codex decisions can include patch code and tool arguments; Sediment removes

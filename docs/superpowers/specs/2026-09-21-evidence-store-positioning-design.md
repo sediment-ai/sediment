@@ -4,8 +4,8 @@ Decision: Position Sediment as the open-source, self-hosted evidence store for
 coding agents. [Issue 67](https://github.com/sediment-ai/sediment/issues/67)
 records the maintainer's approval and tracks the core work. The
 [implementation claim on 2026-09-21](https://github.com/sediment-ai/sediment/issues/67#issuecomment-5762081465)
-records the accepted scope. [Site issue 109](https://github.com/sediment-ai/sediment-site/issues/109)
-tracks the website.
+records the accepted scope. The website work is tracked outside this
+repository.
 
 ## Message and audience
 

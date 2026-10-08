@@ -19,6 +19,11 @@ The installer installs `sediment-cli` from PyPI in an isolated tool environment
 with Python 3.12. It installs `uv` if needed, plus the maintained host libraries
 that the local PostgreSQL server needs.
 
+To install from PyPI yourself, first install the host libraries:
+`libpq` and `openssl@3` with Homebrew, or `git ca-certificates libpq5 libxml2 libzstd1 liblz4-1 zlib1g` with `apt-get`. Then, with
+Python 3.12, run `pipx install sediment-cli` or `uv tool install sediment-cli`.
+Inside a virtual environment, `pip install sediment-cli` also works.
+
 If a coding agent helps you run Sediment or install capture, give it the output
 of `sediment guide` for guidance that matches the installed release.
 
@@ -57,7 +62,7 @@ curl -sf http://127.0.0.1:8000/health
 ```
 
 ```text
-{"status":"ok","version":"0.4.0"}
+{"status":"ok","version":"0.6.0"}
 ```
 
 If the health check fails, read the error in the server terminal. PostgreSQL

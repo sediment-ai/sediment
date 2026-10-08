@@ -168,8 +168,6 @@ def require_components(components: list[dict], artifact: str) -> None:
         raise ScanFailure("installed inventory is missing first-party distributions")
     if artifact == "postgres" and "postgresql-17" not in names:
         raise ScanFailure("PostgreSQL inventory is missing its server package")
-    if artifact == "gateway" and "litellm" not in names:
-        raise ScanFailure("gateway inventory is missing LiteLLM")
 
 
 def components_from_trivy(report: dict) -> list[dict]:
@@ -358,10 +356,6 @@ def collect_image(
         native_probe = out / f"{artifact}-{architecture}.native.json"
         write_json(native_probe, probe)
         runtimes = probe["runtimes"]
-        if artifact == "gateway":
-            runtimes["litellm"] = next(
-                c["version"] for c in components if c["name"] == "litellm"
-            )
     if artifact == "api" and "libpq" not in runtimes:
         raise ScanFailure("API image is missing its system libpq runtime")
     if report.get("Metadata", {}).get("OS", {}).get("Family") == "debian":
@@ -434,7 +428,7 @@ def collect_client(wheels: Path, out: Path) -> Path:
         raise ScanFailure("release inventory requires the exact six release wheels")
     with tempfile.TemporaryDirectory(prefix="sediment-security-client-") as temporary:
         venv = Path(temporary) / "venv"
-        run(["uv", "venv", "--python", "3.12.14", str(venv)])
+        run(["uv", "venv", "--python", "3.12.15", str(venv)])
         python = venv / "bin/python"
         run(["uv", "pip", "install", "--python", str(python), *map(str, artifacts)])
         run(["uv", "pip", "check", "--python", str(python)])
@@ -885,7 +879,7 @@ def evaluate(
         if rescan
         else [directory / p for p in inventory["files"] if p.endswith(".trivy.json")]
     )
-    if not reports and inventory["artifact"] in {"api", "postgres", "gateway"}:
+    if not reports and inventory["artifact"] in {"api", "postgres"}:
         errors.append("missing required scanner evidence for image")
     if not rescan and inventory["artifact"] == "client":
         audits = [
@@ -945,7 +939,7 @@ def main() -> int:
     parser.add_argument("mode", choices=["image", "client", "pi", "rescan", "evaluate"])
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--image")
-    parser.add_argument("--artifact", choices=["api", "postgres", "gateway"])
+    parser.add_argument("--artifact", choices=["api", "postgres"])
     parser.add_argument("--architecture", choices=["arm64", "amd64"])
     parser.add_argument("--wheels", type=Path)
     parser.add_argument("--inventory", type=Path)

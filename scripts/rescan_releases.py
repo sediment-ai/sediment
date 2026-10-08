@@ -13,9 +13,14 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED = {
-    (a, arch) for a in ("api", "postgres", "gateway") for arch in ("amd64", "arm64")
-} | {("client", "portable"), ("pi", "portable")}
+EXPECTED = {(a, arch) for a in ("api", "postgres") for arch in ("amd64", "arm64")} | {
+    ("client", "portable"),
+    ("pi", "portable"),
+}
+# ponytail: releases through 0.5.0 also retain gateway evidence. Sediment no
+# longer reviews that image, so a rescan verifies and skips it. Delete this once
+# those releases leave their 90-day support window (after 2027-01-01).
+RETIRED = {("gateway", arch) for arch in ("amd64", "arm64")}
 MAX_ASSET_BYTES = 256 * 1024 * 1024
 MAX_RELEASE_BYTES = 2 * 1024 * 1024 * 1024
 
@@ -68,7 +73,7 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def inventory_set(directory: Path, commit: str) -> list[str]:
+def inventory_set(directory: Path, commit: str, *, retained: bool = False) -> list[str]:
     found = set()
     names = []
     for path in sorted(directory.glob("*.inventory.json")):
@@ -77,7 +82,7 @@ def inventory_set(directory: Path, commit: str) -> list[str]:
             artifact, arch = inventory["artifact"], inventory["architecture"]
             key = (artifact, "portable" if artifact in {"client", "pi"} else arch)
             if (
-                key not in EXPECTED
+                key not in (EXPECTED | RETIRED if retained else EXPECTED)
                 or key in found
                 or inventory["source_commit"] != commit
             ):
@@ -98,9 +103,9 @@ def inventory_set(directory: Path, commit: str) -> list[str]:
             ) from None
         found.add(key)
         names.append(path.name)
-    if found != EXPECTED:
+    if found - RETIRED != EXPECTED or found & RETIRED not in (set(), RETIRED):
         raise ReleaseFailure(
-            "release must contain all eight artifact/platform inventories"
+            "release must contain all six artifact/platform inventories"
         )
     return names
 
@@ -182,7 +187,7 @@ def verify_release(directory: Path, tag: str, *, today: date) -> list[Path]:
             or not start <= today <= end
         ):
             raise ReleaseFailure("release support metadata is invalid or expired")
-        names = inventory_set(directory, metadata["source_commit"])
+        names = inventory_set(directory, metadata["source_commit"], retained=True)
         if metadata["inventories"] != names or not set(names) <= set(entries):
             raise ReleaseFailure("release inventory manifest is incomplete")
         return [directory / name for name in names]
@@ -267,7 +272,11 @@ def scan(repository: str, out: Path, trivy: str, *, today: date) -> int:
             download_release(repository, release, directory)
             inventories = verify_release(directory, tag, today=today)
             errors = []
+            retired = 0
             for inventory in inventories:
+                if read_json(inventory).get("artifact") == "gateway":
+                    retired += 1
+                    continue
                 try:
                     run(
                         [
@@ -286,7 +295,13 @@ def scan(repository: str, out: Path, trivy: str, *, today: date) -> int:
                     errors.append(f"{inventory.name}: {exc}")
             if errors:
                 raise ReleaseFailure("; ".join(errors))
-            result["supported"].append({"tag": tag, "inventories": len(inventories)})
+            result["supported"].append(
+                {
+                    "tag": tag,
+                    "inventories": len(inventories) - retired,
+                    "retired_inventories": retired,
+                }
+            )
         except (ReleaseFailure, KeyError, ValueError, TypeError, OSError) as exc:
             result["failures"].append({"tag": tag, "error": str(exc)})
     (out / "retained-releases.json").write_text(json.dumps(result, indent=2) + "\n")

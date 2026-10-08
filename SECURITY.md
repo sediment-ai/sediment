@@ -30,8 +30,9 @@ and record deployed versions.
 ## Release checks
 
 Release publication requires checks of the exact resolved client installation,
-production pi dependencies, and final API, PostgreSQL, and optional gateway
-images on each offered architecture. The checks cover known vulnerabilities,
+production pi dependencies, and final API and PostgreSQL images on each offered
+architecture. The optional Compose gateway runs an upstream LiteLLM image that
+these checks don't cover; its operator applies LiteLLM's updates. The checks cover known vulnerabilities,
 reviewed maintenance policies, runtime support, local static rules, and existing
 secret scanning. Scanner failures and missing evidence fail the checks.
 
@@ -42,8 +43,10 @@ fixed. Unsupported software has no exception. Complete scan reports remain in
 the release evidence.
 
 Release assets include CycloneDX software bills of materials (SBOMs), resolved
-inventories, support metadata, and checksums. A daily job rescans retained SBOMs
-for supported releases without executing historical code. Dependency update
+inventories, support metadata, and checksums. A maintainer-run job rescans
+retained SBOMs for supported releases without executing historical code. Its
+daily schedule is paused until rescans judge each release by its own retained
+reviews ([#249](https://github.com/sediment-ai/sediment/issues/249)). Dependency update
 proposals run daily. GitHub dependency alerts and security update proposals
 supplement the repository's open-source checks; paid scanning features aren't
 a prerequisite.

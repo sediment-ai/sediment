@@ -1,0 +1,20 @@
+USAGE:
+  sediment transcript [-h] [snapshot] --agent {claude-code,codex,pi}
+
+  Read one hook event on stdin: a JSON object with session_id and
+  transcript_path. Extract the Session's Edit observations from that agent
+  transcript, and send them to SEDIMENT_OTLP_ENDPOINT. For Claude Code, also
+  send Rejected edits and Retry linkages. Agent session-end hooks run this
+  command. Run it yourself to recover a Session that ended without its
+  extractor. The command always exits 0 and reports problems on stderr. If
+  SEDIMENT_OTLP_ENDPOINT is unset, it does nothing.
+
+ARGUMENTS:
+  snapshot              run as the PreToolUse hook instead: record line hashes
+                        around one edit call in a local cache; must come before
+                        --agent
+
+OPTIONS:
+  -h, --help            show this help message and exit
+  --agent {claude-code,codex,pi}
+                        agent harness that wrote the transcript

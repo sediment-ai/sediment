@@ -71,11 +71,6 @@ a guardrail, or modify a prompt. Those choices can change model behavior.
 Unsupported parameters or content types can also change behavior when the
 gateway translates between client and provider protocols.
 
-Sediment's own [context pruning](../capture/managed-capture.md#prune-superseded-tool-output)
-is an opt-in prompt rewrite of this kind. It replaces superseded tool output
-with stub lines, and capture records the pruned request that the model
-received ([ADR 0028](../adr/0028-opt-in-request-transforms.md)).
-
 A thin gateway configuration should not change model quality when it preserves
 the request and parameters, sends them to the same provider and model, and
 doesn't enable substitution, fallbacks, caching, guardrails, or prompt
@@ -89,8 +84,10 @@ normalizes it into an `InferenceCall`. The repository registers only the
 LiteLLM adapter. Other gateway names in the schema identify the namespace; they
 don't claim an implemented integration.
 
-Bundled LiteLLM is the tested on-ramp for a team that doesn't operate a
-gateway. Its default configuration authenticates clients, maps requested
+The Compose `gateway` profile is the tested on-ramp for a team that doesn't
+operate a gateway. It runs the upstream LiteLLM image with Sediment's callback;
+Sediment pins and tests that image but doesn't build or scan it. Its default
+configuration authenticates clients, maps requested
 `claude-*` names to the matching Anthropic model, and forwards successful-call
 payloads to Sediment. It doesn't configure model substitution, fallbacks,
 caching, guardrails, or prompt rewriting. It is enabling infrastructure for
@@ -217,7 +214,9 @@ or file content.
 
 At commit time, a git hook unions the markers into a JSON note under
 `refs/notes/sediment`. Git carries the note through amend and rebase. A
-pre-push hook reconciles and pushes the notes ref with the branch.
+pre-push hook reconciles and pushes the notes ref when the push goes to
+`origin`. The hook syncs no notes with any other remote, so a fork can't add
+notes to the ref that the server reads.
 
 When the forge reports a Push, the mirror reads the note and joins the commit
 to the named Sessions. Notes Attribution is deterministic because the client

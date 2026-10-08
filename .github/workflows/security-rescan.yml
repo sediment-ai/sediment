@@ -1,8 +1,10 @@
 name: retained release security
 
 on:
-  schedule:
-    - cron: "23 5 * * *"
+  # ponytail: the daily schedule is paused. Every renewal rebinds dispositions
+  # to the current build, so retained releases fail against current reviews
+  # (#249). Restore the daily cron "23 5 * * *" once a rescan judges each
+  # release by its own retained reviews.
   workflow_dispatch:
 
 permissions:
@@ -21,8 +23,8 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.19"
-          python-version: "3.12.14"
+          version: "0.12.23"
+          python-version: "3.12.15"
       - name: Install checksum-pinned Trivy
         run: |
           set -euo pipefail
