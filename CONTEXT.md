@@ -425,7 +425,7 @@ kind of extension point.
 
 ### Harness
 The word names four distinct runners here, so never write "the harness"
-bare — qualify every use. **Sim harness:** the Tier A scenario runner
+bare — qualify every use. **Sim harness:** the scenario runner
 (`sim/scenarios.py`) that replays scripted traffic through the real
 pipeline against a ground-truth manifest; `sim/README.md` explains the
 scenarios. **Precision

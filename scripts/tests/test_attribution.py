@@ -958,6 +958,48 @@ def test_repair_notes_with_no_refs_anywhere_is_noop(tmp_path: Path) -> None:
     assert "nothing to do" in result.stdout
 
 
+def test_notes_sync_refuses_non_origin_remote(tmp_path: Path) -> None:
+    # A maintainer pushes a commit to an outside contributor's fork, by URL
+    # or by remote name. Reconciling with that fork would union-merge its
+    # notes into the local ref, and the next push to origin would publish
+    # them where the server-side Attribution Derivation reads.
+    repo = make_repo(tmp_path / "r")
+    origin = make_remote(tmp_path, repo)
+    mark(repo, session="sess-own")
+    run_cli(["stamp"], cwd=repo)
+    own = notes_tree_entries(repo)
+
+    outsider = make_repo(tmp_path / "outsider")
+    (outsider / "b.py").write_text("y = 2\n")
+    git(outsider, "add", "-A")
+    git(outsider, "commit", "-qm", "fork work")
+    fork = tmp_path / "fork.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(fork)], check=True)
+    git(outsider, "remote", "add", "origin", str(fork))
+    mark(outsider, session="sess-injected")
+    run_cli(["stamp"], cwd=outsider)
+    assert run_cli(["push-notes", "origin"], cwd=outsider).returncode == 0
+    fork_notes = notes_tree_entries(fork)
+    assert fork_notes and fork_notes.isdisjoint(own)
+
+    git(repo, "remote", "add", "fork", str(fork))
+    for target in (str(fork), "fork"):
+        pushed = run_cli(["push-notes", target], cwd=repo)
+        assert (pushed.returncode, pushed.stderr) == (0, "")  # skip, not failure
+        repaired = run_cli(["repair-notes", target], cwd=repo)
+        assert repaired.returncode == 1
+        assert "notes_remote_not_origin" in repaired.stderr
+    assert notes_tree_entries(repo) == own  # nothing merged in
+    assert notes_tree_entries(fork) == fork_notes  # nothing published out
+    assert git(repo, "for-each-ref", "refs/notes/sediment-remote") == ""  # no fetch
+    assert log_events(repo).count("notes-push-skipped") == 2
+    assert "notes-push-failed" not in log_events(repo)
+
+    # origin still syncs when the push names it by URL.
+    assert run_cli(["push-notes", str(origin)], cwd=repo).returncode == 0
+    assert notes_tree_entries(origin) == own
+
+
 def test_push_notes_final_failure_logs_event(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r")
     git(repo, "remote", "add", "origin", str(tmp_path / "missing.git"))
@@ -1323,6 +1365,7 @@ def test_push_notes_failure_message_includes_prefix(tmp_path: Path) -> None:
     # Precedence bug regression: a failed push with EMPTY stderr must still
     # print the full diagnostic, not a blank line.
     repo = make_repo(tmp_path / "r")
+    make_remote(tmp_path, repo)
     mark(repo)
     run_cli(["stamp"], cwd=repo)
     fakebin = tmp_path / "fakebin"

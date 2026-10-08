@@ -214,7 +214,9 @@ or file content.
 
 At commit time, a git hook unions the markers into a JSON note under
 `refs/notes/sediment`. Git carries the note through amend and rebase. A
-pre-push hook reconciles and pushes the notes ref with the branch.
+pre-push hook reconciles and pushes the notes ref when the push goes to
+`origin`. The hook syncs no notes with any other remote, so a fork can't add
+notes to the ref that the server reads.
 
 When the forge reports a Push, the mirror reads the note and joins the commit
 to the named Sessions. Notes Attribution is deterministic because the client
