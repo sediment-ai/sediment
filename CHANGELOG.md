@@ -32,6 +32,27 @@
   figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
   timeline, and continuous integration (CI) runs its `--check`.
 
+### Installation
+
+- Pass `--force` in the installer's `pipx` method, so a rerun with another
+  `--version` replaces the installed CLI. Before, the rerun reported success
+  and left the earlier version in place. Closes #189.
+
+### Command line
+
+- List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the
+  CLI reference. Each `--help` says what the command does and describes its
+  arguments, and `uninstall --help` describes `repo`. The hook-only verbs
+  `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay hidden.
+  Closes #172.
+
+### Operational evidence
+
+- Label a failed CI run that omits `workflow_name` as `unnamed` in
+  `sediment report model`, rather than printing an unlabeled `=N` entry and
+  emitting `{"": N}` in JSON. The table and the JSON both read
+  `ci_failures_by_workflow`, so both carry the label. Closes #257.
+
 ## 0.6.0 — 2026-10-04
 
 ### Upgrade notes
@@ -45,12 +66,6 @@
   `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
   security inventories; retained releases through 0.5.0 keep their gateway
   evidence, which rescans verify and skip. Closes #251.
-
-### Installation
-
-- Pass `--force` in the installer's `pipx` method, so a rerun with another
-  `--version` replaces the installed CLI. Before, the rerun reported success
-  and left the earlier version in place. Closes #189.
 
 ### Security
 
@@ -71,14 +86,6 @@
   AGPL-3.0-or-later.
 - The `sediment-cli` PyPI page shows a project description, and the README
   leads with the PyPI installation.
-
-### Command line
-
-- List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the
-  CLI reference. Each `--help` says what the command does and describes its
-  arguments, and `uninstall --help` describes `repo`. The hook-only verbs
-  `mark`, `cursor-hook`, `union-squash-notes`, and `push-notes` stay hidden.
-  Closes #172.
 
 ## 0.5.0 — 2026-10-03
 
