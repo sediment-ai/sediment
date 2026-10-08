@@ -7,7 +7,7 @@
 </p>
 
 [![Continuous integration](https://github.com/sediment-ai/sediment/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sediment-ai/sediment/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/sediment-cli?release=0.5.0)](https://pypi.org/project/sediment-cli/)
+[![PyPI](https://img.shields.io/pypi/v/sediment-cli?release=0.6.0)](https://pypi.org/project/sediment-cli/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](CONTRIBUTING.md)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Follow @sedimentai on X](https://img.shields.io/badge/Follow-%40sedimentai-000000?logo=x&logoColor=white)](https://x.com/sedimentai)
@@ -73,9 +73,9 @@ on Debian and Ubuntu. The [installer](install.sh) adds them and the CLI for you:
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset=".github/assets/architecture-light.svg">
-    <img alt="Agent, gateway, and repository events flow into Facts in PostgreSQL, then into reports, agent context, and training datasets." src=".github/assets/architecture-light.svg" width="880">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/data-flow-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/data-flow-light.svg">
+    <img alt="A coding agent, Git, and CI send Facts to Sediment. Sediment derives an Attributed completion for reports and training rows. Agent context reads the Facts." src=".github/assets/data-flow-light.svg" width="782">
   </picture>
 </p>
 

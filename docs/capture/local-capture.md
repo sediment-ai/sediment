@@ -166,7 +166,8 @@ The installer adds three marked blocks to the repository's hooks:
 
 - `post-commit` writes the marked Session identifiers to `refs/notes/sediment`.
 - `prepare-commit-msg` carries notes through a local squash merge.
-- `pre-push` reconciles and pushes the notes ref with the branch.
+- `pre-push` reconciles and pushes the notes ref when the push goes to
+  `origin`. A push to any other remote, such as a fork, syncs no notes.
 
 It appends to existing shell hooks, including husky and `core.hooksPath`
 setups, and never replaces them. It leaves a non-shell hook untouched and
@@ -187,7 +188,8 @@ If `doctor --fetch` reports a notes ref that's behind or diverged, reconcile it:
 sediment repair-notes origin
 ```
 
-Unlike the pre-push hook, this command fails when it can't reconcile.
+Unlike the pre-push hook, this command fails when it can't reconcile. It
+refuses a remote other than `origin` with `notes_remote_not_origin`.
 
 ### Recover a pending stamp
 

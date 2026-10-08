@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Security
+
+- The pre-push hook and `sediment repair-notes` sync the notes ref with `origin`
+  only, matched by name or by URL. Earlier, a push to another remote, such as an
+  outside contributor's fork, merged that remote's notes into the local notes
+  ref, and the next push to `origin` published them where the Attribution
+  Derivation reads. The same push also sent every local note to that remote. A
+  push to another remote now syncs no notes and logs `notes-push-skipped`;
+  `repair-notes` refuses it with `notes_remote_not_origin`. If your shared
+  remote has another name, notes stay local until you push to `origin`. The fix
+  doesn't audit notes that a clone already merged from a fork. Closes #264.
+
+### Contributor checks
+
+- Replace the static README architecture diagram with an animated data-flow
+  figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
+  timeline, and continuous integration (CI) runs its `--check`.
+
+## 0.6.0 — 2026-10-04
+
 ### Upgrade notes
 
 - The Compose `gateway` profile runs the upstream LiteLLM image pinned in
@@ -12,22 +32,33 @@
   to the gateway's non-root user. Without a database, LiteLLM answers an unknown
   `sk-` key with 400 `No connected db.` instead of 401. Releases now retain six
   security inventories; retained releases through 0.5.0 keep their gateway
-  evidence, which daily rescans verify and skip. Closes #251.
+  evidence, which rescans verify and skip. Closes #251.
+
+### Installation
+
+- Pass `--force` in the installer's `pipx` method, so a rerun with another
+  `--version` replaces the installed CLI. Before, the rerun reported success
+  and left the earlier version in place. Closes #189.
 
 ### Security
 
-- Update the gateway to LiteLLM 1.104.0. LiteLLM now declares Hugging Face Hub
-  below 2 without importing it; the gateway's guarded metadata patch declares
-  the tested Hub 2.1.1 for LiteLLM as it does for Tokenizers. The vendor image
-  ships pypdf 6.19.0, oauthlib 4.0.0, and urllib3 2.8.0, so the gateway drops
-  those overrides.
-- Update the gateway to OpenSSL 3.6.5 through Wolfi's OpenSSL 4 transition.
+- Pin the Compose gateway to the upstream LiteLLM 1.104.0 image by digest.
 - Update the API image and CI to Python 3.12.15, and every image and workflow
   to uv 0.12.23.
 - Accept Debian's fixed PCRE2 `10.42-1+deb12u2` build in the API and
   PostgreSQL image reviews while Trivy's Debian data lags.
 - Renew the maintenance catalog and image dispositions through 2026-11-02, and
   drop four Expat dispositions the API image no longer needs.
+- Pause the scheduled retained-release rescan until it checks each release
+  against that release's own reviews (#249). Maintainers run it on demand.
+
+### Project
+
+- Contributions require a signed Contributor License Agreement (`CLA.md`).
+  PAULSEN'S LLC maintains Sediment and holds its copyright; the code stays
+  AGPL-3.0-or-later.
+- The `sediment-cli` PyPI page shows a project description, and the README
+  leads with the PyPI installation.
 
 ### Command line
 

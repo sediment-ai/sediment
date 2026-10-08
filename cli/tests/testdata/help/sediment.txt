@@ -1,4 +1,4 @@
-sediment v0.5.0 — A self-hosted evidence store for coding agents.
+sediment v0.6.0 — A self-hosted evidence store for coding agents.
 
 USAGE:
   sediment <command> [options]

@@ -8,7 +8,7 @@
         "api/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "api/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -48,7 +48,7 @@
         "postgres/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "postgres/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -88,7 +88,7 @@
         "api/amd64/zlib1g@1:1.2.13.dfsg-1",
         "api/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -123,7 +123,7 @@
         "postgres/amd64/zlib1g@1:1.2.13.dfsg-1",
         "postgres/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -164,7 +164,7 @@
         "api/arm64/ncurses-base@6.4-4",
         "api/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -205,7 +205,7 @@
         "postgres/arm64/ncurses-base@6.4-4",
         "postgres/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -240,7 +240,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -279,7 +279,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -318,7 +318,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -357,7 +357,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -396,7 +396,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -435,7 +435,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -474,7 +474,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "curl_cli_absent"
       ],
@@ -506,100 +506,6 @@
       ]
     },
     {
-      "id": "CVE-2026-13221",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-13221",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-13221",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-13221",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780104/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
       "id": "CVE-2026-16742",
       "targets": [
         "api/amd64/libsystemd0@252.39-1~deb12u2",
@@ -607,7 +513,7 @@
         "api/arm64/libsystemd0@252.39-1~deb12u2",
         "api/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -644,7 +550,7 @@
         "postgres/arm64/libsystemd0@252.39-1~deb12u2",
         "postgres/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -679,7 +585,7 @@
         "api/amd64/gzip@1.12-1",
         "api/arm64/gzip@1.12-1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -718,7 +624,7 @@
         "postgres/amd64/gzip@1.12-1",
         "postgres/arm64/gzip@1.12-1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -733,288 +639,6 @@
       "reason": "The affected gzip implementation remains installed. PostgreSQL initialization processes trusted initialization files one per gunzip invocation, and Sediment exposes no service path accepting arbitrary compressed archives for this tool. This restriction avoids the documented cross-file LZW/LZH state reuse in the supported path. Arbitrary operator decompression and custom initialization scripts require reassessment; process limits do not repair the code.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-41992",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-42496",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-42496",
-        "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-42496",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-42496",
-        "https://lists.security.metacpan.org/cve-announce/msg/40396459/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-42497",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-42497",
-        "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-42497",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-42497",
-        "https://lists.security.metacpan.org/cve-announce/msg/40396457/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-48962",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-48962",
-        "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-48962",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-48962",
-        "https://lists.security.metacpan.org/cve-announce/msg/40434385/",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
         "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
@@ -1053,7 +677,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1109,7 +733,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1151,7 +775,7 @@
         "api/amd64/libacl1@2.3.1-3",
         "api/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1192,7 +816,7 @@
         "postgres/amd64/libacl1@2.3.1-3",
         "postgres/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1228,200 +852,12 @@
       ]
     },
     {
-      "id": "CVE-2026-57432",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-57432",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-57432",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-57432",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780102/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-57433",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "nonroot_user",
-        "read_only_roots",
-        "resource_limits"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-57433",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-57433",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "capabilities_confined",
-        "no_host_data_mounts",
-        "no_suid_sgid",
-        "read_only_roots",
-        "resource_limits",
-        "scram_only"
-      ],
-      "status": "mitigated",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-57433",
-        "https://lists.security.metacpan.org/cve-announce/msg/41780100/",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
       "id": "CVE-2026-6276",
       "targets": [
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1463,7 +899,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1506,7 +942,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "libxml_python_bindings_absent"
       ],
@@ -1555,7 +991,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1617,7 +1053,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1679,7 +1115,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1729,7 +1165,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1779,7 +1215,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1829,7 +1265,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1879,7 +1315,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1935,7 +1371,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1977,7 +1413,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2014,94 +1450,12 @@
       ]
     },
     {
-      "id": "CVE-2026-8376",
-      "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "perl_64bit"
-      ],
-      "status": "not_affected",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-8376",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
-      "id": "CVE-2026-8376",
-      "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
-      ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
-      "required_predicates": [
-        "perl_64bit"
-      ],
-      "status": "not_affected",
-      "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
-      "expires_on": "2026-11-02",
-      "reason": "This advisory affects 32-bit Perl. The inspected AMD64 and ARM64 Perl pointer, size, and integer widths are all eight bytes.",
-      "evidence": [
-        "https://security-tracker.debian.org/tracker/CVE-2026-8376",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
-        "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
-        "https://github.com/sediment-ai/sediment/pull/75#issuecomment-5782384785",
-        "https://github.com/sediment-ai/sediment/pull/70#issuecomment-5782502223",
-        "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5781570002",
-        "https://github.com/sediment-ai/sediment/pull/85#issuecomment-5783489320",
-        "https://github.com/sediment-ai/sediment/actions/runs/36266661190",
-        "https://github.com/sediment-ai/sediment/actions/runs/36276427775",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280245750",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280583092",
-        "https://github.com/sediment-ai/sediment/actions/runs/36280601077",
-        "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
-        "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
-        "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
-      ]
-    },
-    {
       "id": "CVE-2026-8458",
       "targets": [
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2143,7 +1497,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2186,7 +1540,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2225,16 +1579,16 @@
     {
       "id": "CVE-2026-9538",
       "targets": [
-        "api/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl-base@5.36.0-7+deb12u3",
-        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/amd64/perl@5.36.0-7+deb12u3",
-        "api/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl-base@5.36.0-7+deb12u3",
-        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "api/arm64/perl@5.36.0-7+deb12u3"
+        "api/amd64/libperl5.36@5.36.0-7+deb12u4",
+        "api/amd64/perl-base@5.36.0-7+deb12u4",
+        "api/amd64/perl-modules-5.36@5.36.0-7+deb12u4",
+        "api/amd64/perl@5.36.0-7+deb12u4",
+        "api/arm64/libperl5.36@5.36.0-7+deb12u4",
+        "api/arm64/perl-base@5.36.0-7+deb12u4",
+        "api/arm64/perl-modules-5.36@5.36.0-7+deb12u4",
+        "api/arm64/perl@5.36.0-7+deb12u4"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -2245,12 +1599,13 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
+      "reviewed_on": "2026-10-06",
       "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
+      "reason": "Debian's bookworm-security update 5.36.0-7+deb12u4 (DLA-4821-1) does not fix CVE-2026-9538: Debian's tracker lists deb12u4 as vulnerable and postpones the fix as a minor issue. The affected Archive::Tar module remains installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the module or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
+        "https://security-tracker.debian.org/tracker/DLA-4821-1",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
         "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
@@ -2266,22 +1621,23 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
         "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
         "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934",
+        "https://github.com/sediment-ai/sediment/actions/runs/37525943466"
       ]
     },
     {
       "id": "CVE-2026-9538",
       "targets": [
-        "postgres/amd64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-base@5.36.0-7+deb12u3",
-        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/amd64/perl@5.36.0-7+deb12u3",
-        "postgres/arm64/libperl5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-base@5.36.0-7+deb12u3",
-        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u3",
-        "postgres/arm64/perl@5.36.0-7+deb12u3"
+        "postgres/amd64/libperl5.36@5.36.0-7+deb12u4",
+        "postgres/amd64/perl-base@5.36.0-7+deb12u4",
+        "postgres/amd64/perl-modules-5.36@5.36.0-7+deb12u4",
+        "postgres/amd64/perl@5.36.0-7+deb12u4",
+        "postgres/arm64/libperl5.36@5.36.0-7+deb12u4",
+        "postgres/arm64/perl-base@5.36.0-7+deb12u4",
+        "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u4",
+        "postgres/arm64/perl@5.36.0-7+deb12u4"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -2292,12 +1648,13 @@
       ],
       "status": "mitigated",
       "owner": "Sediment maintainers",
-      "reviewed_on": "2026-10-03",
+      "reviewed_on": "2026-10-06",
       "expires_on": "2026-11-02",
-      "reason": "The affected Perl runtime or modules remain installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar, File::GlobMapper, Storable, pack/unpack, or Perl regular-expression APIs. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the modules or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment; the conflicting introduction evidence for CVE-2026-13221 is not treated as proof of non-applicability.",
+      "reason": "Debian's bookworm-security update 5.36.0-7+deb12u4 (DLA-4821-1) does not fix CVE-2026-9538: Debian's tracker lists deb12u4 as vulnerable and postpones the fix as a minor issue. The affected Archive::Tar module remains installed for system/Git dependencies. Sediment does not submit untrusted input to Archive::Tar. The reviewed caller restriction, absence of set-ID files, and process confinement reduce exposure. They do not remove the module or prove every system utility unreachable. Additional scripts, hooks, or arbitrary local Perl execution require reassessment.",
       "evidence": [
         "https://security-tracker.debian.org/tracker/CVE-2026-9538",
         "https://lists.security.metacpan.org/cve-announce/msg/40396448/",
+        "https://security-tracker.debian.org/tracker/DLA-4821-1",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5762138599",
         "https://github.com/sediment-ai/sediment/issues/69#issuecomment-5767478896",
         "https://github.com/sediment-ai/sediment/issues/66#issuecomment-5780991932",
@@ -2313,7 +1670,8 @@
         "https://github.com/sediment-ai/sediment/actions/runs/36343972429",
         "https://github.com/sediment-ai/sediment/actions/runs/36725782899",
         "https://github.com/sediment-ai/sediment/pull/234",
-        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934"
+        "https://github.com/sediment-ai/sediment/pull/234#issuecomment-5932102934",
+        "https://github.com/sediment-ai/sediment/actions/runs/37525943466"
       ]
     },
     {
@@ -2322,7 +1680,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2366,7 +1724,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2410,7 +1768,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2454,7 +1812,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2498,7 +1856,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2544,7 +1902,7 @@
         "api/arm64/libssl3@3.0.22-1~deb12u1",
         "api/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -2577,7 +1935,7 @@
         "postgres/arm64/libssl3@3.0.22-1~deb12u1",
         "postgres/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -2608,7 +1966,7 @@
         "api/amd64/libpcre2-8-0@10.42-1+deb12u2",
         "api/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -2637,7 +1995,7 @@
         "postgres/amd64/libpcre2-8-0@10.42-1+deb12u2",
         "postgres/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
-      "review_digest": "fc40f8b35b3384159ab81d43ce7a972a3f64989ee79c5448a725ce69c9d9db41",
+      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",

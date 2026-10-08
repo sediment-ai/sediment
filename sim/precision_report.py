@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Notes/jaccard precision-recall against the sim ground-truth manifest.
 
-Runs the Tier A scenarios (``scenarios.py``) into a workdir, derives
+Runs the scenarios (``scenarios.py``) into a workdir, derives
 attributions over the resulting facts and mirrors, and scores the derivation
 against the manifest's labeled rows — notes and jaccard separately at the
 default 0.7 threshold, plus a jaccard threshold sweep. Exits nonzero when a
