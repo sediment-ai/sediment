@@ -64,6 +64,7 @@ from sediment_export import (
     TrendMetric,
     TrendStatus,
     StratifiedRate,
+    UNNAMED_WORKFLOW_LABEL,
     AttributedCompletion,
     build_model_report,
     build_model_report_result,
@@ -1252,6 +1253,59 @@ def test_two_distinct_failed_runs_on_the_same_workflow_both_count() -> None:
     ]
     [row] = build_model_report([completion], attributed_completions, now=NOW)
     assert row.ci_failures_by_workflow == {WORKFLOW_LINT: 2}
+
+
+def test_failed_ci_run_without_a_workflow_name_counts_as_unnamed() -> None:
+    # A generic /ingest/ci sender may omit workflow_name, leaving the model
+    # default "". Keying the breakdown on that prints an unlabeled row
+    # ("=3" in the table, {"": 3} in the JSON), so the report labels the
+    # absence instead.
+    failed_unnamed = _ci_outcome(
+        CIResult.FAILED, commit_sha=_sha("sha1"), workflow_name=""
+    )
+    completion = _inference_call("c-1", model="model-a")
+    attributed_completions = [
+        _attributed_completion(
+            "c-1", ci_outcomes=[failed_unnamed], commit_sha=_sha("sha1")
+        ),
+    ]
+    [row] = build_model_report([completion], attributed_completions, now=NOW)
+    assert row.ci_failures_by_workflow == {UNNAMED_WORKFLOW_LABEL: 1}
+
+
+def test_named_and_unnamed_ci_failures_are_counted_separately() -> None:
+    # Labeling an absent name must not relabel a named run, and one named
+    # plus one unnamed failure stay two entries rather than merging.
+    completion = _inference_call("c-1", model="model-a")
+    attributed_completions = [
+        _attributed_completion(
+            "c-1",
+            ci_outcomes=[
+                _ci_outcome(
+                    CIResult.FAILED,
+                    commit_sha=_sha("sha1"),
+                    workflow_name=WORKFLOW_LINT,
+                )
+            ],
+            commit_sha=_sha("sha1"),
+        ),
+        _attributed_completion(
+            "c-1",
+            ci_outcomes=[
+                _ci_outcome(
+                    CIResult.FAILED,
+                    commit_sha=_sha("sha2"),
+                    workflow_name="",
+                )
+            ],
+            commit_sha=_sha("sha2"),
+        ),
+    ]
+    [row] = build_model_report([completion], attributed_completions, now=NOW)
+    assert row.ci_failures_by_workflow == {
+        UNNAMED_WORKFLOW_LABEL: 1,
+        WORKFLOW_LINT: 1,
+    }
 
 
 def test_attributed_completion_with_no_ci_outcomes_is_not_ci_linked() -> None:

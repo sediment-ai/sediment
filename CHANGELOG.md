@@ -20,6 +20,13 @@
   figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
   timeline, and continuous integration (CI) runs its `--check`.
 
+### Operational evidence
+
+- Label a failed CI run that omits `workflow_name` as `unnamed` in
+  `sediment report model`, rather than printing an unlabeled `=N` entry and
+  emitting `{"": N}` in JSON. The table and the JSON both read
+  `ci_failures_by_workflow`, so both carry the label. Closes #257.
+
 ## 0.6.0 — 2026-10-04
 
 ### Upgrade notes
