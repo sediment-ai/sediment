@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 dependencies = [
     # Security floor for HTTPX/Starlette, including installations from wheels.
     "anyio>=4.15.1",
-    "fastapi>=0.141.1",
+    "fastapi>=0.142.2",
     "httpx>=0.27",
     "uvicorn>=0.54.0",
     "pydantic-settings>=2.15.0",
