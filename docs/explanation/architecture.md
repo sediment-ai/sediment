@@ -41,6 +41,10 @@ about agent work; training exports project Attributed completions and Rollouts.
 The Recovery export reads Facts and mirror evidence directly, as described in
 the [Export path](#export-path).
 
+The [interactive architecture diagram](https://sediment.so/diagrams/architecture.html)
+shows the components that implement this flow. Each component links to its
+source code.
+
 ## Capture path
 
 Agent harnesses report inference calls, Developer decisions, Edit observations,

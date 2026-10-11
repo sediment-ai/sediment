@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Sediment architecture",
+    "output": "architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sediment-ai/sediment",
+      "revision": "3f58b88b412e4eec26adc1691ed16cf5e773ae49"
+    },
+    "legend": {
+      "entries": {
+        "frontend": { "label": "Sediment CLI" },
+        "backend": { "label": "Sediment service code" },
+        "database": { "label": "Stored evidence and files" },
+        "external": { "label": "Evidence source" }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "agents",
+      "type": "external",
+      "label": "Agent harnesses",
+      "pos": [40, 230],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/core/sediment_core/models.py", "line": 263, "end_line": 268, "label": "AgentHarness values" },
+        { "path": "shims/pi/lib/register.ts", "line": 123, "end_line": 143, "label": "pi sets the Session header" }
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "external",
+      "label": "LiteLLM gateway",
+      "sublabel": "success callback",
+      "pos": [40, 70],
+      "size": [160, 64],
+      "sources": [
+        { "path": "litellm/sediment_callback.py", "line": 220, "end_line": 260, "label": "callback forwards the payload" },
+        { "path": "litellm/config.yaml", "line": 22, "label": "callback registration" }
+      ]
+    },
+    {
+      "id": "hooks",
+      "type": "frontend",
+      "label": "Capture hooks",
+      "sublabel": "sediment CLI",
+      "pos": [300, 230],
+      "size": [160, 64],
+      "sources": [
+        { "path": "cli/sediment_cli/attribution.py", "line": 153, "end_line": 157, "label": "git hooks: stamp, push-notes" },
+        { "path": "cli/sediment_cli/transcript.py", "line": 4, "end_line": 10, "label": "session-end hook ships OTLP logs" },
+        { "path": "cli/sediment_cli/delivery.py", "line": 185, "label": "delivery paths" }
+      ]
+    },
+    {
+      "id": "forge",
+      "type": "external",
+      "label": "Forge and CI",
+      "sublabel": "GitHub, CI pipelines",
+      "pos": [300, 390],
+      "size": [160, 64],
+      "sources": [
+        { "path": "apps/api/sediment_api/routers/forge.py", "line": 289, "end_line": 306, "label": "GitHub push webhook" },
+        { "path": "apps/api/sediment_api/routers/ci_vendor.py", "line": 119, "end_line": 124, "label": "vendor-neutral CI POST" },
+        { "path": "cli/sediment_cli/attribution.py", "line": 1322, "end_line": 1346, "label": "notes pushed to origin" }
+      ]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "Ingest API",
+      "sublabel": "/ingest/*, /v1/logs",
+      "tag": "bearer or HMAC",
+      "pos": [625, 230],
+      "size": [160, 64],
+      "sources": [
+        { "path": "apps/api/sediment_api/main.py", "line": 225, "end_line": 233, "label": "ingest routers" },
+        { "path": "apps/api/sediment_api/deps.py", "line": 242, "end_line": 257, "label": "GitHub HMAC verification" },
+        { "path": "apps/api/sediment_api/routers/gateway.py", "line": 55, "end_line": 119, "label": "bearer, normalize, then store" }
+      ]
+    },
+    {
+      "id": "mirrors",
+      "type": "database",
+      "label": "Git mirrors",
+      "sublabel": "bare, refs/notes/sediment",
+      "pos": [930, 70],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/derive/sediment_derive/mirror.py", "line": 59, "end_line": 63, "label": "fetch refspecs" },
+        { "path": "packages/derive/sediment_derive/mirror.py", "line": 751, "end_line": 804, "label": "bare mirror refresh" },
+        { "path": "apps/api/sediment_api/routers/forge.py", "line": 323, "end_line": 327, "label": "Push schedules the refresh" }
+      ]
+    },
+    {
+      "id": "facts",
+      "type": "database",
+      "label": "Fact store",
+      "sublabel": "PostgreSQL, append-only",
+      "tag": "Basic redaction",
+      "pos": [930, 230],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/core/sediment_core/store.py", "line": 811, "end_line": 848, "label": "redact, then INSERT ... DO NOTHING" },
+        { "path": "packages/core/sediment_core/models.py", "line": 276, "end_line": 290, "label": "Fact tables" },
+        { "path": "packages/core/sediment_core/store.py", "line": 1949, "end_line": 1961, "label": "read-only snapshot" }
+      ]
+    },
+    {
+      "id": "reads",
+      "type": "backend",
+      "label": "Read API",
+      "sublabel": "/query/*, /v1/reports/*",
+      "pos": [930, 390],
+      "size": [160, 64],
+      "sources": [
+        { "path": "apps/api/sediment_api/main.py", "line": 234, "end_line": 237, "label": "query and report routers" },
+        { "path": "apps/api/sediment_api/routers/query.py", "line": 849, "end_line": 864, "label": "query reads one snapshot" },
+        { "path": "apps/api/sediment_api/worker.py", "line": 255, "end_line": 278, "label": "report job" }
+      ]
+    },
+    {
+      "id": "derive",
+      "type": "backend",
+      "label": "Derivations",
+      "sublabel": "Attribution, CI, Rollouts",
+      "pos": [1215, 230],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/derive/sediment_derive/attribution.py", "line": 444, "end_line": 475, "label": "Attribution over one snapshot" },
+        { "path": "packages/derive/sediment_derive/rollout.py", "line": 210, "end_line": 222, "label": "Rollouts from Facts and mirrors" },
+        { "path": "packages/derive/sediment_derive/ci_resolution.py", "line": 159, "end_line": 170, "label": "CI resolution" }
+      ]
+    },
+    {
+      "id": "export",
+      "type": "backend",
+      "label": "Exports and reports",
+      "sublabel": "DPO, SFT, RLVR, Recovery",
+      "pos": [1215, 390],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/export/sediment_export/attributed_completions.py", "line": 321, "end_line": 330, "label": "Attributed completions" },
+        { "path": "packages/export/sediment_export/dpo.py", "line": 409, "end_line": 415, "label": "DPO projection" },
+        { "path": "packages/export/sediment_export/rlvr.py", "line": 1017, "end_line": 1024, "label": "RLVR export" }
+      ]
+    },
+    {
+      "id": "rows",
+      "type": "database",
+      "label": "Training rows",
+      "sublabel": "JSONL files",
+      "pos": [1450, 390],
+      "size": [160, 64],
+      "sources": [
+        { "path": "packages/export/sediment_export/jsonl.py", "line": 79, "end_line": 91, "label": "JSONL writer" },
+        { "path": "cli/sediment_cli/cli.py", "line": 1276, "end_line": 1281, "label": "export writes <name>.jsonl" }
+      ]
+    },
+    {
+      "id": "operator",
+      "type": "frontend",
+      "label": "Operator CLI",
+      "sublabel": "sediment",
+      "pos": [1215, 550],
+      "size": [160, 64],
+      "sources": [
+        { "path": "cli/sediment_cli/cli.py", "line": 1186, "end_line": 1196, "label": "sediment derive" },
+        { "path": "cli/sediment_cli/cli.py", "line": 2165, "end_line": 2172, "label": "store commands open PostgreSQL" },
+        { "path": "cli/sediment_cli/evidence.py", "line": 152, "end_line": 180, "label": "evidence reads over /query" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Developer machine", "wraps": ["agents", "hooks"] },
+    {
+      "kind": "region",
+      "label": "Sediment deployment",
+      "wraps": ["ingest", "mirrors", "facts", "reads", "derive", "export", "rows", "operator"]
+    }
+  ],
+  "connections": [
+    { "id": "agent-inference", "from": "agents", "to": "gateway", "label": "inference calls" },
+    { "id": "agent-hooks", "from": "agents", "to": "hooks", "label": "hook events" },
+    { "id": "gateway-callback", "from": "gateway", "to": "ingest", "label": "POST /ingest/gateway", "fromSide": "right", "toSide": "top" },
+    { "id": "hooks-otlp", "from": "hooks", "to": "ingest", "label": "OTLP logs", "variant": "emphasis" },
+    { "id": "hooks-notes", "from": "hooks", "to": "forge", "label": "git notes" },
+    { "id": "forge-events", "from": "forge", "to": "ingest", "label": "webhooks, CI outcomes", "fromSide": "right", "toSide": "bottom" },
+    { "id": "append-facts", "from": "ingest", "to": "facts", "label": "append Facts", "variant": "emphasis" },
+    { "id": "mirror-fetch", "from": "ingest", "to": "mirrors", "label": "git fetch on Push", "variant": "dashed" },
+    { "id": "fact-snapshot", "from": "facts", "to": "derive", "label": "Fact snapshot", "variant": "emphasis" },
+    { "id": "mirror-evidence", "from": "mirrors", "to": "derive", "label": "commits, diffs, notes" },
+    { "id": "derive-export", "from": "derive", "to": "export", "label": "Attributions, Rollouts", "variant": "emphasis" },
+    { "id": "export-rows", "from": "export", "to": "rows", "label": "JSONL", "variant": "emphasis" },
+    { "id": "bounded-reads", "from": "facts", "to": "reads", "label": "bounded reads" },
+    { "id": "report-results", "from": "export", "to": "reads", "label": "reports" },
+    { "id": "operator-runs", "from": "operator", "to": "export", "label": "derive, export, report" },
+    { "id": "operator-queries", "from": "operator", "to": "reads", "label": "/query reads" }
+  ]
+}
