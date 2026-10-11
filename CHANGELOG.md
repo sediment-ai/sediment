@@ -25,12 +25,23 @@
   `repair-notes` refuses it with `notes_remote_not_origin`. If your shared
   remote has another name, notes stay local until you push to `origin`. The fix
   doesn't audit notes that a clone already merged from a fork. Closes #264.
+- Review GnuTLS CVE-2026-88647 and CVE-2026-88648 in the API and PostgreSQL
+  images. Debian has no fixed Bookworm package. In the API, only Git's HTTPS
+  mirror fetches reach GnuTLS. PostgreSQL reaches it only through LDAP
+  authentication, which the supplied SCRAM-only configuration excludes.
+- Update the API image to FastAPI 0.142.2 and SQLAlchemy 2.1.3. FastAPI adds
+  `opentelemetry-api` 1.45.1 to the image. The image has no OpenTelemetry SDK,
+  so the API exports no telemetry. If you set `OTEL_EXPORTER_OTLP_ENDPOINT`,
+  FastAPI logs a warning at startup.
+- Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.0.
 
 ### Contributor checks
 
 - Replace the static README architecture diagram with an animated data-flow
   figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
   timeline, and continuous integration (CI) runs its `--check`.
+- Test the pi shim against pi-coding-agent 1.0.4. The continuation comparison's
+  version check and its task-selection tests follow the lockfile.
 
 ### Installation
 
