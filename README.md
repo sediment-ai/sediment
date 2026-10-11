@@ -80,6 +80,7 @@ on Debian and Ubuntu. The [installer](install.sh) adds them and the CLI for you:
 </p>
 
 [Architecture and network boundaries](docs/explanation/architecture.md) ·
+[Interactive architecture diagram](https://sediment.so/diagrams/architecture.html) ·
 [Captured data and privacy](docs/explanation/how-capture-works.md)
 
 ## Development
