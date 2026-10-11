@@ -2630,7 +2630,7 @@
       ]
     },
     "pypi/pydantic": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.14.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.14.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.14.1 is an unwithdrawn PyPI patch release (uploaded 2026-10-11, requires Python >=3.10) with validation fixes and allocation reductions; Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog.",
       "evidence": "https://pypi.org/project/pydantic/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic",
@@ -2640,11 +2640,12 @@
       "versions": [
         "2.13.4",
         "2.13.5",
-        "2.14.0"
+        "2.14.0",
+        "2.14.1"
       ]
     },
     "pypi/pydantic-core": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.50.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.50.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.50.1 is the unwithdrawn PyPI release that pydantic 2.14.1 pins (uploaded 2026-10-11, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog.",
       "evidence": "https://pypi.org/project/pydantic-core/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic",
@@ -2654,7 +2655,8 @@
       "versions": [
         "2.46.4",
         "2.46.5",
-        "2.50.0"
+        "2.50.0",
+        "2.50.1"
       ]
     },
     "pypi/pydantic-settings": {

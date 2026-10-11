@@ -8,7 +8,7 @@
         "api/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "api/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -48,7 +48,7 @@
         "postgres/amd64/libldap-2.5-0@2.5.13+dfsg-5",
         "postgres/arm64/libldap-2.5-0@2.5.13+dfsg-5"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -88,7 +88,7 @@
         "api/amd64/zlib1g@1:1.2.13.dfsg-1",
         "api/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -123,7 +123,7 @@
         "postgres/amd64/zlib1g@1:1.2.13.dfsg-1",
         "postgres/arm64/zlib1g@1:1.2.13.dfsg-1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "minizip_absent"
       ],
@@ -164,7 +164,7 @@
         "api/arm64/ncurses-base@6.4-4",
         "api/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -205,7 +205,7 @@
         "postgres/arm64/ncurses-base@6.4-4",
         "postgres/arm64/ncurses-bin@6.4-4"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "infocmp_absent"
       ],
@@ -240,7 +240,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -279,7 +279,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -318,7 +318,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -357,7 +357,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -396,7 +396,7 @@
         "api/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "api/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -435,7 +435,7 @@
         "postgres/amd64/libsqlite3-0@3.40.1-2+deb12u2",
         "postgres/arm64/libsqlite3-0@3.40.1-2+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -474,7 +474,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "curl_cli_absent"
       ],
@@ -513,7 +513,7 @@
         "api/arm64/libsystemd0@252.39-1~deb12u2",
         "api/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -550,7 +550,7 @@
         "postgres/arm64/libsystemd0@252.39-1~deb12u2",
         "postgres/arm64/libudev1@252.39-1~deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "systemd_homed_absent"
       ],
@@ -585,7 +585,7 @@
         "api/amd64/gzip@1.12-1",
         "api/arm64/gzip@1.12-1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -624,7 +624,7 @@
         "postgres/amd64/gzip@1.12-1",
         "postgres/arm64/gzip@1.12-1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -677,7 +677,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -733,7 +733,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -775,7 +775,7 @@
         "api/amd64/libacl1@2.3.1-3",
         "api/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -816,7 +816,7 @@
         "postgres/amd64/libacl1@2.3.1-3",
         "postgres/arm64/libacl1@2.3.1-3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -857,7 +857,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -899,7 +899,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -942,7 +942,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "libxml_python_bindings_absent"
       ],
@@ -991,7 +991,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1053,7 +1053,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1115,7 +1115,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1165,7 +1165,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1215,7 +1215,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1265,7 +1265,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "no_suid_sgid"
       ],
@@ -1315,7 +1315,7 @@
         "api/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "api/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1371,7 +1371,7 @@
         "postgres/arm64/util-linux-extra@2.38.1-5+deb12u3",
         "postgres/arm64/util-linux@2.38.1-5+deb12u3"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "empty_fstab",
@@ -1413,7 +1413,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1455,7 +1455,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1497,7 +1497,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1540,7 +1540,7 @@
         "api/amd64/libcurl3-gnutls@7.88.1-10+deb12u15",
         "api/arm64/libcurl3-gnutls@7.88.1-10+deb12u15"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1588,7 +1588,7 @@
         "api/arm64/perl-modules-5.36@5.36.0-7+deb12u4",
         "api/arm64/perl@5.36.0-7+deb12u4"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1637,7 +1637,7 @@
         "postgres/arm64/perl-modules-5.36@5.36.0-7+deb12u4",
         "postgres/arm64/perl@5.36.0-7+deb12u4"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "no_host_data_mounts",
@@ -1680,7 +1680,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1724,7 +1724,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1768,7 +1768,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1812,7 +1812,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1856,7 +1856,7 @@
         "postgres/amd64/libxml2@2.9.14+dfsg-1.3~deb12u6",
         "postgres/arm64/libxml2@2.9.14+dfsg-1.3~deb12u6"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -1902,7 +1902,7 @@
         "api/arm64/libssl3@3.0.22-1~deb12u1",
         "api/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -1935,7 +1935,7 @@
         "postgres/arm64/libssl3@3.0.22-1~deb12u1",
         "postgres/arm64/openssl@3.0.22-1~deb12u1"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_isolated",
@@ -1966,7 +1966,7 @@
         "api/amd64/libpcre2-8-0@10.42-1+deb12u2",
         "api/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "git_default_config",
@@ -1995,7 +1995,7 @@
         "postgres/amd64/libpcre2-8-0@10.42-1+deb12u2",
         "postgres/arm64/libpcre2-8-0@10.42-1+deb12u2"
       ],
-      "review_digest": "d66a4f4042d499dce274fb1bed0bf7ed1d71b2dffcbaa0028d94629464a508ad",
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
       "required_predicates": [
         "capabilities_confined",
         "database_credentials_separated",
@@ -2018,6 +2018,112 @@
         "https://security.debian.org/debian-security/pool/updates/main/p/pcre2/pcre2_10.42-1+deb12u2.diff.gz",
         "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-r9hj-j2rw-4q3m",
         "https://github.com/PCRE2Project/pcre2/commit/2b4038298072684b0fae29b15bedfb1a75bda46d"
+      ]
+    },
+    {
+      "id": "CVE-2026-88647",
+      "targets": [
+        "api/amd64/libgnutls30@3.7.9-2+deb12u7",
+        "api/arm64/libgnutls30@3.7.9-2+deb12u7"
+      ],
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
+      "required_predicates": [
+        "capabilities_confined",
+        "git_default_config",
+        "no_host_data_mounts",
+        "nonroot_user",
+        "read_only_roots",
+        "resource_limits"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-11",
+      "expires_on": "2026-11-02",
+      "reason": "Debian lists the exact Bookworm GnuTLS 3.7.9-2+deb12u7 package as vulnerable and has no fixed Bookworm package on 2026-10-11. A subjectAltName that holds only an SRV otherName with an OCTET STRING value doesn't suppress the Common Name fallback, so a trusted certificate can name any host in its Common Name. In the API image, GnuTLS loads through libcurl3-gnutls, libldap, librtmp, and apt. Python, httpx, and libpq use OpenSSL. The supplied API reaches GnuTLS only when Git fetches a mirror over HTTPS. MirrorPolicy limits webhook clone URLs to http, https, git, and ssh, and to the operator's clone-host allowlist when one is set. Git runs with default settings and GIT_ALLOW_PROTOCOL, so it makes no LDAP or RTMP request. SSH remotes don't use GnuTLS. Exploitation needs a network position on the path to an allowed forge and such a certificate from an authority in the image trust store. The CA/Browser Forum Baseline Requirements forbid otherName entries in publicly trusted server certificates, so this needs a misissuing or compromised authority. These conditions reduce exposure; they don't patch GnuTLS. An impostor that passes verification can receive HTTPS Git credentials and withhold or alter fetched refs. Reassess custom CA bundles, proxies, LDAP service lookups, Git configuration in reused mirror volumes, and any added HTTPS caller. Apply a distribution fix rather than extending this mitigation.",
+      "evidence": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-88647",
+        "https://bugs.debian.org/1150522",
+        "https://github.com/sediment-ai/sediment/actions/runs/38143486929",
+        "https://github.com/cabforum/servercert/blob/main/docs/BR.md"
+      ]
+    },
+    {
+      "id": "CVE-2026-88647",
+      "targets": [
+        "postgres/amd64/libgnutls30@3.7.9-2+deb12u7",
+        "postgres/arm64/libgnutls30@3.7.9-2+deb12u7"
+      ],
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
+      "required_predicates": [
+        "capabilities_confined",
+        "no_host_data_mounts",
+        "read_only_roots",
+        "resource_limits",
+        "scram_configured",
+        "scram_only"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-11",
+      "expires_on": "2026-11-02",
+      "reason": "Debian lists the exact Bookworm GnuTLS 3.7.9-2+deb12u7 package as vulnerable and has no fixed Bookworm package on 2026-10-11. A subjectAltName that holds only an SRV otherName with an OCTET STRING value doesn't suppress the Common Name fallback, so a trusted certificate can name any host in its Common Name. In the PostgreSQL image, GnuTLS loads through libldap, dirmngr, and apt. PostgreSQL's own TLS uses OpenSSL. The supplied pg_hba configuration accepts only SCRAM-SHA-256, so the server makes no LDAP connection, and the deployment runs neither dirmngr nor apt. These conditions reduce exposure; they don't patch GnuTLS. LDAP authentication, an LDAP service lookup, an extension that opens TLS through GnuTLS, or arbitrary commands invalidate this assessment. Apply a distribution fix rather than extending this mitigation.",
+      "evidence": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-88647",
+        "https://bugs.debian.org/1150522",
+        "https://github.com/sediment-ai/sediment/actions/runs/38143486929"
+      ]
+    },
+    {
+      "id": "CVE-2026-88648",
+      "targets": [
+        "api/amd64/libgnutls30@3.7.9-2+deb12u7",
+        "api/arm64/libgnutls30@3.7.9-2+deb12u7"
+      ],
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
+      "required_predicates": [
+        "capabilities_confined",
+        "git_default_config",
+        "no_host_data_mounts",
+        "nonroot_user",
+        "read_only_roots",
+        "resource_limits"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-11",
+      "expires_on": "2026-11-02",
+      "reason": "Debian lists the exact Bookworm GnuTLS 3.7.9-2+deb12u7 package as vulnerable and has no fixed Bookworm package on 2026-10-11. GnuTLS doesn't enforce directoryName permitted subtrees or excluded SRV otherName subtrees in name constraints. In the API image, GnuTLS loads through libcurl3-gnutls, libldap, librtmp, and apt. Python, httpx, and libpq use OpenSSL. The supplied API reaches GnuTLS only when Git fetches a mirror over HTTPS. MirrorPolicy limits webhook clone URLs to http, https, git, and ssh, and to the operator's clone-host allowlist when one is set. Git runs with default settings and GIT_ALLOW_PROTOCOL, so it makes no LDAP or RTMP request. SSH remotes don't use GnuTLS. Exploitation needs a network position on the path to an allowed forge and control of a name-constrained subordinate authority that chains to the image trust store. Combined with the unscored CVE-2026-95209, such an authority can name any host. These conditions reduce exposure; they don't patch GnuTLS. An impostor that passes verification can receive HTTPS Git credentials and withhold or alter fetched refs. Reassess custom CA bundles, proxies, LDAP service lookups, Git configuration in reused mirror volumes, and any added HTTPS caller. Apply a distribution fix rather than extending this mitigation.",
+      "evidence": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-88648",
+        "https://bugs.debian.org/1150522",
+        "https://github.com/sediment-ai/sediment/actions/runs/38143486929",
+        "https://security-tracker.debian.org/tracker/CVE-2026-95209"
+      ]
+    },
+    {
+      "id": "CVE-2026-88648",
+      "targets": [
+        "postgres/amd64/libgnutls30@3.7.9-2+deb12u7",
+        "postgres/arm64/libgnutls30@3.7.9-2+deb12u7"
+      ],
+      "review_digest": "c10457d6f1ac8aab93faa89076f0cf477282180488043e650a195d15650ac3a0",
+      "required_predicates": [
+        "capabilities_confined",
+        "no_host_data_mounts",
+        "read_only_roots",
+        "resource_limits",
+        "scram_configured",
+        "scram_only"
+      ],
+      "status": "mitigated",
+      "owner": "Sediment maintainers",
+      "reviewed_on": "2026-10-11",
+      "expires_on": "2026-11-02",
+      "reason": "Debian lists the exact Bookworm GnuTLS 3.7.9-2+deb12u7 package as vulnerable and has no fixed Bookworm package on 2026-10-11. GnuTLS doesn't enforce directoryName permitted subtrees or excluded SRV otherName subtrees in name constraints. In the PostgreSQL image, GnuTLS loads through libldap, dirmngr, and apt. PostgreSQL's own TLS uses OpenSSL. The supplied pg_hba configuration accepts only SCRAM-SHA-256, so the server makes no LDAP connection, and the deployment runs neither dirmngr nor apt. These conditions reduce exposure; they don't patch GnuTLS. LDAP authentication, an LDAP service lookup, an extension that opens TLS through GnuTLS, or arbitrary commands invalidate this assessment. Apply a distribution fix rather than extending this mitigation.",
+      "evidence": [
+        "https://security-tracker.debian.org/tracker/CVE-2026-88648",
+        "https://bugs.debian.org/1150522",
+        "https://github.com/sediment-ai/sediment/actions/runs/38143486929"
       ]
     }
   ]
