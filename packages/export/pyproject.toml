@@ -8,7 +8,7 @@ license-files = ["LICENSE"]
 dependencies = [
     "sediment-core==0.6.0",
     "sediment-derive==0.6.0",
-    "pydantic>=2.13.5",
+    "pydantic>=2.14.0",
     "pydantic-settings>=2.15.0",
     "pyyaml>=6.0.3",
 ]
