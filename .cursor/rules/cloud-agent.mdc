@@ -26,8 +26,9 @@ uv run python scripts/add_spdx.py --check
 uv run python scripts/check_docs.py --base origin/demo/cursor-agentic-sdlc
 ```
 
-`scripts/tests/test_attribution.py` takes about 70 seconds. Paste the pass and
-fail counts into the pull request.
+`scripts/tests/test_attribution.py` takes 2 to 7 minutes on a Cloud Agent VM.
+While developing, run one test with `-k <name>`; run the whole file once before
+you push. Paste the pass and fail counts into the pull request.
 
 ## Pull requests
 
