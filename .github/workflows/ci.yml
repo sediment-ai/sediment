@@ -49,7 +49,7 @@ jobs:
       - name: Scan complete pull-request tree for secrets
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
         env:
-          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.99.0@sha256:39ee0643ae620664287bcc95f133f3fc8484590d6ca4e7105d96b90dac4b9f6f
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.99.2@sha256:47a84bc18a0d04a165498bbbd3bacfd84176661cbc91f8e0f85467f6a771e99a
         run: |
           scan_root="${RUNNER_TEMP}/sediment-secret-scan"
           mkdir "$scan_root"
@@ -222,7 +222,7 @@ jobs:
         with:
           base: ${{ steps.secret-range.outputs.base || github.event.merge_group.base_sha || '' }}
           head: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && github.sha || '' }}
-          version: "3.99.0"
+          version: "3.99.2"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database
         if: always() && steps.scope.outputs.full == 'true'
