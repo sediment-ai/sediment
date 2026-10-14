@@ -29,10 +29,11 @@
   images. Debian has no fixed Bookworm package. In the API, only Git's HTTPS
   mirror fetches reach GnuTLS. PostgreSQL reaches it only through LDAP
   authentication, which the supplied SCRAM-only configuration excludes.
-- Update the API image to FastAPI 0.142.2 and SQLAlchemy 2.1.3. FastAPI adds
-  `opentelemetry-api` 1.45.1 to the image. The image has no OpenTelemetry SDK,
-  so the API exports no telemetry. If you set `OTEL_EXPORTER_OTLP_ENDPOINT`,
-  FastAPI logs a warning at startup.
+- Update the API image to FastAPI 0.143.0, pydantic 2.14.0, and SQLAlchemy
+  2.1.4. FastAPI adds `opentelemetry-api` 1.45.1 to the image. The image has no
+  OpenTelemetry SDK, so the API exports no telemetry. FastAPI reads `OTEL_*`
+  exporter variables only when `FASTAPI_OTEL_AUTO_CONFIGURE=true`; with that
+  setting and no SDK, it logs a warning at startup.
 - Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.0.
 
 ### Contributor checks
