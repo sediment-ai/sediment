@@ -35,5 +35,5 @@ jobs:
           branch: cla-signatures
           # The action checks commit authors. Claude Code commits made for the
           # maintainer resolve to the `claude` login.
-          allowlist: ericpaulsen,claude,dependabot[bot],github-actions[bot]
+          allowlist: ericpaulsen,claude,cursoragent,dependabot[bot],github-actions[bot]
           lock-pullrequest-aftermerge: false

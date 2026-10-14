@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python3 .cursor/hooks/block-unsafe-git.py",
+        "matcher": "git",
+        "timeout": 10
+      }
+    ]
+  }
+}

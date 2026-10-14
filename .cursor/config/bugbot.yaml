@@ -1,0 +1,17 @@
+# Bugbot reads this file from the pull request's base branch, so a pull request
+# cannot change how its own review runs.
+version: 1
+
+triggers:
+  drafts: false
+  frequency: everyPush
+
+review:
+  effort: default
+  incremental: true
+
+prSummary:
+  mode: disabled
+
+autofix:
+  mode: disabled

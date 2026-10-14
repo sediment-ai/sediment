@@ -1,0 +1,40 @@
+---
+description: Setup, verification, and pull request rules for agents on the demo branch
+alwaysApply: true
+---
+
+# Cursor Cloud specific instructions
+
+`AGENTS.md` is at its line cap, so Cloud Agent instructions live here.
+
+## Setup
+
+If `uv` is missing or `.venv` is absent, run `bash .cursor/install.sh`. It is
+idempotent. The CLI and git-hook tests need no database or Docker. Don't start
+Docker Compose.
+
+## Verify
+
+Before editing, name the test that should fail and run it to show the failure.
+After editing, run the focused tests, then the area suite:
+
+```bash
+uv run pytest -q scripts/tests/test_attribution.py
+uv run pytest -q cli/tests/test_agent_guide.py cli/tests/test_cli_help.py
+uv run ruff check . && uv run ruff format --check .
+uv run python scripts/add_spdx.py --check
+uv run python scripts/check_docs.py --base origin/demo/cursor-agentic-sdlc
+```
+
+`scripts/tests/test_attribution.py` takes about 70 seconds. Paste the pass and
+fail counts into the pull request.
+
+## Pull requests
+
+- Base every pull request on `demo/cursor-agentic-sdlc`, never `main`.
+- Open it as a draft. A person marks it ready, which starts CI.
+- Title it as a Conventional Commit, such as `fix(cli): ...`.
+- Fill in the repository's pull request template. Leave unverified items
+  unchecked.
+- A repository hook denies force pushes, hard resets, and pushes to `main`.
+  Push new commits instead.
