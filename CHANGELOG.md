@@ -48,6 +48,15 @@
 - Pass `--force` in the installer's `pipx` method, so a rerun with another
   `--version` replaces the installed CLI. Before, the rerun reported success
   and left the earlier version in place. Closes #189.
+- Preserve a repository hook's exit status after `sediment install` and
+  `install --fleet`. Each Sediment command in an appended block ends in
+  `|| true`, so the hook exited zero even when the repository's own
+  `pre-push` or `prepare-commit-msg` check had failed. The block saves the
+  status that it finds and restores it. It works under `set -e`, and
+  `prepare-commit-msg` no longer aborts under `set -u` when a plain
+  `git commit` passes one argument. Rerun `sediment install` in each
+  repository, or redistribute the fleet bundle, to upgrade existing blocks.
+  Closes #170.
 
 ### Command line
 

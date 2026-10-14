@@ -1498,6 +1498,122 @@ def test_uninstall_removes_only_our_block(tmp_path: Path) -> None:
     assert out.returncode != 0  # unset
 
 
+def _install_over_hooks(
+    tmp_path: Path, repo: Path, installer: str, hooks: dict[str, str]
+) -> None:
+    """Install Sediment's block over a repository's own hooks with either
+    installer. The fleet bundle reaches the repo the way MDM ships it: an
+    admin's template hook, then ``git init --template``."""
+    if installer == "install":
+        target = hooks_dir(repo)
+    else:
+        target = tmp_path / "bundle" / "git-template" / "hooks"
+    target.mkdir(parents=True, exist_ok=True)
+    for name, body in hooks.items():
+        (target / name).write_text(body)
+    if installer == "install":
+        args = ["install", str(repo), "--no-agents"]
+    else:
+        bundle = str(tmp_path / "bundle")
+        args = ["install", "--fleet", "--out", bundle, "--prefix", bundle]
+    result = run_cli(args, cwd=repo)
+    assert result.returncode == 0, result.stderr
+    if installer == "fleet":
+        git(repo, "init", "-q", f"--template={tmp_path / 'bundle' / 'git-template'}")
+
+
+def _fire_hook(repo: Path, hook: str) -> subprocess.CompletedProcess:
+    """Commit with no message argument (prepare-commit-msg gets one argument)
+    and, for pre-push, push the commit to origin."""
+    (repo / "change.py").write_text(f"y = {len(list(repo.iterdir()))}\n")
+    git(repo, "add", "-A")
+    env = {**os.environ, "GIT_EDITOR": "echo 'hook test' >"}
+    commit = subprocess.run(
+        ["git", "commit", "-q"], cwd=repo, capture_output=True, text=True, env=env
+    )
+    if hook != "pre-push" or commit.returncode != 0:
+        return commit
+    return subprocess.run(
+        ["git", "push", "-q", "origin", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.mark.parametrize("installer", ["install", "fleet"])
+@pytest.mark.parametrize("hook", ["pre-push", "prepare-commit-msg"])
+@pytest.mark.parametrize("last, blocks", [("false", True), ("true", False)])
+def test_install_keeps_repository_hook_exit_status(
+    tmp_path: Path, installer: str, hook: str, last: str, blocks: bool
+) -> None:
+    repo = make_repo(tmp_path / "r")
+    make_remote(tmp_path, repo)
+    body = f"#!/bin/sh\necho 'repo check'\n{last}\n"
+    _install_over_hooks(tmp_path, repo, installer, {hook: body})
+    result = _fire_hook(repo, hook)
+    assert (result.returncode != 0) is blocks, result.stderr
+
+
+@pytest.mark.parametrize("installer", ["install", "fleet"])
+@pytest.mark.parametrize("hook", ["pre-push", "prepare-commit-msg"])
+def test_failing_sediment_command_never_fails_strict_hook(
+    tmp_path: Path, installer: str, hook: str
+) -> None:
+    repo = make_repo(tmp_path / "r")
+    make_remote(tmp_path, repo)
+    _install_over_hooks(tmp_path, repo, installer, {hook: "#!/bin/sh\nset -eu\n"})
+    hook_file = hooks_dir(repo) / hook
+    bundled = tmp_path / "bundle" / "sediment_attribution.py"
+    script = SCRIPT if installer == "install" else bundled
+    missing = tmp_path / "moved" / "sediment_attribution.py"
+    hook_file.write_text(hook_file.read_text().replace(str(script), str(missing)))
+    result = _fire_hook(repo, hook)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("hook", ["pre-push", "prepare-commit-msg"])
+@pytest.mark.parametrize("last, blocks", [("false", True), ("true", False)])
+def test_code_after_block_runs_and_decides_status(
+    tmp_path: Path, hook: str, last: str, blocks: bool
+) -> None:
+    # `false && true` leaves status 1 without tripping set -e; restoring it
+    # inside the block must not trip set -e either.
+    repo = make_repo(tmp_path / "r")
+    make_remote(tmp_path, repo)
+    body = "#!/bin/sh\nset -eu\nfalse && true\n"
+    _install_over_hooks(tmp_path, repo, "install", {hook: body})
+    tail_log = tmp_path / "tail.log"
+    hook_file = hooks_dir(repo) / hook
+    hook_file.write_text(hook_file.read_text() + f"echo ran >> '{tail_log}'\n{last}\n")
+    result = _fire_hook(repo, hook)
+    assert tail_log.read_text() == "ran\n"
+    assert (result.returncode != 0) is blocks, result.stderr
+
+
+def test_reinstall_upgrades_legacy_block_and_uninstall_restores_hook(
+    tmp_path: Path,
+) -> None:
+    mod = _load_module()
+    repo = make_repo(tmp_path / "r")
+    original = "#!/bin/sh\necho 'repo check'\nfalse\n"
+    legacy = (
+        f"{mod.HOOK_BLOCK_BEGIN}\n"
+        f'"{sys.executable}" "{SCRIPT}" push-notes "$1" || true\n'
+        f"{mod.HOOK_BLOCK_END}\n"
+    )
+    hook_file = hooks_dir(repo) / "pre-push"
+    hook_file.write_text(original + legacy)
+    for _ in range(2):
+        run_cli(["install", str(repo), "--no-agents"], cwd=repo)
+    content = hook_file.read_text()
+    assert content.count(mod.HOOK_BLOCK_BEGIN) == 1
+    assert content.startswith(original)
+    assert "__sediment_status=$?" in content
+    run_cli(["uninstall", str(repo)], cwd=repo)
+    assert hook_file.read_text() == original
+
+
 def test_agent_hook_install_and_uninstall(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
