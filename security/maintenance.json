@@ -2497,11 +2497,11 @@
       ]
     },
     "pypi/fastapi": {
-      "basis": "Reviewed 2026-09-30: the unwithdrawn 0.142.2 release supports Python >=3.10 and fixes startup when automatic OpenTelemetry configuration fails. Earlier reviewed versions remain recorded for locked artifacts. Reviewed 2026-10-08: 0.143.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog.",
-      "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.142.2",
+      "basis": "Reviewed 2026-09-30: the unwithdrawn 0.142.2 release supports Python >=3.10 and fixes startup when automatic OpenTelemetry configuration fails. Earlier reviewed versions remain recorded for locked artifacts. Reviewed 2026-10-08: 0.143.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10). Reviewed 2026-10-14: 0.143.1 is an unwithdrawn PyPI patch release (uploaded 2026-10-14, requires Python >=3.10) that fixes included route metadata. Sediment's API, export, and CLI suites pass with it. This assessment expires with the catalog.",
+      "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.143.1",
       "provider": "Upstream project",
       "source": "https://github.com/fastapi/fastapi",
-      "source_updated_at": "2026-09-29T17:56:21Z",
+      "source_updated_at": "2026-10-14T14:40:44Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
@@ -2510,7 +2510,8 @@
         "0.141.1",
         "0.142.0",
         "0.142.2",
-        "0.143.0"
+        "0.143.0",
+        "0.143.1"
       ]
     },
     "pypi/greenlet": {
@@ -2660,16 +2661,17 @@
       ]
     },
     "pypi/pydantic-settings": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
-      "evidence": "https://pypi.org/project/pydantic-settings/",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-14: 2.16.0 is an unwithdrawn PyPI release (uploaded 2026-10-14, requires Python >=3.11). It requires python-dotenv >=1.2.2 for CVE-2026-28684 and changes alias handling only when validate_by_alias=False. Sediment runs Python 3.12 and does not set that option; its API, export, and CLI suites pass with this release.",
+      "evidence": "https://github.com/pydantic/pydantic-settings/releases/tag/v2.16.0",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic-settings",
-      "source_updated_at": "2026-09-11T09:43:40Z",
+      "source_updated_at": "2026-10-14T12:37:43Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "2.14.2",
-        "2.15.0"
+        "2.15.0",
+        "2.16.0"
       ]
     },
     "pypi/python-dotenv": {
@@ -2811,17 +2813,18 @@
       ]
     },
     "pypi/starlette": {
-      "basis": "Reviewed the official Starlette 1.7.0 release at commit 2269e9a08c1edd3dfdea865710f40f84c857b623, published on 2026-09-23 and unyanked on PyPI. Its Python >=3.10, AnyIO >=4.0.0,<5, and conditional typing-extensions >=4.10.0 requirements admit the measured Python 3.12.14, AnyIO 4.15.1, and typing-extensions 4.16.0 client environment; FastAPI 0.141.1 permits Starlette >=0.46.0. The reviewed upstream security policy provides disclosure instructions without a release-specific maintenance window or end-of-support date. This project maintenance assessment requires renewal by the existing catalog expiry. Previously reviewed versions remain recorded.",
-      "evidence": "https://github.com/Kludex/starlette/blob/2269e9a08c1edd3dfdea865710f40f84c857b623/docs/release-notes.md",
+      "basis": "Reviewed the official Starlette 1.7.0 release at commit 2269e9a08c1edd3dfdea865710f40f84c857b623, published on 2026-09-23 and unyanked on PyPI. Its Python >=3.10, AnyIO >=4.0.0,<5, and conditional typing-extensions >=4.10.0 requirements admit the measured Python 3.12.14, AnyIO 4.15.1, and typing-extensions 4.16.0 client environment. Reviewed 2026-10-14: 1.8.0 is an unwithdrawn PyPI release (uploaded 2026-10-13) that requires Python >=3.11. Sediment runs Python 3.12; FastAPI 0.143.1 permits it, and Sediment's API, export, and CLI suites pass with it. The reviewed upstream security policy provides disclosure instructions without a release-specific maintenance window or end-of-support date. This project maintenance assessment requires renewal by the existing catalog expiry. Previously reviewed versions remain recorded.",
+      "evidence": "https://github.com/Kludex/starlette/releases/tag/1.8.0",
       "provider": "Upstream project",
       "source": "https://github.com/Kludex/starlette",
-      "source_updated_at": "2026-09-12T09:05:01Z",
+      "source_updated_at": "2026-10-14T12:22:44Z",
       "status": "maintained",
       "support_kind": "project_maintenance_review",
       "versions": [
         "1.3.1",
         "1.6.0",
-        "1.7.0"
+        "1.7.0",
+        "1.8.0"
       ]
     },
     "pypi/typing-extensions": {
