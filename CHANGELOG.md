@@ -33,7 +33,7 @@
   `opentelemetry-api` 1.45.1 to the image. The image has no OpenTelemetry SDK,
   so the API exports no telemetry. If you set `OTEL_EXPORTER_OTLP_ENDPOINT`,
   FastAPI logs a warning at startup.
-- Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.0.
+- Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.2.
 
 ### Contributor checks
 
