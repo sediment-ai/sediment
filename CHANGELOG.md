@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Upgrade notes
+
+- Run `sediment db upgrade` before you start this release. Revision
+  `0012_compute_allocations` adds the `compute_allocations` Fact table and
+  admits it to quarantine. The revision is forward-only. The quarantine
+  record contract moves to version 8 because `fact_table` gains
+  `compute_allocations`. Closes #306.
+
 ### Security
 
 - Keep URL credentials out of notes-push diagnostics. Git hands the `pre-push`
@@ -35,6 +43,15 @@
   FastAPI logs a warning at startup.
 - Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.0.
 
+### Capture
+
+- Add `POST /ingest/compute`. The platform that runs a coding agent sends
+  the CPU and memory limits that each Session's environment received, when
+  the environment starts and on every resize, with `allocation_source`:
+  `default`, `agent_request`, `operator`, or `randomized`. The Session dossier
+  lists these Compute allocations as `compute_allocation` timeline events.
+  See [ADR 0029](docs/adr/0029-compute-allocation-facts.md). Closes #306.
+
 ### Contributor checks
 
 - Replace the static README architecture diagram with an animated data-flow
@@ -59,6 +76,13 @@
 
 ### Operational evidence
 
+- Add `sediment report compute`. It groups Sessions by their final Compute
+  allocation and compares median elapsed and between-call time with a
+  fixed-seed bootstrap interval, only within one allocation source. A
+  comparison of `randomized` allocations supports a causal reading; the
+  report marks every other comparison observational, because an agent that
+  asks for more compute is often on a harder task. `--rows-out` writes one
+  `SessionComputeTiming` row per Session. Closes #306.
 - Label a failed CI run that omits `workflow_name` as `unnamed` in
   `sediment report model`, rather than printing an unlabeled `=N` entry and
   emitting `{"": N}` in JSON. The table and the JSON both read

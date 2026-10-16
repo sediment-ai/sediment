@@ -269,7 +269,8 @@ def postgres_engine(postgres_database_url: str):
                 "TRUNCATE TABLE fact_quarantine, inference_calls, "
                 "developer_decisions, edit_observations, rejected_edits, "
                 "retry_linkages, ci_outcomes, pushes, pull_request_merges, "
-                "pull_request_revisions, session_commit_observations, repository_renames, sessions "
+                "pull_request_revisions, session_commit_observations, repository_renames, "
+                "compute_allocations, sessions "
                 "RESTART IDENTITY CASCADE"
             )
         engine.dispose()

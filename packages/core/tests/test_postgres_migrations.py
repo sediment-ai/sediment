@@ -72,6 +72,7 @@ def test_postgres_upgrade_creates_complete_schema_and_is_idempotent(
             "session_commit_observations",
             "fact_quarantine",
             "repository_renames",
+            "compute_allocations",
         }
     finally:
         engine.dispose()
@@ -289,7 +290,7 @@ def test_postgres_baseline_revision_is_frozen_from_live_metadata() -> None:
 
 
 def test_cursor_agent_harness_migration_replaces_all_four_checks() -> None:
-    assert postgres_migrations.HEAD_REVISION == "0011_inference_call_aliases"
+    assert postgres_migrations.HEAD_REVISION == "0012_compute_allocations"
     constraints = {
         "developer_decisions": "ck_decisions_agent_harness",
         "edit_observations": "ck_edit_observations_agent_harness",

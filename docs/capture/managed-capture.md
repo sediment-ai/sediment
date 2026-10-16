@@ -92,6 +92,46 @@ described in [Verify the rollout](#verify-the-rollout).
 [Gateway request and capture paths](../explanation/how-capture-works.md#gateway-request-and-capture-paths)
 explains how the two paths fail independently.
 
+## Capture Compute allocations
+
+If the platform that runs your coding agents sets or changes their CPU and
+memory limits, send each allocation to
+[`POST /ingest/compute`](../reference/api.md#post-ingestcompute) with a
+capture token. The [compute report](../operate/measure-agent-work.md#measure-whether-more-compute-shortens-sessions)
+uses these Facts to compare Session completion time across allocations.
+
+1. Give the platform a named capture token from `SEDIMENT_INGEST_TOKENS`.
+   The example reads it from `SEDIMENT_CAPTURE_TOKEN`.
+2. Use the Session ID that the agent's gateway calls carry. A Compute
+   allocation joins only the Inference calls of the same Session.
+3. Send one request when the Session's environment starts. Send another each
+   time the platform resizes it:
+
+   ```bash
+   curl --request POST "https://sediment.example.com/ingest/compute" \
+     --header "Authorization: Bearer $SEDIMENT_CAPTURE_TOKEN" \
+     --header "Content-Type: application/json" \
+     --data '{
+       "session_id": "sandbox-7f3a",
+       "allocation_source": "agent_request",
+       "cpu_millicores": 8000,
+       "memory_bytes": 17179869184,
+       "occurred_at": "2026-10-01T12:00:00Z"
+     }'
+   ```
+
+4. Set `allocation_source` to who chose the allocation: `default`,
+   `agent_request`, `operator`, or `randomized`.
+
+Send at least one of `cpu_millicores` (1000 is one CPU) and `memory_bytes`.
+Omit a limit that you don't know; Sediment never reads an absent limit as
+zero. A redelivered allocation returns `"stored": false`.
+
+To learn whether granting an agent's request shortens its Sessions, grant the
+request at random and send `randomized` for both the granted and the declined
+branch. An agent asks for more compute when its task looks harder, so
+`agent_request` Sessions can run slower because of that task.
+
 ## Distribute gateway routing
 
 A gateway records only the model calls that an agent sends to it. Each agent

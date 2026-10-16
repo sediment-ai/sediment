@@ -272,6 +272,47 @@ paths:
       security:
       - bearerAuth: []
       - operatorBearerAuth: []
+  /ingest/compute:
+    post:
+      tags:
+      - compute
+      summary: Ingest Compute Allocation
+      operationId: ingest_compute_allocation_ingest_compute_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComputeAllocationRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Ingest Compute Allocation Ingest Compute Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+        '403':
+          description: Ingest or operator authority required.
+      security:
+      - bearerAuth: []
+      - operatorBearerAuth: []
   /v1/logs:
     post:
       tags:
@@ -1852,6 +1893,68 @@ components:
       - neutral
       - unknown
       title: CIResult
+    ComputeAllocationRequest:
+      properties:
+        session_id:
+          type: string
+          pattern: ^[^\u0000\uD800-\uDFFF]*$
+          title: Session Id
+          description: The Session ID the coding agent's captured Facts carry, such
+            as the gateway Session header
+        allocation_source:
+          $ref: '#/components/schemas/ComputeAllocationSource'
+          description: 'Who chose the allocation: default, agent_request, operator,
+            or randomized. Only randomized supports a causal comparison'
+        cpu_millicores:
+          anyOf:
+          - type: integer
+            maximum: 9.223372036854776e+18
+            minimum: 1.0
+          - type: 'null'
+          title: Cpu Millicores
+          description: CPU limit in millicores; 1000 is one CPU
+        memory_bytes:
+          anyOf:
+          - type: integer
+            maximum: 9.223372036854776e+18
+            minimum: 1.0
+          - type: 'null'
+          title: Memory Bytes
+          description: Memory limit in bytes
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+          description: When the allocation took effect, by the sender's clock
+      additionalProperties: false
+      type: object
+      required:
+      - session_id
+      - allocation_source
+      - occurred_at
+      title: ComputeAllocationRequest
+      description: 'One Compute allocation as the execution platform observed it.
+
+
+        ``extra="forbid"`` so a caller naming an org or fabricating fields is
+
+        rejected at the boundary. The limits carry the Fact''s own bounds, so
+
+        malformed input 422s at the door rather than inside the handler.'
+    ComputeAllocationSource:
+      type: string
+      enum:
+      - default
+      - agent_request
+      - operator
+      - randomized
+      title: ComputeAllocationSource
+      description: 'Who chose a Compute allocation. Only ``randomized`` assignment
+        supports
+
+        a causal comparison between allocations; every other source is
+
+        observational evidence.'
     ContextCommitAnchor:
       properties:
         repository_provider:
@@ -2839,6 +2942,8 @@ components:
           $ref: '#/components/schemas/SessionFactCoverageResponse'
         retry_linkages:
           $ref: '#/components/schemas/SessionFactCoverageResponse'
+        compute_allocations:
+          $ref: '#/components/schemas/SessionFactCoverageResponse'
       type: object
       required:
       - inference_calls
@@ -2846,6 +2951,7 @@ components:
       - edit_observations
       - rejected_edits
       - retry_linkages
+      - compute_allocations
       title: SessionCoverageResponse
     SessionDossierFound:
       properties:
@@ -2970,6 +3076,7 @@ components:
           - edit_observation
           - rejected_edit
           - retry_linkage
+          - compute_allocation
           title: Event Type
         fact_id:
           type: string
@@ -3080,6 +3187,20 @@ components:
           - type: string
           - type: 'null'
           title: Accepted Call Id
+        allocation_source:
+          anyOf:
+          - $ref: '#/components/schemas/ComputeAllocationSource'
+          - type: 'null'
+        cpu_millicores:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Cpu Millicores
+        memory_bytes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Memory Bytes
       type: object
       required:
       - event_type

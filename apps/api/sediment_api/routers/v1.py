@@ -35,6 +35,7 @@ _SESSION_FACT_TABLES = (
     FactTable.EDIT_OBSERVATIONS,
     FactTable.REJECTED_EDITS,
     FactTable.RETRY_LINKAGES,
+    FactTable.COMPUTE_ALLOCATIONS,
 )
 
 

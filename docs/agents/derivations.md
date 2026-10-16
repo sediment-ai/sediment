@@ -29,6 +29,7 @@ This file carries only what those two do not. Runtime callers use PostgreSQL; mu
 | `survival.py` | `attach_edit_retention` fills decision `edit_retention_score`; `external_lines_after` accumulates all-or-nothing external-line tails; `derive_fate_result` maps the same scored Edit observations to diagnostic-only final Fate with closed skip accounting. `FatePolicy` version 1 uses inclusive deleted ≤0.1 and unmodified ≥0.9 thresholds. External changes aren't a human claim and Fate isn't training evidence. [Partial quarantine](../explanation/how-capture-works.md#external-edit-windows) can understate external totals without a coverage flag |
 | `survival_scoring.py` | `four_gram_containment` (the scorer this module recommends for `EditObservation`'s snippet-vs-whole-file pairs) + `four_gram_survival` (symmetric, kept only as a Copilot-parity reference); consumed via `survival.py::attach_edit_retention`, never by Attribution |
 | `merge_retention.py` | Identity-bearing pull-request membership outcomes plus final-head and merged-commit containment scores; diagnostic-only `MergeRetention` rows |
+| `compute_timing.py` | `derive_compute_timing_result` → per-Session final Compute allocation (latest `occurred_at`, sender clock) beside gateway-clock call timing: elapsed, summed model, and between-call time (elapsed minus the union of call intervals). Closed skips in precedence order: `ambiguous_final_allocation`, `no_inference_calls`, `inference_call_duration_absent`, `inference_call_interval_unrepresentable` (an int64 `duration_ms` past the earliest instant). Diagnostic only (ADR 0029) |
 | `abandonment.py` | Accepted Session outcomes from captured observations; missing evidence stays unknown (ADR 0014) |
 | `session_commit.py` | `bind_session_commits`: pure repository-qualified Session binding of captured Facts through explicit aware `as_of` |
 | `attribution_share.py` | `derive_attribution_share` → per-qualified-repository notes-share `RepoAttributionShare`; `check_attribution_share_alerts` → decline/zero-notes-share verdicts |
@@ -236,8 +237,7 @@ All on `attribution.py::AttributionPolicy` (implementation version 3) unless not
 - The exact attributed `FileDiff.added_lines` is measured with `four_gram_containment` against bounded, rename-aware file reads at both boundaries. A missing boundary skips the row instead of emitting half a row.
 - `MergeRetentionPolicy` version 3 caps each file read at 1,000,000 bytes. Rename detection overrides ambient Git configuration with a fixed 1,000-path limit; larger candidate sets fail soft consistently. Rows and closed skips are diagnostics, not training evidence.
 - Scoped callers can preload merge, pull-request revision, and CI outcome Facts.
-  Observation maxima compare UTC instants. Supplied empty collections remain authoritative; omitted inputs retain the
-  standalone organization-wide reads.
+  Observation maxima compare UTC instants. Supplied empty collections remain authoritative; omitted inputs retain the standalone organization-wide reads.
 
 ## Gotchas
 

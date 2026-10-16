@@ -31,6 +31,7 @@ code caused it.
 ```text
 coding agent ── decisions, observations, and Retry linkages ──► OTLP /v1/logs ─┐
 LLM gateway ── successful inference calls ─────► /ingest/gateway│
+platform ──── Compute allocations ─────────────► /ingest/compute│
 forge ──────── Pushes, pull requests, CI outcomes ► webhooks ──┼─► immutable Facts
                                                                │
 git hooks ──── Session markers and notes ─────► pushed notes ──► git mirror

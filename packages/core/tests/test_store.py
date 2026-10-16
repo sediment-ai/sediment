@@ -17,6 +17,8 @@ from sediment_core import (
     CIOutcome,
     CIProvider,
     CIResult,
+    ComputeAllocation,
+    ComputeAllocationSource,
     DeveloperDecision,
     EditObservation,
     InteractionMode,
@@ -722,6 +724,144 @@ def test_postgres_retry_linkage_quarantine_hides_fact_but_keeps_dedup(
     )
 
 
+def _compute_allocation(**changes) -> ComputeAllocation:
+    values = dict(
+        allocation_id="allocation-1",
+        org_id="acme",
+        session_id="session-compute",
+        allocation_source=ComputeAllocationSource.DEFAULT,
+        cpu_millicores=2000,
+        memory_bytes=4 * 2**30,
+        occurred_at=T0,
+        captured_at=T0 + timedelta(seconds=5),
+    )
+    values.update(changes)
+    return ComputeAllocation(**values)
+
+
+def test_postgres_compute_allocation_receipt_collapses_redelivery(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    allocation = _compute_allocation()
+
+    first = store.store_compute_allocation_receipt(allocation)
+    assert (first.fact_id, first.stored) == ("allocation-1", True)
+    # A redelivery carries a fresh generated ID; the natural key returns the
+    # retained one, including when a limit is absent.
+    again = store.store_compute_allocation_receipt(
+        allocation.model_copy(update={"allocation_id": "allocation-redelivery"})
+    )
+    assert (again.fact_id, again.stored) == ("allocation-1", False)
+    cpu_only = _compute_allocation(allocation_id="allocation-cpu", memory_bytes=None)
+    assert store.store_compute_allocation(cpu_only) is True
+    assert (
+        store.store_compute_allocation_receipt(
+            cpu_only.model_copy(update={"allocation_id": "allocation-cpu-again"})
+        ).fact_id
+        == "allocation-cpu"
+    )
+    with pytest.raises(ValueError, match="conflicts with a retained Fact"):
+        store.store_compute_allocation(
+            allocation.model_copy(update={"cpu_millicores": 4000})
+        )
+    # A resize at the same instant is distinct evidence, not a redelivery.
+    resized = _compute_allocation(
+        allocation_id="allocation-2",
+        allocation_source=ComputeAllocationSource.AGENT_REQUEST,
+        cpu_millicores=8000,
+    )
+    assert store.store_compute_allocation(resized) is True
+    assert store.read_compute_allocations("acme") == [
+        allocation,
+        resized,
+        cpu_only,
+    ]
+    [session] = store.read_sessions("acme")
+    assert session.session_id == "session-compute"
+    assert session.first_observed_at == T0 + timedelta(seconds=5)
+    assert session.user_id is None
+
+
+def test_postgres_compute_allocation_reads_filter_and_quarantine(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    kept = _compute_allocation()
+    other = _compute_allocation(allocation_id="allocation-other", session_id="other")
+    later = _compute_allocation(
+        allocation_id="allocation-later",
+        occurred_at=T0 + timedelta(minutes=1),
+        captured_at=T0 + timedelta(minutes=2),
+    )
+    for allocation in (kept, other, later):
+        assert store.store_compute_allocation(allocation) is True
+
+    assert store.read_compute_allocations("acme", session_ids={"other"}) == [other]
+    assert store.read_compute_allocations("acme", session_ids=set()) == []
+    assert store.read_compute_allocations(
+        "acme", captured_through=T0 + timedelta(minutes=1)
+    ) == [other, kept]
+    with pytest.raises(store_module.OperationalReportLimitExceeded):
+        store.read_compute_allocations("acme", limit=2)
+
+    store.quarantine_fact(
+        "acme",
+        FactTable.COMPUTE_ALLOCATIONS,
+        later.allocation_id,
+        reason="resize posted by a misconfigured sender",
+    )
+    with store.read_snapshot() as snapshot:
+        assert snapshot.read_compute_allocations("acme") == [other, kept]
+        dossier = snapshot.read_session_dossier("acme", "session-compute")
+    assert store.read_compute_allocations("acme", include_quarantined=True) == [
+        other,
+        kept,
+        later,
+    ]
+    assert dossier is not None
+    coverage = dossier.coverage["compute_allocations"]
+    assert (coverage.total, coverage.visible, coverage.quarantined) == (2, 1, 1)
+    [event] = [
+        row for row in dossier.timeline if row.event_type == "compute_allocation"
+    ]
+    assert event.fact_id == "allocation-1"
+    assert event.allocation_source is ComputeAllocationSource.DEFAULT
+    assert (event.cpu_millicores, event.memory_bytes) == (2000, 4 * 2**30)
+    assert event.occurred_at == T0
+    # Quarantine never releases the dedup key.
+    assert (
+        store.store_compute_allocation(
+            later.model_copy(update={"allocation_id": "allocation-later-again"})
+        )
+        is False
+    )
+
+
+def test_postgres_compute_allocation_check_constraints_match_the_model(
+    postgres_engine,
+) -> None:
+    with pytest.raises(IntegrityError):
+        with postgres_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO compute_allocations (allocation_id, org_id, "
+                    "session_id, allocation_source, occurred_at, captured_at) "
+                    "VALUES ('a', 'acme', 's', 'default', now(), now())"
+                )
+            )
+    with pytest.raises(IntegrityError):
+        with postgres_engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO compute_allocations (allocation_id, org_id, "
+                    "session_id, allocation_source, cpu_millicores, occurred_at, "
+                    "captured_at) VALUES ('a', 'acme', 's', 'autoscaler', 1, "
+                    "now(), now())"
+                )
+            )
+
+
 def test_postgres_ci_outcome_round_trip_and_expression_dedup(postgres_engine) -> None:
     store = FactStore(postgres_engine)
     outcome = _ci_outcome()
@@ -1055,7 +1195,10 @@ def test_available_fact_tables_tracks_physical_schema_without_mutation(
     try:
         store = FactStore(engine)
         before = inspect(engine).get_table_names()
-        expected = set(FactTable) - {FactTable.REPOSITORY_RENAMES}
+        expected = set(FactTable) - {
+            FactTable.REPOSITORY_RENAMES,
+            FactTable.COMPUTE_ALLOCATIONS,
+        }
         assert set(store.available_fact_tables()) == expected
         assert inspect(engine).get_table_names() == before
         with engine.connect() as connection:

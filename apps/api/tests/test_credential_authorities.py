@@ -10,7 +10,7 @@ from pydantic import SecretStr
 from sediment_api.config import Settings
 from sediment_api.main import app
 
-INGEST = {"/ingest/gateway", "/ingest/ci", "/v1/logs"}
+INGEST = {"/ingest/gateway", "/ingest/ci", "/ingest/compute", "/v1/logs"}
 BEARER_ROUTES = [
     (method, path)
     for path, item in app.openapi()["paths"].items()
