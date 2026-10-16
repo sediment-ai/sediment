@@ -111,6 +111,50 @@ A rebase can lower membership coverage when the original commit isn't an
 ancestor of the final head. Read the membership counts before you compare
 groups.
 
+## Measure whether more compute shortens Sessions
+
+Before you let an agent's request for more CPU or memory decide its
+allocation, check whether larger allocations finished Sessions sooner. The
+report needs [Compute allocations](../capture/managed-capture.md#capture-compute-allocations)
+and gateway capture of the same Sessions.
+
+```bash
+sediment report compute --org acme
+```
+
+The report groups Sessions by their final Compute allocation, the *arm*. For
+each arm, it shows the median and quartiles of three durations:
+
+| Duration | Measures |
+| --- | --- |
+| `elapsed_ms` | First Inference call start to last call end: the Session's completion time |
+| `model_ms` | Total model latency; more CPU or memory can't change it |
+| `between_calls_ms` | Elapsed time with no call in flight: tool runs, harness work, and waiting |
+
+Each comparison reports arm B minus arm A as a median difference with a 95%
+bootstrap interval. A negative difference means that the larger arm finished
+sooner. Read these qualifications before you act on one:
+
+- The report compares arms only within one allocation source. A `randomized`
+  comparison supports a causal reading. Every other comparison is
+  observational: an agent that asks for more compute is often on a harder
+  task.
+- `small-n` marks a comparison in which either arm has fewer than 30
+  Sessions. An interval that crosses zero doesn't show a difference.
+- A Session counts under its final allocation, even after a resize.
+- `between_calls_ms` includes time that a person spends waiting. Compare
+  interactive and autonomous Sessions separately.
+- Sessions without gateway `duration_ms` evidence are skipped and counted.
+
+To inspect each Session's allocations and timing, write the rows:
+
+```bash
+sediment report compute --org acme --rows-out sessions.jsonl
+```
+
+The [Session dossier](#investigate-a-failed-ci-run) lists the same
+allocations for one Session as `compute_allocation` timeline events.
+
 ## Investigate a failed CI run
 
 These HTTP routes require the operator token. Capture tokens can't read them.

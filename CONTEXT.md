@@ -16,8 +16,8 @@ arrive, and Facts are stored).
 
 ### Session (`sessions` table)
 The aggregate root for developer-side Facts: one developer workflow Session,
-owning its inference calls, decisions, Edit observations, rejected edits, and
-Retry linkages via `session_id`. Upserted at
+owning its inference calls, decisions, Edit observations, rejected edits,
+Retry linkages, and Compute allocations via `session_id`. Upserted at
 the storage seam with order-independent metadata. `first_observed_at` and
 `last_observed_at` bound Fact observation time. An unknown `user_id` stays null.
 A later known identity fills null. Conflicting known identities clear `user_id`
@@ -174,6 +174,25 @@ developer correction text, or duplicate attempt text. A Retry linkage records
 what happened; it doesn't make either attempt eligible for a training
 objective. _Avoid:_ "retry pair" when referring to the fact, and any claim
 that the relationship is a training label.
+
+### Compute allocation (`ComputeAllocation`)
+The CPU and memory limits that one Session's execution environment received,
+as the platform that runs the coding agent reported them through
+`POST /ingest/compute`: once when the environment starts and again on every
+resize. `cpu_millicores` and `memory_bytes` are lossless integers; an absent
+limit is unknown, never zero, and at least one is present. `occurred_at` is
+the sender's clock and orders only allocations, never gateway time. The Fact
+records limits, not usage, and makes no claim about completion time
+([ADR 0029](docs/adr/0029-compute-allocation-facts.md)). _Avoid:_ "resource
+request" for the Fact; "autoscaling event".
+
+### Allocation source (`ComputeAllocationSource`, `allocation_source`)
+Who chose a Compute allocation: `default` (the environment's standing size),
+`agent_request` (granted because the coding agent asked), `operator` (a person
+or fixed rule), or `randomized` (an experiment assigned it at random, whether
+or not an agent asked). Only `randomized` supports a causal comparison: an
+agent that asks for more compute is often on a harder task. _Avoid:_ reading
+an `agent_request` difference as the effect of compute.
 
 ### Edit retention score (`edit_retention_score`)
 The per-decision `[0,1]` score of how much of an applied AI edit's text
@@ -461,6 +480,19 @@ addition remains at the pull request's final head and merged commit. It keeps
 the two four-gram containment scores separate. A low score doesn't identify a
 defect, an editor, or a reason for the change. Merge retention is not an
 Evidence recipe. _Avoid:_ "correctness score"; using it as training eligibility.
+
+### Session compute timing (`SessionComputeTiming`)
+The diagnostic Derivation that pairs a Session's final Compute allocation
+(latest `occurred_at`) with the time its gateway-captured Inference calls
+span. Each call covers `[observed_at - duration_ms, observed_at]`. Elapsed
+time runs from the earliest call start to the latest call end; between-call
+time is elapsed time with no call in flight. A tied final allocation, no
+visible call, or a call without a usable `duration_ms` skips the Session
+under a closed reason. The compute report (`sediment report compute`) groups
+Sessions by final allocation, its *arm*, and compares median durations only
+within one Allocation source. No Evidence recipe or training row consumes it.
+_Avoid:_ "tool time" for between-call time, because a person waiting lands
+in the same gap; "task" for the Session unit.
 
 ### Attribution stamper
 The client-side writer of the `refs/notes/sediment` stamp that git-notes

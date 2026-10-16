@@ -34,6 +34,7 @@ from sediment_core import (
     AgentHarness,
     CIProvider,
     CIResult,
+    ComputeAllocationSource,
     ContextCommitAnchor,
     FactStore,
     FactTable,
@@ -530,6 +531,7 @@ class SessionCoverageResponse:
     edit_observations: SessionFactCoverageResponse
     rejected_edits: SessionFactCoverageResponse
     retry_linkages: SessionFactCoverageResponse
+    compute_allocations: SessionFactCoverageResponse
 
 
 SessionEventType = Literal[
@@ -538,6 +540,7 @@ SessionEventType = Literal[
     "edit_observation",
     "rejected_edit",
     "retry_linkage",
+    "compute_allocation",
 ]
 SessionGap = Literal[
     "no_inference_calls_observed",
@@ -577,6 +580,9 @@ class SessionTimelineEvent:
     tool_name: str | None = None
     rejected_call_id: str | None = None
     accepted_call_id: str | None = None
+    allocation_source: ComputeAllocationSource | None = None
+    cpu_millicores: int | None = None
+    memory_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -1101,6 +1107,7 @@ def _run_session_query(
             edit_observations=_fact_coverage(dossier, "edit_observations"),
             rejected_edits=_fact_coverage(dossier, "rejected_edits"),
             retry_linkages=_fact_coverage(dossier, "retry_linkages"),
+            compute_allocations=_fact_coverage(dossier, "compute_allocations"),
         ),
         omitted_events=sum(
             coverage.quarantined for coverage in dossier.coverage.values()

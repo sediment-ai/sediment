@@ -42,6 +42,7 @@ Every route, in ingest → read order:
 | [`POST /ingest/github/ci`](#post-ingestgithubci) | HMAC signature | CI outcome facts from a GitHub `workflow_run` webhook. |
 | [`POST /ingest/github/pull-request`](#post-ingestgithubpull-request) | HMAC signature | Revision and merge-boundary facts from a GitHub `pull_request` webhook. |
 | [`POST /ingest/ci`](#post-ingestci) | ingest or operator | CI outcome facts from any non-GitHub pipeline. |
+| [`POST /ingest/compute`](#post-ingestcompute) | ingest or operator | Compute allocation Facts from the platform that runs a coding agent. |
 | [`POST /v1/logs`](#post-v1logs) | ingest or operator | OTLP log records: developer decisions, edit observations, rejected edits, and retry linkages. |
 | [`GET /query/evidence`](#get-queryevidence) | operator | Complete bounded metadata inventory for one Session. |
 | [`GET /query/evidence/manifest`](#get-queryevidencemanifest) | operator | Message and part references for one captured Inference call. |
@@ -234,6 +235,33 @@ Status codes:
 | `401` | Missing or invalid credentials. |
 | `403` | The credential lacks the authority required by this route. |
 | `409` | Repository identity conflicts with a retained receipt; `detail.code` is `repository_identity_conflict`. No foreign Fact ID is returned. |
+| `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
+| `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
+| `503` | PostgreSQL Fact store unavailable; the request does not acknowledge successful storage. |
+
+## POST /ingest/compute
+
+**Auth:** Bearer token from the named `SEDIMENT_INGEST_TOKENS` map or the legacy `$SEDIMENT_API_BEARER_TOKEN`. The operator token also permits explicit operator ingest. Missing or invalid credentials return 401; retrieval authority returns 403.
+
+**Response:** `{"fact_id": "<uuid>", "stored": <bool>}`. Send one request when a Session's environment starts and one on every resize. The envelope requires at least one limit and forbids unknown fields; a redelivery of the same allocation returns `stored: false`.
+
+Request body — `ComputeAllocationRequest` (`application/json`):
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `session_id` | string | yes | The Session ID the coding agent's captured Facts carry, such as the gateway Session header; pattern `^[^\u0000\uD800-\uDFFF]*$` |
+| `allocation_source` | string | yes | Who chose the allocation: default, agent_request, operator, or randomized. Only randomized supports a causal comparison; one of `default`, `agent_request`, `operator`, `randomized` |
+| `cpu_millicores` | integer or null | no | CPU limit in millicores; 1000 is one CPU; minimum `1.0`; maximum `9.223372036854776e+18` |
+| `memory_bytes` | integer or null | no | Memory limit in bytes; minimum `1.0`; maximum `9.223372036854776e+18` |
+| `occurred_at` | string | yes | When the allocation took effect, by the sender's clock; format `date-time` |
+
+Status codes:
+
+| Status | Meaning |
+|---|---|
+| `200` | Success with the documented response. |
+| `401` | Missing or invalid credentials. |
+| `403` | The credential lacks the authority required by this route. |
 | `413` | Body over 25 MiB. The cap is enforced pre-auth, on every door that reads a body. |
 | `422` | A required header, path parameter, or body field failed validation. The response carries `type`/`loc`/`msg` and never echoes the input. |
 | `503` | PostgreSQL Fact store unavailable; the request does not acknowledge successful storage. |

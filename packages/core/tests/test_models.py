@@ -19,6 +19,8 @@ from sediment_core import (
     CIProvider,
     CIResult,
     AgentHarness,
+    ComputeAllocation,
+    ComputeAllocationSource,
     DeveloperDecision,
     EditObservation,
     InteractionMode,
@@ -276,6 +278,41 @@ def test_retry_linkage_requires_distinct_non_empty_call_ids() -> None:
             RetryLinkage(**{**base, field: "   "})
     with pytest.raises(ValidationError, match="must differ"):
         RetryLinkage(**{**base, "accepted_call_id": "toolu-rejected"})
+
+
+def test_compute_allocation_requires_a_positive_strict_limit() -> None:
+    base = dict(
+        org_id="Acme",
+        session_id=" sess-1 ",
+        allocation_source="agent_request",
+        occurred_at=T0,
+    )
+    allocation = ComputeAllocation(**base, cpu_millicores=8000)
+    assert allocation.org_id == "acme"
+    assert allocation.session_id == "sess-1"
+    assert allocation.allocation_source is ComputeAllocationSource.AGENT_REQUEST
+    assert allocation.memory_bytes is None
+    assert ComputeAllocation(**base, memory_bytes=2**34).cpu_millicores is None
+    with pytest.raises(ValidationError, match="cpu_millicores or memory_bytes"):
+        ComputeAllocation(**base)
+    for field, value in (
+        ("cpu_millicores", 0),
+        ("cpu_millicores", 1.5),
+        ("cpu_millicores", True),
+        ("cpu_millicores", "2000"),
+        ("memory_bytes", -1),
+        ("memory_bytes", 2**63),
+    ):
+        with pytest.raises(ValidationError):
+            ComputeAllocation(**base, **{field: value})
+    with pytest.raises(ValidationError):
+        ComputeAllocation(
+            **{**base, "allocation_source": "autoscaler"}, cpu_millicores=1
+        )
+    with pytest.raises(ValidationError):
+        ComputeAllocation(
+            **{**base, "occurred_at": datetime(2026, 7, 10)}, cpu_millicores=1
+        )
 
 
 def test_decision_edit_retention_fields_default_to_none() -> None:
@@ -822,6 +859,7 @@ FACT_MODELS: tuple[type[BaseModel], ...] = (
     DeveloperDecision,
     EditObservation,
     RetryLinkage,
+    ComputeAllocation,
     CIOutcome,
     Push,
     PullRequestMerge,
