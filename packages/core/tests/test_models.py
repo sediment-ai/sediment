@@ -313,6 +313,15 @@ def test_compute_allocation_requires_a_positive_strict_limit() -> None:
         ComputeAllocation(
             **{**base, "occurred_at": datetime(2026, 7, 10)}, cpu_millicores=1
         )
+    # Aware but outside the UTC range: stored, it could never be read back.
+    for unrepresentable in (
+        "9999-12-31T23:59:59-14:00",
+        "0001-01-01T00:00:00+14:00",
+    ):
+        with pytest.raises(ValidationError, match="representable in UTC"):
+            ComputeAllocation(
+                **{**base, "occurred_at": unrepresentable}, cpu_millicores=1
+            )
 
 
 def test_decision_edit_retention_fields_default_to_none() -> None:

@@ -69,6 +69,9 @@ observational. It never presents an observational difference as an effect.
 - A Session that changed allocation is compared under its final allocation.
   This measures the policy decision, granting a request, not the effect of
   each allocation interval.
+- A randomized Session whose final allocation comes from another source
+  leaves the randomized arms. The report counts those Sessions, because their
+  departure can bias a randomized comparison.
 - Session compute timing is a diagnostic. No Evidence recipe, Reward, or
   training row consumes it.
 - Usage measurements, such as CPU seconds and peak memory, remain outside

@@ -49,7 +49,9 @@
   the CPU and memory limits that each Session's environment received, when
   the environment starts and on every resize, with `allocation_source`:
   `default`, `agent_request`, `operator`, or `randomized`. The Session dossier
-  lists these Compute allocations as `compute_allocation` timeline events.
+  lists these Compute allocations in a `compute_allocations` field, outside
+  the timeline, so existing `sediment doctor` copies keep reading it. An
+  `occurred_at` that can't convert to UTC returns 422.
   See [ADR 0029](docs/adr/0029-compute-allocation-facts.md). Closes #306.
 
 ### Contributor checks
@@ -81,8 +83,10 @@
   fixed-seed bootstrap interval, only within one allocation source. A
   comparison of `randomized` allocations supports a causal reading; the
   report marks every other comparison observational, because an agent that
-  asks for more compute is often on a harder task. `--rows-out` writes one
-  `SessionComputeTiming` row per Session. Closes #306.
+  asks for more compute is often on a harder task. It counts randomized
+  Sessions whose final allocation came from another source, because they
+  leave the randomized arms. `--rows-out` writes one `SessionComputeTiming`
+  row per Session. Closes #306.
 - Label a failed CI run that omits `workflow_name` as `unnamed` in
   `sediment report model`, rather than printing an unlabeled `=N` entry and
   emitting `{"": N}` in JSON. The table and the JSON both read

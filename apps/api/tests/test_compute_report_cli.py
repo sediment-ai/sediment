@@ -67,6 +67,7 @@ def test_compute_report_table_names_arms_comparisons_and_skips(
     assert "Sessions with a Compute allocation: 7" in output
     assert "timed Sessions: 6" in output
     assert "no_inference_calls=1" in output
+    assert "randomized Sessions reassigned to another source: 0" in output
     assert "randomized cpu=2000m memory=unknown: n=3" in output
     assert "between_calls_ms median=70.0s" in output
     assert (
@@ -103,6 +104,7 @@ def test_compute_report_json_and_rows_out(
     report = json.loads(output.out)
     assert report["timed_sessions"] == 6
     assert report["skipped"]["no_inference_calls"] == 1
+    assert report["randomized_reassigned_sessions"] == 0
     assert report["comparisons"][0]["randomized"] is True
     assert "wrote 6 compute timing rows" in output.err
     rows = [json.loads(line) for line in destination.read_text().splitlines()]

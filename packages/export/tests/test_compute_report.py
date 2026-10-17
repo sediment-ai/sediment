@@ -172,6 +172,39 @@ def test_report_compares_arms_only_within_one_allocation_source() -> None:
     assert report.provenance.quarantine_revision == 4
 
 
+def test_report_counts_randomized_sessions_that_end_under_another_source() -> None:
+    allocations: list[ComputeAllocation] = []
+    calls: list[InferenceCall] = []
+    for index in range(4):
+        for name, cpu in (("declined", 2000), ("granted", 8000)):
+            session_allocations, session_calls = _session(
+                f"{name}-{index}", source=RANDOMIZED, cpu=cpu, work_s=60
+            )
+            allocations.extend(session_allocations)
+            calls.extend(session_calls)
+    # Two declined Sessions ask again and receive a non-randomized grant.
+    for index in range(2):
+        allocations.append(
+            ComputeAllocation(
+                allocation_id=f"declined-{index}-regrant",
+                org_id="acme",
+                session_id=f"declined-{index}",
+                allocation_source=REQUESTED,
+                cpu_millicores=8000,
+                memory_bytes=8 * 2**30,
+                occurred_at=T0 + timedelta(seconds=5),
+            )
+        )
+
+    report = build_compute_report(
+        derive_compute_timing_result(allocations, calls), bootstrap_iterations=50
+    )
+
+    assert report.randomized_reassigned_sessions == 2
+    [randomized] = [item for item in report.comparisons if item.randomized]
+    assert (randomized.elapsed_ms.n_a, randomized.elapsed_ms.n_b) == (2, 4)
+
+
 def test_report_and_rows_serialize_as_plain_deterministic_json() -> None:
     allocations, calls = _population()
     result = derive_compute_timing_result(allocations, calls)

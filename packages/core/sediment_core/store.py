@@ -60,7 +60,6 @@ from .models import (
     CIResult,
     CommitSha,
     ComputeAllocation,
-    ComputeAllocationSource,
     DeveloperDecision,
     EditObservation,
     FactTable,
@@ -696,9 +695,6 @@ class SessionTimelineProjection:
     tool_name: str | None = None
     rejected_call_id: str | None = None
     accepted_call_id: str | None = None
-    allocation_source: ComputeAllocationSource | None = None
-    cpu_millicores: int | None = None
-    memory_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -4663,18 +4659,6 @@ def _session_dossier_timeline(
             retry_linkages.c.session_id == session_id,
         )
     ).mappings()
-    allocations = connection.execute(
-        select(
-            compute_allocations.c.allocation_id,
-            compute_allocations.c.occurred_at,
-            compute_allocations.c.allocation_source,
-            compute_allocations.c.cpu_millicores,
-            compute_allocations.c.memory_bytes,
-        ).where(
-            *_fact_conditions(org_id, FactTable.COMPUTE_ALLOCATIONS, False),
-            compute_allocations.c.session_id == session_id,
-        )
-    ).mappings()
     timeline = [
         SessionTimelineProjection(
             event_type="inference_call",
@@ -4743,17 +4727,6 @@ def _session_dossier_timeline(
             accepted_call_id=row["accepted_call_id"],
         )
         for row in retries
-    )
-    timeline.extend(
-        SessionTimelineProjection(
-            event_type="compute_allocation",
-            fact_id=row["allocation_id"],
-            occurred_at=row["occurred_at"],
-            allocation_source=ComputeAllocationSource(row["allocation_source"]),
-            cpu_millicores=row["cpu_millicores"],
-            memory_bytes=row["memory_bytes"],
-        )
-        for row in allocations
     )
     return timeline
 

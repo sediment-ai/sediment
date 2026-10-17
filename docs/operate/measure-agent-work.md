@@ -132,18 +132,23 @@ each arm, it shows the median and quartiles of three durations:
 | `between_calls_ms` | Elapsed time with no call in flight: tool runs, harness work, and waiting |
 
 Each comparison reports arm B minus arm A as a median difference with a 95%
-bootstrap interval. A negative difference means that the larger arm finished
-sooner. Read these qualifications before you act on one:
+bootstrap interval. Arms sort by CPU, then memory, and an unknown limit sorts
+first. A negative difference means that arm B finished sooner. Read these
+qualifications before you act on one:
 
 - The report compares arms only within one allocation source. A `randomized`
-  comparison supports a causal reading. Every other comparison is
-  observational: an agent that asks for more compute is often on a harder
-  task.
+  comparison supports a causal reading only while every randomized Session
+  ends under a `randomized` allocation. `randomized Sessions reassigned to
+  another source` counts the Sessions that left the randomized arms. A
+  nonzero count weakens the causal reading, because a Session on a hard task
+  is the one most likely to ask again.
+- Every other comparison is observational: an agent that asks for more
+  compute is often on a harder task.
 - `small-n` marks a comparison in which either arm has fewer than 30
   Sessions. An interval that crosses zero doesn't show a difference.
 - A Session counts under its final allocation, even after a resize.
-- `between_calls_ms` includes time that a person spends waiting. Compare
-  interactive and autonomous Sessions separately.
+- `between_calls_ms` includes time that a person spends waiting. The report
+  doesn't separate interactive Sessions from autonomous ones.
 - Sessions without gateway `duration_ms` evidence are skipped and counted.
 
 To inspect each Session's allocations and timing, write the rows:
@@ -153,7 +158,7 @@ sediment report compute --org acme --rows-out sessions.jsonl
 ```
 
 The [Session dossier](#investigate-a-failed-ci-run) lists the same
-allocations for one Session as `compute_allocation` timeline events.
+allocations for one Session in its `compute_allocations` field.
 
 ## Investigate a failed CI run
 

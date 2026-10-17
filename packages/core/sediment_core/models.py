@@ -221,6 +221,19 @@ WorkflowPath = Annotated[ScalarIdentity, AfterValidator(_stripped)]
 CommitSha = Annotated[str, AfterValidator(normalize_commit_sha)]
 
 
+def _utc_representable(value: datetime) -> datetime:
+    try:
+        value.astimezone(UTC)
+    except OverflowError:
+        raise ValueError("timestamp must be representable in UTC") from None
+    return value
+
+
+# An aware instant that also converts to UTC. Offsets let year 9999 or year 1
+# leave the UTC range: PostgreSQL stores the value, and every later read fails.
+UtcRepresentableDatetime = Annotated[AwareDatetime, AfterValidator(_utc_representable)]
+
+
 class GatewayProvider(StrEnum):
     LITELLM = "litellm"
     # Envelope-valid but unregistered in capture's ADAPTERS: the ingest
@@ -589,8 +602,9 @@ class ComputeAllocation(BaseModel):
     # must not coerce into a limit, and an overflow must 422, not 500.
     cpu_millicores: int | None = Field(default=None, ge=1, le=2**63 - 1, strict=True)
     memory_bytes: int | None = Field(default=None, ge=1, le=2**63 - 1, strict=True)
-    # Dedup-index component: AwareDatetime, like DeveloperDecision.occurred_at.
-    occurred_at: AwareDatetime
+    # Dedup-index component: aware like DeveloperDecision.occurred_at, and
+    # UTC-representable so a stored allocation can always be read back.
+    occurred_at: UtcRepresentableDatetime
     captured_at: AwareDatetime = Field(default_factory=_now)
 
     @model_validator(mode="after")

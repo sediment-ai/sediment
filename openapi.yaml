@@ -1925,7 +1925,8 @@ components:
           type: string
           format: date-time
           title: Occurred At
-          description: When the allocation took effect, by the sender's clock
+          description: When the allocation took effect, by the sender's clock; it
+            must convert to a UTC instant
       additionalProperties: false
       type: object
       required:
@@ -1955,6 +1956,47 @@ components:
         a causal comparison between allocations; every other source is
 
         observational evidence.'
+    ComputeAllocationSummary:
+      properties:
+        allocation_id:
+          type: string
+          title: Allocation Id
+        allocation_source:
+          $ref: '#/components/schemas/ComputeAllocationSource'
+        cpu_millicores:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Cpu Millicores
+        memory_bytes:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Memory Bytes
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
+      type: object
+      required:
+      - allocation_id
+      - allocation_source
+      - cpu_millicores
+      - memory_bytes
+      - occurred_at
+      - captured_at
+      title: ComputeAllocationSummary
+      description: 'One visible Compute allocation; a list beside the timeline, never
+        in it.
+
+
+        ``sediment doctor`` copies on developer machines reject timeline event
+
+        types outside their fixed set, so the timeline vocabulary stays closed.'
     ContextCommitAnchor:
       properties:
         repository_provider:
@@ -2994,6 +3036,11 @@ components:
             $ref: '#/components/schemas/SessionTimelineEvent'
           type: array
           title: Timeline
+        compute_allocations:
+          items:
+            $ref: '#/components/schemas/ComputeAllocationSummary'
+          type: array
+          title: Compute Allocations
         attributed_commits:
           items:
             $ref: '#/components/schemas/AttributedCommitSummary'
@@ -3035,6 +3082,7 @@ components:
       - omitted_events
       - gaps
       - timeline
+      - compute_allocations
       - attributed_commits
       - pushes
       - ci_outcomes
@@ -3076,7 +3124,6 @@ components:
           - edit_observation
           - rejected_edit
           - retry_linkage
-          - compute_allocation
           title: Event Type
         fact_id:
           type: string
@@ -3187,20 +3234,6 @@ components:
           - type: string
           - type: 'null'
           title: Accepted Call Id
-        allocation_source:
-          anyOf:
-          - $ref: '#/components/schemas/ComputeAllocationSource'
-          - type: 'null'
-        cpu_millicores:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Cpu Millicores
-        memory_bytes:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          title: Memory Bytes
       type: object
       required:
       - event_type

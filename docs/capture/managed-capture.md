@@ -132,6 +132,11 @@ request at random and send `randomized` for both the granted and the declined
 branch. An agent asks for more compute when its task looks harder, so
 `agent_request` Sessions can run slower because of that task.
 
+In a randomized Session, send `randomized` for every later allocation too.
+Send resizes only while the agent works: a scale-down after the work ends
+becomes the Session's final allocation. A Session whose final allocation
+comes from another source leaves the randomized comparison.
+
 ## Distribute gateway routing
 
 A gateway records only the model calls that an agent sends to it. Each agent

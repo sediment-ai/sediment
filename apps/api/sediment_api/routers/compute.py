@@ -20,12 +20,13 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sediment_core import (
     ComputeAllocation,
     ComputeAllocationSource,
     FactStore,
     NonEmptyId,
+    UtcRepresentableDatetime,
 )
 
 from ..config import settings
@@ -69,8 +70,11 @@ class ComputeAllocationRequest(BaseModel):
         strict=True,
         description="Memory limit in bytes",
     )
-    occurred_at: AwareDatetime = Field(
-        description="When the allocation took effect, by the sender's clock"
+    occurred_at: UtcRepresentableDatetime = Field(
+        description=(
+            "When the allocation took effect, by the sender's clock; it must "
+            "convert to a UTC instant"
+        )
     )
 
     @model_validator(mode="after")

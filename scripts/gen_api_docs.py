@@ -368,7 +368,8 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
     ),
     "/query/session/{session_id}": (
         "Metadata evidence dossier for one Session.",
-        "Returns a bounded timeline, visible and quarantined counts, capture "
+        "Returns a bounded timeline, the Session's Compute allocations beside "
+        "it, visible and quarantined counts, capture "
         "gaps, captured Session commit observations, exact-head Push receipts, and matching CI "
         "outcomes under one complete repository context. Repository identity "
         "accompanies each delivery summary; `repository_skipped` counts declined "

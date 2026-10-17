@@ -65,6 +65,11 @@ def _print_table(report: ComputeReport) -> None:
     print(f"timed Sessions: {report.timed_sessions}")
     skipped = ", ".join(f"{key}={value}" for key, value in report.skipped.items())
     print(f"skipped Sessions: {skipped}")
+    print(
+        "randomized Sessions reassigned to another source: "
+        f"{report.randomized_reassigned_sessions} "
+        "(excluded from randomized comparisons)"
+    )
     if not report.arms:
         print("arms: no data")
     for summary in report.arms:

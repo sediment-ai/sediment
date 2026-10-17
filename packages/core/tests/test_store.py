@@ -822,13 +822,8 @@ def test_postgres_compute_allocation_reads_filter_and_quarantine(
     assert dossier is not None
     coverage = dossier.coverage["compute_allocations"]
     assert (coverage.total, coverage.visible, coverage.quarantined) == (2, 1, 1)
-    [event] = [
-        row for row in dossier.timeline if row.event_type == "compute_allocation"
-    ]
-    assert event.fact_id == "allocation-1"
-    assert event.allocation_source is ComputeAllocationSource.DEFAULT
-    assert (event.cpu_millicores, event.memory_bytes) == (2000, 4 * 2**30)
-    assert event.occurred_at == T0
+    # The dossier timeline vocabulary stays closed; the route lists allocations.
+    assert all(row.event_type != "compute_allocation" for row in dossier.timeline)
     # Quarantine never releases the dedup key.
     assert (
         store.store_compute_allocation(

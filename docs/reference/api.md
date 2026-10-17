@@ -253,7 +253,7 @@ Request body — `ComputeAllocationRequest` (`application/json`):
 | `allocation_source` | string | yes | Who chose the allocation: default, agent_request, operator, or randomized. Only randomized supports a causal comparison; one of `default`, `agent_request`, `operator`, `randomized` |
 | `cpu_millicores` | integer or null | no | CPU limit in millicores; 1000 is one CPU; minimum `1.0`; maximum `9.223372036854776e+18` |
 | `memory_bytes` | integer or null | no | Memory limit in bytes; minimum `1.0`; maximum `9.223372036854776e+18` |
-| `occurred_at` | string | yes | When the allocation took effect, by the sender's clock; format `date-time` |
+| `occurred_at` | string | yes | When the allocation took effect, by the sender's clock; it must convert to a UTC instant; format `date-time` |
 
 Status codes:
 
@@ -634,7 +634,7 @@ Observation-backed commit edges keep `attribution_sources` empty. Similarity ext
 
 **Auth:** Bearer token — `Authorization: Bearer $SEDIMENT_OPERATOR_TOKEN`. Missing or invalid credentials return 401; ingest or retrieval authority returns 403.
 
-**Response:** Returns a bounded timeline, visible and quarantined counts, capture gaps, captured Session commit observations, exact-head Push receipts, and matching CI outcomes under one complete repository context. Repository identity accompanies each delivery summary; `repository_skipped` counts declined observation sources. Captured content, user identity, file paths, and the free-form CI reason remain absent. An unknown Session returns 200 `{"found": false}`.
+**Response:** Returns a bounded timeline, the Session's Compute allocations beside it, visible and quarantined counts, capture gaps, captured Session commit observations, exact-head Push receipts, and matching CI outcomes under one complete repository context. Repository identity accompanies each delivery summary; `repository_skipped` counts declined observation sources. Captured content, user identity, file paths, and the free-form CI reason remain absent. An unknown Session returns 200 `{"found": false}`.
 
 Parameters:
 

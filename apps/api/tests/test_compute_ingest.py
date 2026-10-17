@@ -6,7 +6,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sediment_api.config import settings
 from sediment_api.main import app
-from sediment_core import ComputeAllocationSource
+from sediment_core import ComputeAllocationSource, FactTable
 
 INGEST = {"Authorization": "Bearer test-ingest-token-3a7e-9d21"}
 OPERATOR = {"Authorization": "Bearer test-operator-token-3a7e-2f6c"}
@@ -61,6 +61,8 @@ def test_compute_ingest_rejects_malformed_envelopes(client: TestClient) -> None:
         _payload(memory_bytes=2**63),
         _payload(allocation_source="autoscaler"),
         _payload(occurred_at="2026-10-01T12:00:00"),
+        _payload(occurred_at="9999-12-31T23:59:59-14:00"),
+        _payload(occurred_at="0001-01-01T00:00:00+14:00"),
         _payload(session_id="   "),
         {**_payload(), "org_id": "another-org"},
     ):
@@ -90,13 +92,25 @@ def test_session_dossier_shows_compute_allocations(client: TestClient) -> None:
         "visible": 2,
         "quarantined": 0,
     }
-    events = [
-        event
-        for event in body["timeline"]
-        if event["event_type"] == "compute_allocation"
-    ]
+    # Installed `sediment doctor` copies reject unknown timeline event types.
+    assert body["timeline"] == []
     assert [
-        (event["allocation_source"], event["cpu_millicores"]) for event in events
+        (item["allocation_source"], item["cpu_millicores"])
+        for item in body["compute_allocations"]
     ] == [("default", 2000), ("agent_request", 8000)]
-    assert all(event["memory_bytes"] == 16 * 2**30 for event in events)
+    assert all(
+        item["memory_bytes"] == 16 * 2**30 for item in body["compute_allocations"]
+    )
     assert "no_inference_calls_observed" in body["gaps"]
+
+    first = body["compute_allocations"][0]["allocation_id"]
+    app.state.fact_store.quarantine_fact(
+        settings.org_id, FactTable.COMPUTE_ALLOCATIONS, first, reason="test"
+    )
+    quarantined = client.get("/query/session/sandbox-session", headers=OPERATOR)
+    body = quarantined.json()
+    # A quarantined allocation never marks decision evidence incomplete.
+    assert body["omitted_events"] == 0
+    assert body["coverage"]["compute_allocations"]["quarantined"] == 1
+    assert [item["allocation_id"] for item in body["compute_allocations"]] != [first]
+    assert len(body["compute_allocations"]) == 1

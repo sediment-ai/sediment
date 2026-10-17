@@ -12,9 +12,11 @@ durations. Two durations matter:
 
 **Comparisons stay inside one allocation source.** A ``randomized`` arm pair
 supports a causal reading, because chance chose which Sessions received more
-compute. Every other pair is observational: an agent that asks for more
-compute is often working on a harder task, so ``agent_request`` arms can run
-slower *because* of the request's cause. The report never compares across
+compute, as long as each randomized Session keeps a ``randomized`` final
+allocation; ``randomized_reassigned_sessions`` counts the ones that didn't.
+Every other pair is observational: an agent that asks for more compute is
+often working on a harder task, so ``agent_request`` arms can run slower
+*because* of the request's cause. The report never compares across
 sources, and it marks each comparison ``randomized`` or not rather than
 presenting an observational gap as an effect.
 
@@ -96,11 +98,17 @@ class ComputeReport:
     """Arms, within-source comparisons, and the Sessions the report skipped.
 
     ``sessions_with_allocation`` counts every Session that has a visible
-    Compute allocation: ``timed_sessions`` plus the sum of ``skipped``."""
+    Compute allocation: ``timed_sessions`` plus the sum of ``skipped``.
+    ``randomized_reassigned_sessions`` counts timed Sessions with a
+    ``randomized`` allocation whose final allocation came from another
+    source. Those Sessions leave the randomized arms, and a hard task that
+    asks again is the likely cause, so a nonzero count weakens the causal
+    reading of every randomized comparison."""
 
     sessions_with_allocation: int
     timed_sessions: int
     skipped: dict[str, int]
+    randomized_reassigned_sessions: int
     arms: list[ComputeArmSummary]
     comparisons: list[ComputeArmComparison]
     provenance: Provenance
@@ -183,6 +191,15 @@ def build_compute_report(
         sessions_with_allocation=len(result.timings) + sum(skipped.values()),
         timed_sessions=len(result.timings),
         skipped=skipped,
+        randomized_reassigned_sessions=sum(
+            timing.final_allocation.allocation_source
+            is not ComputeAllocationSource.RANDOMIZED
+            and any(
+                allocation.allocation_source is ComputeAllocationSource.RANDOMIZED
+                for allocation in timing.allocations
+            )
+            for timing in result.timings
+        ),
         arms=summaries,
         comparisons=comparisons,
         provenance=result.provenance,
