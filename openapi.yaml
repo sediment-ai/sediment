@@ -1963,6 +1963,14 @@ components:
           title: Allocation Id
         allocation_source:
           $ref: '#/components/schemas/ComputeAllocationSource'
+        occurred_at:
+          type: string
+          format: date-time
+          title: Occurred At
+        captured_at:
+          type: string
+          format: date-time
+          title: Captured At
         cpu_millicores:
           anyOf:
           - type: integer
@@ -1973,20 +1981,10 @@ components:
           - type: integer
           - type: 'null'
           title: Memory Bytes
-        occurred_at:
-          type: string
-          format: date-time
-          title: Occurred At
-        captured_at:
-          type: string
-          format: date-time
-          title: Captured At
       type: object
       required:
       - allocation_id
       - allocation_source
-      - cpu_millicores
-      - memory_bytes
       - occurred_at
       - captured_at
       title: ComputeAllocationSummary
@@ -1996,7 +1994,11 @@ components:
 
         ``sediment doctor`` copies on developer machines reject timeline event
 
-        types outside their fixed set, so the timeline vocabulary stays closed.'
+        types outside their fixed set, so the timeline vocabulary stays closed.
+
+        The route omits null fields, so an unknown limit is an absent key; the
+
+        defaults keep that absence inside the published contract.'
     ContextCommitAnchor:
       properties:
         repository_provider:

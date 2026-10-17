@@ -586,14 +586,16 @@ class ComputeAllocationSummary:
     """One visible Compute allocation; a list beside the timeline, never in it.
 
     ``sediment doctor`` copies on developer machines reject timeline event
-    types outside their fixed set, so the timeline vocabulary stays closed."""
+    types outside their fixed set, so the timeline vocabulary stays closed.
+    The route omits null fields, so an unknown limit is an absent key; the
+    defaults keep that absence inside the published contract."""
 
     allocation_id: str
     allocation_source: ComputeAllocationSource
-    cpu_millicores: int | None
-    memory_bytes: int | None
     occurred_at: datetime
     captured_at: datetime
+    cpu_millicores: int | None = None
+    memory_bytes: int | None = None
 
 
 @dataclass(frozen=True)

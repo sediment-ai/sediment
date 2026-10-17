@@ -49,6 +49,14 @@ def test_compute_ingest_accepts_one_limit(client: TestClient) -> None:
     assert response.status_code == 200
     [stored] = app.state.fact_store.read_compute_allocations(settings.org_id)
     assert stored.memory_bytes is None
+    # The dossier omits the unknown limit, and the contract marks it optional.
+    dossier = client.get("/query/session/sandbox-session", headers=OPERATOR).json()
+    [item] = dossier["compute_allocations"]
+    assert item["cpu_millicores"] == 8000
+    assert "memory_bytes" not in item
+    schema = app.openapi()["components"]["schemas"]["ComputeAllocationSummary"]
+    assert "memory_bytes" not in schema["required"]
+    assert "cpu_millicores" not in schema["required"]
 
 
 def test_compute_ingest_rejects_malformed_envelopes(client: TestClient) -> None:
