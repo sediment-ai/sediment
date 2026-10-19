@@ -29,7 +29,7 @@ case "$staged" in
 *sediment_core/models.py*|*sediment_core/store.py*|*sediment_core/evidence.py*|\
 *sediment_derive/abandonment.py*|*sediment_derive/attribution.py*|\
 *sediment_derive/ci_resolution.py*|*sediment_derive/context_retrieval.py*|\
-*sediment_derive/merge_retention.py*|\
+*sediment_derive/compute_timing.py*|*sediment_derive/merge_retention.py*|\
 *sediment_derive/provenance.py*|*sediment_derive/recovery.py*|\
 *sediment_derive/repository_identity.py*|*sediment_derive/rollout.py*|\
 *sediment_derive/survival.py*|*sediment_export/accepted_work_lifecycle.py*|\

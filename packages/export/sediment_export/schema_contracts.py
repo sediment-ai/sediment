@@ -8,6 +8,7 @@ from pathlib import Path
 
 from sediment_core import (
     CIOutcome,
+    ComputeAllocation,
     DeveloperDecision,
     EditObservation,
     InferenceCall,
@@ -32,6 +33,7 @@ from sediment_derive import (
     CIResolution,
     CIWorkflowResolution,
     CommitRef,
+    ComputeArm,
     Fate,
     MergeMembershipOutcome,
     MergeRetention,
@@ -39,6 +41,7 @@ from sediment_derive import (
     RecoverySample,
     Rollout,
     SessionAbandonment,
+    SessionComputeTiming,
     Turn,
 )
 
@@ -196,6 +199,12 @@ CONTRACT_GROUPS: tuple[
                 version=3,
             ),
             _contract(
+                ComputeAllocation,
+                "facts",
+                "compute-allocation",
+                "One Session execution environment's CPU and memory limits.",
+            ),
+            _contract(
                 CIOutcome, "facts", "ci-outcome", "One CI run attempt.", version=3
             ),
             _contract(Push, "facts", "push", "One forge push receipt.", version=3),
@@ -225,7 +234,7 @@ CONTRACT_GROUPS: tuple[
                 "facts",
                 "quarantine-record",
                 "One append-only fact quarantine action.",
-                version=7,
+                version=8,
             ),
             _contract(
                 RepositoryRename,
@@ -365,6 +374,18 @@ CONTRACT_GROUPS: tuple[
                 "merge-retention",
                 "One attributed file measured at pull request merge.",
                 version=3,
+            ),
+            _contract(
+                ComputeArm,
+                "derived-artifacts",
+                "compute-arm",
+                "One Compute allocation value and the source that chose it.",
+            ),
+            _contract(
+                SessionComputeTiming,
+                "derived-artifacts",
+                "session-compute-timing",
+                "One Session's final Compute allocation and Inference call timing.",
             ),
             _contract(
                 AbandonmentSummary,

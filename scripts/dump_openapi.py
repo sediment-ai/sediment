@@ -36,6 +36,7 @@ class _NoAliasDumper(yaml.SafeDumper):
 BEARER = {
     "/ingest/gateway",
     "/ingest/ci",
+    "/ingest/compute",
     "/v1/logs",
     "/query/commit/{sha}",
     "/query/evidence",
@@ -58,7 +59,7 @@ BEARER = {
     "/v1/reports/model-outcomes",
     "/v1/reports/accepted-work-lifecycle",
 }
-INGEST = {"/ingest/gateway", "/ingest/ci", "/v1/logs"}
+INGEST = {"/ingest/gateway", "/ingest/ci", "/ingest/compute", "/v1/logs"}
 RETRIEVAL = {
     "/query/context",
     "/query/context/discover",

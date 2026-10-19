@@ -30,6 +30,7 @@ Values drift; see `docs/agents/statistics.md` and `docs/exports/rlvr-export.md`.
 | `label_confidence_sensitivity.py` | One-`LabelConfidencePolicy`-knob-at-a-time sensitivity sweep, consumed by `sediment report label-confidence-inspection --sensitivity` |
 | `dataset_diagnostics.py` | Recipe/source-stratified model balance, Confidence distributions, prompt and bucket checks, SFT Confidence floor exclusions, abandonment coverage, and diagnostic-only Fate metadata |
 | `decision_latency.py` | Quantile-buckets unique decisions by `decision.captured_at - inference_call.observed_at`; accept-rate and Confidence deltas per bucket. Retention observations (`observation_delay_ms` set) are excluded — counted under `observation_delay` in the closed six-reason skip vocabulary |
+| `compute_report.py` | Compute report: Session compute timings grouped by final-allocation arm, duration quartiles, and within-source `bootstrap_median_difference` comparisons marked `randomized` or observational; `--rows-out` adapts `SessionComputeTiming` rows for JSONL. Diagnostic only |
 | `merge_retention_report.py` | Merge-retention coverage, score distributions, fixed sensitivity thresholds, explicit-accept slices, Provenance, and canonical row adaptation for JSONL output |
 
 ## Attributed completions (`attributed_completions.py`)

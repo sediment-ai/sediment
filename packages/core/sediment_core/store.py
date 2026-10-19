@@ -59,6 +59,7 @@ from .models import (
     CIProvider,
     CIResult,
     CommitSha,
+    ComputeAllocation,
     DeveloperDecision,
     EditObservation,
     FactTable,
@@ -87,6 +88,7 @@ from .models import (
 from .postgres_engine import DatabaseOperationError
 from .postgres_schema import (
     ci_outcomes,
+    compute_allocations,
     developer_decisions,
     edit_observations,
     fact_quarantine,
@@ -115,6 +117,7 @@ _FACT_TABLES = {
     FactTable.PULL_REQUEST_MERGES: pull_request_merges,
     FactTable.PULL_REQUEST_REVISIONS: pull_request_revisions,
     FactTable.REPOSITORY_RENAMES: repository_renames,
+    FactTable.COMPUTE_ALLOCATIONS: compute_allocations,
 }
 
 REPOSITORY_IDENTITY_LIMIT = 50_000
@@ -454,6 +457,7 @@ _SESSION_FACT_TABLES = frozenset(
         FactTable.EDIT_OBSERVATIONS,
         FactTable.REJECTED_EDITS,
         FactTable.RETRY_LINKAGES,
+        FactTable.COMPUTE_ALLOCATIONS,
     }
 )
 _FACT_PRIMARY_KEYS = {
@@ -468,6 +472,7 @@ _FACT_PRIMARY_KEYS = {
     FactTable.PUSHES: pushes.c.push_id,
     FactTable.PULL_REQUEST_MERGES: pull_request_merges.c.merge_id,
     FactTable.PULL_REQUEST_REVISIONS: pull_request_revisions.c.revision_id,
+    FactTable.COMPUTE_ALLOCATIONS: compute_allocations.c.allocation_id,
 }
 _DECISION_RETURN_COLUMNS = tuple(
     column for column in developer_decisions.c if column.name != "raw"
@@ -790,6 +795,14 @@ class CompatibilityEditEvidence:
 @dataclass(frozen=True)
 class InferenceCallReceipt:
     """Database insertion disposition and the retained Inference call identity."""
+
+    fact_id: NonEmptyId
+    stored: bool
+
+
+@dataclass(frozen=True)
+class ComputeAllocationReceipt:
+    """Database insertion disposition and the retained Compute allocation ID."""
 
     fact_id: NonEmptyId
     stored: bool
@@ -1230,6 +1243,66 @@ class FactStore:
                 limit=limit,
             )
 
+    def store_compute_allocation(self, allocation: ComputeAllocation) -> bool:
+        return self.store_compute_allocation_receipt(allocation).stored
+
+    def store_compute_allocation_receipt(
+        self, allocation: ComputeAllocation
+    ) -> ComputeAllocationReceipt:
+        # No content field and no raw payload: Basic redaction has nothing to
+        # inspect, like Push and SessionCommitObservation.
+        values = allocation.model_dump(mode="python")
+        with self._engine.begin() as connection:
+            stored = (
+                connection.execute(
+                    insert(compute_allocations)
+                    .values(**values)
+                    .on_conflict_do_nothing()
+                    .returning(compute_allocations.c.allocation_id)
+                ).scalar_one_or_none()
+                is not None
+            )
+            if stored:
+                connection.execute(_session_upsert(allocation, allocation.captured_at))
+                return ComputeAllocationReceipt(allocation.allocation_id, True)
+            retained = connection.execute(
+                select(compute_allocations.c.allocation_id).where(
+                    compute_allocations.c.org_id == allocation.org_id,
+                    compute_allocations.c.session_id == allocation.session_id,
+                    compute_allocations.c.occurred_at == allocation.occurred_at,
+                    compute_allocations.c.allocation_source
+                    == allocation.allocation_source.value,
+                    func.coalesce(compute_allocations.c.cpu_millicores, 0)
+                    == (allocation.cpu_millicores or 0),
+                    func.coalesce(compute_allocations.c.memory_bytes, 0)
+                    == (allocation.memory_bytes or 0),
+                )
+            ).scalar_one_or_none()
+        if retained is None:
+            # Only a reused primary key with different content gets here; the
+            # ingest route always mints a fresh ID.
+            raise ValueError("Compute allocation ID conflicts with a retained Fact")
+        return ComputeAllocationReceipt(retained, False)
+
+    def read_compute_allocations(
+        self,
+        org_id: str,
+        include_quarantined: bool = False,
+        *,
+        captured_through: datetime | None = None,
+        session_ids: set[str] | None = None,
+        limit: int | None = None,
+    ) -> list[ComputeAllocation]:
+        with self._engine.connect() as connection:
+            return _read_compute_allocations(
+                connection,
+                org_id,
+                include_quarantined,
+                captured_through=captured_through,
+                session_ids=session_ids,
+                limit=limit,
+            )
+
     def store_ci_outcome(self, outcome: CIOutcome) -> bool:
         return self.store_ci_outcome_receipt(outcome).stored
 
@@ -1658,6 +1731,7 @@ class FactStore:
         *,
         observed_between: tuple[datetime, datetime] | None = None,
         inference_call_ids: set[str] | None = None,
+        session_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         with self.read_snapshot() as snapshot:
@@ -1665,6 +1739,7 @@ class FactStore:
                 org_id,
                 observed_between=observed_between,
                 inference_call_ids=inference_call_ids,
+                session_ids=session_ids,
                 limit=limit,
             )
 
@@ -2675,6 +2750,24 @@ class _FactSnapshot:
             limit=limit,
         )
 
+    def read_compute_allocations(
+        self,
+        org_id: str,
+        *,
+        captured_through: datetime | None = None,
+        session_ids: set[str] | None = None,
+        limit: int | None = None,
+        include_quarantined: bool = False,
+    ) -> list[ComputeAllocation]:
+        return _read_compute_allocations(
+            self._connection,
+            org_id,
+            include_quarantined,
+            captured_through=captured_through,
+            session_ids=session_ids,
+            limit=limit,
+        )
+
     def read_ci_outcome_by_run(
         self,
         org_id: str,
@@ -2987,6 +3080,7 @@ class _FactSnapshot:
         *,
         observed_between: tuple[datetime, datetime] | None = None,
         inference_call_ids: set[str] | None = None,
+        session_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[InferenceCallSummary]:
         if limit is not None and (type(limit) is not int or limit <= 0):
@@ -2996,6 +3090,10 @@ class _FactSnapshot:
         if inference_call_ids is not None:
             selected_ids = _validated_identity_filter(inference_call_ids)
             conditions.append(inference_calls.c.inference_call_id.in_(selected_ids))
+        selected_sessions = None
+        if session_ids is not None:
+            selected_sessions = _validated_identity_filter(session_ids)
+            conditions.append(inference_calls.c.session_id.in_(selected_sessions))
         if observed_between is not None:
             lower, upper = observed_between
             if lower.tzinfo is None or upper.tzinfo is None:
@@ -3015,6 +3113,7 @@ class _FactSnapshot:
             org_id,
             observed_between,
             selected_ids,
+            selected_sessions,
             limit,
         )
         if key in self._cache:
@@ -3988,6 +4087,38 @@ def _read_retry_linkages(
     ]
 
 
+def _read_compute_allocations(
+    connection: Connection,
+    org_id: str,
+    include_quarantined: bool,
+    *,
+    captured_through: datetime | None = None,
+    session_ids: set[str] | None = None,
+    limit: int | None = None,
+) -> list[ComputeAllocation]:
+    _validate_bounded_fact_read(captured_through, limit, "Compute allocation")
+    if session_ids is not None and not session_ids:
+        return []
+    conditions = list(
+        _fact_conditions(org_id, FactTable.COMPUTE_ALLOCATIONS, include_quarantined)
+    )
+    if captured_through is not None:
+        conditions.append(compute_allocations.c.captured_at <= captured_through)
+    if session_ids is not None:
+        conditions.append(compute_allocations.c.session_id.in_(sorted(session_ids)))
+    statement = (
+        select(compute_allocations)
+        .where(*conditions)
+        .order_by(
+            compute_allocations.c.session_id,
+            compute_allocations.c.occurred_at,
+            compute_allocations.c.allocation_id,
+        )
+    )
+    rows = _bounded_fact_rows(connection, statement, limit, "Compute allocation")
+    return [ComputeAllocation.model_validate(row) for row in rows]
+
+
 def _read_ci_outcome_by_run(
     connection,
     org_id,
@@ -4849,6 +4980,7 @@ def _session_upsert(
         | RejectedEdit
         | RetryLinkage
         | SessionCommitObservation
+        | ComputeAllocation
     ),
     observed_at: datetime,
 ):

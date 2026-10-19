@@ -132,6 +132,10 @@ _REPORTS = {
         "sediment_api.reports.merge_retention_report",
         "attributed change retention through pull request merge",
     ),
+    "compute": (
+        "sediment_api.reports.compute_report",
+        "Session completion time by final Compute allocation",
+    ),
     "lifecycle": (
         "sediment_api.reports.lifecycle_report",
         "accepted-work progression, retention, attrition, and rework evidence",

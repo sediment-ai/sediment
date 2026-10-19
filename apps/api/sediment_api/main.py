@@ -34,7 +34,7 @@ from sqlalchemy.exc import (
 from . import __version__
 from .config import settings
 from .deps import BodySizeLimitMiddleware
-from .routers import ci_vendor, forge, gateway, otlp, query, reports, v1
+from .routers import ci_vendor, compute, forge, gateway, otlp, query, reports, v1
 from .workers import WorkerSupervisor
 
 logging.basicConfig(
@@ -229,6 +229,7 @@ app.include_router(gateway.router, prefix="/ingest")
 # free for a vendor-neutral push door later.
 app.include_router(forge.router, prefix="/ingest/github")
 app.include_router(ci_vendor.router, prefix="/ingest")
+app.include_router(compute.router, prefix="/ingest")
 # OTLP receiver: path fixed by the exporter (<endpoint>/v1/logs), no prefix.
 app.include_router(otlp.router)
 app.include_router(query.router, prefix="/query")

@@ -103,6 +103,12 @@ INVENTORY = {
         "Aware timestamp": ["occurred_at", "captured_at"],
         "Opaque content": ["raw"],
     },
+    "compute_allocations": {
+        "Identity": ["allocation_id", "org_id", "session_id"],
+        "Closed vocabulary": ["allocation_source"],
+        "Integer": ["cpu_millicores?", "memory_bytes?"],
+        "Aware timestamp": ["occurred_at", "captured_at"],
+    },
     "ci_outcomes": {
         "Integer": ["schema_version", "run_attempt?", "pr_number?"],
         "Identity": [
@@ -242,6 +248,7 @@ FACT_MODELS = {
     "edit_observations": models.EditObservation,
     "rejected_edits": models.RejectedEdit,
     "retry_linkages": models.RetryLinkage,
+    "compute_allocations": models.ComputeAllocation,
     "ci_outcomes": models.CIOutcome,
     "pushes": models.Push,
     "session_commit_observations": models.SessionCommitObservation,
@@ -298,6 +305,8 @@ def fact(table, **changes):
         base_sha="b" * 40,
         merge_commit_sha="c" * 40,
         merged_at=T0,
+        allocation_source="default",
+        cpu_millicores=1000,
         fact_table="inference_calls",
         fact_id="call-1",
         action="quarantine",
