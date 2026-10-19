@@ -175,7 +175,10 @@ prints the command to add by hand. It also sets
 `notes.rewriteRef=refs/notes/sediment`, so Git carries notes through
 `commit --amend` and rebase.
 
-The hooks never fail a commit or push. They log failures, without content, to
+Sediment's commands never fail a commit or push. The block keeps the exit
+status of the hook code before it and never exits, so a repository check still
+blocks and code after the block still runs. The block works under `set -e` and
+`set -u`. Sediment's commands log failures, without content, to
 `~/.sediment/attribution.log`, so a successful commit doesn't prove capture.
 
 ## Repair or recover capture
