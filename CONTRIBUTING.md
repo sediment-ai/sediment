@@ -506,7 +506,7 @@ for the publisher-to-project relationship.
 ### Reproduce the checks
 
 Run the commands from the release source checkout. Use Python 3.12.15 and uv
-0.12.24. Install the exact Trivy version and verified checksum specified in
+0.13.1. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.
@@ -1117,7 +1117,7 @@ gateway capture, the API, and private records inside your perimeter.
    docker image inspect sediment-evaluation-gate --format '{{.Id}}'
    ```
 
-   Record both image IDs. The agent image pins pi 1.0.4, Node.js, and Python. The
+   Record both image IDs. The agent image pins pi 1.1.0, Node.js, and Python. The
    counter uses the API image's HTTP client without starting its API. The frozen
    pi profile preserves empty assistant content; the prefix check remains exact.
 
@@ -1269,12 +1269,12 @@ For operator access and packet preparation, follow
 ### Test a controlled restart in pi
 
 Use a small task with an explicit goal, constraints, and final verification
-command. This procedure targets pi `1.0.4` with Node.js 24 and the existing
+command. This procedure targets pi `1.1.0` with Node.js 24 and the existing
 [pi gateway setup](docs/capture/agents/pi.md#configure-inference-call-capture). Its commands follow
-the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/README.md).
+the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v1.1.0/packages/coding-agent/README.md).
 A live run requires your approved model endpoint.
 
-1. Confirm `pi --version` reports `1.0.4` and `node --version` reports a supported
+1. Confirm `pi --version` reports `1.1.0` and `node --version` reports a supported
    version. Set `PILOT_REPO` to the existing workspace and `PILOT_MODEL` to the
    model configured in your `sediment` provider.
 2. Start the source agent in that workspace:

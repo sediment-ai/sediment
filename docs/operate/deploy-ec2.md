@@ -127,7 +127,7 @@ If a coding agent helps you operate this deployment, give it the output of
          timeout: 5s
          retries: 12
      proxy:
-       image: traefik:v3.7.13
+       image: traefik:v3.7.14
        restart: unless-stopped
        network_mode: host
        read_only: true

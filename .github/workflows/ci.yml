@@ -49,7 +49,7 @@ jobs:
       - name: Scan complete pull-request tree for secrets
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
         env:
-          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.99.0@sha256:39ee0643ae620664287bcc95f133f3fc8484590d6ca4e7105d96b90dac4b9f6f
+          TRUFFLEHOG_IMAGE: ghcr.io/trufflesecurity/trufflehog:3.99.2@sha256:47a84bc18a0d04a165498bbbd3bacfd84176661cbc91f8e0f85467f6a771e99a
         run: |
           scan_root="${RUNNER_TEMP}/sediment-secret-scan"
           mkdir "$scan_root"
@@ -59,9 +59,9 @@ jobs:
             "$TRUFFLEHOG_IMAGE" filesystem /scan \
             --fail --no-update --github-actions \
             --results=verified,unknown --exclude-detectors=lob
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          version: "0.12.24"
+          version: "0.13.1"
           python-version: "3.12.15"
       - run: uv sync --locked
       - name: Select validation scope
@@ -216,13 +216,13 @@ jobs:
       # names, and its verifier "verifies" them. This repo will never hold
       # a real Lob (postal mail API) credential; re-include if one is ever
       # actually adopted.
-      - uses: trufflesecurity/trufflehog@b2b0a92070f206ab7b5a1105d82a7f2f48d92341 # v3.99.0
+      - uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
           base: ${{ steps.secret-range.outputs.base || github.event.merge_group.base_sha || '' }}
           head: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && github.sha || '' }}
-          version: "3.99.0"
+          version: "3.99.2"
           extra_args: --results=verified,unknown --exclude-detectors=lob
       - name: Remove the disposable test database
         if: always() && steps.scope.outputs.full == 'true'
