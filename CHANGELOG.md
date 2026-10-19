@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.1 — 2026-10-19
+
 ### Security
 
 - Keep URL credentials out of notes-push diagnostics. Git hands the `pre-push`
