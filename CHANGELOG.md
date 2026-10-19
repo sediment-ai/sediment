@@ -40,7 +40,7 @@
 - Replace the static README architecture diagram with an animated data-flow
   figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
   timeline, and continuous integration (CI) runs its `--check`.
-- Test the pi shim against pi-coding-agent 1.0.4. The continuation comparison's
+- Test the pi shim against pi-coding-agent 1.1.0. The continuation comparison's
   version check and its task-selection tests follow the lockfile.
 
 ### Installation
