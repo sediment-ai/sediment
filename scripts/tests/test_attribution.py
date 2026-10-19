@@ -1135,6 +1135,107 @@ def test_install_is_idempotent_and_preserves_existing_hooks(tmp_path: Path) -> N
     assert content.count("# >>> sediment-attribution >>>") == 1  # not duplicated
 
 
+def _repo_with_foreign_hooks(tmp_path: Path, hooks: dict[str, str], mode: str) -> Path:
+    """A repo whose existing hooks hold ``hooks`` before Sediment installs,
+    through the per-repo installer or the fleet git template."""
+    repo = tmp_path / "r"
+    if mode == "repo":
+        make_repo(repo)
+        target = hooks_dir(repo)
+    else:
+        target = tmp_path / "bundle" / "git-template" / "hooks"
+    target.mkdir(parents=True, exist_ok=True)
+    for name, body in hooks.items():
+        (target / name).write_text(body)
+    if mode == "repo":
+        assert run_cli(["install", str(repo), "--no-agents"], cwd=repo).returncode == 0
+        return repo
+    bundle = tmp_path / "bundle"
+    args = ["install", "--fleet", "--out", str(bundle), "--prefix", str(bundle)]
+    assert run_cli(args, cwd=tmp_path).returncode == 0
+    template = f"--template={bundle / 'git-template'}"
+    subprocess.run(["git", "init", "-q", template, str(repo)], check=True)
+    return make_repo(repo)
+
+
+def _push(tmp_path: Path, repo: Path) -> subprocess.CompletedProcess:
+    remote = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+    git(repo, "remote", "add", "origin", str(remote))
+    return subprocess.run(
+        ["git", "push", "-q", "origin", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+@pytest.mark.parametrize("mode", ["repo", "fleet"])
+@pytest.mark.parametrize(("last", "blocked"), [("false", True), ("true", False)])
+def test_installed_pre_push_keeps_the_repo_hook_status(
+    tmp_path: Path, mode: str, last: str, blocked: bool
+) -> None:
+    body = f"#!/bin/sh\necho 'repo check'\n{last}\n"
+    repo = _repo_with_foreign_hooks(tmp_path, {"pre-push": body}, mode)
+    push = _push(tmp_path, repo)
+    assert (push.returncode != 0) is blocked, push.stderr
+
+
+@pytest.mark.parametrize("mode", ["repo", "fleet"])
+@pytest.mark.parametrize(("tail", "blocked"), [("false", True), ("true", False)])
+def test_code_after_the_hook_block_runs_and_decides_the_status(
+    tmp_path: Path, mode: str, tail: str, blocked: bool
+) -> None:
+    repo = _repo_with_foreign_hooks(tmp_path, {"pre-push": "#!/bin/sh\nfalse\n"}, mode)
+    hook = hooks_dir(repo) / "pre-push"
+    hook.write_text(hook.read_text() + f"touch tail-ran\n{tail}\n")
+    push = _push(tmp_path, repo)
+    assert (repo / "tail-ran").exists()
+    assert (push.returncode != 0) is blocked, push.stderr
+
+
+@pytest.mark.parametrize("mode", ["repo", "fleet"])
+def test_installed_hooks_run_under_set_eu(tmp_path: Path, mode: str) -> None:
+    strict = "#!/bin/sh\nset -eu\n"
+    hooks = {"prepare-commit-msg": strict, "pre-push": strict}
+    repo = _repo_with_foreign_hooks(tmp_path, hooks, mode)
+    for name in hooks:
+        hook = hooks_dir(repo) / name
+        hook.write_text(hook.read_text() + f'echo "$#" > {name}.argc\n')
+    editor = tmp_path / "editor.sh"
+    editor.write_text('#!/bin/sh\necho "plain commit" > "$1"\n')
+    editor.chmod(0o755)
+    # Without -m, -F, or a template, git passes prepare-commit-msg one argument.
+    commit = subprocess.run(
+        ["git", "commit", "-q", "--allow-empty"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "GIT_EDITOR": str(editor)},
+    )
+    assert commit.returncode == 0, commit.stderr
+    assert (repo / "prepare-commit-msg.argc").read_text() == "1\n"
+    push = _push(tmp_path, repo)
+    assert push.returncode == 0, push.stderr
+    assert (repo / "pre-push.argc").read_text() == "2\n"
+
+
+def test_reinstall_and_uninstall_round_trip_a_foreign_hook(tmp_path: Path) -> None:
+    mod = _load_module()
+    body = "#!/bin/sh\nset -eu\necho 'repo check'\nfalse\n"
+    repo = _repo_with_foreign_hooks(tmp_path, {"pre-push": body}, "repo")
+    assert run_cli(["install", str(repo), "--no-agents"], cwd=repo).returncode == 0
+    hook = hooks_dir(repo) / "pre-push"
+    assert hook.read_text().count(mod.HOOK_BLOCK_BEGIN) == 1
+    found: list = []
+    mod._doctor_hooks(found, "r", repo)
+    assert found[0][0] == mod.DOCTOR_OK, found
+    assert run_cli(["uninstall", str(repo)], cwd=repo).returncode == 0
+    assert hook.read_text() == body
+
+
 def test_install_respects_core_hooks_path(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r")
     custom = repo / ".husky"
