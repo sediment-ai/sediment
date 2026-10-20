@@ -49,6 +49,14 @@
   `--version` replaces the installed CLI. Before, the rerun reported success
   and left the earlier version in place. Closes #189.
 
+### Capture
+
+- Preserve a repository shell hook's exit status when `sediment install`
+  appends its marked block. Sediment commands end in `|| true`, so they never
+  fail a commit or push. The block restores the previous status without
+  exiting, so commands after it still run. `prepare-commit-msg` treats a
+  missing commit source as empty under `set -u`. Closes #170.
+
 ### Command line
 
 - List `stamp`, `repair-notes`, and `transcript` in `sediment --help` and the

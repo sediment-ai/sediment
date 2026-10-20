@@ -1,4 +1,8 @@
 #!/bin/sh
 # >>> sediment-attribution >>>
-python3 "/opt/sediment/sediment_attribution.py" push-notes "$1" || true
+(
+    __sediment_status=$?
+    python3 "/opt/sediment/sediment_attribution.py" push-notes "$1" || true
+    exit "$__sediment_status"
+) && :
 # <<< sediment-attribution <<<
