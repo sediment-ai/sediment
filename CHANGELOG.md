@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Security
+
+- Stop three Basic redaction costs that let one ingest request with a capture
+  token stall the single-process API. A quoted credential value with a long
+  backslash run before a line break backtracked exponentially. A long run of
+  hyphen-joined words scanned quadratically. Basic redaction rebuilt the
+  structured-credential pattern for every string in the Fact. Two inputs
+  redact differently. A label with nine or more segments before `API_KEY`,
+  such as `A_B_C_D_E_F_G_H_I_API_KEY`, keeps its assigned value unless the
+  label is unquoted and hyphen-joined. An unterminated quoted credential that
+  contains an escaped quote and then a line break keeps its value; earlier,
+  Basic redaction replaced the value up to the last escaped quote.
+
 ## 0.6.1 — 2026-10-19
 
 ### Security
