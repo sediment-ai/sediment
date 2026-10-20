@@ -54,15 +54,22 @@ _AUTHORIZATION_HEADER = re.compile(
     r"(?i)(?P<prefix>\bAuthorization\s*[:=]\s*Bearer[ \t]+)"
     r"(?P<credential>[A-Za-z0-9\-._~+/]{16,}=*)"
 )
+# A backslash always starts an escape and never a plain character, so a quoted
+# value has one tiling and the possessive loop never backtracks into it.
 _QUOTED_STRUCTURED_ASSIGNMENT = re.compile(
     r"(?P<prefix>(?P<label_quote>['\"])(?P<key>[^'\"]+)"
     r"(?P=label_quote)\s*:\s*)"
-    r"(?P<quote>['\"])(?P<credential>(?:\\.|(?!(?P=quote)).)+)"
+    r"(?P<quote>['\"])"
+    r"(?P<credential>(?:\\(?:.|\Z)|(?!(?P=quote))[^\\\n])++)"
     r"(?:(?P<closing_quote>(?P=quote))|\Z)"
 )
 _API_KEY_ASSIGNMENT = re.compile(
     r"(?i)(?<![A-Za-z0-9_])(?P<prefix>(?P<label_quote>['\"]?)"
-    r"(?:[A-Za-z0-9]+[_-])*api[_ -]?key(?P=label_quote)\s*[:=]\s*)"
+    # ponytail: at most 8 label segments keeps each match start constant work,
+    # so the scan stays linear. A label with 9+ segments before API_KEY goes
+    # unredacted unless it's unquoted and hyphen-joined; raise the bound if a
+    # real one appears.
+    r"(?:[A-Za-z0-9]+[_-]){0,8}api[_ -]?key(?P=label_quote)\s*[:=]\s*)"
     r"(?:"
     r"(?P<quote>['\"])(?P<quoted>[^'\"\s]{8,})"
     r"(?:(?P<closing_quote>(?P=quote))|\Z)"
@@ -197,16 +204,22 @@ def _structured_credentials(value: Any) -> set[str]:
     return credentials
 
 
-def _redact_known_credentials(
-    value: str,
-    credentials: set[str],
-    counts: Counter[RedactionReason],
-) -> str:
+def _known_credentials_pattern(credentials: set[str]) -> re.Pattern[str] | None:
+    """Compile once per Fact; every string leaf reuses the pattern."""
     ordered = sorted(credentials, key=lambda item: (-len(item), item))
     if not ordered:
-        return value
+        return None
     alternatives = "|".join(re.escape(credential) for credential in ordered)
-    pattern = re.compile(rf"^(?:{alternatives})$", re.MULTILINE)
+    return re.compile(rf"^(?:{alternatives})$", re.MULTILINE)
+
+
+def _redact_known_credentials(
+    value: str,
+    pattern: re.Pattern[str] | None,
+    counts: Counter[RedactionReason],
+) -> str:
+    if pattern is None:
+        return value
     return _replace(
         pattern,
         value,
@@ -218,31 +231,29 @@ def _redact_known_credentials(
 
 def _redact_known_credentials_json(
     value: Any,
-    credentials: set[str],
+    pattern: re.Pattern[str] | None,
     counts: Counter[RedactionReason],
 ) -> Any:
     """Propagate structured credentials through every JSON string leaf."""
     if isinstance(value, dict):
         return {
-            key: _redact_known_credentials_json(item, credentials, counts)
+            key: _redact_known_credentials_json(item, pattern, counts)
             for key, item in value.items()
         }
     if isinstance(value, list):
-        return [
-            _redact_known_credentials_json(item, credentials, counts) for item in value
-        ]
+        return [_redact_known_credentials_json(item, pattern, counts) for item in value]
     if isinstance(value, tuple):
         return tuple(
-            _redact_known_credentials_json(item, credentials, counts) for item in value
+            _redact_known_credentials_json(item, pattern, counts) for item in value
         )
     if isinstance(value, str):
-        return _redact_known_credentials(value, credentials, counts)
+        return _redact_known_credentials(value, pattern, counts)
     return value
 
 
 def _redact_inference_message(
     message: InferenceMessage,
-    credentials: set[str],
+    pattern: re.Pattern[str] | None,
     counts: Counter[RedactionReason],
 ) -> InferenceMessage:
     parts = []
@@ -251,9 +262,7 @@ def _redact_inference_message(
             text = _redact_text(part.content, counts)
             parts.append(
                 part.model_copy(
-                    update={
-                        "content": _redact_known_credentials(text, credentials, counts)
-                    }
+                    update={"content": _redact_known_credentials(text, pattern, counts)}
                 )
             )
         elif isinstance(part, ToolCallPart):
@@ -262,7 +271,7 @@ def _redact_inference_message(
                 part.model_copy(
                     update={
                         "arguments": _redact_known_credentials_json(
-                            arguments, credentials, counts
+                            arguments, pattern, counts
                         )
                     }
                 )
@@ -273,7 +282,7 @@ def _redact_inference_message(
                 part.model_copy(
                     update={
                         "result": _redact_known_credentials_json(
-                            result, credentials, counts
+                            result, pattern, counts
                         )
                     }
                 )
@@ -286,25 +295,25 @@ def redact_fact(fact: FactT) -> tuple[FactT, Counter[RedactionReason]]:
     counts: Counter[RedactionReason] = Counter()
     updates: dict[str, Any] = {"raw": _redact_json(fact.raw, counts)}
     if isinstance(fact, InferenceCall):
-        structured_credentials = {
-            credential
-            for message in (*fact.input_messages, *fact.output_messages)
-            for part in message.parts
-            if isinstance(part, (ToolCallPart, ToolCallResponsePart))
-            for credential in _structured_credentials(
-                part.arguments if isinstance(part, ToolCallPart) else part.result
-            )
-        }
+        pattern = _known_credentials_pattern(
+            {
+                credential
+                for message in (*fact.input_messages, *fact.output_messages)
+                for part in message.parts
+                if isinstance(part, (ToolCallPart, ToolCallResponsePart))
+                for credential in _structured_credentials(
+                    part.arguments if isinstance(part, ToolCallPart) else part.result
+                )
+            }
+        )
         updates.update(
-            raw=_redact_known_credentials_json(
-                updates["raw"], structured_credentials, counts
-            ),
+            raw=_redact_known_credentials_json(updates["raw"], pattern, counts),
             input_messages=[
-                _redact_inference_message(message, structured_credentials, counts)
+                _redact_inference_message(message, pattern, counts)
                 for message in fact.input_messages
             ],
             output_messages=[
-                _redact_inference_message(message, structured_credentials, counts)
+                _redact_inference_message(message, pattern, counts)
                 for message in fact.output_messages
             ],
         )
@@ -316,9 +325,9 @@ def redact_fact(fact: FactT) -> tuple[FactT, Counter[RedactionReason]]:
     elif isinstance(fact, RejectedEdit):
         updates["proposed"] = _redact_text(fact.proposed, counts)
     elif isinstance(fact, CIOutcome) and fact.reason is not None:
-        credentials = _structured_credentials(fact.raw)
+        pattern = _known_credentials_pattern(_structured_credentials(fact.raw))
         reason = _redact_text(fact.reason, counts)
-        reason = _redact_known_credentials(reason, credentials, counts)
+        reason = _redact_known_credentials(reason, pattern, counts)
         if len(reason) > CI_REASON_MAX_LENGTH:
             reason = (
                 reason[: CI_REASON_MAX_LENGTH - len(REDACTION_MARKER)]

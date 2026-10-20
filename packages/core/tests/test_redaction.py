@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import time
 from collections import Counter
 from datetime import UTC, datetime
 
@@ -408,3 +409,55 @@ def test_redacts_unterminated_quoted_values() -> None:
     )
     assert redacted_twice == redacted
     assert second_counts == Counter()
+
+
+def test_redacts_quoted_backslash_run_in_linear_time() -> None:
+    content = "'api_key':'" + "\\" * 36 + "\nx"
+    fact = _inference_call(output_text=content)
+
+    started = time.perf_counter()
+    redacted, counts = redact_fact(fact)
+
+    assert time.perf_counter() - started < 0.5
+    assert redacted == fact
+    assert counts == Counter()
+
+
+def test_redacts_hyphenated_label_run_in_linear_time() -> None:
+    fact = _inference_call(output_text="a-" * 15_000)
+
+    started = time.perf_counter()
+    redacted, counts = redact_fact(fact)
+
+    assert time.perf_counter() - started < 0.5
+    assert redacted == fact
+    assert counts == Counter()
+
+
+def test_propagates_many_structured_credentials_in_linear_time() -> None:
+    credentials = [f"secret-{index:06d}-abcdefgh" for index in range(1000)]
+    fact = _inference_call(
+        output_messages=[
+            InferenceMessage(
+                role="assistant",
+                parts=[
+                    ToolCallPart(
+                        id=f"tool-{index}",
+                        name="fetch",
+                        arguments={"x_api_key": credential},
+                    )
+                    for index, credential in enumerate(credentials)
+                ],
+            )
+        ],
+        raw={"echoes": credentials},
+    )
+
+    started = time.perf_counter()
+    redacted, counts = redact_fact(fact)
+
+    assert time.perf_counter() - started < 0.5
+    assert redacted.raw == {"echoes": [REDACTION_MARKER] * len(credentials)}
+    assert counts == Counter(
+        {RedactionReason.STRUCTURED_CREDENTIAL: 2 * len(credentials)}
+    )
