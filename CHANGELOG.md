@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Installation
+
+- Preserve a repository shell hook's exit status when `sediment install`
+  appends its marked block. Sediment commands end in `|| true`. They never
+  fail a commit or push. The block restores the previous status in a
+  subshell. Commands after the block run. `prepare-commit-msg` treats a
+  missing commit source as empty under `set -u`. Closes #170.
+
 ## 0.6.1 — 2026-10-19
 
 ### Security
