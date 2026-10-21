@@ -1135,6 +1135,204 @@ def test_install_is_idempotent_and_preserves_existing_hooks(tmp_path: Path) -> N
     assert content.count("# >>> sediment-attribution >>>") == 1  # not duplicated
 
 
+@pytest.fixture(params=("local", "fleet"))
+def hook_installation(
+    tmp_path: Path,
+    request: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, Path, list[str]]:
+    """A repository plus the hooks directory each installer writes.
+
+    Local install and ``install --fleet`` both call ``_install_hook_block``,
+    so a status-preserving block has to land in both places.
+    """
+    repo = make_repo(tmp_path / "r")
+    # Fleet hooks invoke ``python3`` from PATH. The venv interpreter's
+    # directory is first; ``_sediment_executable`` still skips ``.venv``.
+    monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}:/usr/bin:/bin")
+    if request.param == "local":
+        return repo, hooks_dir(repo), ["install", str(repo), "--no-agents"]
+    bundle = tmp_path / "bundle"
+    hooks = bundle / "git-template" / "hooks"
+    hooks.mkdir(parents=True)
+    return (
+        repo,
+        hooks,
+        ["install", "--fleet", "--out", str(bundle), "--prefix", str(bundle)],
+    )
+
+
+def _run_hook(hook: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [str(hook), *args], cwd=cwd, capture_output=True, text=True, timeout=60
+    )
+
+
+@pytest.mark.parametrize("hook_name", ("post-commit", "prepare-commit-msg", "pre-push"))
+@pytest.mark.parametrize("status", (0, 23))
+def test_installed_hook_preserves_repository_status(
+    hook_installation: tuple[Path, Path, list[str]],
+    hook_name: str,
+    status: int,
+) -> None:
+    repo, hooks, install_args = hook_installation
+    hook = hooks / hook_name
+    original = f"#!/bin/sh\n(exit {status})\n"
+    hook.write_text(original)
+    hook.chmod(0o755)
+    args = ("message", "message")
+    assert _run_hook(hook, repo, *args).returncode == status
+    for _ in range(2):
+        result = run_cli(install_args, cwd=repo)
+        assert result.returncode == 0, result.stderr
+        result = _run_hook(hook, repo, *args)
+        assert result.returncode == status, result.stderr
+    assert hook.read_text().count("# >>> sediment-attribution >>>") == 1
+    _load_module()._remove_hook_block(hook)
+    assert hook.read_text() == original
+    assert _run_hook(hook, repo, *args).returncode == status
+
+
+@pytest.mark.parametrize("status", (0, 23))
+@pytest.mark.parametrize("errexit", (False, True))
+def test_reinstalled_hook_preserves_tail_code_and_incoming_status(
+    hook_installation: tuple[Path, Path, list[str]],
+    status: int,
+    errexit: bool,
+) -> None:
+    # `(exit N) && :` leaves status N without tripping `set -e`. The block
+    # must hand that status to commands after it, and those commands decide
+    # the hook's result.
+    repo, hooks, install_args = hook_installation
+    hook = hooks / "pre-push"
+    original = (
+        f"#!/bin/sh\nset -e\n(exit {status}) && :\n"
+        if errexit
+        else f"#!/bin/sh\n(exit {status})\n"
+    )
+    hook.write_text(original)
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    tail = (
+        "sediment_tail_status=$?\n"
+        'printf "tail:%s\\n" "$sediment_tail_status"\n'
+        "(exit 31)\n"
+    )
+    hook.write_text(hook.read_text() + tail)
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    result = _run_hook(hook, repo, "origin")
+    assert result.returncode == 31, result.stderr
+    assert result.stdout == f"tail:{status}\n"
+    _load_module()._remove_hook_block(hook)
+    assert hook.read_text() == original + tail
+
+
+@pytest.mark.parametrize("source", ([], ["message"]))
+def test_prepare_commit_msg_optional_source_under_nounset(
+    hook_installation: tuple[Path, Path, list[str]], source: list[str]
+) -> None:
+    repo, hooks, install_args = hook_installation
+    hook = hooks / "prepare-commit-msg"
+    hook.write_text("#!/bin/sh\nset -eu\n")
+    assert run_cli(install_args, cwd=repo).returncode == 0
+    message = repo / "message"
+    message.write_text("ordinary commit\n")
+    result = _run_hook(hook, repo, str(message), *source)
+    assert result.returncode == 0, result.stderr
+    assert not result.stderr
+
+
+@pytest.mark.parametrize("shell", ("sh", "bash", "dash", "ash", "ksh", "zsh"))
+@pytest.mark.parametrize("status", (0, 23))
+def test_capture_failure_preserves_hook_status(
+    tmp_path: Path, shell: str, status: int
+) -> None:
+    executable = shutil.which(shell)
+    if executable is None:
+        pytest.skip(f"{shell} is unavailable")
+    hook = tmp_path / "pre-push"
+    hook.write_text(f"#!{executable}\nset -eu\n(exit {status}) && :\n")
+    assert _load_module()._install_hook_block(
+        hook, "printf 'capture attempted\\n'; (exit 71) || true"
+    )
+    result = subprocess.run([str(hook)], capture_output=True, text=True, timeout=60)
+    assert result.stdout == "capture attempted\n"
+    assert result.returncode == status
+
+
+@pytest.mark.parametrize("status", (0, 1))
+def test_install_preserves_pre_push_status_for_real_git_push(
+    tmp_path: Path, status: int
+) -> None:
+    repo = make_repo(tmp_path / "r")
+    make_remote(tmp_path, repo)
+    hook = hooks_dir(repo) / "pre-push"
+    hook.write_text(f"#!/bin/sh\n(exit {status})\n")
+    hook.chmod(0o755)
+    branch = git(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    before = subprocess.run(
+        ["git", "push", "-q", "origin", branch],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert before.returncode == status
+    assert run_cli(["install", str(repo), "--no-agents"], cwd=repo).returncode == 0
+    after = subprocess.run(
+        ["git", "push", "-q", "origin", branch],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert after.returncode == status, after.stderr
+
+
+def test_plain_git_commit_survives_nounset_prepare_commit_msg(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path / "r")
+    hook = hooks_dir(repo) / "prepare-commit-msg"
+    hook.write_text("#!/bin/sh\nset -eu\n")
+    hook.chmod(0o755)
+    assert run_cli(["install", str(repo), "--no-agents"], cwd=repo).returncode == 0
+    (repo / "a.py").write_text("x = 2\n")
+    git(repo, "add", "-A")
+    editor = tmp_path / "editor.sh"
+    editor.write_text('#!/bin/sh\nprintf "nounset commit\\n" > "$1"\n')
+    editor.chmod(0o755)
+    # git commit without -m calls prepare-commit-msg with only the message file.
+    env = os.environ.copy()
+    env["GIT_EDITOR"] = str(editor)
+    env.pop("VISUAL", None)
+    env.pop("EDITOR", None)
+    result = subprocess.run(
+        ["git", "commit", "-q"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_doctor_recognizes_hooks_after_status_preserving_install(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    repo = make_repo(tmp_path / "r")
+    hook = hooks_dir(repo) / "pre-push"
+    hook.write_text("#!/bin/sh\nfalse\n")
+    hook.chmod(0o755)
+    assert run_cli(["install", str(repo), "--no-agents"], cwd=repo).returncode == 0
+    result = doctor(repo, home, str(repo))
+    assert findings(result)[f"hooks[{repo}]"].startswith("ok")
+    uninstall = run_cli(["uninstall", str(repo)], cwd=repo)
+    assert uninstall.returncode == 0
+    assert "sediment-attribution" not in hook.read_text()
+    assert "false" in hook.read_text()
+
+
 def test_install_respects_core_hooks_path(tmp_path: Path) -> None:
     repo = make_repo(tmp_path / "r")
     custom = repo / ".husky"

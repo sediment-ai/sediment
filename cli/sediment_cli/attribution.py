@@ -152,7 +152,9 @@ _HOOK_BLOCK_RE = re.compile(
 # disagree about which hooks exist.
 _REPO_HOOKS = (
     ("post-commit", "stamp"),
-    ("prepare-commit-msg", 'union-squash-notes "$1" "$2"'),
+    # A plain `git commit` passes one argument. `${2-}` is empty when git
+    # omits the commit source, so `set -u` doesn't abort before `|| true`.
+    ("prepare-commit-msg", 'union-squash-notes "$1" "${2-}"'),
     ("pre-push", 'push-notes "$1"'),
 )
 # Substrings used to recognise our entries in agent hook configs. The
@@ -2257,8 +2259,24 @@ def _install_hook_block(hook_file: Path, command: str) -> bool:
     Refuses (returns False) when the existing hook is not an sh script —
     appending sh to a python/binary hook would break every commit/push, the
     one thing the stamper must never do.
+
+    The block saves the status it found and restores it after ``command``.
+    ``command`` ends in ``|| true``, so a Sediment failure cannot fail the
+    commit or push. The restore runs in a subshell: later hook commands still
+    run, and ``set -e`` doesn't treat the restored status as a block failure.
     """
-    block = f"{HOOK_BLOCK_BEGIN}\n{command}\n{HOOK_BLOCK_END}\n"
+    # The subshell restores the previous command's status without exiting the
+    # hook or leaking `__sediment_status`. `&& :` keeps that restored status
+    # from tripping `set -e` before later commands.
+    block = (
+        f"{HOOK_BLOCK_BEGIN}\n"
+        "(\n"
+        "    __sediment_status=$?\n"
+        f"    {command}\n"
+        '    exit "$__sediment_status"\n'
+        ") && :\n"
+        f"{HOOK_BLOCK_END}\n"
+    )
     if hook_file.exists():
         try:
             content = hook_file.read_text(encoding="utf-8")
