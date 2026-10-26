@@ -11,7 +11,7 @@ dependencies = [
     "fastapi>=0.142.2",
     "httpx>=0.27",
     "uvicorn>=0.54.0",
-    "pydantic-settings>=2.16.0",
+    "pydantic-settings>=2.16.1",
     "sediment-core==0.6.1",
     "sediment-capture==0.6.1",
     "sediment-derive==0.6.1",
