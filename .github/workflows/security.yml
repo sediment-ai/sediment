@@ -41,8 +41,8 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
       - name: Select validation scope
         id: scope
         env:
@@ -100,8 +100,8 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
       - name: Download exact release wheels
         if: inputs.wheels-artifact != ''
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -136,11 +136,11 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "24.21.0"
+          node-version: "24.22.2"
       - name: Scan the production pi installation
         working-directory: shims/pi
         run: >-
@@ -185,8 +185,8 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
       - name: Install checksum-pinned Trivy
         env:
           TRIVY_PLATFORM: ${{ matrix.trivy-platform }}
