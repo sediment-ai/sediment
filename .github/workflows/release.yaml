@@ -72,10 +72,10 @@ jobs:
           exit 1
       - name: Install the maintained system PostgreSQL client library
         run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libpq5
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
 
       - name: Rehearse the complete release without publishing
         run: uv run python scripts/release_rehearsal.py --tag "$GITHUB_REF_NAME" --out-dir dist
@@ -120,10 +120,10 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
-          python-version: "3.12.15"
+          version: "0.13.6"
+          python-version: "3.12.16"
 
       - name: Add the installer, support metadata, and SHA256SUMS
         env:
@@ -177,9 +177,9 @@ jobs:
           name: python-distributions
           path: dist
 
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
-          version: "0.13.1"
+          version: "0.13.6"
 
       - name: Publish to PyPI
         run: >-

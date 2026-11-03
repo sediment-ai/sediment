@@ -2,18 +2,46 @@
 
 ## Unreleased
 
+### Installation
+
+- Preserve a repository shell hook's exit status when `sediment install`
+  appends its marked block. Sediment commands end in `|| true`. They never
+  fail a commit or push. The block restores the previous status in a
+  subshell. Commands after the block run. `prepare-commit-msg` treats a
+  missing commit source as empty under `set -u`. Closes #170.
+
 ### Security
 
-- Stop three Basic redaction costs that let one ingest request with a capture
-  token stall the single-process API. A quoted credential value with a long
-  backslash run before a line break backtracked exponentially. A long run of
-  hyphen-joined words scanned quadratically. Basic redaction rebuilt the
-  structured-credential pattern for every string in the Fact. Two inputs
-  redact differently. A label with nine or more segments before `API_KEY`,
-  such as `A_B_C_D_E_F_G_H_I_API_KEY`, keeps its assigned value unless the
-  label is unquoted and hyphen-joined. An unterminated quoted credential that
-  contains an escaped quote and then a line break keeps its value; earlier,
-  Basic redaction replaced the value up to the last escaped quote.
+- Bound Basic redaction scan time for quoted backslash runs and long API-key
+  labels. Compile structured credential propagation once per Fact. Preserve
+  arbitrary label lengths and redact truncated quoted credentials through
+  the line break.
+
+- Update API dependencies to Alembic 1.20.1, FastAPI 0.162.0, Pydantic
+  2.14.2, pydantic-settings 2.16.2, and SQLAlchemy 2.1.6.
+
+- Update the API image, client audit, and continuous integration (CI) to
+  Python 3.12.16. Update the API image and CI to uv 0.13.6, the Compose proxy
+  to Traefik 3.7.16, and the pi evaluation image and CI to Node 24.22.2.
+- Renew the maintenance catalog and image reviews through 2026-12-03 after
+  fresh scans of both architectures. Remove dispositions for six advisory
+  IDs that the images no longer need. Review SQLite CVE-2026-119373: Debian
+  has no fixed Bookworm package, and Sediment has no SQLite execution path.
+  The installed library remains vulnerable to custom callers. Closes #317.
+
+### Contributor checks
+
+- Update pytest to 9.2.0 and Ruff to 0.17.3.
+
+- Update the setup-uv action to 10.3.2 and both TruffleHog scans to 3.99.7.
+
+- Give the repeated-hour Attributed completion test an explicit Inference
+  call timestamp. Its fixed snapshot previously excluded the call after the
+  wall clock passed the snapshot date. Closes #331.
+- Check the libpq maintenance test at the catalog review date so a catalog
+  renewal does not invalidate the test's fixed October date.
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
 
 ## 0.6.1 — 2026-10-19
 

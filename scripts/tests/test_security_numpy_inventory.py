@@ -233,7 +233,10 @@ def test_loaded_host_libpq_is_reviewed_and_latest_patch_is_still_required(
     parent = {"ecosystem": "pypi", "name": "psycopg", "version": "3.3.5"}
     assert (
         policy.check_maintenance(
-            [parent], {"libpq": version}, catalog, date(2026, 10, 3)
+            [parent],
+            {"libpq": version},
+            catalog,
+            date.fromisoformat(catalog["reviewed_on"]),
         )
         == []
     )

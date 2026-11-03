@@ -419,8 +419,51 @@ def test_redacts_quoted_backslash_run_in_linear_time() -> None:
     redacted, counts = redact_fact(fact)
 
     assert time.perf_counter() - started < 0.5
-    assert redacted == fact
-    assert counts == Counter()
+    assert redacted.output_messages[0].parts[0].content == (
+        f"'api_key':'{REDACTION_MARKER}\nx"
+    )
+    assert counts == Counter({RedactionReason.STRUCTURED_CREDENTIAL: 1})
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "A_B_C_D_E_F_G_H_I_API_KEY",
+        "A-B-C-D-E-F-G-H-I-API-KEY",
+        "--api-key",
+        "prefix--api-key",
+        "a_" * 15_000 + "API_KEY",
+    ],
+)
+@pytest.mark.parametrize("quote", ["", "'", '"'])
+def test_redacts_unbounded_api_key_labels(label: str, quote: str) -> None:
+    prefix = f"{quote}{label}{quote}="
+    fact = _inference_call(output_text=prefix + "synthetic0123456789")
+
+    started = time.perf_counter()
+    redacted, counts = redact_fact(fact)
+
+    assert time.perf_counter() - started < 0.5
+    assert redacted.output_messages[0].parts[0].content == prefix + REDACTION_MARKER
+    assert counts == Counter({RedactionReason.API_KEY_ASSIGNMENT: 1})
+
+
+@pytest.mark.parametrize("quote", ["'", '"'])
+@pytest.mark.parametrize("ending", ["", "\\", "\\" * 37])
+def test_redacts_truncated_quoted_credentials(quote: str, ending: str) -> None:
+    prefix = f"{quote}authorization{quote}: {quote}"
+    content = prefix + "synthetic\\" + quote + "secret" + ending + "\nnext line"
+    fact = _inference_call(output_text=content)
+
+    redacted, counts = redact_fact(fact)
+    again, again_counts = redact_fact(redacted)
+
+    assert redacted.output_messages[0].parts[0].content == (
+        prefix + REDACTION_MARKER + "\nnext line"
+    )
+    assert counts == Counter({RedactionReason.STRUCTURED_CREDENTIAL: 1})
+    assert again == redacted
+    assert again_counts == Counter()
 
 
 def test_redacts_hyphenated_label_run_in_linear_time() -> None:

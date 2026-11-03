@@ -60,16 +60,14 @@ _QUOTED_STRUCTURED_ASSIGNMENT = re.compile(
     r"(?P<prefix>(?P<label_quote>['\"])(?P<key>[^'\"]+)"
     r"(?P=label_quote)\s*:\s*)"
     r"(?P<quote>['\"])"
-    r"(?P<credential>(?:\\(?:.|\Z)|(?!(?P=quote))[^\\\n])++)"
-    r"(?:(?P<closing_quote>(?P=quote))|\Z)"
+    r"(?P<credential>(?:\\[^\n]?|(?!(?P=quote))[^\\\n])++)"
+    r"(?:(?P<closing_quote>(?P=quote))|(?=\n)|\Z)"
 )
 _API_KEY_ASSIGNMENT = re.compile(
-    r"(?i)(?<![A-Za-z0-9_])(?P<prefix>(?P<label_quote>['\"]?)"
-    # ponytail: at most 8 label segments keeps each match start constant work,
-    # so the scan stays linear. A label with 9+ segments before API_KEY goes
-    # unredacted unless it's unquoted and hyphen-joined; raise the bound if a
-    # real one appears.
-    r"(?:[A-Za-z0-9]+[_-]){0,8}api[_ -]?key(?P=label_quote)\s*[:=]\s*)"
+    # Scan each whole label once, including leading CLI hyphens. Starting
+    # again after each hyphen makes a long nonmatching label quadratic.
+    r"(?i)(?<![A-Za-z0-9_-])(?P<prefix>(?P<label_quote>['\"]?)"
+    r"(?:[A-Za-z0-9_-]*[_-])?api[_ -]?key(?P=label_quote)\s*[:=]\s*)"
     r"(?:"
     r"(?P<quote>['\"])(?P<quoted>[^'\"\s]{8,})"
     r"(?:(?P<closing_quote>(?P=quote))|\Z)"
