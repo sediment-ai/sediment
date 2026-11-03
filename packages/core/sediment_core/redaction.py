@@ -56,6 +56,7 @@ _AUTHORIZATION_HEADER = re.compile(
 )
 # A backslash always starts an escape and never a plain character, so a quoted
 # value has one tiling and the possessive loop never backtracks into it.
+# A line break terminates a truncated credential, including a trailing escape.
 _QUOTED_STRUCTURED_ASSIGNMENT = re.compile(
     r"(?P<prefix>(?P<label_quote>['\"])(?P<key>[^'\"]+)"
     r"(?P=label_quote)\s*:\s*)"
