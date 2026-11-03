@@ -83,6 +83,9 @@ pipeline in a scratch database. Retain the `pipeline acceptance:` JSON and
 final pass message. `--tag` validates version equality; it doesn't require
 creating the Git tag before merge.
 
+The output directory can also contain uv's hidden `.gitignore`. Count and hash
+the six `*.whl` and six `*.tar.gz` files, rather than every directory entry.
+
 Full repository tests, installed pi-helper coverage, native platform checks,
 and artifact security use the maintained workflows. Record local and hosted
 results separately. Synthetic acceptance doesn't verify live agents, model

@@ -50,6 +50,9 @@ override a rejected environment approval.
 
 1. Confirm the workflow succeeded and the GitHub Release has the intended tag
    commit, published state, and prerelease/latest status.
+   Check its description against the changelog for required upgrade steps.
+   If generated notes omit those steps, prepend them after publication with
+   `gh release edit --notes-file`. Preserve the generated change list.
 2. Download assets to a fresh directory. Verify `SHA256SUMS`, the twelve Python
    distribution filenames, installer, support metadata, and security evidence.
    Read `scripts/rescan_releases.py` for the live bundle contract instead of
