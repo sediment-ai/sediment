@@ -172,6 +172,22 @@ def test_report_compares_arms_only_within_one_allocation_source() -> None:
     assert report.provenance.quarantine_revision == 4
 
 
+def test_report_counts_a_session_with_an_unrepresentable_call_timestamp() -> None:
+    allocations, calls = _session("bad-time", source=RANDOMIZED, cpu=2000, work_s=60)
+    calls[0] = InferenceCall.model_validate(
+        {**calls[0].model_dump(), "observed_at": "9999-12-31T23:59:59-14:00"}
+    )
+
+    result = derive_compute_timing_result(allocations, calls)
+    report = compute_report_to_json(build_compute_report(result))
+
+    assert report["sessions_with_allocation"] == 1
+    assert report["timed_sessions"] == 0
+    assert report["skipped"]["inference_call_interval_unrepresentable"] == 1
+    assert report["arms"] == report["comparisons"] == []
+    assert compute_timings_to_export_rows(result.timings) == []
+
+
 def test_report_counts_randomized_sessions_that_end_under_another_source() -> None:
     allocations: list[ComputeAllocation] = []
     calls: list[InferenceCall] = []

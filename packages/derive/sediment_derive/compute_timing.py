@@ -205,10 +205,9 @@ def derive_compute_timing_result(
                 key=lambda item: (_utc(item.occurred_at), item.allocation_id),
             )
         )
-        calls = sorted(
-            calls_by_session[(org_id, session_id)],
-            key=lambda item: (_utc(item.observed_at), item.inference_call_id),
-        )
+        # _intervals orders UTC instants inside its overflow guard. Sorting
+        # timestamps here would raise before the counted skip can handle them.
+        calls = calls_by_session[(org_id, session_id)]
         final_at = _utc(session_allocations[-1].occurred_at)
         final_arms = {
             compute_arm_of(item)

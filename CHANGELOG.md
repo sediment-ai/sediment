@@ -10,6 +10,67 @@
   record contract moves to version 8 because `fact_table` gains
   `compute_allocations`. Closes #306.
 
+### Capture
+
+- Add `POST /ingest/compute`. The platform that runs a coding agent sends
+  the CPU and memory limits that each Session's environment received, when
+  the environment starts and on every resize, with `allocation_source`:
+  `default`, `agent_request`, `operator`, or `randomized`. The Session dossier
+  lists these Compute allocations in a `compute_allocations` field, outside
+  the timeline, so existing `sediment doctor` copies keep reading it. An
+  `occurred_at` that can't convert to UTC returns 422.
+  See [ADR 0029](docs/adr/0029-compute-allocation-facts.md). Closes #306.
+
+### Operational evidence
+
+- Add `sediment report compute`. It groups Sessions by their final Compute
+  allocation and compares median elapsed and between-call time with a
+  fixed-seed bootstrap interval, only within one allocation source. A
+  comparison of `randomized` allocations supports a causal reading; the
+  report marks every other comparison observational, because an agent that
+  asks for more compute is often on a harder task. It counts randomized
+  Sessions whose final allocation came from another source, because they
+  leave the randomized arms. `--rows-out` writes one `SessionComputeTiming`
+  row per Session. Closes #306.
+
+### Installation
+
+- Preserve a repository shell hook's exit status when `sediment install`
+  appends its marked block. Sediment commands end in `|| true`. They never
+  fail a commit or push. The block restores the previous status in a
+  subshell. Commands after the block run. `prepare-commit-msg` treats a
+  missing commit source as empty under `set -u`. Closes #170.
+
+### Security
+
+- Update API dependencies to Alembic 1.20.1, FastAPI 0.162.0, Pydantic
+  2.14.2, pydantic-settings 2.16.2, and SQLAlchemy 2.1.6.
+
+- Update the API image, client audit, and continuous integration (CI) to
+  Python 3.12.16. Update the API image and CI to uv 0.13.6, the Compose proxy
+  to Traefik 3.7.16, and the pi evaluation image and CI to Node 24.22.2.
+- Renew the maintenance catalog and image reviews through 2026-12-03 after
+  fresh scans of both architectures. Remove dispositions for six advisory
+  IDs that the images no longer need. Review SQLite CVE-2026-119373: Debian
+  has no fixed Bookworm package, and Sediment has no SQLite execution path.
+  The installed library remains vulnerable to custom callers. Closes #317.
+
+### Contributor checks
+
+- Update pytest to 9.2.0 and Ruff to 0.17.3.
+
+- Update the setup-uv action to 10.3.2 and both TruffleHog scans to 3.99.7.
+
+- Give the repeated-hour Attributed completion test an explicit Inference
+  call timestamp. Its fixed snapshot previously excluded the call after the
+  wall clock passed the snapshot date. Closes #331.
+- Check the libpq maintenance test at the catalog review date so a catalog
+  renewal does not invalidate the test's fixed October date.
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
+
+## 0.6.1 — 2026-10-19
+
 ### Security
 
 - Keep URL credentials out of notes-push diagnostics. Git hands the `pre-push`
@@ -37,29 +98,23 @@
   images. Debian has no fixed Bookworm package. In the API, only Git's HTTPS
   mirror fetches reach GnuTLS. PostgreSQL reaches it only through LDAP
   authentication, which the supplied SCRAM-only configuration excludes.
-- Update the API image to FastAPI 0.142.2 and SQLAlchemy 2.1.3. FastAPI adds
+- Review util-linux CVE-2026-53615 in the API and PostgreSQL images. Debian has
+  no fixed Bookworm package. The flaw is in libblkid's partition-table parser,
+  and neither image probes a disk image or block device.
+- Update the API image to FastAPI 0.148.0, Starlette 1.9.0, SQLAlchemy 2.1.5,
+  Pydantic 2.14.1, and pydantic-settings 2.16.0. FastAPI adds
   `opentelemetry-api` 1.45.1 to the image. The image has no OpenTelemetry SDK,
-  so the API exports no telemetry. If you set `OTEL_EXPORTER_OTLP_ENDPOINT`,
-  FastAPI logs a warning at startup.
-- Update every image and workflow to uv 0.12.24, and CI to TruffleHog 3.99.0.
-
-### Capture
-
-- Add `POST /ingest/compute`. The platform that runs a coding agent sends
-  the CPU and memory limits that each Session's environment received, when
-  the environment starts and on every resize, with `allocation_source`:
-  `default`, `agent_request`, `operator`, or `randomized`. The Session dossier
-  lists these Compute allocations in a `compute_allocations` field, outside
-  the timeline, so existing `sediment doctor` copies keep reading it. An
-  `occurred_at` that can't convert to UTC returns 422.
-  See [ADR 0029](docs/adr/0029-compute-allocation-facts.md). Closes #306.
+  and FastAPI configures exporters only on opt-in, so the API exports no
+  telemetry.
+- Update every image and workflow to uv 0.13.1, the Compose proxy to Traefik
+  3.7.14, and CI to TruffleHog 3.99.2.
 
 ### Contributor checks
 
 - Replace the static README architecture diagram with an animated data-flow
   figure. `scripts/gen_data_flow_figure.py` compiles both theme SVGs from one
   timeline, and continuous integration (CI) runs its `--check`.
-- Test the pi shim against pi-coding-agent 1.0.4. The continuation comparison's
+- Test the pi shim against pi-coding-agent 1.1.0. The continuation comparison's
   version check and its task-selection tests follow the lockfile.
 
 ### Installation
@@ -78,15 +133,6 @@
 
 ### Operational evidence
 
-- Add `sediment report compute`. It groups Sessions by their final Compute
-  allocation and compares median elapsed and between-call time with a
-  fixed-seed bootstrap interval, only within one allocation source. A
-  comparison of `randomized` allocations supports a causal reading; the
-  report marks every other comparison observational, because an agent that
-  asks for more compute is often on a harder task. It counts randomized
-  Sessions whose final allocation came from another source, because they
-  leave the randomized arms. `--rows-out` writes one `SessionComputeTiming`
-  row per Session. Closes #306.
 - Label a failed CI run that omits `workflow_name` as `unnamed` in
   `sediment report model`, rather than printing an unlabeled `=N` entry and
   emitting `{"": N}` in JSON. The table and the JSON both read

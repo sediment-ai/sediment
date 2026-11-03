@@ -505,16 +505,16 @@ for the publisher-to-project relationship.
 
 ### Reproduce the checks
 
-Run the commands from the release source checkout. Use Python 3.12.15 and uv
-0.12.24. Install the exact Trivy version and verified checksum specified in
+Run the commands from the release source checkout. Use Python 3.12.16 and uv
+0.13.6. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.
 
 ```sh
-uv run --python 3.12.15 --no-project python scripts/security_static.py --out security-evidence
+uv run --python 3.12.16 --no-project python scripts/security_static.py --out security-evidence
 uv build --all-packages --wheel --out-dir dist
-uv run --python 3.12.15 --no-project python scripts/security_scan.py client \
+uv run --python 3.12.16 --no-project python scripts/security_scan.py client \
   --wheels dist --out security-evidence
 ```
 
@@ -528,13 +528,13 @@ and host-library links. Host libraries remain operator-managed; update them
 through the host package manager. The [local-server workflow](.github/workflows/local-server.yml)
 checks startup, data reuse, and shutdown on the supported targets.
 
-With Node 24.21.0 on `PATH`, run the pi check inside the shim directory:
+With Node 24.22.2 on `PATH`, run the pi check inside the shim directory:
 
 ```sh
 (
   cd shims/pi
   npm exec --yes --package=npm@12.0.2 -- \
-    uv run --python 3.12.15 --no-project python ../../scripts/security_scan.py pi \
+    uv run --python 3.12.16 --no-project python ../../scripts/security_scan.py pi \
     --out ../../security-evidence
 )
 ```
@@ -552,7 +552,7 @@ checks that it belongs to the source under review.
 To rescan one retained inventory, keep its referenced evidence files beside it:
 
 ```sh
-uv run --python 3.12.15 --no-project python scripts/security_scan.py rescan \
+uv run --python 3.12.16 --no-project python scripts/security_scan.py rescan \
   --inventory retained/api-amd64.inventory.json --out rescanned
 ```
 
@@ -1117,7 +1117,7 @@ gateway capture, the API, and private records inside your perimeter.
    docker image inspect sediment-evaluation-gate --format '{{.Id}}'
    ```
 
-   Record both image IDs. The agent image pins pi 1.0.4, Node.js, and Python. The
+   Record both image IDs. The agent image pins pi 1.1.0, Node.js, and Python. The
    counter uses the API image's HTTP client without starting its API. The frozen
    pi profile preserves empty assistant content; the prefix check remains exact.
 
@@ -1269,12 +1269,12 @@ For operator access and packet preparation, follow
 ### Test a controlled restart in pi
 
 Use a small task with an explicit goal, constraints, and final verification
-command. This procedure targets pi `1.0.4` with Node.js 24 and the existing
+command. This procedure targets pi `1.1.0` with Node.js 24 and the existing
 [pi gateway setup](docs/capture/agents/pi.md#configure-inference-call-capture). Its commands follow
-the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v1.0.4/packages/coding-agent/README.md).
+the [tagged pi CLI and Session documentation](https://github.com/earendil-works/pi/blob/v1.1.0/packages/coding-agent/README.md).
 A live run requires your approved model endpoint.
 
-1. Confirm `pi --version` reports `1.0.4` and `node --version` reports a supported
+1. Confirm `pi --version` reports `1.1.0` and `node --version` reports a supported
    version. Set `PILOT_REPO` to the existing workspace and `PILOT_MODEL` to the
    model configured in your `sediment` provider.
 2. Start the source agent in that workspace:

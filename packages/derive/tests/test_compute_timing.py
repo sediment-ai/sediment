@@ -6,6 +6,7 @@ from __future__ import annotations
 import random
 from datetime import UTC, datetime, timedelta, timezone
 
+import pytest
 from sediment_core import (
     ComputeAllocation,
     ComputeAllocationSource,
@@ -155,6 +156,27 @@ def test_an_unrepresentable_call_interval_skips_instead_of_raising() -> None:
     )
     assert result.timings == []
     assert result.skipped["inference_call_interval_unrepresentable"] == 1
+
+
+@pytest.mark.parametrize(
+    "observed_at", ["0001-01-01T00:00:00+14:00", "9999-12-31T23:59:59-14:00"]
+)
+def test_unrepresentable_call_timestamp_is_counted_before_sorting(
+    observed_at: str,
+) -> None:
+    call = InferenceCall.model_validate(
+        {**_call("bad", "s", 10, 1000).model_dump(), "observed_at": observed_at}
+    )
+    allocations = [_allocation("x", "s"), _allocation("y", "healthy")]
+    calls = [call, _call("ok", "healthy", 10, 1000)]
+
+    result = derive_compute_timing_result(allocations, calls)
+
+    assert [timing.session_id for timing in result.timings] == ["healthy"]
+    assert result.skipped["inference_call_interval_unrepresentable"] == 1
+    assert (
+        derive_compute_timing_result(reversed(allocations), reversed(calls)) == result
+    )
 
 
 def test_organizations_never_mix() -> None:
