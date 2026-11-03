@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1.26.0@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # Disposable evaluation harness; no model or deployment credentials belong here.
-FROM node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS harness
+FROM node:24.22.2-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS harness
 WORKDIR /opt/sediment-pi
 COPY shims/pi/package.json shims/pi/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-FROM python:3.12.15-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+FROM python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates libstdc++6 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
