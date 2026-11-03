@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Installation
+
+- Preserve a repository shell hook's exit status when `sediment install`
+  appends its marked block. Sediment commands end in `|| true`. They never
+  fail a commit or push. The block restores the previous status in a
+  subshell. Commands after the block run. `prepare-commit-msg` treats a
+  missing commit source as empty under `set -u`. Closes #170.
+
 ### Security
 
 - Update the API image, client audit, and continuous integration (CI) to
@@ -15,11 +23,15 @@
 
 ### Contributor checks
 
+- Update the setup-uv action to 10.3.2 and both TruffleHog scans to 3.99.7.
+
 - Give the repeated-hour Attributed completion test an explicit Inference
   call timestamp. Its fixed snapshot previously excluded the call after the
   wall clock passed the snapshot date. Closes #331.
 - Check the libpq maintenance test at the catalog review date so a catalog
   renewal does not invalidate the test's fixed October date.
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
 
 ## 0.6.1 — 2026-10-19
 

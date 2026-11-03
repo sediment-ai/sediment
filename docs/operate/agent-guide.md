@@ -85,9 +85,10 @@ Session checks to verify delivery. `commit` requires an operator credential;
 - Preserve the `sediment env` blocks in shell profiles and Sediment's entries
   in Claude Code settings, Codex hooks and profiles, Cursor hooks, and pi
   settings. User-level agent hooks apply across repositories.
-- Read hook output. Sediment commands end in `|| true`; an appended block can
-  also mask a repository check that relies on its last command's exit status.
-  A zero status alone doesn't prove that the repository's checks passed.
+- Read hook output. Sediment commands end in `|| true`, so they never fail a
+  commit or push. The marked block keeps the hook's previous exit status.
+  Commands after the block still run. A zero status alone doesn't prove that
+  capture succeeded.
 
 [What the installer changes](../capture/local-capture.md#what-the-installer-changes)
 describes the hooks. [Roll out managed capture](../capture/managed-capture.md)

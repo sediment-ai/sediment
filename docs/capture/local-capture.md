@@ -177,6 +177,10 @@ prints the command to add by hand. It also sets
 
 The hooks never fail a commit or push. They log failures, without content, to
 `~/.sediment/attribution.log`, so a successful commit doesn't prove capture.
+The marked block keeps the previous command's exit status. Commands after
+the block still run. If the hook enables `set -u`, `prepare-commit-msg`
+accepts a missing commit source. If the hooks are already installed, run
+`sediment install` again to update the block.
 
 ## Repair or recover capture
 
