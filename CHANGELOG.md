@@ -15,14 +15,13 @@
 
 ### Contributor checks
 
-- Test the pi shim against pi-coding-agent 1.5.0. The continuation
-  comparison validates the same harness version as the lockfile.
-
 - Give the repeated-hour Attributed completion test an explicit Inference
   call timestamp. Its fixed snapshot previously excluded the call after the
   wall clock passed the snapshot date. Closes #331.
 - Check the libpq maintenance test at the catalog review date so a catalog
   renewal does not invalidate the test's fixed October date.
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
 
 ## 0.6.1 — 2026-10-19
 
