@@ -1400,6 +1400,7 @@ def test_assembly_preserves_shared_repeated_hour_decision_order(
         org_id=ORG,
         session_id="sess-abandoned",
         model_call_id="call-fold",
+        observed_at=early.astimezone(UTC),
     )
     decisions = [
         _decision(call.session_id, "call-fold", occurred_at=early).model_copy(

@@ -505,16 +505,16 @@ for the publisher-to-project relationship.
 
 ### Reproduce the checks
 
-Run the commands from the release source checkout. Use Python 3.12.15 and uv
-0.13.1. Install the exact Trivy version and verified checksum specified in
+Run the commands from the release source checkout. Use Python 3.12.16 and uv
+0.13.6. Install the exact Trivy version and verified checksum specified in
 [the security workflow](.github/workflows/security.yml). The scanner
 helpers install their pinned Python tools into isolated uv tool environments.
 They don't add those tools to Sediment's runtime dependencies.
 
 ```sh
-uv run --python 3.12.15 --no-project python scripts/security_static.py --out security-evidence
+uv run --python 3.12.16 --no-project python scripts/security_static.py --out security-evidence
 uv build --all-packages --wheel --out-dir dist
-uv run --python 3.12.15 --no-project python scripts/security_scan.py client \
+uv run --python 3.12.16 --no-project python scripts/security_scan.py client \
   --wheels dist --out security-evidence
 ```
 
@@ -528,13 +528,13 @@ and host-library links. Host libraries remain operator-managed; update them
 through the host package manager. The [local-server workflow](.github/workflows/local-server.yml)
 checks startup, data reuse, and shutdown on the supported targets.
 
-With Node 24.21.0 on `PATH`, run the pi check inside the shim directory:
+With Node 24.22.2 on `PATH`, run the pi check inside the shim directory:
 
 ```sh
 (
   cd shims/pi
   npm exec --yes --package=npm@12.0.2 -- \
-    uv run --python 3.12.15 --no-project python ../../scripts/security_scan.py pi \
+    uv run --python 3.12.16 --no-project python ../../scripts/security_scan.py pi \
     --out ../../security-evidence
 )
 ```
@@ -552,7 +552,7 @@ checks that it belongs to the source under review.
 To rescan one retained inventory, keep its referenced evidence files beside it:
 
 ```sh
-uv run --python 3.12.15 --no-project python scripts/security_scan.py rescan \
+uv run --python 3.12.16 --no-project python scripts/security_scan.py rescan \
   --inventory retained/api-amd64.inventory.json --out rescanned
 ```
 
