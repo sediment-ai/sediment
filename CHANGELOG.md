@@ -20,6 +20,8 @@
   wall clock passed the snapshot date. Closes #331.
 - Check the libpq maintenance test at the catalog review date so a catalog
   renewal does not invalidate the test's fixed October date.
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
 
 ## 0.6.1 — 2026-10-19
 
