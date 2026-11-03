@@ -34,6 +34,7 @@ from sediment_core import (
     AgentHarness,
     CIProvider,
     CIResult,
+    ComputeAllocationSource,
     ContextCommitAnchor,
     FactStore,
     FactTable,
@@ -530,6 +531,7 @@ class SessionCoverageResponse:
     edit_observations: SessionFactCoverageResponse
     rejected_edits: SessionFactCoverageResponse
     retry_linkages: SessionFactCoverageResponse
+    compute_allocations: SessionFactCoverageResponse
 
 
 SessionEventType = Literal[
@@ -580,6 +582,23 @@ class SessionTimelineEvent:
 
 
 @dataclass(frozen=True)
+class ComputeAllocationSummary:
+    """One visible Compute allocation; a list beside the timeline, never in it.
+
+    ``sediment doctor`` copies on developer machines reject timeline event
+    types outside their fixed set, so the timeline vocabulary stays closed.
+    The route omits null fields, so an unknown limit is an absent key; the
+    defaults keep that absence inside the published contract."""
+
+    allocation_id: str
+    allocation_source: ComputeAllocationSource
+    occurred_at: datetime
+    captured_at: datetime
+    cpu_millicores: int | None = None
+    memory_bytes: int | None = None
+
+
+@dataclass(frozen=True)
 class AttributedCommitSummary:
     """Observation-backed Session edge with compatibility Attribution fields.
 
@@ -621,6 +640,7 @@ class SessionDossierFound:
     omitted_events: int
     gaps: list[SessionGap]
     timeline: list[SessionTimelineEvent]
+    compute_allocations: list[ComputeAllocationSummary]
     attributed_commits: list[AttributedCommitSummary]
     pushes: list[PushSummary]
     ci_outcomes: list[SessionCIOutcomeSummary]
@@ -1031,6 +1051,9 @@ def _run_session_query(
         if dossier is None:
             return SessionDossierNotFound(found=False)
 
+        allocations = snapshot.read_compute_allocations(
+            settings.org_id, session_ids={session_id}, limit=_SESSION_DOSSIER_LIMIT
+        )
         # One request boundary and complete context precede the Session filter.
         boundary = datetime.now(UTC)
         context = read_repository_context(snapshot, settings.org_id, as_of=boundary)
@@ -1101,12 +1124,31 @@ def _run_session_query(
             edit_observations=_fact_coverage(dossier, "edit_observations"),
             rejected_edits=_fact_coverage(dossier, "rejected_edits"),
             retry_linkages=_fact_coverage(dossier, "retry_linkages"),
+            compute_allocations=_fact_coverage(dossier, "compute_allocations"),
         ),
+        # Timeline omissions only: quarantined Compute allocations stay in
+        # their own coverage, so they never mark decision evidence incomplete.
         omitted_events=sum(
-            coverage.quarantined for coverage in dossier.coverage.values()
+            coverage.quarantined
+            for fact_type, coverage in dossier.coverage.items()
+            if fact_type != "compute_allocations"
         ),
         gaps=gaps,
         timeline=[_timeline_event(row) for row in dossier.timeline],
+        compute_allocations=[
+            ComputeAllocationSummary(
+                allocation_id=item.allocation_id,
+                allocation_source=item.allocation_source,
+                cpu_millicores=item.cpu_millicores,
+                memory_bytes=item.memory_bytes,
+                occurred_at=item.occurred_at,
+                captured_at=item.captured_at,
+            )
+            for item in sorted(
+                allocations,
+                key=lambda item: (item.occurred_at.astimezone(UTC), item.allocation_id),
+            )
+        ],
         attributed_commits=attributed_commits,
         session_commit_unobserved=int(not attributed_commits),
         repository_skipped=dict(binding_result.skipped),

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/facts/compute-allocation/v1.json",
+  "title": "ComputeAllocation",
+  "description": "One Session execution environment's CPU and memory limits.",
+  "type": "object",
+  "properties": {
+    "allocation_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "Stable id for this Compute allocation fact."
+    },
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "allocation_source": {
+      "enum": [
+        "default",
+        "agent_request",
+        "operator",
+        "randomized"
+      ],
+      "type": "string",
+      "description": "Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational."
+    },
+    "cpu_millicores": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero."
+    },
+    "memory_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "Memory limit in bytes. Null means the sender reported no memory limit, never zero."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the allocation took effect, by the sender's clock. Derivations order a Session's allocations by it and never compare it with gateway-observed time."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "allocation_id",
+    "org_id",
+    "session_id",
+    "allocation_source",
+    "cpu_millicores",
+    "memory_bytes",
+    "occurred_at",
+    "captured_at"
+  ]
+}

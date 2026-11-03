@@ -5,8 +5,8 @@
 A self-hosted evidence store for coding agents. It records what happened to
 agent output and turns that evidence into reports, agent context, and RL-ready
 training data. It captures inference calls, developer accept/reject decisions,
-Edit observations, Retry linkages, git pushes, and CI outcomes as **immutable
-Facts**; derives Attributions, edit retention scores, and Reward linkage as
+Edit observations, Retry linkages, Compute allocations, git pushes, and CI
+outcomes as **immutable Facts**; derives Attributions, edit retention scores, and Reward linkage as
 **pure, recomputable functions** over those Facts; and exports two canonical
 artifacts — Attributed completions and Rollouts — projected into DPO/SFT and
 RLVR training rows (plus the Fact-derived Recovery pair, ADR 0004's one
@@ -137,7 +137,7 @@ proposals outside the open-core scope.
 |---|---|---|
 | `packages/core` | Fact models, Basic redaction, the PostgreSQL FactStore, bounded evidence projections | `docs/agents/fact-store.md` + `docs/agents/postgresql.md` |
 | `packages/capture` | Gateway adapters, OTLP translators, forge parsers | `docs/agents/capture-translators.md` |
-| `packages/derive` | Attribution, CI resolution, merge and edit retention, Rollouts, Recovery pairs, the mirror, eval splits | `docs/agents/derivations.md` |
+| `packages/derive` | Attribution, CI resolution, merge and edit retention, Session compute timing, Rollouts, Recovery pairs, the mirror, eval splits | `docs/agents/derivations.md` |
 | `packages/export` | Attributed completions, canonical schemas, trainer mapping and consumer profiles, DPO/SFT/Recovery/RLVR rows, reports, statistics | `docs/agents/exports-and-stats.md` + `docs/agents/statistics.md` |
 | `apps/api` | FastAPI ingest, OTLP receiver, authenticated report and evidence reads, mirror GC | `docs/agents/api-and-operations.md` |
 | `cli` | The `sediment` command (`sediment-cli` on PyPI): server, login, install, exports, transcript and Attribution clients | `docs/agents/api-and-operations.md` |

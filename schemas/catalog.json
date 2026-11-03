@@ -72,6 +72,13 @@
       "output_path": "schemas/facts/retry-linkage/v3.json"
     },
     {
+      "schema_id": "https://sediment.so/schemas/facts/compute-allocation/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_core.models.ComputeAllocation",
+      "artifact_family": "facts",
+      "output_path": "schemas/facts/compute-allocation/v1.json"
+    },
+    {
       "schema_id": "https://sediment.so/schemas/facts/ci-outcome/v3.json",
       "schema_version": 3,
       "python_type": "sediment_core.models.CIOutcome",
@@ -107,11 +114,11 @@
       "output_path": "schemas/facts/session-commit-observation/v3.json"
     },
     {
-      "schema_id": "https://sediment.so/schemas/facts/quarantine-record/v7.json",
-      "schema_version": 7,
+      "schema_id": "https://sediment.so/schemas/facts/quarantine-record/v8.json",
+      "schema_version": 8,
       "python_type": "sediment_core.models.QuarantineRecord",
       "artifact_family": "facts",
-      "output_path": "schemas/facts/quarantine-record/v7.json"
+      "output_path": "schemas/facts/quarantine-record/v8.json"
     },
     {
       "schema_id": "https://sediment.so/schemas/facts/repository-rename/v1.json",
@@ -245,6 +252,20 @@
       "python_type": "sediment_derive.merge_retention.MergeRetention",
       "artifact_family": "derived-artifacts",
       "output_path": "schemas/derived-artifacts/merge-retention/v3.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/compute-arm/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.compute_timing.ComputeArm",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/compute-arm/v1.json"
+    },
+    {
+      "schema_id": "https://sediment.so/schemas/derived-artifacts/session-compute-timing/v1.json",
+      "schema_version": 1,
+      "python_type": "sediment_derive.compute_timing.SessionComputeTiming",
+      "artifact_family": "derived-artifacts",
+      "output_path": "schemas/derived-artifacts/session-compute-timing/v1.json"
     },
     {
       "schema_id": "https://sediment.so/schemas/derived-artifacts/abandonment-summary/v1.json",

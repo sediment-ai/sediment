@@ -8,6 +8,7 @@ from sqlalchemy.schema import CreateIndex, CreateTable
 
 from sediment_core.models import (
     CIOutcome,
+    ComputeAllocation,
     DeveloperDecision,
     EditObservation,
     InferenceCall,
@@ -36,6 +37,7 @@ _FACT_MODELS = {
     "pull_request_revisions": PullRequestRevision,
     "fact_quarantine": QuarantineRecord,
     "repository_renames": RepositoryRename,
+    "compute_allocations": ComputeAllocation,
 }
 
 
@@ -130,6 +132,7 @@ def test_postgres_metadata_preserves_natural_key_unique_indexes() -> None:
         "uq_pull_request_revisions_natural_identified",
         "uq_session_commit_observations_edge_identified",
         "uq_repository_renames_delivery",
+        "uq_compute_allocations_natural",
     }
     indexes = {
         index.name: index
@@ -152,6 +155,12 @@ def test_postgres_metadata_preserves_natural_key_unique_indexes() -> None:
 
     ci_sql = _postgres_sql(CreateIndex(indexes["uq_ci_run"]))
     assert "coalesce(run_attempt, 0)" in ci_sql
+
+    allocation_sql = _postgres_sql(
+        CreateIndex(indexes["uq_compute_allocations_natural"])
+    )
+    assert "coalesce(cpu_millicores, 0)" in allocation_sql
+    assert "coalesce(memory_bytes, 0)" in allocation_sql
 
 
 def test_postgres_metadata_names_domain_check_constraints() -> None:

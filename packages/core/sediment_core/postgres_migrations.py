@@ -24,7 +24,7 @@ from .postgres_engine import (
     verify_minimum_server_version,
 )
 
-HEAD_REVISION = "0011_inference_call_aliases"
+HEAD_REVISION = "0012_compute_allocations"
 MIGRATION_LOCK_KEY = 7_315_324_899_385_581_412
 # A replica that finds the lock held waits for the one migrating, as
 # coder/coder's startup migration does, then fails with a diagnostic.

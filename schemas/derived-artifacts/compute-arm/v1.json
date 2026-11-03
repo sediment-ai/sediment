@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/compute-arm/v1.json",
+  "title": "ComputeArm",
+  "description": "One Compute allocation value and the source that chose it.",
+  "type": "object",
+  "properties": {
+    "allocation_source": {
+      "enum": [
+        "default",
+        "agent_request",
+        "operator",
+        "randomized"
+      ],
+      "type": "string",
+      "description": "Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational."
+    },
+    "cpu_millicores": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero."
+    },
+    "memory_bytes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Memory limit in bytes. Null means the sender reported no memory limit, never zero."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "allocation_source",
+    "cpu_millicores",
+    "memory_bytes"
+  ]
+}

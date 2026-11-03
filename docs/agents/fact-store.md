@@ -15,7 +15,7 @@ Fact shapes live in `sediment_core/models.py`; this playbook covers the remainin
 
 Everything public re-exports flat from `sediment_core`. PostgreSQL is required at runtime. `SEDIMENT_DATABASE_URL` is the sole Fact-store setting, and public `sediment_core.FactStore` names its concrete implementation. Sediment has no backend interface, selector, dual-write path, or legacy importer.
 
-## Dedup: 11 UNIQUE indexes across 10 tables
+## Dedup: 12 UNIQUE indexes across 11 tables
 
 - **inference_calls** — `(org_id, gateway_provider, model_call_id)` when the id
   is present. A stamped gateway envelope also has a stable, organization-scoped
@@ -41,10 +41,9 @@ Everything public re-exports flat from `sediment_core`. PostgreSQL is required a
   honest reading for every row captured before these fields existed, and `0` makes a different claim.
 - **rejected_edits** — the same key, the same first-write-wins, the same
   reasoning.
-- **retry_linkages** — `(org_id, agent_harness, session_id, tool_name,
-  file_path, rejected_call_id, accepted_call_id)`. Redelivery collapses
-  independently of the generated Fact id. Both call ids remain distinct and
-  nonempty.
+- **retry_linkages** — `(org_id, agent_harness, session_id, tool_name, file_path, rejected_call_id, accepted_call_id)`.
+  Redelivery collapses independently of the generated Fact id. Both call ids remain distinct and nonempty.
+- **compute_allocations** — org, Session, `occurred_at`, source, and `COALESCE(cpu_millicores, 0)`/`COALESCE(memory_bytes, 0)`; limits are positive, so `0` exists only in the index. `store_compute_allocation_receipt` returns the retained Fact ID. The Fact has no content or `raw`, so Basic redaction skips it (ADR 0029).
 - **ci_outcomes** — `(org_id, provider, run_id, COALESCE(run_attempt, 0))`
   in the legacy branch; identified runs also include forge provider and host.
   Repository ID must agree on a retained run; it cannot create another copy.

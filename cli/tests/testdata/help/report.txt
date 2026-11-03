@@ -12,4 +12,5 @@ REPORTS:
   abandonment            sessions whose accepted edits never reached a commit
   attribution-share      notes-attribution share and decline alert
   merge-retention        attributed change retention through pull request merge
+  compute                Session completion time by final Compute allocation
   lifecycle              accepted-work progression, retention, attrition, and rework evidence

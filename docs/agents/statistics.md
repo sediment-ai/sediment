@@ -207,9 +207,6 @@ rates with uneven denominators than a linear-regression slope test.
 
 ## Where this is implemented
 
-`sediment_export.significance` (`two_proportion_z_test`,
-`minimum_detectable_effect`, `beta_binomial_probability_of_improvement`,
-`bootstrap_two_proportion_interval_diagnostic`, `non_inferiority_test`,
-`obrien_fleming_boundary`, `effect_decay_check`, `compare_models`,
-`compare_all_models`, `expected_regret`). Its module docstring carries
-the same reasoning in more depth.
+`sediment_export.significance` (`two_proportion_z_test`, `minimum_detectable_effect`, `beta_binomial_probability_of_improvement`, `bootstrap_two_proportion_interval_diagnostic`, `non_inferiority_test`, `obrien_fleming_boundary`, `effect_decay_check`, `compare_models`, `compare_all_models`, `expected_regret`, `bootstrap_median_difference`). Its module docstring carries the same reasoning in more depth.
+`bootstrap_median_difference` serves the compute report's durations, which are continuous and skewed, so neither a two-proportion test nor a mean fits. It sorts its inputs before a fixed-seed percentile bootstrap, flags `small_n` below 30 per arm, and returns no interval below two observations.
+Compute comparisons stay within one Allocation source. Only `randomized` assignment supports a causal reading, because an agent asks for more compute on harder tasks ([ADR 0029](../adr/0029-compute-allocation-facts.md)).

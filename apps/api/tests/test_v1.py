@@ -184,6 +184,7 @@ def test_session_facts_counts_only_the_named_session(client: TestClient) -> None
             "edit_observations": {"total": 0, "visible": 0},
             "rejected_edits": {"total": 0, "visible": 0},
             "retry_linkages": {"total": 0, "visible": 0},
+            "compute_allocations": {"total": 0, "visible": 0},
         },
     }
 

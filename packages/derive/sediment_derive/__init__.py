@@ -53,6 +53,17 @@ from .ci_resolution import (
     derive_ci_resolution_result,
     derive_ci_resolutions,
 )
+from .compute_timing import (
+    COMPUTE_TIMING_IMPLEMENTATION_VERSION,
+    COMPUTE_TIMING_SKIP_REASONS,
+    ComputeArm,
+    ComputeTimingResult,
+    ComputeTimingSkipReason,
+    SessionComputeTiming,
+    compute_arm_of,
+    compute_arm_sort_key,
+    derive_compute_timing_result,
+)
 from .diff import (
     DIFF_SKIP_REASONS,
     DiffSkipReason,
@@ -190,6 +201,15 @@ from .survival_scoring import four_gram_containment, four_gram_survival
 # The notes wire-contract models (notes.py) are deliberately not re-exported:
 # they are internal to the derivation, not package API.
 __all__ = [
+    "COMPUTE_TIMING_IMPLEMENTATION_VERSION",
+    "COMPUTE_TIMING_SKIP_REASONS",
+    "ComputeArm",
+    "ComputeTimingResult",
+    "ComputeTimingSkipReason",
+    "SessionComputeTiming",
+    "compute_arm_of",
+    "compute_arm_sort_key",
+    "derive_compute_timing_result",
     "derive_commit_attributions",
     "CIOutcomeIndexResult",
     "SessionCommitBindingResult",

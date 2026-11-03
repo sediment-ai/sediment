@@ -74,6 +74,7 @@ from sediment_core.models import (
     CIProvider,
     CIResult,
     AgentHarness,
+    ComputeAllocationSource,
     FactTable,
     InteractionMode,
     ForgeProvider,
@@ -109,6 +110,11 @@ ENUMS: list[tuple[type, str]] = [
     (CIResult, "How a CI run ended."),
     (ForgeProvider, "Which git host a push came from."),
     (FactTable, "Which fact table owns a quarantined fact."),
+    (
+        ComputeAllocationSource,
+        "Who chose a Compute allocation. Only `randomized` supports a causal "
+        "comparison between allocations.",
+    ),
     (QuarantineAction, "Whether a record quarantines or releases a fact."),
     (
         AttributionSource,
@@ -121,6 +127,19 @@ ENUMS: list[tuple[type, str]] = [
 
 # Field meaning by bare name: one sense per name, everywhere it appears.
 COMMON: dict[str, str] = {
+    "allocation_id": "Stable id for this Compute allocation fact.",
+    "allocation_source": (
+        "Who chose the allocation. Only `randomized` supports a causal "
+        "comparison; every other source is observational."
+    ),
+    "cpu_millicores": (
+        "CPU limit in millicores; 1000 is one CPU. Null means the sender "
+        "reported no CPU limit, never zero."
+    ),
+    "memory_bytes": (
+        "Memory limit in bytes. Null means the sender reported no memory "
+        "limit, never zero."
+    ),
     "repository_skipped": "Repository evidence omissions, separated by evaluated population and closed reason; units are not additive.",
     "repository_provider": "Captured forge provider.",
     "repository_host": "Configured lowercase forge host.",
@@ -668,6 +687,39 @@ FIELDS: dict[str, str] = {
         "The tool-use id of the refused call, joining this to the "
         "`DeveloperDecision` that rejected it — which is what makes it "
         "usable as a rejected side."
+    ),
+    "ComputeAllocation.occurred_at": (
+        "When the allocation took effect, by the sender's clock. Derivations "
+        "order a Session's allocations by it and never compare it with "
+        "gateway-observed time."
+    ),
+    "SessionComputeTiming.final_allocation": (
+        "The allocation with the latest `occurred_at`: the arm the compute "
+        "report groups this Session under."
+    ),
+    "SessionComputeTiming.allocation_changed": (
+        "True when the Session's allocations carry more than one arm, so its "
+        "timing covers more than one allocation."
+    ),
+    "SessionComputeTiming.allocations": (
+        "Every visible Compute allocation for the Session, in `occurred_at` order."
+    ),
+    "SessionComputeTiming.inference_calls": (
+        "Visible Inference calls in the Session; each carries `duration_ms`."
+    ),
+    "SessionComputeTiming.started_at": (
+        "The earliest call start: `observed_at` minus `duration_ms`."
+    ),
+    "SessionComputeTiming.ended_at": "The latest call `observed_at`.",
+    "SessionComputeTiming.elapsed_ms": (
+        "Milliseconds from the earliest call start to the latest call end."
+    ),
+    "SessionComputeTiming.model_ms": (
+        "Sum of call durations. Parallel calls can make it exceed `elapsed_ms`."
+    ),
+    "SessionComputeTiming.between_calls_ms": (
+        "Elapsed milliseconds with no Inference call in flight: tool "
+        "execution, harness work, and waiting. Not tool time alone."
     ),
     "RetryLinkage.file_path": (
         "The path the harness reported for both edit attempts. It may be "

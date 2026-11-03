@@ -221,6 +221,19 @@ WorkflowPath = Annotated[ScalarIdentity, AfterValidator(_stripped)]
 CommitSha = Annotated[str, AfterValidator(normalize_commit_sha)]
 
 
+def _utc_representable(value: datetime) -> datetime:
+    try:
+        value.astimezone(UTC)
+    except OverflowError:
+        raise ValueError("timestamp must be representable in UTC") from None
+    return value
+
+
+# An aware instant that also converts to UTC. Offsets let year 9999 or year 1
+# leave the UTC range: PostgreSQL stores the value, and every later read fails.
+UtcRepresentableDatetime = Annotated[AwareDatetime, AfterValidator(_utc_representable)]
+
+
 class GatewayProvider(StrEnum):
     LITELLM = "litellm"
     # Envelope-valid but unregistered in capture's ADAPTERS: the ingest
@@ -288,6 +301,22 @@ class FactTable(StrEnum):
     RETRY_LINKAGES = "retry_linkages"
     SESSION_COMMIT_OBSERVATIONS = "session_commit_observations"
     REPOSITORY_RENAMES = "repository_renames"
+    COMPUTE_ALLOCATIONS = "compute_allocations"
+
+
+class ComputeAllocationSource(StrEnum):
+    """Who chose a Compute allocation. Only ``randomized`` assignment supports
+    a causal comparison between allocations; every other source is
+    observational evidence."""
+
+    # The environment's standing size; nobody asked for it.
+    DEFAULT = "default"
+    # The platform granted it because the coding agent asked for it.
+    AGENT_REQUEST = "agent_request"
+    # A person or a fixed operator rule chose it.
+    OPERATOR = "operator"
+    # An experiment assigned it at random, whether or not an agent asked.
+    RANDOMIZED = "randomized"
 
 
 class QuarantineAction(StrEnum):
@@ -545,6 +574,45 @@ class RetryLinkage(BaseModel):
     def _require_distinct_calls(self) -> RetryLinkage:
         if self.rejected_call_id == self.accepted_call_id:
             raise ValueError("rejected and accepted call ids must differ")
+        return self
+
+
+class ComputeAllocation(BaseModel):
+    """The CPU and memory limits one Session's execution environment received.
+    Session-scoped.
+
+    The execution platform that runs the coding agent sends this Fact when an
+    allocation takes effect: once when the environment starts, and again on
+    every resize. ``allocation_source`` records who chose it, so a later
+    Derivation never mistakes an agent's own request for an assigned
+    treatment. The Fact states the limits, not usage, and it carries no
+    claim that the allocation changed completion time.
+
+    ``occurred_at`` is the sender's clock. Derivations order a Session's
+    allocations by it and never compare it with gateway-observed times.
+    Units are lossless integers: millicores (1000 = one CPU) and bytes. An
+    absent value is unknown, never zero; at least one is present.
+    """
+
+    allocation_id: NonEmptyId = Field(default_factory=_uuid)
+    org_id: OrgId
+    session_id: NonEmptyId
+    allocation_source: ComputeAllocationSource
+    # strict=True and int64-bounded like the other counts: a float or a bool
+    # must not coerce into a limit, and an overflow must 422, not 500.
+    cpu_millicores: int | None = Field(default=None, ge=1, le=2**63 - 1, strict=True)
+    memory_bytes: int | None = Field(default=None, ge=1, le=2**63 - 1, strict=True)
+    # Dedup-index component: aware like DeveloperDecision.occurred_at, and
+    # UTC-representable so a stored allocation can always be read back.
+    occurred_at: UtcRepresentableDatetime
+    captured_at: AwareDatetime = Field(default_factory=_now)
+
+    @model_validator(mode="after")
+    def _require_limit(self) -> ComputeAllocation:
+        if self.cpu_millicores is None and self.memory_bytes is None:
+            raise ValueError(
+                "compute allocation requires cpu_millicores or memory_bytes"
+            )
         return self
 
 

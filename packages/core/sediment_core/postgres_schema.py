@@ -34,6 +34,7 @@ from .models import (
     CIProvider,
     CIResult,
     AgentHarness,
+    ComputeAllocationSource,
     FactTable,
     ForgeProvider,
     GatewayProvider,
@@ -496,6 +497,62 @@ Index(
     retry_linkages.c.session_id,
     retry_linkages.c.occurred_at,
     retry_linkages.c.retry_linkage_id,
+)
+
+compute_allocations = Table(
+    "compute_allocations",
+    metadata,
+    Column("allocation_id", Text, primary_key=True),
+    Column("org_id", Text, nullable=False),
+    Column("session_id", Text, nullable=False),
+    Column("allocation_source", Text, nullable=False),
+    Column("cpu_millicores", BigInteger),
+    Column("memory_bytes", BigInteger),
+    Column("occurred_at", DateTime(timezone=True), nullable=False),
+    Column("captured_at", DateTime(timezone=True), nullable=False),
+    CheckConstraint(
+        _non_empty_sql("allocation_id"),
+        name="ck_compute_allocations_allocation_id",
+    ),
+    CheckConstraint(_org_sql(), name="ck_compute_allocations_org_id"),
+    CheckConstraint(
+        _non_empty_sql("session_id"), name="ck_compute_allocations_session_id"
+    ),
+    CheckConstraint(
+        _enum_sql("allocation_source", ComputeAllocationSource),
+        name="ck_compute_allocations_allocation_source",
+    ),
+    CheckConstraint(
+        "cpu_millicores IS NULL OR cpu_millicores >= 1",
+        name="ck_compute_allocations_cpu_millicores",
+    ),
+    CheckConstraint(
+        "memory_bytes IS NULL OR memory_bytes >= 1",
+        name="ck_compute_allocations_memory_bytes",
+    ),
+    CheckConstraint(
+        "cpu_millicores IS NOT NULL OR memory_bytes IS NOT NULL",
+        name="ck_compute_allocations_limit_present",
+    ),
+)
+# A redelivered allocation collapses on its complete content. Limits are
+# positive, so 0 stands in for an absent value inside the index only.
+Index(
+    "uq_compute_allocations_natural",
+    compute_allocations.c.org_id,
+    compute_allocations.c.session_id,
+    compute_allocations.c.occurred_at,
+    compute_allocations.c.allocation_source,
+    func.coalesce(compute_allocations.c.cpu_millicores, 0),
+    func.coalesce(compute_allocations.c.memory_bytes, 0),
+    unique=True,
+)
+Index(
+    "ix_compute_allocations_session_time",
+    compute_allocations.c.org_id,
+    compute_allocations.c.session_id,
+    compute_allocations.c.occurred_at,
+    compute_allocations.c.allocation_id,
 )
 
 ci_outcomes = Table(

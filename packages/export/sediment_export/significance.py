@@ -58,6 +58,8 @@ from __future__ import annotations
 
 import math
 import random
+import statistics
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from itertools import combinations
 from statistics import NormalDist
@@ -263,6 +265,35 @@ class BootstrapIntervalDiagnostic:
     ci_overlap_fraction: float
     substantial_disagreement: bool
     disagreement_reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MedianDifference:
+    """Fixed-seed bootstrap interval for ``median(b) - median(a)``.
+
+    The comparison for a continuous, skewed outcome such as a duration, where
+    a two-proportion test doesn't apply and a mean would follow the slowest
+    outliers. ``ci_low``/``ci_high`` are a percentile-method interval from
+    resampling each group with replacement through a local
+    ``random.Random(seed)``, so identical inputs give identical output. Either
+    group below two observations is ``insufficient_data`` with the interval
+    absent; ``small_n`` flags groups below ``small_n_threshold`` without
+    discarding them. One interval per comparison: read several comparisons
+    from one report as a family, not as independent tests.
+    """
+
+    n_a: int
+    n_b: int
+    median_a: float | None
+    median_b: float | None
+    difference: float | None
+    ci_low: float | None
+    ci_high: float | None
+    confidence: float
+    bootstrap_iterations: int
+    seed: int
+    small_n: bool
+    insufficient_data: bool
 
 
 @dataclass(frozen=True)
@@ -1083,6 +1114,68 @@ def bootstrap_two_proportion_interval_diagnostic(
         ci_overlap_fraction=overlap_fraction,
         substantial_disagreement=bool(reasons),
         disagreement_reasons=tuple(reasons),
+    )
+
+
+def bootstrap_median_difference(
+    values_a: Sequence[float],
+    values_b: Sequence[float],
+    *,
+    confidence: float = 0.95,
+    small_n_threshold: int = SMALL_N_THRESHOLD,
+    bootstrap_iterations: int = DEFAULT_BOOTSTRAP_ITERATIONS,
+    seed: int = DEFAULT_BOOTSTRAP_SEED,
+) -> MedianDifference:
+    """Estimate ``median(b) - median(a)`` with a fixed-seed bootstrap interval.
+
+    Inputs are sorted before resampling, so their order never changes the
+    result. Values must be finite.
+    """
+    _validate_confidence(confidence)
+    if bootstrap_iterations < 2:
+        raise ValueError("bootstrap_iterations must be at least 2")
+    a = sorted(float(value) for value in values_a)
+    b = sorted(float(value) for value in values_b)
+    if not all(math.isfinite(value) for value in (*a, *b)):
+        raise ValueError("bootstrap_median_difference values must be finite")
+    median_a = statistics.median(a) if a else None
+    median_b = statistics.median(b) if b else None
+    small_n = min(len(a), len(b)) < small_n_threshold
+    if len(a) < 2 or len(b) < 2:
+        return MedianDifference(
+            n_a=len(a),
+            n_b=len(b),
+            median_a=median_a,
+            median_b=median_b,
+            difference=None,
+            ci_low=None,
+            ci_high=None,
+            confidence=confidence,
+            bootstrap_iterations=bootstrap_iterations,
+            seed=seed,
+            small_n=small_n,
+            insufficient_data=True,
+        )
+    rng = random.Random(seed)
+    differences = sorted(
+        statistics.median(rng.choices(b, k=len(b)))
+        - statistics.median(rng.choices(a, k=len(a)))
+        for _ in range(bootstrap_iterations)
+    )
+    tail = (1 - confidence) / 2
+    return MedianDifference(
+        n_a=len(a),
+        n_b=len(b),
+        median_a=median_a,
+        median_b=median_b,
+        difference=median_b - median_a,
+        ci_low=_percentile(differences, tail),
+        ci_high=_percentile(differences, 1 - tail),
+        confidence=confidence,
+        bootstrap_iterations=bootstrap_iterations,
+        seed=seed,
+        small_n=small_n,
+        insufficient_data=False,
     )
 
 

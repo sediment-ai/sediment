@@ -126,6 +126,7 @@ def seed_every_fact(engine):
         ("store_session_commit_observation", "_session_commit_observation"),
         ("store_pull_request_merge", "_pull_request_merge"),
         ("store_pull_request_revision", "_pull_request_revision"),
+        ("store_compute_allocation", "_compute_allocation"),
     ]
     assert len(calls) == len(FactTable)
     for method, factory in calls:
@@ -830,7 +831,7 @@ def test_check_on_a_behind_schema_names_only_the_revision(role_database):
     assert result.revision.value == "behind"
     assert [str(failure) for failure in result.failures] == [
         "database schema revision is behind; the supported head is "
-        "0011_inference_call_aliases; "
+        "0012_compute_allocations; "
         "fix: run `sediment db upgrade` with the release that supports this schema"
     ]
 

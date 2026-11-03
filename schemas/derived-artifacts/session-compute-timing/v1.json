@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sediment.so/schemas/derived-artifacts/session-compute-timing/v1.json",
+  "title": "SessionComputeTiming",
+  "description": "One Session's final Compute allocation and Inference call timing.",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The deployment's tenant id, normalized. Bound to the server."
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+      "description": "The coding-agent session this belongs to (ADR 0002)."
+    },
+    "final_allocation": {
+      "$ref": "#/$defs/ComputeArm",
+      "description": "The allocation with the latest `occurred_at`: the arm the compute report groups this Session under."
+    },
+    "allocation_changed": {
+      "type": "boolean",
+      "description": "True when the Session's allocations carry more than one arm, so its timing covers more than one allocation."
+    },
+    "allocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ComputeAllocation"
+      },
+      "description": "Every visible Compute allocation for the Session, in `occurred_at` order."
+    },
+    "inference_calls": {
+      "type": "integer",
+      "description": "Visible Inference calls in the Session; each carries `duration_ms`."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The earliest call start: `observed_at` minus `duration_ms`."
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The latest call `observed_at`."
+    },
+    "elapsed_ms": {
+      "type": "integer",
+      "description": "Milliseconds from the earliest call start to the latest call end."
+    },
+    "model_ms": {
+      "type": "integer",
+      "description": "Sum of call durations. Parallel calls can make it exceed `elapsed_ms`."
+    },
+    "between_calls_ms": {
+      "type": "integer",
+      "description": "Elapsed milliseconds with no Inference call in flight: tool execution, harness work, and waiting. Not tool time alone."
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "description": "The structured provenance for this artifact."
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "org_id",
+    "session_id",
+    "final_allocation",
+    "allocation_changed",
+    "allocations",
+    "inference_calls",
+    "started_at",
+    "ended_at",
+    "elapsed_ms",
+    "model_ms",
+    "between_calls_ms",
+    "provenance"
+  ],
+  "$defs": {
+    "ComputeArm": {
+      "type": "object",
+      "properties": {
+        "allocation_source": {
+          "enum": [
+            "default",
+            "agent_request",
+            "operator",
+            "randomized"
+          ],
+          "type": "string",
+          "description": "Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational."
+        },
+        "cpu_millicores": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero."
+        },
+        "memory_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Memory limit in bytes. Null means the sender reported no memory limit, never zero."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "allocation_source",
+        "cpu_millicores",
+        "memory_bytes"
+      ]
+    },
+    "ComputeAllocation": {
+      "type": "object",
+      "properties": {
+        "allocation_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "Stable id for this Compute allocation fact."
+        },
+        "org_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The deployment's tenant id, normalized. Bound to the server."
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
+          "description": "The coding-agent session this belongs to (ADR 0002)."
+        },
+        "allocation_source": {
+          "enum": [
+            "default",
+            "agent_request",
+            "operator",
+            "randomized"
+          ],
+          "type": "string",
+          "description": "Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational."
+        },
+        "cpu_millicores": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero."
+        },
+        "memory_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "minimum": 1,
+          "maximum": 9223372036854775807,
+          "description": "Memory limit in bytes. Null means the sender reported no memory limit, never zero."
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the allocation took effect, by the sender's clock. Derivations order a Session's allocations by it and never compare it with gateway-observed time."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When Sediment stored the fact, stamped server-side. Windows and ordering anchor on this, never on a client clock."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "allocation_id",
+        "org_id",
+        "session_id",
+        "allocation_source",
+        "cpu_millicores",
+        "memory_bytes",
+        "occurred_at",
+        "captured_at"
+      ]
+    },
+    "Provenance": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "description": "The derivation implementation policy version."
+        },
+        "quarantine_revision": {
+          "type": "integer",
+          "description": "The integer quarantine-log high-water mark used for the derivation."
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 of the fully resolved derivation policy when available."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_version",
+        "quarantine_revision",
+        "policy_digest"
+      ]
+    }
+  }
+}

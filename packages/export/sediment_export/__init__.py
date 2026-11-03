@@ -278,6 +278,8 @@ from .significance import (
     RegretReport,
     SequentialBoundary,
     beta_binomial_probability_of_improvement,
+    MedianDifference,
+    bootstrap_median_difference,
     bootstrap_two_proportion_interval_diagnostic,
     cohens_h,
     compare_all_models,
@@ -304,6 +306,17 @@ from .attributed_completions import (
     assemble_attributed_completions_result,
     build_abandonment_summary,
 )
+from .compute_report import (
+    ComputeArmComparison,
+    ComputeArmSummary,
+    ComputeReport,
+    ComputeReportResult,
+    DurationDistribution,
+    build_compute_report,
+    compute_report_to_json,
+    compute_timings_to_export_rows,
+    generate_compute_report_result,
+)
 from .merge_retention_report import (
     RETENTION_THRESHOLDS,
     MergeRetentionReport,
@@ -318,6 +331,15 @@ from .merge_retention_report import (
 )
 
 __all__ = [
+    "ComputeArmComparison",
+    "ComputeArmSummary",
+    "ComputeReport",
+    "ComputeReportResult",
+    "DurationDistribution",
+    "build_compute_report",
+    "compute_report_to_json",
+    "compute_timings_to_export_rows",
+    "generate_compute_report_result",
     "AcceptedWorkLifecycleReport",
     "AcceptedWorkProgression",
     "EditRetentionPanel",
@@ -494,6 +516,8 @@ __all__ = [
     "build_signal_funnel_report",
     "build_label_confidence_sensitivity",
     "build_stratification_checks",
+    "MedianDifference",
+    "bootstrap_median_difference",
     "bootstrap_two_proportion_interval_diagnostic",
     "build_temporal_trend_report",
     "ci_failed",

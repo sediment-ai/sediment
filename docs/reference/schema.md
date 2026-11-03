@@ -31,13 +31,13 @@ Fact and Derivation boundary. [CONTEXT.md](../../CONTEXT.md) defines domain term
 
 | Group | Types |
 |---|---|
-| Facts | [`InferenceCall`](#inferencecall), [`InferenceMessage`](#inferencemessage), [`TextPart`](#textpart), [`ReasoningPart`](#reasoningpart), [`ToolCallPart`](#toolcallpart), [`ToolCallResponsePart`](#toolcallresponsepart), [`DeveloperDecision`](#developerdecision), [`EditObservation`](#editobservation), [`RejectedEdit`](#rejectededit), [`RetryLinkage`](#retrylinkage), [`CIOutcome`](#cioutcome), [`Push`](#push), [`PullRequestMerge`](#pullrequestmerge), [`PullRequestRevision`](#pullrequestrevision), [`SessionCommitObservation`](#sessioncommitobservation), [`QuarantineRecord`](#quarantinerecord), [`RepositoryRename`](#repositoryrename) |
+| Facts | [`InferenceCall`](#inferencecall), [`InferenceMessage`](#inferencemessage), [`TextPart`](#textpart), [`ReasoningPart`](#reasoningpart), [`ToolCallPart`](#toolcallpart), [`ToolCallResponsePart`](#toolcallresponsepart), [`DeveloperDecision`](#developerdecision), [`EditObservation`](#editobservation), [`RejectedEdit`](#rejectededit), [`RetryLinkage`](#retrylinkage), [`ComputeAllocation`](#computeallocation), [`CIOutcome`](#cioutcome), [`Push`](#push), [`PullRequestMerge`](#pullrequestmerge), [`PullRequestRevision`](#pullrequestrevision), [`SessionCommitObservation`](#sessioncommitobservation), [`QuarantineRecord`](#quarantinerecord), [`RepositoryRename`](#repositoryrename) |
 | External inputs | [`PriceManifest`](#pricemanifest) |
-| Derived artifacts | [`RepositoryIdentity`](#repositoryidentity), [`AcceptedWorkLifecycleReport`](#acceptedworklifecyclereport), [`Attribution`](#attribution), [`AttributedCompletion`](#attributedcompletion), [`Rollout`](#rollout), [`CommitRef`](#commitref), [`Turn`](#turn), [`CIResolution`](#ciresolution), [`CIWorkflowResolution`](#ciworkflowresolution), [`Provenance`](#provenance), [`RecoveryAttributionEvidence`](#recoveryattributionevidence), [`RecoverySample`](#recoverysample), [`AcceptedSessionOutcome`](#acceptedsessionoutcome), [`SessionAbandonment`](#sessionabandonment), [`Fate`](#fate), [`MergeMembershipOutcome`](#mergemembershipoutcome), [`MergeRetention`](#mergeretention), [`AbandonmentSummary`](#abandonmentsummary) |
+| Derived artifacts | [`RepositoryIdentity`](#repositoryidentity), [`AcceptedWorkLifecycleReport`](#acceptedworklifecyclereport), [`Attribution`](#attribution), [`AttributedCompletion`](#attributedcompletion), [`Rollout`](#rollout), [`CommitRef`](#commitref), [`Turn`](#turn), [`CIResolution`](#ciresolution), [`CIWorkflowResolution`](#ciworkflowresolution), [`Provenance`](#provenance), [`RecoveryAttributionEvidence`](#recoveryattributionevidence), [`RecoverySample`](#recoverysample), [`AcceptedSessionOutcome`](#acceptedsessionoutcome), [`SessionAbandonment`](#sessionabandonment), [`Fate`](#fate), [`MergeMembershipOutcome`](#mergemembershipoutcome), [`MergeRetention`](#mergeretention), [`ComputeArm`](#computearm), [`SessionComputeTiming`](#sessioncomputetiming), [`AbandonmentSummary`](#abandonmentsummary) |
 | Trainer message objects | [`TrainerFunctionCall`](#trainerfunctioncall), [`TrainerToolCall`](#trainertoolcall), [`TrainerTextMessage`](#trainertextmessage), [`TrainerAssistantContentMessage`](#trainerassistantcontentmessage), [`TrainerAssistantThinkingMessage`](#trainerassistantthinkingmessage), [`TrainerAssistantToolCallMessage`](#trainerassistanttoolcallmessage), [`TrainerToolMessage`](#trainertoolmessage) |
 | Training rows | [`DPOPair`](#dpopair), [`DPOMetadata`](#dpometadata), [`DPOProvenance`](#dpoprovenance), [`SFTSample`](#sftsample), [`SFTMetadata`](#sftmetadata), [`DiffSFTSample`](#diffsftsample), [`DiffSFTMetadata`](#diffsftmetadata), [`SourceIds`](#sourceids), [`RecoveryRow`](#recoveryrow), [`Verification`](#verification), [`RLVRDecisionRow`](#rlvrdecisionrow), [`RLVRInferenceMessageRow`](#rlvrinferencemessagerow), [`RLVRTurnRow`](#rlvrturnrow), [`NemoGymResponsesCreateParams`](#nemogymresponsescreateparams), [`NemoGymResponse`](#nemogymresponse), [`SedimentTaskRow`](#sedimenttaskrow), [`SedimentRolloutRow`](#sedimentrolloutrow), [`SWEBenchTaskRow`](#swebenchtaskrow), [`SWEBenchMetadata`](#swebenchmetadata), [`NemoGymRolloutRow`](#nemogymrolloutrow), [`NemoGymMetadata`](#nemogymmetadata) |
 | Derived bundle | [`BundleManifest`](#bundlemanifest), [`InferenceCallIdentity`](#inferencecallidentity), [`RepositoryIdentityEvidence`](#repositoryidentityevidence), [`BundleRecord`](#bundlerecord), [`BundleFileMetadata`](#bundlefilemetadata) |
-| Enumerations | [`GatewayProvider`](#gatewayprovider), [`AgentHarness`](#agentharness), [`InteractionMode`](#interactionmode), [`CIProvider`](#ciprovider), [`CIResult`](#ciresult), [`ForgeProvider`](#forgeprovider), [`FactTable`](#facttable), [`QuarantineAction`](#quarantineaction), [`AttributionSource`](#attributionsource), [`EditFate`](#editfate) |
+| Enumerations | [`GatewayProvider`](#gatewayprovider), [`AgentHarness`](#agentharness), [`InteractionMode`](#interactionmode), [`CIProvider`](#ciprovider), [`CIResult`](#ciresult), [`ForgeProvider`](#forgeprovider), [`FactTable`](#facttable), [`ComputeAllocationSource`](#computeallocationsource), [`QuarantineAction`](#quarantineaction), [`AttributionSource`](#attributionsource), [`EditFate`](#editfate) |
 
 ## Facts
 
@@ -216,6 +216,23 @@ Canonical schema: [JSON Schema, version 3](../../schemas/facts/retry-linkage/v3.
 | `captured_at` | string (RFC 3339) | When Sediment captured the Fact, stamped server-side. |
 | `raw` | object | The source payload after Basic redaction, kept so a translator defect stays recoverable. Shape varies by provider; never join on it. |
 
+### ComputeAllocation
+
+One Session execution environment's CPU and memory limits.
+
+Canonical schema: [JSON Schema, version 1](../../schemas/facts/compute-allocation/v1.json). ID: `https://sediment.so/schemas/facts/compute-allocation/v1.json`.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `allocation_id` | string | Stable id for this Compute allocation fact. |
+| `org_id` | string | The deployment's tenant id, normalized. Bound to the server. |
+| `session_id` | string | The coding-agent session this belongs to (ADR 0002). |
+| `allocation_source` | [`ComputeAllocationSource`](#computeallocationsource) | Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational. |
+| `cpu_millicores` | integer or null | CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero. |
+| `memory_bytes` | integer or null | Memory limit in bytes. Null means the sender reported no memory limit, never zero. |
+| `occurred_at` | string (RFC 3339) | When the allocation took effect, by the sender's clock. Derivations order a Session's allocations by it and never compare it with gateway-observed time. |
+| `captured_at` | string (RFC 3339) | When Sediment captured the Fact, stamped server-side. |
+
 ### CIOutcome
 
 One CI run attempt.
@@ -357,7 +374,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/facts/session-commit-ob
 
 One append-only fact quarantine action.
 
-Canonical schema: [JSON Schema, version 7](../../schemas/facts/quarantine-record/v7.json). ID: `https://sediment.so/schemas/facts/quarantine-record/v7.json`.
+Canonical schema: [JSON Schema, version 8](../../schemas/facts/quarantine-record/v8.json). ID: `https://sediment.so/schemas/facts/quarantine-record/v8.json`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -724,6 +741,39 @@ Canonical schema: [JSON Schema, version 3](../../schemas/derived-artifacts/merge
 | `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
 | `session_commit_observation_ids` | array of string | Sorted unique observations of the Session on the source commit. The selected call/file Attribution remains inferred. |
 | `repository_identity` | [`RepositoryIdentity`](#repositoryidentity) or null | Qualified provider, host, and repository ID; null for an unambiguous legacy repository. |
+
+### ComputeArm
+
+One Compute allocation value and the source that chose it.
+
+Canonical schema: [JSON Schema, version 1](../../schemas/derived-artifacts/compute-arm/v1.json). ID: `https://sediment.so/schemas/derived-artifacts/compute-arm/v1.json`.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `allocation_source` | [`ComputeAllocationSource`](#computeallocationsource) | Who chose the allocation. Only `randomized` supports a causal comparison; every other source is observational. |
+| `cpu_millicores` | integer or null | CPU limit in millicores; 1000 is one CPU. Null means the sender reported no CPU limit, never zero. |
+| `memory_bytes` | integer or null | Memory limit in bytes. Null means the sender reported no memory limit, never zero. |
+
+### SessionComputeTiming
+
+One Session's final Compute allocation and Inference call timing.
+
+Canonical schema: [JSON Schema, version 1](../../schemas/derived-artifacts/session-compute-timing/v1.json). ID: `https://sediment.so/schemas/derived-artifacts/session-compute-timing/v1.json`.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `org_id` | string | The deployment's tenant id, normalized. Bound to the server. |
+| `session_id` | string | The coding-agent session this belongs to (ADR 0002). |
+| `final_allocation` | [`ComputeArm`](#computearm) | The allocation with the latest `occurred_at`: the arm the compute report groups this Session under. |
+| `allocation_changed` | boolean | True when the Session's allocations carry more than one arm, so its timing covers more than one allocation. |
+| `allocations` | array of [`ComputeAllocation`](#computeallocation) | Every visible Compute allocation for the Session, in `occurred_at` order. |
+| `inference_calls` | integer | Visible Inference calls in the Session; each carries `duration_ms`. |
+| `started_at` | string (RFC 3339) | The earliest call start: `observed_at` minus `duration_ms`. |
+| `ended_at` | string (RFC 3339) | The latest call `observed_at`. |
+| `elapsed_ms` | integer | Milliseconds from the earliest call start to the latest call end. |
+| `model_ms` | integer | Sum of call durations. Parallel calls can make it exceed `elapsed_ms`. |
+| `between_calls_ms` | integer | Elapsed milliseconds with no Inference call in flight: tool execution, harness work, and waiting. Not tool time alone. |
+| `provenance` | [`Provenance`](#provenance) | The structured provenance for this artifact. |
 
 ### AbandonmentSummary
 
@@ -1338,7 +1388,13 @@ Values: `github`
 
 Which fact table owns a quarantined fact.
 
-Values: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`
+Values: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`, `compute_allocations`
+
+### ComputeAllocationSource
+
+Who chose a Compute allocation. Only `randomized` supports a causal comparison between allocations.
+
+Values: `default`, `agent_request`, `operator`, `randomized`
 
 ### QuarantineAction
 

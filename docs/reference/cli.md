@@ -72,6 +72,7 @@ Global options:
 - [`sediment report abandonment`](#sediment-report-abandonment)
 - [`sediment report attribution-share`](#sediment-report-attribution-share)
 - [`sediment report merge-retention`](#sediment-report-merge-retention)
+- [`sediment report compute`](#sediment-report-compute)
 - [`sediment report lifecycle`](#sediment-report-lifecycle)
 
 ## sediment facts
@@ -230,14 +231,14 @@ Options:
 quarantine one fact by id
 
 ```text
-sediment quarantine [-h] --reason REASON {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames} fact_id
+sediment quarantine [-h] --reason REASON {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames,compute_allocations} fact_id
 ```
 
 Arguments:
 
 | Name | Default | Description |
 |---|---|---|
-| `table` | — | (choices: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`) |
+| `table` | — | (choices: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`, `compute_allocations`) |
 | `fact_id` | — | — |
 
 Options:
@@ -251,14 +252,14 @@ Options:
 release one quarantined fact by id
 
 ```text
-sediment release [-h] --reason REASON {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames} fact_id
+sediment release [-h] --reason REASON {inference_calls,developer_decisions,ci_outcomes,pushes,pull_request_merges,pull_request_revisions,edit_observations,rejected_edits,retry_linkages,session_commit_observations,repository_renames,compute_allocations} fact_id
 ```
 
 Arguments:
 
 | Name | Default | Description |
 |---|---|---|
-| `table` | — | (choices: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`) |
+| `table` | — | (choices: `inference_calls`, `developer_decisions`, `ci_outcomes`, `pushes`, `pull_request_merges`, `pull_request_revisions`, `edit_observations`, `rejected_edits`, `retry_linkages`, `session_commit_observations`, `repository_renames`, `compute_allocations`) |
 | `fact_id` | — | — |
 
 Options:
@@ -682,6 +683,7 @@ Read-only reports, forwarded to their own module. An empty result exits 0, never
 | [`abandonment`](#sediment-report-abandonment) | sessions whose accepted edits never reached a commit |
 | [`attribution-share`](#sediment-report-attribution-share) | notes-attribution share and decline alert |
 | [`merge-retention`](#sediment-report-merge-retention) | attributed change retention through pull request merge |
+| [`compute`](#sediment-report-compute) | Session completion time by final Compute allocation |
 | [`lifecycle`](#sediment-report-lifecycle) | accepted-work progression, retention, attrition, and rework evidence |
 
 ### sediment report model
@@ -852,6 +854,23 @@ Options:
 | `--rows-out` | — | write canonical merge-retention rows to FILE as JSONL |
 | `--database-url` | — | PostgreSQL URL (default: $SEDIMENT_DATABASE_URL) |
 | `--mirror-path` | `./mirrors` | base dir for git mirrors (default: $SEDIMENT_MIRROR_PATH or './mirrors') |
+
+### sediment report compute
+
+Compare Session completion time across final Compute allocations.
+
+```text
+sediment report compute [-h] --org ORG [--json] [--rows-out FILE] [--database-url DATABASE_URL]
+```
+
+Options:
+
+| Name | Default | Description |
+|---|---|---|
+| `--org` | — | org id (default: $SEDIMENT_ORG_ID) **(required)** |
+| `--json` | `false` | emit JSON instead of a text report |
+| `--rows-out` | — | write one Session compute timing per line to FILE as JSONL |
+| `--database-url` | — | PostgreSQL URL (default: $SEDIMENT_DATABASE_URL) |
 
 ### sediment report lifecycle
 

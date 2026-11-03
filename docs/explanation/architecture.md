@@ -51,6 +51,8 @@ Agent harnesses report inference calls, Developer decisions, Edit observations,
 and Retry linkages. LLM gateways report inference calls
 through callbacks.
 Forges and continuous integration (CI) systems report Pushes and CI outcomes.
+Execution platforms that run coding agents report each Session's Compute
+allocations.
 
 Capture endpoints authenticate each source, validate its payload, and normalize
 it into the Fact schema. The endpoints append the resulting Facts to

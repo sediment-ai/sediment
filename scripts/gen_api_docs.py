@@ -166,6 +166,16 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
             "503": "PostgreSQL Fact store unavailable; the request does not acknowledge successful storage.",
         },
     ),
+    "/ingest/compute": (
+        "Compute allocation Facts from the platform that runs a coding agent.",
+        '`{"fact_id": "<uuid>", "stored": <bool>}`. Send one request when a '
+        "Session's environment starts and one on every resize. The envelope "
+        "requires at least one limit and forbids unknown fields; a redelivery "
+        "of the same allocation returns `stored: false`.",
+        {
+            "503": "PostgreSQL Fact store unavailable; the request does not acknowledge successful storage.",
+        },
+    ),
     "/v1/logs": (
         "OTLP log records: developer decisions, edit observations, rejected "
         "edits, and retry linkages.",
@@ -358,7 +368,8 @@ CONTRACTS: dict[str, tuple[str, str, dict[str, str]]] = {
     ),
     "/query/session/{session_id}": (
         "Metadata evidence dossier for one Session.",
-        "Returns a bounded timeline, visible and quarantined counts, capture "
+        "Returns a bounded timeline, the Session's Compute allocations beside "
+        "it, visible and quarantined counts, capture "
         "gaps, captured Session commit observations, exact-head Push receipts, and matching CI "
         "outcomes under one complete repository context. Repository identity "
         "accompanies each delivery summary; `repository_skipped` counts declined "
