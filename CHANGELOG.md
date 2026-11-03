@@ -12,6 +12,9 @@
 
 ### Security
 
+- Update API dependencies to Alembic 1.20.1, FastAPI 0.162.0, Pydantic
+  2.14.2, pydantic-settings 2.16.2, and SQLAlchemy 2.1.6.
+
 - Update the API image, client audit, and continuous integration (CI) to
   Python 3.12.16. Update the API image and CI to uv 0.13.6, the Compose proxy
   to Traefik 3.7.16, and the pi evaluation image and CI to Node 24.22.2.
@@ -22,6 +25,8 @@
   The installed library remains vulnerable to custom callers. Closes #317.
 
 ### Contributor checks
+
+- Update pytest to 9.2.0 and Ruff to 0.17.3.
 
 - Update the setup-uv action to 10.3.2 and both TruffleHog scans to 3.99.7.
 
