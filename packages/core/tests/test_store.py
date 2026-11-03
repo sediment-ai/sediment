@@ -1656,6 +1656,33 @@ def test_postgres_bulk_quarantine_rolls_back_on_database_failure(
             connection.execute(text("DROP FUNCTION fail_second_quarantine()"))
 
 
+def test_postgres_inference_call_redacts_long_labels_and_truncated_values(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    secret = "synthetic0123456789"
+    call = _inference_call(
+        input_messages=[
+            InferenceMessage(
+                role="user",
+                parts=[TextPart(content=f"A_B_C_D_E_F_G_H_I_API_KEY={secret}")],
+            )
+        ],
+        raw={"arguments": '"authorization":"' + secret + '\\"tail\nnext line'},
+    )
+
+    assert store.store_inference_call(call)
+    [retained] = store.read_inference_calls("acme")
+
+    assert retained.input_messages[0].parts[0].content == (
+        f"A_B_C_D_E_F_G_H_I_API_KEY={REDACTION_MARKER}"
+    )
+    assert retained.raw == {
+        "arguments": f'"authorization":"{REDACTION_MARKER}\nnext line'
+    }
+    assert secret not in retained.model_dump_json()
+
+
 def test_postgres_content_fact_writes_apply_basic_redaction(postgres_engine) -> None:
     store = FactStore(postgres_engine)
     credential = "sk-proj-abcdefghijklmnopqrstuvwxyz"

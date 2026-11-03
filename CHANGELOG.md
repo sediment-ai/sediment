@@ -12,6 +12,11 @@
 
 ### Security
 
+- Bound Basic redaction scan time for quoted backslash runs and long API-key
+  labels. Compile structured credential propagation once per Fact. Preserve
+  arbitrary label lengths and redact truncated quoted credentials through
+  the line break.
+
 - Update API dependencies to Alembic 1.20.1, FastAPI 0.162.0, Pydantic
   2.14.2, pydantic-settings 2.16.2, and SQLAlchemy 2.1.6.
 
