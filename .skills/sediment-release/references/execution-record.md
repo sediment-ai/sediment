@@ -1,5 +1,61 @@
 # Execution record
 
+## 0.7.0 publication — 2026-11-03
+
+- [Release issue](https://github.com/sediment-ai/sediment/issues/333) and
+  [preparation pull request](https://github.com/sediment-ai/sediment/pull/334).
+  The maintainer requests preparation, blocker fixes, and publication. Work
+  uses an isolated worktree from `a31d56e4c013f6fc90642ba4fe9c1f7c1a41238a`.
+- Decision: publish the requested 0.7.0 version. It includes Compute allocation
+  capture and reporting, shell hook fixes, Basic redaction improvements, and
+  dependency updates. The changelog and release page require
+  `sediment db upgrade` before startup for forward-only migration
+  `0012_compute_allocations`. The quarantine record contract moves to version 8.
+- Parsed lockfiles differ only in seven first-party version labels. All 44
+  dispositions match the base review digest
+  `ad9dd3e4fca50e918f70a542793afe7688289beca9956a47783cd997d294bdbb` and bind to
+  `40087cc3d52826aca5f3fa1b941b29bf65126c91818686dcb20ca46bc0203e4c`.
+  Dates, expiry, targets, predicates, evidence, owners, and decisions stay
+  unchanged. Fresh hosted scans validate every artifact.
+- Local checks pass: the release check list, 182 focused tests, and the complete
+  no-publish rehearsal on disposable PostgreSQL 17.11 with Python 3.12.16 and
+  uv 0.13.6. The clean preparation commit is
+  `923ab9d6990c4944832d33aed8011e42de7f8308`. The output directory also contains
+  uv's hidden `.gitignore`; distribution counts and hashes use wheel and
+  source-archive globs.
+- [Hosted preparation tests](https://github.com/sediment-ai/sediment/actions/runs/41732081118)
+  pass 6,665 tests across three partitions, Compose acceptance, the installed
+  release rehearsal, and four native platforms.
+  [Hosted security](https://github.com/sediment-ai/sediment/actions/runs/41732081137)
+  validates all six inventories. The four consumer profiles and shims pass.
+  Manual source review and Bugbot find no blocker. The optional separate review
+  can't run because the installed Codex CLI doesn't support its configured
+  `gpt-6-astra` model; it doesn't count as a clean review.
+- The preparation merge is `9fe4e49ef0fee260bc3c83a031dea2361621d3d1`.
+  Its tree matches the rehearsed preparation commit. This session pushes
+  annotated tag `v0.7.0` over SSH through the configured maintainer-creation
+  permission. Immutable-tag protections stay unchanged.
+- [Publication workflow](https://github.com/sediment-ai/sediment/actions/runs/41734241339)
+  succeeds. After build, compatibility, security, and asset preparation pass,
+  the session approves that run's waiting `pypi` deployment under the
+  maintainer's release authorization. No environment settings change.
+- [v0.7.0](https://github.com/sediment-ai/sediment/releases/tag/v0.7.0) is the
+  latest immutable release, published at `2026-11-03T22:56:13Z`. All 69 GitHub
+  assets download; `SHA256SUMS` verifies the other 68. The maintained
+  `rescan_releases.verify_release` validates all six security inventories and
+  their source commit. The support window ends on `2027-02-01`.
+- The twelve distribution hashes match byte for byte across the local
+  rehearsal, workflow artifacts, GitHub assets, and six PyPI version records.
+  Each project has one wheel and one source distribution; none is yanked.
+- A fresh Python 3.12.16 installation from public PyPI with source builds
+  disabled reports all six distributions at 0.7.0. Version, command help, and
+  server help pass. Bundled pi entry point, library, manifest, license, and
+  README files are present. The check doesn't register a harness extension.
+- After publication, the README refresh uses `release=0.7.0` on the dynamic
+  Shields endpoint. PyPI reports `0.7.0`; both Shields and GitHub's rendered
+  README image on the closeout branch report `pypi: v0.7.0`. The image link
+  remains the `sediment-cli` PyPI project. No cache purge is needed.
+
 ## 0.6.1 publication — 2026-10-19
 
 - [Release issue](https://github.com/sediment-ai/sediment/issues/310) and
