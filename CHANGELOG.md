@@ -15,6 +15,8 @@
 
 ### Contributor checks
 
+- Update the setup-uv action to 10.3.2 and both TruffleHog scans to 3.99.7.
+
 - Give the repeated-hour Attributed completion test an explicit Inference
   call timestamp. Its fixed snapshot previously excluded the call after the
   wall clock passed the snapshot date. Closes #331.
