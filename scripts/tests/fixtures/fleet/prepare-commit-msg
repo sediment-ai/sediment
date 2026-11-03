@@ -1,4 +1,8 @@
 #!/bin/sh
 # >>> sediment-attribution >>>
-python3 "/opt/sediment/sediment_attribution.py" union-squash-notes "$1" "$2" || true
+(
+    __sediment_status=$?
+    python3 "/opt/sediment/sediment_attribution.py" union-squash-notes "$1" "${2-}" || true
+    exit "$__sediment_status"
+) && :
 # <<< sediment-attribution <<<
