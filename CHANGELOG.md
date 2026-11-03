@@ -15,6 +15,9 @@
 
 ### Contributor checks
 
+- Test the pi shim against pi-coding-agent 1.5.0. The continuation
+  comparison validates the same harness version as the lockfile.
+
 - Give the repeated-hour Attributed completion test an explicit Inference
   call timestamp. Its fixed snapshot previously excluded the call after the
   wall clock passed the snapshot date. Closes #331.
