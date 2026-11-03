@@ -20,6 +20,8 @@
 - Give the repeated-hour Attributed completion test an explicit Inference
   call timestamp. Its fixed snapshot previously excluded the call after the
   wall clock passed the snapshot date. Closes #331.
+- Check the libpq maintenance test at the catalog review date so a catalog
+  renewal does not invalidate the test's fixed October date.
 
 ## 0.6.1 — 2026-10-19
 
