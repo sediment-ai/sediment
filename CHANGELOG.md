@@ -10,6 +10,23 @@
   subshell. Commands after the block run. `prepare-commit-msg` treats a
   missing commit source as empty under `set -u`. Closes #170.
 
+### Security
+
+- Update the API image and continuous integration (CI) to Python 3.12.16
+  and uv 0.13.6, the Compose proxy to Traefik 3.7.16, and the pi evaluation
+  image and CI to Node 24.22.2.
+- Renew the maintenance catalog and image reviews through 2026-12-03 after
+  fresh scans of both architectures. Remove dispositions for six advisory
+  IDs that the images no longer need. Review SQLite CVE-2026-119373: Debian
+  has no fixed Bookworm package, and Sediment has no SQLite execution path.
+  The installed library remains vulnerable to custom callers. Closes #317.
+
+### Contributor checks
+
+- Give the repeated-hour Attributed completion test an explicit Inference
+  call timestamp. Its fixed snapshot previously excluded the call after the
+  wall clock passed the snapshot date. Closes #331.
+
 ## 0.6.1 — 2026-10-19
 
 ### Security
