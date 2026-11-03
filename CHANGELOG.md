@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-11-03
+
 ### Upgrade notes
 
 - Run `sediment db upgrade` before you start this release. Revision
