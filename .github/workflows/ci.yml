@@ -132,9 +132,17 @@ jobs:
           Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
           EOF
           sudo apt-get update
-          xml_package=libxml2
-          if ! apt-cache show "$xml_package" > /dev/null 2>&1; then
-            xml_package=libxml2t64
+          xml_package=
+          for candidate in libxml2 libxml2t64 libxml2-16; do
+            candidate_version=$(apt-cache policy "$candidate" | awk '/Candidate:/ {print $2}')
+            if [ -n "$candidate_version" ] && [ "$candidate_version" != "(none)" ]; then
+              xml_package=$candidate
+              break
+            fi
+          done
+          if [ -z "$xml_package" ]; then
+            echo "No installable libxml2 package found on this runner" >&2
+            exit 1
           fi
           sudo apt-get install --no-install-recommends -y \
             postgresql-client-17 libpq5 "$xml_package" libzstd1 liblz4-1 zlib1g
