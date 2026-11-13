@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Security
+
+- Update API dependencies to anyio 4.16.0, psycopg 3.3.9, and Pydantic
+  2.14.3. Build the API image with uv 0.13.7.
+
+### Contributor checks
+
+- Update Ruff to 0.17.4.
+
 ## 0.7.0 — 2026-11-03
 
 ### Upgrade notes
