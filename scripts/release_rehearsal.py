@@ -270,6 +270,20 @@ def validate_pipeline_receipts(receipts: list[dict]) -> bool:
     )
 
 
+def _rows_from_jsonl(path: Path, *, required: bool = True) -> list[dict]:
+    if not path.is_file():
+        if required:
+            raise AssertionError(f"runtime rehearsal: training file {path.name} absent")
+        return []
+    return [
+        json.loads(
+            line,
+            parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)),
+        )
+        for line in path.read_text().splitlines()
+    ]
+
+
 INSTALLED_ENTRY_POINTS = (
     "sediment transcript --agent claude-code",
     "GET /v1/reports/model-outcomes",
@@ -1475,25 +1489,11 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                     "--out",
                     str(output),
                 )
-
-                def rows(filename):
-                    path = output / filename
-                    require(path.is_file(), f"training file {filename} absent")
-                    return [
-                        json.loads(
-                            line,
-                            parse_constant=lambda value: (_ for _ in ()).throw(
-                                ValueError(value)
-                            ),
-                        )
-                        for line in path.read_text().splitlines()
-                    ]
-
                 sft, dpo, tasks, rollouts = (
-                    rows("sft.jsonl"),
-                    rows("dpo.jsonl"),
-                    rows("tasks.jsonl"),
-                    rows("rollouts.jsonl"),
+                    _rows_from_jsonl(output / "sft.jsonl"),
+                    _rows_from_jsonl(output / "dpo.jsonl", required=False),
+                    _rows_from_jsonl(output / "tasks.jsonl"),
+                    _rows_from_jsonl(output / "rollouts.jsonl"),
                 )
                 skip_match = re.search(
                     r"pairs projected:\s+\d+\s+skipped:\s+(\{.*\})", dpo_out
@@ -1515,20 +1515,26 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                     "rollout rows: 2  skipped: {'unrepresentable_unicode': 1}"
                     in rlvr_out
                     and "samples projected: 1  skipped: {}" in sft_out
-                    and "pairs projected: 0  skipped: {}" in dpo_out,
+                    and "pairs projected: 0  skipped: {}" in dpo_out
+                    and "nothing written" in dpo_out,
                     "strict projection decline accounting mismatch",
                 )
-                for filename, emitted in (
-                    ("sft.jsonl", sft),
-                    ("dpo.jsonl", dpo),
-                    ("tasks.jsonl", tasks),
-                    ("rollouts.jsonl", rollouts),
+                for filename, emitted, outputs in (
+                    ("dpo.jsonl", dpo, dpo_out),
+                    ("sft.jsonl", sft, sft_out),
+                    ("tasks.jsonl", tasks, rlvr_out),
+                    ("rollouts.jsonl", rollouts, rlvr_out),
                 ):
-                    require(
-                        f"wrote {output / filename} ({len(emitted)} rows)"
-                        in sft_out + rlvr_out,
-                        "published row receipt disagrees with file",
-                    )
+                    if emitted:
+                        require(
+                            f"wrote {output / filename} ({len(emitted)} rows)" in outputs,
+                            "published row receipt disagrees with file",
+                        )
+                    else:
+                        require(
+                            not (output / filename).exists(),
+                            "zero-row export wrote an unexpected training file",
+                        )
                 require(
                     sft[0]["metadata"]["completion_id"] == call_ids[0],
                     "SFT row identity mismatch",
