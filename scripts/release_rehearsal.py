@@ -1527,7 +1527,8 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                 ):
                     if emitted:
                         require(
-                            f"wrote {output / filename} ({len(emitted)} rows)" in outputs,
+                            f"wrote {output / filename} ({len(emitted)} rows)"
+                            in outputs,
                             "published row receipt disagrees with file",
                         )
                     else:
