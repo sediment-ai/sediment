@@ -132,8 +132,12 @@ jobs:
           Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
           EOF
           sudo apt-get update
+          xml_package=libxml2
+          if ! apt-cache show "$xml_package" > /dev/null 2>&1; then
+            xml_package=libxml2t64
+          fi
           sudo apt-get install --no-install-recommends -y \
-            postgresql-client-17 libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+            postgresql-client-17 libpq5 "$xml_package" libzstd1 liblz4-1 zlib1g
           # Backup tests need the server's major, not the runner's default client.
           printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
           /usr/lib/postgresql/17/bin/pg_dump --version
