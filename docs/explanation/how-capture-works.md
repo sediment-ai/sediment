@@ -209,19 +209,28 @@ guessing.
 
 ## Commit Attribution
 
-An agent hook appends a marker after each edit. The marker contains the agent
-name, Session identifier, and timestamp. It contains no prompt, output, diff,
-or file content.
+An agent hook appends a marker after each hooked tool call. The hooked calls
+differ by agent. Claude Code's hook includes every `Bash` call. Codex's hook
+has no matcher. In both agents, a read-only command marks the Session.
+[Agent hooks](../capture/local-capture.md#agent-hooks) lists the calls for
+each agent. The marker contains the agent name, Session identifier, and
+timestamp. It contains no prompt, output, diff, or file content.
 
 At commit time, a git hook unions the markers into a JSON note under
-`refs/notes/sediment`. Git carries the note through amend and rebase. A
-pre-push hook reconciles and pushes the notes ref when the push goes to
+`refs/notes/sediment`. The hook consumes every pending marker in that working
+tree, whoever makes the commit and whatever it changes. A note therefore
+names the Sessions that ran a hooked tool call in the tree before the commit.
+It doesn't prove that a named Session changed the committed files. Git carries
+the note through amend and rebase. A pre-push hook reconciles and pushes the
+notes ref when the push goes to
 `origin`. The hook syncs no notes with any other remote, so a fork can't add
 notes to the ref that the server reads.
 
 When the forge reports a Push, the mirror reads the note and joins the commit
 to the named Sessions. Notes Attribution is deterministic because the client
-recorded the relationship when it happened.
+recorded the relationship when it happened. The Attribution Derivation still
+selects a call within the named Sessions only when one meets the similarity
+threshold.
 
 After a successful mirror refresh, Sediment stores the first
 `SessionCommitObservation` for each Git-note Session-to-commit relationship in
