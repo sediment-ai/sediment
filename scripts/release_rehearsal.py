@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -96,6 +97,8 @@ PIPELINE_EXPECTATIONS = {
     },
     "training": {
         "sft_rows": 1,
+        "dpo_rows": 0,
+        "dpo_skipped": {},
         "task_rows": 1,
         "rollout_rows": 2,
         "unicode_declines": 1,
@@ -1452,6 +1455,16 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                     "--out",
                     str(output),
                 )
+                dpo_out = command(
+                    "export",
+                    "dpo",
+                    "--recipe",
+                    "dpo_human",
+                    "--from",
+                    str(bundle_path),
+                    "--out",
+                    str(output),
+                )
                 rlvr_out = command(
                     "export",
                     "rlvr",
@@ -1476,23 +1489,38 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                         for line in path.read_text().splitlines()
                     ]
 
-                sft, tasks, rollouts = (
+                sft, dpo, tasks, rollouts = (
                     rows("sft.jsonl"),
+                    rows("dpo.jsonl"),
                     rows("tasks.jsonl"),
                     rows("rollouts.jsonl"),
                 )
+                skip_match = re.search(
+                    r"pairs projected:\s+\d+\s+skipped:\s+(\{.*\})", dpo_out
+                )
+                require(skip_match is not None, "DPO projection summary missing")
+                dpo_skips = ast.literal_eval(skip_match.group(1))
                 require(
                     len(sft) == len(tasks) == 1 and len(rollouts) == 2,
                     "training file row counts mismatch",
                 )
+                # The fixture has one selected accepted completion and no selected
+                # rejected completion, so DPO emits no pair by design.
+                require(
+                    len(dpo) == 0
+                    and dpo_skips == PIPELINE_EXPECTATIONS["training"]["dpo_skipped"],
+                    "DPO eligibility accounting mismatch",
+                )
                 require(
                     "rollout rows: 2  skipped: {'unrepresentable_unicode': 1}"
                     in rlvr_out
-                    and "samples projected: 1  skipped: {}" in sft_out,
+                    and "samples projected: 1  skipped: {}" in sft_out
+                    and "pairs projected: 0  skipped: {}" in dpo_out,
                     "strict projection decline accounting mismatch",
                 )
                 for filename, emitted in (
                     ("sft.jsonl", sft),
+                    ("dpo.jsonl", dpo),
                     ("tasks.jsonl", tasks),
                     ("rollouts.jsonl", rollouts),
                 ):
@@ -1580,11 +1608,14 @@ print(json.dumps(delivery.status(callback.os.environ['SEDIMENT_DELIVERY_DIR'])))
                     )
                 return output, {
                     "sft_rows": len(sft),
+                    "dpo_rows": len(dpo),
+                    "dpo_skipped": dpo_skips,
                     "task_rows": len(tasks),
                     "rollout_rows": len(rollouts),
                     "unicode_declines": 1,
                     "row_ids": {
                         "sft": [sft[0]["metadata"]["completion_id"]],
+                        "dpo": [],
                         "tasks": [tasks[0]["instance_id"]],
                         "rollouts": [
                             [r["instance_id"], r["segment_index"]] for r in rollouts

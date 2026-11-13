@@ -339,7 +339,7 @@ The rehearsal verifies:
 | Installation | Wheels rebuilt from source archives; original wheels installed outside the checkout; CLI, migration, Fact reads, and transcript hooks |
 | Capture and replay | Synthetic gateway, transcript, and OTLP inputs; receiver outages; lost acknowledgments; retained bytes and Fact IDs after restart |
 | Repository evidence | Real Git patches and notes, Push capture, Session-to-commit observations, Repository rename, and CI identity |
-| Reports and exports | Authenticated reads, bundle v4 roundtrip, invalid-bundle refusal, quarantine/release, SFT and RLVR rows, and counted exclusions |
+| Reports and exports | Authenticated reads, bundle v4 roundtrip, invalid-bundle refusal, quarantine/release, SFT and RLVR rows, DPO eligibility (`dpo_human`) with canonical no-pair skip accounting, and counted exclusions |
 | Transcript batching | 32 observations of a 256 KiB file in two bounded requests; original bytes survive an outage, source changes, and transcript removal |
 
 The [rehearsal implementation](scripts/release_rehearsal.py) defines the
