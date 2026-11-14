@@ -17,17 +17,18 @@ as a big-endian integer, scaled into ``[0, 1)``; a session is eval when its scor
 falls below ``fraction``. sha256 spreads session ids uniformly, so the eval share
 converges on ``fraction`` without any distribution assumptions about the ids.
 
-**Seam note for attributed-completion assembly (do not build here).** When
-attributed-completion assembly lands, it must stamp its ``split`` via *these same
+**Every producer stamps through these primitives.** Rollouts, Attributed
+completions, and Recovery pairs stamp their ``split`` via *these same
 primitives* — never a second hash — so a completion carries the identical split
 whether it surfaces as a rollout or an attributed-completion projection. A plain
-attributed completion stamps ``split_of(inference_call.session_id, fraction)``.
+attributed completion stamps ``split_of(session_id, fraction)``.
 A multi-session artifact (a DPO
 pair setting one session's completion against another's) is eval when ANY
 constituent session is eval — eval wins, so a train-side completion can never
-leak into the eval set through a cross-session pairing; build that helper at
-the attributed-completion layer when it lands. The canonical derivation policy
-supplies the fraction.
+leak into the eval set through a cross-session pairing. That rule lives with
+the exporters that build such artifacts (``sediment_export.dpo`` and
+``sediment_export.recovery``). The canonical derivation policy supplies the
+fraction.
 """
 
 from __future__ import annotations
@@ -65,6 +66,6 @@ def is_eval(session_id: str, fraction: float) -> bool:
 
 def split_of(session_id: str, fraction: float) -> Split:
     """The single-session stamp: ``"eval"`` when :func:`is_eval`, else
-    ``"train"``. Used by the rollout derivation and by future single-completion
+    ``"train"``. Used by the rollout derivation and by single-completion
     attributed completions."""
     return EVAL if is_eval(session_id, fraction) else TRAIN
