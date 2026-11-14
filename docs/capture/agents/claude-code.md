@@ -7,7 +7,7 @@ inference calls, and optional Edit observations on one developer machine.
 
 | Evidence | Support | Source or limit |
 | --- | --- | --- |
-| Commit Attribution | Yes | `PostToolUse` marks Claude Code Sessions for edits and shell work. |
+| Commit Attribution | Yes | `PostToolUse` marks the Session after edit tools and every `Bash` call, including read-only commands. |
 | Developer decisions | Yes | Native telemetry covers `Edit`, `Write`, `MultiEdit`, and `NotebookEdit`. |
 | Inference calls | Optional | The Claude Code command-line interface (CLI) can use a compatible gateway. |
 | Edit observations | Optional | Transcript extraction covers successful `Edit` and `Write` calls. |
