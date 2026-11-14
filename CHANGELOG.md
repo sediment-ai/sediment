@@ -5,7 +5,9 @@
 ### Security
 
 - Update API dependencies to anyio 4.16.0, psycopg 3.3.9, and Pydantic
-  2.14.3. Build the API image with uv 0.13.7.
+  2.14.3. Build the API image with uv 0.13.7. Renew the image review digest
+  for those build-input changes. Neither change alters an installed Debian
+  package.
 
 ### Contributor checks
 
