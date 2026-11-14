@@ -22,8 +22,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                anyOf:
+                - $ref: '#/components/schemas/IngestReceipt'
+                - $ref: '#/components/schemas/IngestSkipped'
                 title: Response Ingest Gateway Ingest Gateway Post
         '422':
           description: Validation Error
@@ -64,8 +65,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                anyOf:
+                - $ref: '#/components/schemas/IngestReceipt'
+                - $ref: '#/components/schemas/IngestSkipped'
                 title: Response Ingest Push Ingest Github Push Post
         '503':
           description: Database unavailable, or stored Push awaits retry after mirror
@@ -115,8 +117,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                anyOf:
+                - $ref: '#/components/schemas/IngestReceipt'
+                - $ref: '#/components/schemas/IngestSkipped'
                 title: Response Ingest Repository Ingest Github Repository Post
         '503':
           description: Mirror work capacity, storage, or execution budget exceeded.
@@ -164,8 +167,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                anyOf:
+                - $ref: '#/components/schemas/IngestReceipt'
+                - $ref: '#/components/schemas/IngestSkipped'
                 title: Response Ingest Ci Ingest Github Ci Post
         '422':
           description: Validation Error
@@ -211,8 +215,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                anyOf:
+                - $ref: '#/components/schemas/IngestReceipt'
+                - $ref: '#/components/schemas/IngestSkipped'
                 title: Response Ingest Pull Request Ingest Github Pull Request Post
         '422':
           description: Validation Error
@@ -249,9 +254,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-                title: Response Ingest Ci Vendor Ingest Ci Post
+                $ref: '#/components/schemas/IngestReceipt'
         '422':
           description: Validation Error
           content:
@@ -290,9 +293,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-                title: Response Ingest Compute Allocation Ingest Compute Post
+                $ref: '#/components/schemas/IngestReceipt'
         '422':
           description: Validation Error
           content:
@@ -325,9 +326,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-                title: Response Ingest Otlp Logs V1 Logs Post
+                $ref: '#/components/schemas/OTLPExportLogsResponse'
         '422':
           description: Validation Error
           content:
@@ -2759,12 +2758,53 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    IngestReceipt:
+      properties:
+        fact_id:
+          type: string
+          title: Fact Id
+          description: ID of the retained Fact, including on redelivery
+        stored:
+          type: boolean
+          title: Stored
+          description: False when a redelivery collapsed on a UNIQUE index (ADR 0003);
+            success, not an error
+      additionalProperties: false
+      type: object
+      required:
+      - fact_id
+      - stored
+      title: IngestReceipt
+      description: The retained Fact for one single-Fact ingest request.
+    IngestSkipped:
+      properties:
+        skipped:
+          type: boolean
+          const: true
+          title: Skipped
+        reason:
+          type: string
+          title: Reason
+          description: Why the route stored nothing for this delivery
+      additionalProperties: false
+      type: object
+      required:
+      - skipped
+      - reason
+      title: IngestSkipped
+      description: A declined delivery that the sender shouldn't retry.
     InteractionMode:
       type: string
       enum:
       - agent
       - inline
       title: InteractionMode
+    OTLPExportLogsResponse:
+      properties: {}
+      additionalProperties: false
+      type: object
+      title: OTLPExportLogsResponse
+      description: 'The empty OTLP/HTTP JSON ExportLogsServiceResponse: full success.'
     PushSummary:
       properties:
         push_id:
