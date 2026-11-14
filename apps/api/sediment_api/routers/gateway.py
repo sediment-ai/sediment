@@ -20,6 +20,7 @@ from sediment_core.models import AwareDatetime
 
 from ..config import settings
 from ..deps import get_store, verify_ingest_token
+from ..ingest_envelopes import IngestReceipt, IngestSkipped
 
 logger = logging.getLogger("sediment.api.gateway")
 router = APIRouter(tags=["gateway"])
@@ -57,7 +58,7 @@ def ingest_gateway(
     body: GatewayIngestRequest,
     _: None = Depends(verify_ingest_token),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt | IngestSkipped:
     adapter = ADAPTERS.get(body.provider)
     if adapter is None:
         raise HTTPException(
@@ -85,7 +86,7 @@ def ingest_gateway(
                 body.provider,
                 body.payload.get("litellm_call_id"),
             )
-            return {"skipped": True, "reason": "no_session"}
+            return IngestSkipped(skipped=True, reason="no_session")
 
     try:
         inference_call = adapter.normalize(
@@ -134,4 +135,4 @@ def ingest_gateway(
         receipt.fact_id,
         receipt.stored,
     )
-    return {"fact_id": receipt.fact_id, "stored": receipt.stored}
+    return IngestReceipt(fact_id=receipt.fact_id, stored=receipt.stored)

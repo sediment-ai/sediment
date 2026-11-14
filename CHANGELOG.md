@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Capture
+
+- Describe ingest responses in `openapi.yaml`. The single-Fact routes declare
+  `IngestReceipt` (`fact_id`, `stored`), the routes that can decline a
+  delivery also declare `IngestSkipped` (`skipped`, `reason`), and
+  `POST /v1/logs` declares the empty `OTLPExportLogsResponse`. A generated
+  client can tell a stored Fact from a declined delivery from the schema
+  alone. Response bodies, status codes, and skip reasons don't change.
+  Closes #12.
+
 ### Contributor checks
 
 - Test the pi shim against pi-coding-agent 1.5.1. Align the continuation
