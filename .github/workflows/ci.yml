@@ -34,7 +34,9 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     # The repository variable lets an operator point CI at a self-hosted
     # runner without a commit; unset, it falls back to GitHub-hosted.
-    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-latest' }}
+    # Pin ubuntu-24.04: theseus-rs PostgreSQL 17.11 binaries need
+    # libxml2.so.2 and ICU 74, which ubuntu-latest (26.04) does not ship.
+    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-24.04' }}
     env:
       SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
       SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
@@ -132,8 +134,20 @@ jobs:
           Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
           EOF
           sudo apt-get update
+          xml_package=
+          for candidate in libxml2 libxml2t64 libxml2-16; do
+            candidate_version=$(apt-cache policy "$candidate" | awk '/Candidate:/ {print $2}')
+            if [ -n "$candidate_version" ] && [ "$candidate_version" != "(none)" ]; then
+              xml_package=$candidate
+              break
+            fi
+          done
+          if [ -z "$xml_package" ]; then
+            echo "No installable libxml2 package found on this runner" >&2
+            exit 1
+          fi
           sudo apt-get install --no-install-recommends -y \
-            postgresql-client-17 libpq5 libxml2 libzstd1 liblz4-1 zlib1g
+            postgresql-client-17 libpq5 "$xml_package" libzstd1 liblz4-1 zlib1g
           # Backup tests need the server's major, not the runner's default client.
           printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
           /usr/lib/postgresql/17/bin/pg_dump --version

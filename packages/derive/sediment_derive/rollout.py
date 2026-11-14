@@ -645,22 +645,6 @@ def _semantic_value(value: Any) -> Any:
     return value
 
 
-def session_commits_from_notes(
-    mirrors: MirrorManager, org_id: str, repos: list[str]
-) -> dict[str, set[CommitRef]]:
-    """Notes binding: session ID to repository-qualified commits.
-    ``refs/notes/sediment`` stamp names the session. A note is proof of the
-    session->commit edge regardless of push timing, so this reads the whole
-    notes ref, not a push window. Fail-soft throughout: a repo never mirrored,
-    a mirror with no notes ref, or an unreadable note simply contributes
-    nothing.
-
-    ponytail: one ``read_commit_note`` subprocess per noted commit per repo. A
-    ``git notes ... show`` batched over the listed objects is the upgrade when
-    a repo's note volume makes the per-note fork cost show up."""
-    return session_commits_from_notes_result(mirrors, org_id, repos).session_commits
-
-
 def session_commits_from_notes_result(
     mirrors: MirrorManager,
     org_id: str,
@@ -668,7 +652,16 @@ def session_commits_from_notes_result(
     *,
     repository_context: RepositoryContext | None = None,
 ) -> NotesBindingResult:
-    """Read notes bindings and count listed notes that can't be decoded."""
+    """Read notes bindings and count listed notes that can't be decoded.
+
+    The ``refs/notes/sediment`` stamp names the Session. A note is proof of the
+    Session-to-commit edge regardless of push timing, so this reads the whole
+    notes ref, not a push window. Fail-soft throughout: a repo never mirrored,
+    or a mirror with no notes ref, contributes nothing.
+
+    ponytail: one ``read_commit_note`` subprocess per noted commit per repo. A
+    ``git notes ... show`` batched over the listed objects is the upgrade when
+    a repo's note volume makes the per-note fork cost show up."""
 
     result = NotesBindingResult()
     out: dict[str, set[CommitRef]] = defaultdict(set)
