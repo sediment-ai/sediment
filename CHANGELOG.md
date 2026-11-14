@@ -25,6 +25,9 @@
 
 - Update Ruff to 0.17.4.
 
+- Test the pi shim against pi-coding-agent 1.5.1. Align the continuation
+  evaluation harness lock with that version.
+
 ## 0.7.0 — 2026-11-03
 
 ### Upgrade notes
