@@ -2,8 +2,8 @@
 """
 GitHub webhook ingest routes, mounted under /ingest/github in main.py.
 
-One module for both routes: they share the HMAC intake and differ only in
-which parser/store pair the payload walks through. The signature is
+One module for all four routes: they share the HMAC intake and differ only
+in which parser/store pair the payload walks through. The signature is
 verified BEFORE the event type is examined: a wrong-secret delivery must
 401 even for event types a route skips, or GitHub's setup ping would
 green-light a misconfigured webhook. The push route stores the Push fact,
@@ -19,7 +19,6 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from datetime import UTC, datetime
-from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
 from sediment_capture import (
@@ -53,6 +52,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ..config import settings
 from ..deps import get_store, read_verified_webhook
+from ..ingest_envelopes import IngestReceipt, IngestSkipped
 
 logger = logging.getLogger("sediment.api.forge")
 router = APIRouter(tags=["forge"])
@@ -295,15 +295,15 @@ async def ingest_push(
     x_hub_signature_256: str | None = Header(None),
     x_github_event: str = Header(...),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt | IngestSkipped:
     payload = await read_verified_webhook(request, x_hub_signature_256)
     # GitHub delivers every subscribed event (incl. ping) to the one URL;
     # the X-GitHub-Event header is the discriminator.
     if x_github_event != "push":
-        return {"skipped": True, "reason": "not a push event"}
+        return IngestSkipped(skipped=True, reason="not a push event")
     push = parse_push(payload, org_id=settings.org_id, github_host=settings.github_host)
     if push is None:
-        return {"skipped": True, "reason": "not a storable push"}
+        return IngestSkipped(skipped=True, reason="not a storable push")
     receipt = await run_in_threadpool(store.store_push_receipt, push)
     fetch_repo, fetch_clone_url = push.repo, push.clone_url
     push = receipt.fact
@@ -325,12 +325,11 @@ async def ingest_push(
             push, fetch_repo=fetch_repo, fetch_clone_url=fetch_clone_url
         )
         background.add_task(request.app.state.workers.wait_background, task)
-    return {"fact_id": push.push_id, "stored": stored}
+    return IngestReceipt(fact_id=push.push_id, stored=stored)
 
 
 @router.post(
     "/repository",
-    response_model=dict[str, Any],
     responses={
         503: {
             "description": "Mirror work capacity, storage, or execution budget exceeded."
@@ -343,11 +342,11 @@ async def ingest_repository(
     x_github_event: str = Header(...),
     x_github_delivery: str | None = Header(None),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt | IngestSkipped:
     """Store an immutable rename receipt independently of mirror availability."""
     payload = await read_verified_webhook(request, x_hub_signature_256)
     if x_github_event != "repository":
-        return {"skipped": True, "reason": "not a repository event"}
+        return IngestSkipped(skipped=True, reason="not a repository event")
     rename, reason = parse_repository_rename(
         payload,
         org_id=settings.org_id,
@@ -356,12 +355,12 @@ async def ingest_repository(
     )
     if rename is None:
         assert reason is not None
-        return {"skipped": True, "reason": reason.value}
+        return IngestSkipped(skipped=True, reason=reason.value)
     receipt = await run_in_threadpool(store.store_repository_rename_receipt, rename)
     logger.info(
         "repository_rename_stored fact_id=%s stored=%s", receipt.fact_id, receipt.stored
     )
-    return {"fact_id": receipt.fact_id, "stored": receipt.stored}
+    return IngestReceipt(fact_id=receipt.fact_id, stored=receipt.stored)
 
 
 @router.post("/ci")
@@ -371,10 +370,10 @@ async def ingest_ci(
     x_github_event: str = Header(...),
     x_github_delivery: str | None = Header(None),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt | IngestSkipped:
     payload = await read_verified_webhook(request, x_hub_signature_256)
     if x_github_event != "workflow_run":
-        return {"skipped": True, "reason": "not a workflow_run event"}
+        return IngestSkipped(skipped=True, reason="not a workflow_run event")
     outcome = parse_workflow_run(
         payload,
         org_id=settings.org_id,
@@ -382,7 +381,7 @@ async def ingest_ci(
         github_host=settings.github_host,
     )
     if outcome is None:
-        return {"skipped": True, "reason": "not a completed workflow_run"}
+        return IngestSkipped(skipped=True, reason="not a completed workflow_run")
     receipt = await run_in_threadpool(store.store_ci_outcome_receipt, outcome)
     outcome = receipt.fact
     stored = receipt.stored
@@ -393,7 +392,7 @@ async def ingest_ci(
         outcome.repo,
         outcome.result,
     )
-    return {"fact_id": outcome.outcome_id, "stored": stored}
+    return IngestReceipt(fact_id=outcome.outcome_id, stored=stored)
 
 
 @router.post("/pull-request")
@@ -403,10 +402,10 @@ async def ingest_pull_request(
     x_github_event: str = Header(...),
     x_github_delivery: str | None = Header(None),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt | IngestSkipped:
     payload = await read_verified_webhook(request, x_hub_signature_256)
     if x_github_event != "pull_request":
-        return {"skipped": True, "reason": "not a pull_request event"}
+        return IngestSkipped(skipped=True, reason="not a pull_request event")
     if payload.get("action") == "closed":
         merge = parse_pull_request_merge(
             payload,
@@ -415,7 +414,7 @@ async def ingest_pull_request(
             github_host=settings.github_host,
         )
         if merge is None:
-            return {"skipped": True, "reason": "not a merged pull_request"}
+            return IngestSkipped(skipped=True, reason="not a merged pull_request")
         receipt = await run_in_threadpool(store.store_pull_request_merge_receipt, merge)
         merge = receipt.fact
         stored = receipt.stored
@@ -426,7 +425,7 @@ async def ingest_pull_request(
             merge.repo,
             merge.pr_number,
         )
-        return {"fact_id": merge.merge_id, "stored": stored}
+        return IngestReceipt(fact_id=merge.merge_id, stored=stored)
 
     revision, skip_reason = parse_pull_request_revision(
         payload,
@@ -436,7 +435,7 @@ async def ingest_pull_request(
     )
     if revision is None:
         assert skip_reason is not None
-        return {"skipped": True, "reason": skip_reason.value}
+        return IngestSkipped(skipped=True, reason=skip_reason.value)
     receipt = await run_in_threadpool(
         store.store_pull_request_revision_receipt, revision
     )
@@ -449,4 +448,4 @@ async def ingest_pull_request(
         revision.repo,
         revision.pr_number,
     )
-    return {"fact_id": revision.revision_id, "stored": stored}
+    return IngestReceipt(fact_id=revision.revision_id, stored=stored)

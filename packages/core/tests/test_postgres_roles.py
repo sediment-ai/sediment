@@ -1060,8 +1060,20 @@ def test_provisioning_refuses_a_membership_it_cannot_revoke(
 ):
     admin_url, connect = admin_database
     provision(admin_url)
+    grantor = "postgres"
     with role_admin.connect() as connection:
         connection.exec_driver_sql("GRANT pg_read_all_data TO sediment_runtime")
+        grantor = connection.execute(
+            text(
+                "SELECT grantor.rolname "
+                "FROM pg_auth_members AS membership "
+                "JOIN pg_roles AS roleid ON roleid.oid = membership.roleid "
+                "JOIN pg_roles AS member ON member.oid = membership.member "
+                "JOIN pg_roles AS grantor ON grantor.oid = membership.grantor "
+                "WHERE roleid.rolname = 'pg_read_all_data' "
+                "AND member.rolname = 'sediment_runtime'"
+            )
+        ).scalar_one()
     with pytest.raises(role_module().DatabasePrivilegeError) as failure:
         role_module().provision_database(
             admin_url,
@@ -1072,7 +1084,7 @@ def test_provisioning_refuses_a_membership_it_cannot_revoke(
         )
     assert (
         'role "sediment_runtime" is a member of "pg_read_all_data" through a grant '
-        f'by "postgres" that administrator "{managed_admin}" can\'t revoke'
+        f'by "{grantor}" that administrator "{managed_admin}" can\'t revoke'
     ) in str(failure.value)
     # Nothing changed: the old passwords still log in.
     assert all(logs_in(connect(role)) for role in ROLES)
