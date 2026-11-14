@@ -807,8 +807,13 @@ def test_real_watch_process_owns_lock_and_sigterm_is_graceful(delivery, tmp_path
             worker.communicate(timeout=3)
 
 
-def test_batch_limit_and_retryable_failure_do_not_starve_siblings(delivery, tmp_path):
+def test_batch_limit_and_retryable_failure_do_not_starve_siblings(
+    delivery, tmp_path, monkeypatch
+):
     queue = tmp_path / "queue"
+    clock = [delivery.time.time()]
+    monkeypatch.setattr(delivery.time, "time", lambda: clock[0])
+    monkeypatch.setattr(delivery.secrets, "randbelow", lambda _bound: 0)
     with server([(503, b"fail")] + [(200, b"{}")] * 33) as (url, received):
         env = {"SEDIMENT_OTLP_ENDPOINT": url, "SEDIMENT_INGEST_TOKEN": "t"}
         requests = [
@@ -816,15 +821,21 @@ def test_batch_limit_and_retryable_failure_do_not_starve_siblings(delivery, tmp_
         ]
         for request in requests:
             assert delivery.enqueue(request, queue).status == "queued"
+            clock[0] += 0.001
         result = delivery.replay(queue, env=env)
         assert result["attempted"] == 32
         assert result["pending"] == 1
         assert result["acknowledged"] == 31
         assert received[0][1] == b"0"
         assert delivery.status(queue)["pending"] == 3
-        result = delivery.replay(queue, env=env)
-        assert result["attempted"] == result["acknowledged"] == 2
+        before_deadline = delivery.replay(queue, env=env)
+        assert before_deadline["attempted"] == before_deadline["acknowledged"] == 2
         assert delivery.status(queue)["pending"] == 1
+        clock[0] += 1.1
+        after_deadline = delivery.replay(queue, env=env)
+        assert after_deadline["attempted"] == after_deadline["acknowledged"] == 1
+        assert received[-1][1] == b"0"
+        assert delivery.status(queue)["pending"] == 0
 
 
 def test_byte_capacity_receipt_cap_and_fixed_defaults(delivery, tmp_path, monkeypatch):

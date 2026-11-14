@@ -819,6 +819,20 @@ def test_pipeline_report_rejects_boolean_in_place_of_a_count():
     assert rehearsal.validate_pipeline_report(report)
 
 
+def test_training_stage_contract_includes_dpo_eligibility_coverage():
+    training = _load_rehearsal().PIPELINE_EXPECTATIONS["training"]
+    assert training["dpo_rows"] == 0
+    assert training["dpo_skipped"] == {}
+
+
+def test_zero_row_export_does_not_require_a_written_jsonl_file(tmp_path):
+    rehearsal = _load_rehearsal()
+    path = tmp_path / "dpo.jsonl"
+    assert not path.exists()
+    rows = rehearsal._rows_from_jsonl(path, required=False)
+    assert rows == []
+
+
 def test_pipeline_receipts_require_exact_counts_independent_of_arrival_order():
     from copy import deepcopy
     from itertools import permutations
