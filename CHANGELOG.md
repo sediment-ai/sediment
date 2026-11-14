@@ -12,6 +12,10 @@
   alone. Response bodies, status codes, and skip reasons don't change.
   Closes #12.
 
+### Contributor checks
+
+- Update the setup-uv action to 10.3.3 and both TruffleHog scans to 3.99.8.
+
 ## 0.7.0 — 2026-11-03
 
 ### Upgrade notes
