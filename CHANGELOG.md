@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.1 — 2026-11-14
+
 ### Capture
 
 - Describe ingest responses in `openapi.yaml`. The single-Fact routes declare
