@@ -14,8 +14,7 @@ from __future__ import annotations
 import json
 import secrets
 from dataclasses import dataclass
-from typing import Literal
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, Header, HTTPException, Request
 from sediment_capture import verify_signature

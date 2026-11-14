@@ -208,7 +208,7 @@ structured counts and discards its result. Query and report routes may
 compute read-only Derivation output for their responses. Tenancy binds to the
 deployment (`SEDIMENT_ORG_ID`), never to the request. Response shapes:
 
-- Single Fact ingest (`/ingest/gateway`, `/ingest/ci`, and
+- Single Fact ingest (`/ingest/gateway`, `/ingest/ci`, `/ingest/compute`, and
   `/ingest/github/{push,ci,pull-request,repository}`) returns
   `{"fact_id": "<uuid>", "stored": <bool>}`. `stored: false` means a
   redelivery collapsed on a UNIQUE index (ADR 0003) — success, not an error.
