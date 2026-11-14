@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Capture
+
+- Describe ingest responses in `openapi.yaml`. The single-Fact routes declare
+  `IngestReceipt` (`fact_id`, `stored`), the routes that can decline a
+  delivery also declare `IngestSkipped` (`skipped`, `reason`), and
+  `POST /v1/logs` declares the empty `OTLPExportLogsResponse`. A generated
+  client can tell a stored Fact from a declined delivery from the schema
+  alone. Response bodies, status codes, and skip reasons don't change.
+  Closes #12.
+
+### Security
+
+- Update API dependencies to anyio 4.16.0, psycopg 3.3.9, and Pydantic
+  2.14.3. Build the API image with uv 0.13.7. Renew the image review digest
+  for those build-input changes. Neither change alters an installed Debian
+  package.
+
+### Contributor checks
+
+- Update the setup-uv action to 10.3.3 and both TruffleHog scans to 3.99.8.
+
+- Update Ruff to 0.17.4.
+
+- Test the pi shim against pi-coding-agent 1.5.1. Align the continuation
+  evaluation harness lock with that version.
+
 ## 0.7.0 — 2026-11-03
 
 ### Upgrade notes

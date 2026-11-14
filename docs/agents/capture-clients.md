@@ -51,7 +51,7 @@ sediment mark --tool <agent>
 ```
 
 Send JSON on standard input with `session_id` (or `thread_id`) and `cwd` inside the edited repository.
-For a workspace-root Session, locate the repository from an absolute edit path; otherwise use Session `cwd`.
+For a workspace-root Session, locate the repository from an absolute edit path; otherwise use Session `cwd`. `cmd_mark` ignores `tool_name`, so the hook matcher alone decides which calls mark: `CLAUDE_MATCHER` includes `Bash` and the Codex block has no matcher, so read-only calls mark too. `cmd_stamp` writes every pending marker into the next commit's note in that working tree, whoever commits; a note names candidate Sessions, not editors.
 
 A shim without `sediment` on PATH runs `python3 <dir>/sediment_attribution.py mark --tool <agent>`; fleet hooks use the MDM `--prefix` and pi uses `SEDIMENT_SCRIPT_DIR`.
 

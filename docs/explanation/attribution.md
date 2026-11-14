@@ -7,7 +7,9 @@ tries similarity across the organization's candidate calls.
 
 A Git note records a Session's relationship to a commit. It doesn't prove
 which call authored a particular file. That distinction applies even when the
-similarity score is 1.0.
+similarity score is 1.0. The note names every Session that ran a hooked tool
+call in the working tree before the commit, including a read-only shell
+command. It doesn't prove that the Session changed the commit.
 
 [Run derivations](../operate/run-derivations.md) is the starting point for
 operators. [How Derivation works](how-derivation-works.md) explains how
@@ -110,7 +112,8 @@ Attributed completions and Rollouts retain inferred Attribution alongside
 matching source Facts in `session_commit_observations`. Those Facts preserve
 their original identifiers. An observation proves the Session-to-commit
 relationship only; selecting a call or file within that Session remains
-inference.
+inference. The relationship means that the commit's note named the Session.
+It doesn't mean that the Session changed a committed file.
 
 Version 1 Evidence recipes preserve their eligibility rules and copy the
 selected sources into training metadata.

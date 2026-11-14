@@ -16,8 +16,6 @@ collapses redeliveries; ``stored: false`` means success, not an error.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sediment_core import (
@@ -40,6 +38,7 @@ from sediment_core import (
 
 from ..config import settings
 from ..deps import get_store, verify_ingest_token
+from ..ingest_envelopes import IngestReceipt
 
 router = APIRouter(tags=["ci-vendor"])
 
@@ -121,7 +120,7 @@ def ingest_ci_vendor(
     body: VendorCIRequest,
     _: None = Depends(verify_ingest_token),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> IngestReceipt:
     outcome = CIOutcome(
         org_id=settings.org_id,
         provider=body.provider,
@@ -146,4 +145,4 @@ def ingest_ci_vendor(
         source_event_id=body.source_event_id,
     )
     receipt = store.store_ci_outcome_receipt(outcome)
-    return {"fact_id": receipt.fact_id, "stored": receipt.stored}
+    return IngestReceipt(fact_id=receipt.fact_id, stored=receipt.stored)

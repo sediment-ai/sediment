@@ -18,18 +18,20 @@
       ]
     },
     "deb/apt": {
-      "basis": "Debian 12 packaged source receives distribution maintenance. debian-security-support 1:12+2026.06.30 reported no ended, limited, or scheduled early-end exclusions for either final image architecture; full package revisions are required.",
+      "basis": "Debian 12 packaged source receives distribution maintenance. debian-security-support 1:12+2026.06.30 reported no ended, limited, or scheduled early-end exclusions for either final image architecture; full package revisions are required. Reviewed 2026-11-13: 2.6.2 is the Debian bookworm-security revision in the security.debian.org bookworm-security index; its changelog records security fixes, including CVE-2026-109518. Both final images install it; their scans in https://github.com/sediment-ai/sediment/actions/runs/43447153599 report only CVE-2011-3374 (LOW) against it.",
       "evidence": "https://wiki.debian.org/LTS",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/apt/",
       "source_package": "apt",
       "source_versions": [
-        "2.6.1"
+        "2.6.1",
+        "2.6.2"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.6.1"
+        "2.6.1",
+        "2.6.2"
       ]
     },
     "deb/base-files": {
@@ -545,18 +547,20 @@
       ]
     },
     "deb/libapt-pkg6.0": {
-      "basis": "Debian 12 packaged source receives distribution maintenance. debian-security-support 1:12+2026.06.30 reported no ended, limited, or scheduled early-end exclusions for either final image architecture; full package revisions are required.",
+      "basis": "Debian 12 packaged source receives distribution maintenance. debian-security-support 1:12+2026.06.30 reported no ended, limited, or scheduled early-end exclusions for either final image architecture; full package revisions are required. Reviewed 2026-11-13: 2.6.2 is the Debian bookworm-security revision in the security.debian.org bookworm-security index; its changelog records security fixes, including CVE-2026-109518. Both final images install it; their scans in https://github.com/sediment-ai/sediment/actions/runs/43447153599 report only CVE-2011-3374 (LOW) against it.",
       "evidence": "https://wiki.debian.org/LTS",
       "provider": "Debian 12 LTS",
       "source": "https://sources.debian.org/src/apt/",
       "source_package": "apt",
       "source_versions": [
-        "2.6.1"
+        "2.6.1",
+        "2.6.2"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "2.6.1"
+        "2.6.1",
+        "2.6.2"
       ]
     },
     "deb/libassuan0": {
@@ -1452,7 +1456,7 @@
       ]
     },
     "deb/libpq5": {
-      "basis": "API uses the Debian 12 libpq build from PostgreSQL 15; PostgreSQL image uses PGDG libpq from PostgreSQL 18. Both source majors remain supported. Exact binary and source revisions are retained separately; no copied psycopg-binary native libraries are accepted.",
+      "basis": "API uses the Debian 12 libpq build from PostgreSQL 15; PostgreSQL image uses PGDG libpq from PostgreSQL 18. Both source majors remain supported. Exact binary and source revisions are retained separately; no copied psycopg-binary native libraries are accepted. Reviewed 2026-11-13: the API image installs 15.20-0+deb12u1 from Debian bookworm-security, a new upstream minor release whose changelog lists the CVEs it fixes; the PostgreSQL image installs 18.7-1.pgdg12+2 from the PGDG bookworm-pgdg index. The Debian security tracker had not yet recorded every fix that changelog lists; open scanner findings against either revision stay under the disposition register.",
       "evidence": "https://www.postgresql.org/support/versioning/",
       "provider": "Debian 12 LTS and PostgreSQL Global Development Group",
       "source": "https://git.postgresql.org/gitweb/?p=postgresql.git",
@@ -1461,14 +1465,16 @@
           "name": "postgresql-15",
           "provider": "Debian 12 LTS",
           "versions": [
-            "15.19-0+deb12u1"
+            "15.19-0+deb12u1",
+            "15.20-0+deb12u1"
           ]
         },
         {
           "name": "postgresql-18",
           "provider": "PostgreSQL Global Development Group",
           "versions": [
-            "18.6-1.pgdg12+2"
+            "18.6-1.pgdg12+2",
+            "18.7-1.pgdg12+2"
           ]
         }
       ],
@@ -1476,7 +1482,9 @@
       "support_kind": "distribution_maintenance",
       "versions": [
         "15.19-0+deb12u1",
-        "18.6-1.pgdg12+2"
+        "18.6-1.pgdg12+2",
+        "15.20-0+deb12u1",
+        "18.7-1.pgdg12+2"
       ]
     },
     "deb/libpsl5": {
@@ -2139,33 +2147,37 @@
       ]
     },
     "deb/postgresql-17": {
-      "basis": "PGDG package from supported PostgreSQL major 17; exact Debian package revision retained. Server and libpq source majors are reviewed separately.",
+      "basis": "PGDG package from supported PostgreSQL major 17; exact Debian package revision retained. Server and libpq source majors are reviewed separately. Reviewed 2026-11-13: 17.12-1.pgdg12+1 is the current PGDG bookworm-pgdg revision of upstream 17.12, the latest patch on the 17 line; the PostgreSQL image scans in https://github.com/sediment-ai/sediment/actions/runs/43447153599 report no vulnerability against it.",
       "evidence": "https://www.postgresql.org/support/versioning/",
       "provider": "PostgreSQL Global Development Group",
       "source": "https://git.postgresql.org/gitweb/?p=postgresql.git",
       "source_package": "postgresql-17",
       "source_versions": [
-        "17.11-1.pgdg12+2"
+        "17.11-1.pgdg12+2",
+        "17.12-1.pgdg12+1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "17.11-1.pgdg12+2"
+        "17.11-1.pgdg12+2",
+        "17.12-1.pgdg12+1"
       ]
     },
     "deb/postgresql-client-17": {
-      "basis": "PGDG package from supported PostgreSQL major 17; exact Debian package revision retained. Server and libpq source majors are reviewed separately.",
+      "basis": "PGDG package from supported PostgreSQL major 17; exact Debian package revision retained. Server and libpq source majors are reviewed separately. Reviewed 2026-11-13: 17.12-1.pgdg12+1 is the current PGDG bookworm-pgdg revision of upstream 17.12, the latest patch on the 17 line; the PostgreSQL image scans in https://github.com/sediment-ai/sediment/actions/runs/43447153599 report no vulnerability against it.",
       "evidence": "https://www.postgresql.org/support/versioning/",
       "provider": "PostgreSQL Global Development Group",
       "source": "https://git.postgresql.org/gitweb/?p=postgresql.git",
       "source_package": "postgresql-17",
       "source_versions": [
-        "17.11-1.pgdg12+2"
+        "17.11-1.pgdg12+2",
+        "17.12-1.pgdg12+1"
       ],
       "status": "maintained",
       "support_kind": "distribution_maintenance",
       "versions": [
-        "17.11-1.pgdg12+2"
+        "17.11-1.pgdg12+2",
+        "17.12-1.pgdg12+1"
       ]
     },
     "deb/postgresql-client-common": {
@@ -2440,7 +2452,7 @@
       ]
     },
     "pypi/annotated-doc": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-11-13: 0.0.6 is an unwithdrawn PyPI release (uploaded 2026-11-10, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/annotated-doc/",
       "provider": "Upstream project",
       "source": "https://github.com/fastapi/annotated-doc",
@@ -2449,7 +2461,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.0.4",
-        "0.0.5"
+        "0.0.5",
+        "0.0.6"
       ]
     },
     "pypi/annotated-types": {
@@ -2497,7 +2510,7 @@
       ]
     },
     "pypi/click": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-11-13: 8.5.1 is an unwithdrawn PyPI release (uploaded 2026-11-06, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/click/",
       "provider": "Upstream project",
       "source": "https://github.com/pallets/click",
@@ -2506,11 +2519,12 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "8.4.2",
-        "8.5.0"
+        "8.5.0",
+        "8.5.1"
       ]
     },
     "pypi/fastapi": {
-      "basis": "Reviewed 2026-09-30: the unwithdrawn 0.142.2 release supports Python >=3.10 and fixes startup when automatic OpenTelemetry configuration fails. Earlier reviewed versions remain recorded for locked artifacts. Reviewed 2026-10-08: 0.143.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-10-19: 0.148.0 is an unwithdrawn PyPI release (uploaded 2026-10-19, requires Python >=3.10). Its breaking changes since 0.143.0 remove `openapi_prefix`, deprecate the `root_path` constructor argument, treat omitted boolean form fields as False, and stop validating omitted parameter defaults; Sediment passes none of those arguments and declares no form or validated-default parameters. The locked artifacts and the client installation resolve 0.148.0, so Sediment's suites run against it. Reviewed 2026-11-03: 0.162.0 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed 2026-09-30: the unwithdrawn 0.142.2 release supports Python >=3.10 and fixes startup when automatic OpenTelemetry configuration fails. Earlier reviewed versions remain recorded for locked artifacts. Reviewed 2026-10-08: 0.143.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-10-19: 0.148.0 is an unwithdrawn PyPI release (uploaded 2026-10-19, requires Python >=3.10). Its breaking changes since 0.143.0 remove `openapi_prefix`, deprecate the `root_path` constructor argument, treat omitted boolean form fields as False, and stop validating omitted parameter defaults; Sediment passes none of those arguments and declares no form or validated-default parameters. The locked artifacts and the client installation resolve 0.148.0, so Sediment's suites run against it. Reviewed 2026-11-03: 0.162.0 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 0.162.7 is an unwithdrawn PyPI release (uploaded 2026-11-13, requires Python >=3.11); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-14: 0.163.0 is an unwithdrawn PyPI release (uploaded 2026-11-14, requires Python >=3.11); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://github.com/fastapi/fastapi/releases/tag/0.142.2",
       "provider": "Upstream project",
       "source": "https://github.com/fastapi/fastapi",
@@ -2525,7 +2539,9 @@
         "0.142.2",
         "0.143.0",
         "0.148.0",
-        "0.162.0"
+        "0.162.0",
+        "0.162.7",
+        "0.163.0"
       ]
     },
     "pypi/greenlet": {
@@ -2633,7 +2649,7 @@
       ]
     },
     "pypi/psycopg": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Release 3.3.6 (tag 3.3.6, 39 commits after 3.3.5) contains maintainer-merged bug fixes for prepared-statement discard, cancellation timeouts, numeric binary limits, and pool checks; runtime dependencies are unchanged, and PyPI and OSV list no advisory for either release. The locked environment and a fresh client resolution install 3.3.6. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-11-03: 3.3.7 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Release 3.3.6 (tag 3.3.6, 39 commits after 3.3.5) contains maintainer-merged bug fixes for prepared-statement discard, cancellation timeouts, numeric binary limits, and pool checks; runtime dependencies are unchanged, and PyPI and OSV list no advisory for either release. The locked environment and a fresh client resolution install 3.3.6. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-11-03: 3.3.7 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 3.3.9 is an unwithdrawn PyPI release (uploaded 2026-11-12, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/psycopg/",
       "provider": "Upstream project",
       "source": "https://github.com/psycopg/psycopg",
@@ -2643,11 +2659,12 @@
       "versions": [
         "3.3.5",
         "3.3.6",
-        "3.3.7"
+        "3.3.7",
+        "3.3.9"
       ]
     },
     "pypi/pydantic": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.14.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.14.1 is an unwithdrawn PyPI patch release (uploaded 2026-10-11, requires Python >=3.10) with validation fixes and allocation reductions; Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-11-03: 2.14.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.14.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.14.1 is an unwithdrawn PyPI patch release (uploaded 2026-10-11, requires Python >=3.10) with validation fixes and allocation reductions; Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-11-03: 2.14.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 2.14.3 is an unwithdrawn PyPI release (uploaded 2026-11-05, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/pydantic/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic",
@@ -2659,11 +2676,12 @@
         "2.13.5",
         "2.14.0",
         "2.14.1",
-        "2.14.2"
+        "2.14.2",
+        "2.14.3"
       ]
     },
     "pypi/pydantic-core": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.50.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.50.1 is the unwithdrawn PyPI release that pydantic 2.14.1 pins (uploaded 2026-10-11, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-11-03: 2.50.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-08: 2.50.0 is an unwithdrawn PyPI release (uploaded 2026-10-08, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. Reviewed 2026-10-11: 2.50.1 is the unwithdrawn PyPI release that pydantic 2.14.1 pins (uploaded 2026-10-11, requires Python >=3.10); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-11-03: 2.50.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 2.50.4 is an unwithdrawn PyPI release (uploaded 2026-11-05, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/pydantic-core/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic",
@@ -2675,11 +2693,12 @@
         "2.46.5",
         "2.50.0",
         "2.50.1",
-        "2.50.2"
+        "2.50.2",
+        "2.50.4"
       ]
     },
     "pypi/pydantic-settings": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-19: 2.16.0 is an unwithdrawn PyPI release (uploaded 2026-10-14, requires Python >=3.11 and python-dotenv >=1.2.2). Its alias-precedence changes don't apply because Sediment's settings classes declare no aliases. The locked artifacts and the client installation resolve it. Reviewed 2026-11-03: 2.16.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-10-19: 2.16.0 is an unwithdrawn PyPI release (uploaded 2026-10-14, requires Python >=3.11 and python-dotenv >=1.2.2). Its alias-precedence changes don't apply because Sediment's settings classes declare no aliases. The locked artifacts and the client installation resolve it. Reviewed 2026-11-03: 2.16.2 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 2.16.3 is an unwithdrawn PyPI release (uploaded 2026-11-13, requires Python >=3.11); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/pydantic-settings/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/pydantic-settings",
@@ -2690,7 +2709,8 @@
         "2.14.2",
         "2.15.0",
         "2.16.0",
-        "2.16.2"
+        "2.16.2",
+        "2.16.3"
       ]
     },
     "pypi/python-dotenv": {
@@ -2828,7 +2848,7 @@
       ]
     },
     "pypi/sqlalchemy": {
-      "basis": "Reviewed 2026-09-30: upstream identifies 2.1 as the current release series and 2.0 as maintained. The unwithdrawn 2.1.1 release supports Python >=3.11. Sediment uses synchronous Core and psycopg; its PostgreSQL and migration suites qualify this upgrade. Reviewed 2026-10-03: 2.1.3 is an unwithdrawn regression-fix release in the current series; Sediment's core PostgreSQL and migration suites pass on it. Reviewed 2026-10-08: 2.1.4 is an unwithdrawn PyPI release (uploaded 2026-10-07, requires Python >=3.11); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-10-19: 2.1.5 is an unwithdrawn release in the current 2.1 series (uploaded 2026-10-16, requires Python >=3.11); its changes add ORM annotations and deprecations that Sediment's synchronous Core usage doesn't reach. The locked artifacts and the client installation resolve it. Reviewed 2026-11-03: 2.1.7, 2.1.6 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window.",
+      "basis": "Reviewed 2026-09-30: upstream identifies 2.1 as the current release series and 2.0 as maintained. The unwithdrawn 2.1.1 release supports Python >=3.11. Sediment uses synchronous Core and psycopg; its PostgreSQL and migration suites qualify this upgrade. Reviewed 2026-10-03: 2.1.3 is an unwithdrawn regression-fix release in the current series; Sediment's core PostgreSQL and migration suites pass on it. Reviewed 2026-10-08: 2.1.4 is an unwithdrawn PyPI release (uploaded 2026-10-07, requires Python >=3.11); Sediment's suites have not run against it, because the locked artifacts stay on the earlier reviewed versions. This assessment expires with the catalog. Reviewed 2026-10-19: 2.1.5 is an unwithdrawn release in the current 2.1 series (uploaded 2026-10-16, requires Python >=3.11); its changes add ORM annotations and deprecations that Sediment's synchronous Core usage doesn't reach. The locked artifacts and the client installation resolve it. Reviewed 2026-11-03: 2.1.7, 2.1.6 are unwithdrawn PyPI releases compatible with Python 3.12. Fresh client and image inventories retain public upstream metadata and vulnerability reports in https://github.com/sediment-ai/sediment/actions/runs/41713918506. This assessment expires with the catalog; it does not extend an upstream support window. Reviewed 2026-11-13: 2.1.8 is an unwithdrawn PyPI release (uploaded 2026-11-04, requires Python >=3.11); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://www.sqlalchemy.org/download.html#current",
       "provider": "Upstream project",
       "source": "https://github.com/sqlalchemy/sqlalchemy",
@@ -2843,7 +2863,8 @@
         "2.1.4",
         "2.1.5",
         "2.1.7",
-        "2.1.6"
+        "2.1.6",
+        "2.1.8"
       ]
     },
     "pypi/starlette": {
@@ -2876,7 +2897,7 @@
       ]
     },
     "pypi/typing-inspection": {
-      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry.",
+      "basis": "Reviewed the open upstream source and unwithdrawn published release. Repository status alone is not a release-specific support guarantee; this maintenance assessment requires renewal by the catalog expiry. Reviewed 2026-11-13: 0.4.5 is an unwithdrawn PyPI release (uploaded 2026-11-04, requires Python >=3.10); PyPI lists no vulnerability for it. A fresh client resolution of the release wheels installs it, and Sediment's package suites pass against that resolution. The client pip-audit report in https://github.com/sediment-ai/sediment/actions/runs/43447153599 lists no vulnerability for it. This assessment expires with the catalog; it does not extend an upstream support window.",
       "evidence": "https://pypi.org/project/typing-inspection/",
       "provider": "Upstream project",
       "source": "https://github.com/pydantic/typing-inspection",
@@ -2885,7 +2906,8 @@
       "support_kind": "project_maintenance_review",
       "versions": [
         "0.4.2",
-        "0.4.4"
+        "0.4.4",
+        "0.4.5"
       ]
     },
     "pypi/uvicorn": {

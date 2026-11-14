@@ -158,7 +158,25 @@ After you push, `git ls-remote origin 'refs/notes/*'` lists
 | [Cursor](agents/cursor.md) | `postToolUse`, `postToolUseFailure`, and `afterTabFileEdit` entries in `~/.cursor/hooks.json` |
 | [pi](agents/pi.md) | The bundled extension, registered in `~/.pi/agent/settings.json` |
 
-Each supported edit marks the Session in the repository's Git directory.
+Each agent hook marks the Session in the repository's Git directory. The
+tool calls that write a marker differ by agent:
+
+| Agent | Tool calls that mark the Session |
+|---|---|
+| Claude Code | `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, and every `Bash` call, including read-only commands such as `git status` |
+| Codex | Every tool call that triggers `PostToolUse`, because the hook entry has no matcher |
+| Cursor | Successful and failed Agent `Write` calls, and accepted Tab edits |
+| pi | Every `edit` and `write` call, including failed calls |
+
+A marker records that the Session ran a hooked tool call in that working
+tree. It doesn't record that the Session changed a file. The next commit in
+that working tree consumes every pending marker, whoever makes the commit and
+whatever it changes. A note can therefore name a Session that only read files,
+on a commit that a person made later. The Attribution Derivation treats the
+noted Sessions as candidates and selects a call only when one meets the
+similarity threshold.
+[Attribution](../explanation/attribution.md#attribution-sources) explains that
+selection.
 
 ### Git hooks
 

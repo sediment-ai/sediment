@@ -7,7 +7,7 @@ inference calls, and optional Edit observations on one developer machine.
 
 | Evidence | Support | Source or limit |
 | --- | --- | --- |
-| Commit Attribution | Yes | The bundled extension marks the Session after edits. |
+| Commit Attribution | Yes | The bundled extension marks the Session after every `edit` and `write` call, including failed calls. |
 | Developer decisions | Implicit | A successful `edit` or `write` emits one implicit accept. Stock pi has no explicit approval gesture. |
 | Inference calls | Optional | pi can route an Anthropic-compatible provider through a gateway. |
 | Edit observations | Optional | The extension extracts successful edits at `session_shutdown`. |

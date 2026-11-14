@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sediment_capture import parse_otlp_logs
@@ -21,6 +20,7 @@ from starlette.concurrency import run_in_threadpool
 
 from ..config import settings
 from ..deps import get_store, verify_ingest_token
+from ..ingest_envelopes import OTLPExportLogsResponse
 
 logger = logging.getLogger("sediment.api.otlp")
 router = APIRouter(tags=["otlp"])
@@ -31,7 +31,7 @@ async def ingest_otlp_logs(
     request: Request,
     _: None = Depends(verify_ingest_token),
     store: FactStore = Depends(get_store),
-) -> dict[str, Any]:
+) -> OTLPExportLogsResponse:
     try:
         payload = await request.json()
     except HTTPException:
@@ -98,7 +98,7 @@ async def ingest_otlp_logs(
         },
     )
     # Empty ExportLogsServiceResponse = full success (OTLP/HTTP JSON).
-    return {}
+    return OTLPExportLogsResponse()
 
 
 def _store_translated_facts(

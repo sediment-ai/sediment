@@ -7,7 +7,7 @@ inference calls, and optional Edit observations on one developer machine.
 
 | Evidence | Support | Source or limit |
 | --- | --- | --- |
-| Commit Attribution | Yes | Codex hooks mark the Session after tool use. |
+| Commit Attribution | Yes | The `PostToolUse` hook has no matcher. Every tool call that triggers it marks the Session, including read-only commands. |
 | Developer decisions | Yes | Native telemetry covers `apply_patch` and supported `exec_command` calls. |
 | Inference calls | Optional | A Codex provider can route the Responses API through a compatible gateway. |
 | Edit observations | Optional | The Session-end parser supports successful single-file patches. |
