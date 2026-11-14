@@ -2,8 +2,8 @@
 """
 GitHub webhook ingest routes, mounted under /ingest/github in main.py.
 
-One module for both routes: they share the HMAC intake and differ only in
-which parser/store pair the payload walks through. The signature is
+One module for all four routes: they share the HMAC intake and differ only
+in which parser/store pair the payload walks through. The signature is
 verified BEFORE the event type is examined: a wrong-secret delivery must
 401 even for event types a route skips, or GitHub's setup ping would
 green-light a misconfigured webhook. The push route stores the Push fact,

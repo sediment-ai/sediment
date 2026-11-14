@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """
 GitHub forge webhook parsing: push payloads into Push facts, workflow_run
-payloads into CIOutcome facts, plus X-Hub-Signature-256 verification.
+payloads into CIOutcome facts, pull_request payloads into PullRequestMerge
+and PullRequestRevision facts, repository payloads into RepositoryRename
+facts, plus X-Hub-Signature-256 verification.
 
 Pure payload→fact translation — no I/O, no storage, no attribution at
 ingest (ADR 0001). ``org_id`` arrives as a parameter: binding the tenant to
 the webhook credential is the ingest routes' job. Pull request payloads capture
-only the
-immutable merge boundary; correlation remains a Derivation.
+only immutable boundaries; correlation remains a Derivation.
 https://docs.github.com/en/webhooks/webhook-events-and-payloads
 """
 
