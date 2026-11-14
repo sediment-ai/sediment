@@ -12,9 +12,18 @@
   alone. Response bodies, status codes, and skip reasons don't change.
   Closes #12.
 
+### Security
+
+- Update API dependencies to anyio 4.16.0, psycopg 3.3.9, and Pydantic
+  2.14.3. Build the API image with uv 0.13.7. Renew the image review digest
+  for those build-input changes. Neither change alters an installed Debian
+  package.
+
 ### Contributor checks
 
 - Update the setup-uv action to 10.3.3 and both TruffleHog scans to 3.99.8.
+
+- Update Ruff to 0.17.4.
 
 ## 0.7.0 — 2026-11-03
 
