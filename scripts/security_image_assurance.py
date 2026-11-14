@@ -485,6 +485,9 @@ absent systemd_homed_absent -name systemd-homed
 absent minizip_absent -iname '*minizip*'
 absent libxml_python_bindings_absent \( -name 'libxml2.py*' -o -name 'libxml2mod*' \)
 absent curl_cli_absent -type f -name curl
+absent krb5_server_absent \( -name kadmind -o -name krb5kdc -o -name kadmin.local -o -name kpropd -o -name libgssrpc.so\* \)
+absent postgresql_server_absent \( -name postgres -o -name postmaster \)
+absent reindexdb_absent -name reindexdb
 fstab=""; if [ -e /etc/fstab ]; then fstab=$(cat /etc/fstab); fi
 if printf '%s\n' "$fstab" | grep -Eq '^[[:space:]]*[^#[:space:]]'; then printf ',"empty_fstab":false'; else printf ',"empty_fstab":true'; fi
 if command -v perl >/dev/null 2>&1 && [ "$(perl -MConfig -e 'print join q{:}, @Config{qw(ptrsize sizesize ivsize)}')" = '8:8:8' ]; then printf ',"perl_64bit":true'; else printf ',"perl_64bit":false'; fi
@@ -569,6 +572,9 @@ def probe_image(image_id: str, artifact: str, architecture: str) -> dict:
         "minizip_absent",
         "libxml_python_bindings_absent",
         "curl_cli_absent",
+        "krb5_server_absent",
+        "postgresql_server_absent",
+        "reindexdb_absent",
         "empty_fstab",
         "perl_64bit",
     }
