@@ -188,38 +188,6 @@ def _policy_v3_all_confidences_by_source(
     return confidences
 
 
-def _resolved_confidences(
-    attributed_completions: Iterable[AttributedCompletion],
-    label_confidence_policy: LabelConfidencePolicy,
-    *,
-    repository_context: RepositoryContext | None = None,
-) -> list[float]:
-    return [
-        confidence
-        for attributed_completion in attributed_completions
-        if (
-            confidence := resolve_confidence(
-                attributed_completion,
-                label_confidence_policy,
-                repository_context=repository_context,
-            )
-        )
-        is not None
-    ]
-
-
-def _policy_v3_confidences(
-    attributed_completions: Iterable[AttributedCompletion],
-    policy: LabelConfidencePolicy,
-) -> list[float]:
-    return [
-        confidence
-        for attributed_completion in attributed_completions
-        if (confidence := resolve_policy_v3_confidence(attributed_completion, policy))
-        is not None
-    ]
-
-
 def _policy_v3_sft_confidences_by_source(
     attributed_completions: Iterable[AttributedCompletion],
     policy: SFTPolicy,
