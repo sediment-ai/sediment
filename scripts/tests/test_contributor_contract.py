@@ -268,7 +268,7 @@ def test_github_templates_are_valid_and_bug_diagnostics_are_safe() -> None:
 
 def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
     workflow = yaml.safe_load(_read(".github/workflows/ci.yml"))
-    steps = workflow["jobs"]["test"]["steps"]
+    steps = workflow["jobs"]["suite"]["steps"]
     tree_scan = next(
         step
         for step in steps
@@ -309,7 +309,7 @@ def test_pull_request_ci_scans_the_complete_tree_and_commit_history() -> None:
 @pytest.mark.parametrize("proposal", [False, True])
 def test_manual_secret_scan_resolves_only_proposed_history(tmp_path, proposal) -> None:
     workflow = yaml.safe_load(_read(".github/workflows/ci.yml"))
-    steps = workflow["jobs"]["test"]["steps"]
+    steps = workflow["jobs"]["suite"]["steps"]
     resolve = next(step for step in steps if step.get("id") == "secret-range")
     history = next(step for step in steps if "trufflesecurity/" in step.get("uses", ""))
     assert resolve["if"] == "github.event_name == 'workflow_dispatch'"

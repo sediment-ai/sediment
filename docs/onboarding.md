@@ -40,13 +40,15 @@ request ready for review starts those checks. Manual workflow runs validate
 drafts with full coverage. If GitHub-hosted jobs are unavailable, continue with
 the local checks and retain their results; hosted validation remains pending.
 
-CI runs lint, formatting, and documentation checks before database setup. An
-added or modified Markdown file in `docs/explanation/`, `docs/agents/`, or
-`docs/adr/`, or a change to `CONTEXT.md`, `CHANGELOG.md`, or the root `README.md`,
-qualifies for the prose path only when every changed file qualifies. That path
-keeps secret scans, generated references, and contributor and documentation
-contract tests. It skips PostgreSQL, the full Python suite, release rehearsal,
-native server checks, and artifact security scans.
+CI runs lint, formatting, and documentation checks before database setup. The
+Python suite and the Compose-plus-rehearsal job run in parallel under the same
+full gate; the required `test` check aggregates both. An added or modified
+Markdown file in `docs/explanation/`, `docs/agents/`, or `docs/adr/`, or a
+change to `CONTEXT.md`, `CHANGELOG.md`, or the root `README.md`, qualifies for
+the prose path only when every changed file qualifies. That path keeps secret
+scans, generated references, and contributor and documentation contract tests.
+It skips PostgreSQL, the full Python suite, Compose image tests, release
+rehearsal, native server checks, and artifact security scans.
 Other paths, executable files, symlinks, deletions, renames, and unavailable Git
 history select full validation. Manual and reusable release runs always select
 full validation. `scripts/ci_preflight.py` owns the selection.

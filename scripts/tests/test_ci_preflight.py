@@ -153,7 +153,7 @@ def workflow(name):
 
 
 def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
-    steps = workflow("ci.yml")["jobs"]["test"]["steps"]
+    steps = workflow("ci.yml")["jobs"]["suite"]["steps"]
     commands = [step.get("run", "") for step in steps]
     database = next(
         i for i, text in enumerate(commands) if "docker build --pull" in text
@@ -171,7 +171,6 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
                 "pytest -q -m cluster_roles --durations=10",
                 'pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30',
                 "pytest -q -m serial --durations=10",
-                "scripts/release_rehearsal.py",
             )
         ):
             assert step["if"] == "steps.scope.outputs.full == 'true'"
@@ -181,12 +180,77 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
     assert "scripts/tests/test_check_docs.py" in prose["run"]
 
 
+def test_compose_and_rehearsal_runs_beside_suite_under_the_full_gate():
+    jobs = workflow("ci.yml")["jobs"]
+    suite = jobs["suite"]
+    compose = jobs["compose-and-rehearsal"]
+    assert compose["if"] == suite["if"]
+    assert compose["runs-on"] == suite["runs-on"]
+    assert compose["env"] == suite["env"]
+    commands = [step.get("run", "") for step in compose["steps"]]
+    assert any("ci_preflight.py scope" in command for command in commands)
+    assert not any("sediment db upgrade" in command for command in commands)
+    for step in compose["steps"]:
+        command = step.get("run", "")
+        if any(
+            text in command
+            for text in (
+                "docker build --pull",
+                "test_pilot_compose.py",
+                "scripts/release_rehearsal.py",
+            )
+        ):
+            assert step["if"] == "steps.scope.outputs.full == 'true'"
+    assert not any(
+        "scripts/release_rehearsal.py" in step.get("run", "") for step in suite["steps"]
+    )
+    assert not any(
+        "test_pilot_compose.py" in step.get("run", "") for step in suite["steps"]
+    )
+
+
+def test_required_test_check_rejects_failed_suite_or_compose():
+    summary = workflow("ci.yml")["jobs"]["test"]
+    assert summary["needs"] == ["suite", "compose-and-rehearsal"]
+    assert (
+        summary["if"]
+        == "always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)"
+    )
+    step = summary["steps"][0]
+    assert step.get("name") == "Require suite and compose-and-rehearsal"
+
+
+@pytest.mark.parametrize(
+    "suite,compose,expected",
+    [
+        ("success", "success", 0),
+        ("failure", "success", 1),
+        ("success", "failure", 1),
+        ("cancelled", "success", 1),
+        ("success", "skipped", 1),
+        ("skipped", "skipped", 1),
+    ],
+)
+def test_required_test_summary_cannot_hide_upstream_failures(suite, compose, expected):
+    step = workflow("ci.yml")["jobs"]["test"]["steps"][0]
+    result = subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", step["run"]],
+        env={
+            **os.environ,
+            "SUITE_RESULT": suite,
+            "COMPOSE_RESULT": compose,
+        },
+        capture_output=True,
+    )
+    assert result.returncode == expected
+
+
 def test_security_drafts_wait_for_ready_and_release_remains_full():
     security = workflow("security.yml")
     events = security.get("on", security.get(True))
     assert "ready_for_review" in events["pull_request"]["types"]
     jobs = security["jobs"]
-    assert jobs["source"]["if"] == workflow("ci.yml")["jobs"]["test"]["if"]
+    assert jobs["source"]["if"] == workflow("ci.yml")["jobs"]["suite"]["if"]
     for name in ("client", "pi", "images"):
         assert jobs[name]["needs"] == "source"
         assert jobs[name]["if"] == "needs.source.outputs.scans == 'true'"

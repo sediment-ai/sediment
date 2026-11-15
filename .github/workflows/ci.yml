@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  suite:
     # Draft pushes stay off the hosted runner: authors validate drafts with
     # the local battery, and the ready_for_review trigger above runs the
     # full suite before any merge decision.
@@ -161,40 +161,17 @@ jobs:
           scripts/tests/test_contributor_contract.py
           scripts/tests/test_check_docs.py
           scripts/tests/test_postgresql_only_repository.py
-      # Run role fixtures against the clean cluster before rehearsal provisions
-      # fixed deployment identities for its installed server.
       # Three passes. The role contract runs first, before any real server
       # provisions the fixed deployment roles. Four workers then match the
       # hosted runner's four vCPUs; the conftest gives each its own databases
       # cloned from one migrated template. Deadline-bound installed rehearsals
-      # run last, without concurrent load.
+      # run last, without concurrent load. Compose image tests and the
+      # release rehearsal run in compose-and-rehearsal on a separate cluster.
       - run: uv run pytest -q -m cluster_roles --durations=10
         if: steps.scope.outputs.full == 'true'
       - run: uv run pytest -q -n 4 -m "not cluster_roles and not serial" --durations=30
         if: steps.scope.outputs.full == 'true'
       - run: uv run pytest -q -m serial --durations=10
-        if: steps.scope.outputs.full == 'true'
-      - name: Exercise the complete pilot Compose deployment
-        if: steps.scope.outputs.full == 'true'
-        env:
-          SEDIMENT_TEST_COMPOSE: "1"
-          SEDIMENT_TEST_API_IMAGE: sediment-ci-api
-          SEDIMENT_TEST_POSTGRES_IMAGE: sediment-ci-postgres
-          SEDIMENT_TEST_PROXY_IMAGE: sediment-ci-proxy
-        run: |
-          set -euo pipefail
-          docker build -t sediment-ci-api .
-          docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
-          uv run pytest -q scripts/tests/test_pilot_compose.py
-          # The gateway runs the upstream LiteLLM image that Compose pins.
-          gateway_image="$(sed -n 's/^ *image: &litellm-image //p' docker-compose.yml)"
-          SEDIMENT_TEST_GATEWAY_IMAGE="$gateway_image" \
-            uv run pytest -q scripts/tests/test_container_images.py -k gateway
-      # Build and inspect all twelve distribution artifacts, then install and
-      # exercise the six wheels without publishing. This is the pull request's
-      # one complete rehearsal; the test suite covers its failure paths at
-      # smaller boundaries instead of repeating it.
-      - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
         if: steps.scope.outputs.full == 'true'
       # Manual draft validation scans the proposal from its common ancestor
       # with the default branch. Without explicit bounds, the action scans
@@ -242,7 +219,133 @@ jobs:
         if: always() && steps.scope.outputs.full == 'true'
         run: docker rm -f sediment-ci-postgres
 
-  # Runs beside test rather than after it: waiting only to read the scope
+  # Compose image tests and the release rehearsal used to follow pytest in
+  # the same job (~4 min after ~12 min of suite work). They share no cluster
+  # state with suite, so they run beside it under the same full gate.
+  compose-and-rehearsal:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-24.04' }}
+    env:
+      SEDIMENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+      SEDIMENT_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.12.16"
+      - run: uv sync --locked
+      - name: Select validation scope
+        id: scope
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+        run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
+      - name: Start the maintained PostgreSQL test image
+        if: steps.scope.outputs.full == 'true'
+        run: |
+          set -euo pipefail
+          docker build --pull -f docker/postgres/Dockerfile -t sediment-ci-postgres .
+          # ponytail: the four-worker suite peaks near 4 GB of cluster data
+          # (measured 2026-09-27); the tmpfs defaults to half the runner's
+          # memory, 8 GB hosted. A smaller self-hosted runner needs a disk
+          # volume here instead.
+          docker run --detach --name sediment-ci-postgres \
+            -p 127.0.0.1:5432:5432 --tmpfs /var/lib/postgresql/data \
+            -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres \
+            sediment-ci-postgres
+          for _ in {1..60}; do
+            if docker exec sediment-ci-postgres pg_isready -h 127.0.0.1 -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sediment-ci-postgres
+          exit 1
+      - name: Install the maintained PostgreSQL clients and libraries
+        if: steps.scope.outputs.full == 'true'
+        run: |
+          set -euo pipefail
+          # Hosted runner images remove the PostgreSQL package source after build.
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          sudo tee /etc/apt/sources.list.d/pgdg.sources > /dev/null <<EOF
+          Types: deb
+          URIs: https://apt.postgresql.org/pub/repos/apt
+          Suites: ${VERSION_CODENAME}-pgdg
+          Components: main
+          Signed-By: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          EOF
+          sudo apt-get update
+          xml_package=
+          for candidate in libxml2 libxml2t64 libxml2-16; do
+            candidate_version=$(apt-cache policy "$candidate" | awk '/Candidate:/ {print $2}')
+            if [ -n "$candidate_version" ] && [ "$candidate_version" != "(none)" ]; then
+              xml_package=$candidate
+              break
+            fi
+          done
+          if [ -z "$xml_package" ]; then
+            echo "No installable libxml2 package found on this runner" >&2
+            exit 1
+          fi
+          sudo apt-get install --no-install-recommends -y \
+            postgresql-client-17 libpq5 "$xml_package" libzstd1 liblz4-1 zlib1g
+          # Backup tests need the server's major, not the runner's default client.
+          printf '%s\n' /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
+      - name: Exercise the complete pilot Compose deployment
+        if: steps.scope.outputs.full == 'true'
+        env:
+          SEDIMENT_TEST_COMPOSE: "1"
+          SEDIMENT_TEST_API_IMAGE: sediment-ci-api
+          SEDIMENT_TEST_POSTGRES_IMAGE: sediment-ci-postgres
+          SEDIMENT_TEST_PROXY_IMAGE: sediment-ci-proxy
+        run: |
+          set -euo pipefail
+          docker build -t sediment-ci-api .
+          docker build -f docker/proxy/Dockerfile -t sediment-ci-proxy .
+          uv run pytest -q scripts/tests/test_pilot_compose.py
+          # The gateway runs the upstream LiteLLM image that Compose pins.
+          gateway_image="$(sed -n 's/^ *image: &litellm-image //p' docker-compose.yml)"
+          SEDIMENT_TEST_GATEWAY_IMAGE="$gateway_image" \
+            uv run pytest -q scripts/tests/test_container_images.py -k gateway
+      # Build and inspect all twelve distribution artifacts, then install and
+      # exercise the six wheels without publishing. This is the pull request's
+      # one complete rehearsal; the test suite covers its failure paths at
+      # smaller boundaries instead of repeating it.
+      - run: uv run python scripts/release_rehearsal.py --database-url "$SEDIMENT_DATABASE_URL"
+        if: steps.scope.outputs.full == 'true'
+      - name: Remove the disposable test database
+        if: always() && steps.scope.outputs.full == 'true'
+        run: docker rm -f sediment-ci-postgres
+
+  # Required-check aggregator: the ruleset requires `test`. suite and
+  # compose-and-rehearsal run in parallel; this job fails if either does.
+  test:
+    needs: [suite, compose-and-rehearsal]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    runs-on: ${{ vars.SEDIMENT_CI_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 5
+    steps:
+      - name: Require suite and compose-and-rehearsal
+        env:
+          SUITE_RESULT: ${{ needs.suite.result }}
+          COMPOSE_RESULT: ${{ needs.compose-and-rehearsal.result }}
+        run: |
+          if [[ "$SUITE_RESULT" == success && "$COMPOSE_RESULT" == success ]]; then
+            echo "suite and compose-and-rehearsal passed."
+          else
+            echo "A required CI check failed or did not complete."
+            echo "suite=$SUITE_RESULT compose-and-rehearsal=$COMPOSE_RESULT"
+            exit 1
+          fi
+
+  # Runs beside suite rather than after it: waiting only to read the scope
   # serialized the macOS legs behind the full suite. Prose-only changes also
   # run it, which costs a few runner minutes on a non-required check.
   local-server:

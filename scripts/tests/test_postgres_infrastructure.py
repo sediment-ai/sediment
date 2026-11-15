@@ -32,8 +32,8 @@ def test_compose_runs_migrations_before_api() -> None:
 
 def test_ci_uses_postgres_and_upgrades_before_tests() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
-    test_job = workflow["jobs"]["test"]
-    commands = [step.get("run") for step in test_job["steps"] if "run" in step]
+    suite_job = workflow["jobs"]["suite"]
+    commands = [step.get("run") for step in suite_job["steps"] if "run" in step]
     start_index = next(
         i
         for i, command in enumerate(commands)
@@ -49,12 +49,30 @@ def test_ci_uses_postgres_and_upgrades_before_tests() -> None:
     # The role contract needs a cluster that no real server has provisioned.
     assert start_index < migration_index < roles_index < test_index < serial_index
     assert driver_index < migration_index
+    assert suite_job["env"]["SEDIMENT_TEST_DATABASE_URL"].endswith(
+        "@localhost:5432/postgres"
+    )
+
+
+def test_ci_compose_and_rehearsal_uses_postgres_before_compose_and_rehearsal() -> None:
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text())
+    compose_job = workflow["jobs"]["compose-and-rehearsal"]
+    commands = [step.get("run") for step in compose_job["steps"] if "run" in step]
+    start_index = next(
+        i
+        for i, command in enumerate(commands)
+        if "docker build --pull -f docker/postgres/Dockerfile" in command
+    )
+    driver_index = next(i for i, command in enumerate(commands) if "libpq5" in command)
+    compose_index = next(
+        i for i, command in enumerate(commands) if "test_pilot_compose.py" in command
+    )
     rehearsal_index = next(
         i
         for i, command in enumerate(commands)
         if "scripts/release_rehearsal.py" in command
     )
-    assert serial_index < rehearsal_index
-    assert test_job["env"]["SEDIMENT_TEST_DATABASE_URL"].endswith(
+    assert start_index < driver_index < compose_index < rehearsal_index
+    assert compose_job["env"]["SEDIMENT_TEST_DATABASE_URL"].endswith(
         "@localhost:5432/postgres"
     )
