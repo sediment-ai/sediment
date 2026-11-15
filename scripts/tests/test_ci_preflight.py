@@ -240,6 +240,8 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
     assert prose["if"] == "steps.scope.outputs.full == 'false'"
     assert "scripts/tests/test_contributor_contract.py" in prose["run"]
     assert "scripts/tests/test_check_docs.py" in prose["run"]
+    assert "scripts/tests/test_pilot_enrollment.py" in prose["run"]
+    assert "-k test_release_rehearsal_block" in prose["run"]
 
 
 def test_compose_and_rehearsal_runs_beside_suite_under_the_full_gate():

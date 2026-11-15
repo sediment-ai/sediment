@@ -12,7 +12,8 @@
   top-level prose such as `CONTRIBUTING.md`, and other plain `*.md` files skip
   the full suite when every changed file qualifies. Generated pages under
   `docs/reference/` and `docs/operate/agent-guide.md` still select full
-  validation. The prose path keeps generated-reference freshness checks.
+  validation. The prose path keeps generated-reference freshness checks and
+  the `CONTRIBUTING.md` release-rehearsal block tests.
 
 ## 0.7.1 — 2026-11-14
 

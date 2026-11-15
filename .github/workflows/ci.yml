@@ -161,6 +161,8 @@ jobs:
           scripts/tests/test_contributor_contract.py
           scripts/tests/test_check_docs.py
           scripts/tests/test_postgresql_only_repository.py
+          scripts/tests/test_pilot_enrollment.py
+          -k test_release_rehearsal_block
       # Three passes. The role contract runs first, before any real server
       # provisions the fixed deployment roles. Four workers then match the
       # hosted runner's four vCPUs; the conftest gives each its own databases

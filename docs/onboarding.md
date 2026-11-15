@@ -48,9 +48,10 @@ ordinary Markdown file — under `docs/` or `.skills/`, a top-level file such as
 the prose path only when every changed file qualifies. Generated reference
 pages under `docs/reference/` and the packaged agent guide at
 `docs/operate/agent-guide.md` stay on the full path. That path keeps secret
-scans, generated-reference freshness checks, and contributor and documentation
-contract tests. It skips PostgreSQL, the full Python suite, Compose image
-tests, release rehearsal, native server checks, and artifact security scans.
+scans, generated-reference freshness checks, contributor and documentation
+contract tests, and the `CONTRIBUTING.md` release-rehearsal block checks. It
+skips PostgreSQL, the full Python suite, Compose image tests, release
+rehearsal, native server checks, and artifact security scans.
 Other paths, executable files, symlinks, deletions, renames, and unavailable Git
 history select full validation. Manual and reusable release runs always select
 full validation. `scripts/ci_preflight.py` owns the selection.
