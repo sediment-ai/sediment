@@ -21,6 +21,10 @@
   for those build-input changes. Neither change alters an installed Debian
   package.
 
+- Review FastAPI 0.163.1 in the maintenance catalog after the unlocked client
+  resolution installed it. PyPI and OSV list no vulnerability for that
+  release.
+
 ### Contributor checks
 
 - Update the setup-uv action to 10.3.3 and both TruffleHog scans to 3.99.8.
