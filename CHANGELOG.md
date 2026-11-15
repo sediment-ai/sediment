@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Contributor checks
+
+- Run Compose image tests and the release rehearsal in a parallel
+  `compose-and-rehearsal` job beside the Python suite. The required `test`
+  check aggregates both jobs so a failure still blocks merge.
+
 ## 0.7.1 — 2026-11-14
 
 ### Capture
