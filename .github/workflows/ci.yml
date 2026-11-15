@@ -122,7 +122,9 @@ jobs:
           set -euo pipefail
           # Hosted runner images remove the PostgreSQL package source after build.
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl --fail --silent --show-error \
+          # --retry-all-errors covers curl 56 (peer reset) on the key fetch.
+          sudo curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 \
             -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           . /etc/os-release
@@ -161,6 +163,8 @@ jobs:
           scripts/tests/test_contributor_contract.py
           scripts/tests/test_check_docs.py
           scripts/tests/test_postgresql_only_repository.py
+          scripts/tests/test_pilot_enrollment.py
+          -k test_release_rehearsal_block
       # Three passes. The role contract runs first, before any real server
       # provisions the fixed deployment roles. Four workers then match the
       # hosted runner's four vCPUs; the conftest gives each its own databases
@@ -272,7 +276,9 @@ jobs:
           set -euo pipefail
           # Hosted runner images remove the PostgreSQL package source after build.
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl --fail --silent --show-error \
+          # --retry-all-errors covers curl 56 (peer reset) on the key fetch.
+          sudo curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 \
             -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           . /etc/os-release

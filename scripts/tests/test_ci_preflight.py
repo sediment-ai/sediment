@@ -38,6 +38,8 @@ def repository(tmp_path):
         "README.md",
         "docs/explanation/example.md",
         "docs/quickstart.md",
+        "docs/operate/agent-guide.md",
+        "docs/reference/schema.md",
         "scripts/example.py",
     ):
         path = tmp_path / name
@@ -55,9 +57,26 @@ def repository(tmp_path):
         "CONTEXT.md",
         "CHANGELOG.md",
         "README.md",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        "CLA.md",
+        "CODE_OF_CONDUCT.md",
         "docs/explanation/example.md",
         "docs/agents/writing-style.md",
         "docs/adr/0020-example.md",
+        "docs/quickstart.md",
+        "docs/onboarding.md",
+        "docs/operate/deploy.md",
+        "docs/capture/local-capture.md",
+        "docs/exports/rlvr-export.md",
+        "docs/superpowers/specs/example.md",
+        ".skills/doc-sync/SKILL.md",
+        ".skills/sediment-release/references/execution-record.md",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        "cli/README.md",
+        "sim/README.md",
+        "packages/capture/tests/fixtures/README.md",
     ],
 )
 def test_prose_only_changes_avoid_full_validation(repository, event, name):
@@ -70,24 +89,42 @@ def test_prose_only_changes_avoid_full_validation(repository, event, name):
     assert not preflight().requires_full_validation(root, event, base)
 
 
+def test_readme_and_skills_markdown_match_pr_359_shape(repository):
+    """PR #359 only touched README.md and a .skills markdown file."""
+    root, git, base = repository
+    for name in (
+        "README.md",
+        ".skills/sediment-release/references/execution-record.md",
+    ):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("A prose correction.\n")
+    git("add", ".")
+    git("commit", "-qm", "prose")
+    assert not preflight().requires_full_validation(root, "pull_request", base)
+
+
 @pytest.mark.parametrize(
     "name",
     [
-        "docs/README.md",
-        "docs/quickstart.md",
-        "docs/operate/deploy.md",
-        "docs/capture/local-capture.md",
-        "docs/exports/rlvr-export.md",
         "docs/reference/schema.md",
+        "docs/reference/cli.md",
+        "docs/reference/api.md",
+        "docs/reference/compatibility.md",
+        "docs/operate/agent-guide.md",
         "docs/published-pages.json",
         "scripts/example.py",
         "uv.lock",
+        "Dockerfile",
+        "pyproject.toml",
+        "security/dispositions.json",
         ".github/workflows/ci.yml",
         "docs/explanation/extra.py",
         "docs/explanation/name\nwith-newline.py",
+        "cli/tests/testdata/help/guide.txt",
     ],
 )
-def test_unknown_or_executable_surfaces_always_get_full_validation(repository, name):
+def test_generated_or_behavioural_surfaces_always_get_full_validation(repository, name):
     root, git, base = repository
     path = root / name
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,6 +132,31 @@ def test_unknown_or_executable_surfaces_always_get_full_validation(repository, n
     git("add", ".")
     git("commit", "-qm", "full")
     assert preflight().requires_full_validation(root, "pull_request", base)
+
+
+def test_mixed_code_and_docs_keep_full_validation(repository):
+    root, git, base = repository
+    (root / "docs/quickstart.md").write_text("A prose correction.\n")
+    (root / "scripts/example.py").write_text("changed\n")
+    git("add", ".")
+    git("commit", "-qm", "mixed")
+    assert preflight().requires_full_validation(root, "pull_request", base)
+
+
+@pytest.mark.parametrize(
+    "name,prose",
+    [
+        ("README.md", True),
+        ("docs/quickstart.md", True),
+        (".skills/doc-sync/SKILL.md", True),
+        ("docs/reference/schema.md", False),
+        ("docs/operate/agent-guide.md", False),
+        ("scripts/example.py", False),
+        ("cli/tests/testdata/help/guide.txt", False),
+    ],
+)
+def test_is_prose_path_classifies_ordinary_markdown(name, prose):
+    assert preflight().is_prose_path(name) is prose
 
 
 @pytest.mark.parametrize(
@@ -178,6 +240,8 @@ def test_quality_checks_precede_database_setup_and_prose_keeps_contracts():
     assert prose["if"] == "steps.scope.outputs.full == 'false'"
     assert "scripts/tests/test_contributor_contract.py" in prose["run"]
     assert "scripts/tests/test_check_docs.py" in prose["run"]
+    assert "scripts/tests/test_pilot_enrollment.py" in prose["run"]
+    assert "-k test_release_rehearsal_block" in prose["run"]
 
 
 def test_compose_and_rehearsal_runs_beside_suite_under_the_full_gate():
