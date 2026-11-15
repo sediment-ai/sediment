@@ -15,6 +15,9 @@
   validation. The prose path keeps generated-reference freshness checks and
   the `CONTRIBUTING.md` release-rehearsal block tests.
 
+- Retry the PGDG apt signing-key download in CI so a transient peer reset
+  (`curl` 56) does not fail the suite or compose-and-rehearsal jobs.
+
 ## 0.7.1 — 2026-11-14
 
 ### Capture

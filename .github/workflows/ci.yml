@@ -122,7 +122,9 @@ jobs:
           set -euo pipefail
           # Hosted runner images remove the PostgreSQL package source after build.
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl --fail --silent --show-error \
+          # --retry-all-errors covers curl 56 (peer reset) on the key fetch.
+          sudo curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 \
             -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           . /etc/os-release
@@ -274,7 +276,9 @@ jobs:
           set -euo pipefail
           # Hosted runner images remove the PostgreSQL package source after build.
           sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl --fail --silent --show-error \
+          # --retry-all-errors covers curl 56 (peer reset) on the key fetch.
+          sudo curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 2 \
             -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
             https://www.postgresql.org/media/keys/ACCC4CF8.asc
           . /etc/os-release
