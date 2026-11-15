@@ -1,5 +1,39 @@
 # Execution record
 
+## 0.7.1 publication — 2026-11-15
+
+- [Preparation pull request](https://github.com/sediment-ai/sediment/pull/358).
+  Squash-merge commit `a8d1b859415c960f99d523e0857bce4ea24071d6` on `main`.
+- Decision: publish the requested 0.7.1 patch. OpenAPI ingest envelopes,
+  runtime dependency and image review updates, pi-coding-agent 1.5.1, and
+  contributor-check / docs / test maintenance. No database migration.
+- Parsed lockfiles differ only in seven first-party version labels. All 87
+  dispositions match the base review digest
+  `f6eb52782c69eab952555bf98e649bdc8174dbb7b4253b9a1a4e236d2e9dde13` and bind to
+  `a8cea733b6f626b4169f4f692548bddf8195157c3b31612d4b7f01c49317878b`.
+  Dates, expiry, targets, predicates, evidence, and decisions stay unchanged.
+  FastAPI 0.163.1 is added to the maintenance catalog after the unlocked client
+  resolution installs it; PyPI and OSV list no vulnerability.
+- Local checks pass: release check list, focused tests, and the complete
+  no-publish rehearsal for `v0.7.1`. Hosted preparation checks on the release
+  PR pass after the disposition rebind and FastAPI catalog entry.
+- The cloud-agent token can't create release tags (maintainer-creation ruleset).
+  The maintainer pushes annotated tag `v0.7.1` over SSH to
+  `a8d1b859415c960f99d523e0857bce4ea24071d6`.
+- [Publication workflow](https://github.com/sediment-ai/sediment/actions/runs/43723909923)
+  succeeds. The maintainer approves the waiting `pypi` deployment. This session
+  can't approve that environment (`current_user_can_approve: false`).
+- [v0.7.1](https://github.com/sediment-ai/sediment/releases/tag/v0.7.1) is the
+  latest immutable release, published at `2026-11-15T14:31:02Z`. All 69 GitHub
+  assets download; `SHA256SUMS` verifies. The twelve distribution hashes match
+  GitHub assets and six PyPI version records. None is yanked.
+- A fresh Python 3.12.16 installation from public PyPI with source builds
+  disabled reports all six distributions at 0.7.1. Version and command help
+  pass.
+- After publication, the README refresh uses `release=0.7.1` on the dynamic
+  Shields endpoint. PyPI reports `0.7.1`; Shields reports `pypi: v0.7.1`.
+
+
 ## 0.7.0 publication — 2026-11-03
 
 - [Release issue](https://github.com/sediment-ai/sediment/issues/333) and
