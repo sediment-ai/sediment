@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.1 — 2026-11-14
+
 ### Capture
 
 - Describe ingest responses in `openapi.yaml`. The single-Fact routes declare
@@ -18,6 +20,10 @@
   2.14.3. Build the API image with uv 0.13.7. Renew the image review digest
   for those build-input changes. Neither change alters an installed Debian
   package.
+
+- Review FastAPI 0.163.1 in the maintenance catalog after the unlocked client
+  resolution installed it. PyPI and OSV list no vulnerability for that
+  release.
 
 ### Contributor checks
 
