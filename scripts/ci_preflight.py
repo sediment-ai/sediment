@@ -13,8 +13,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PROSE_FILES = {"CONTEXT.md", "CHANGELOG.md", "README.md"}
-PROSE_DIRS = ("docs/explanation/", "docs/agents/", "docs/adr/")
+# Markdown that a generator produces, or that a packaging/golden test pins
+# against shipped bytes. Any other added or modified ``*.md`` can take the
+# prose path. Non-markdown paths (code, workflows, locks, Dockerfiles,
+# ``security/``, OpenAPI, help goldens, SVGs) already select the full gate.
+FULL_VALIDATION_MARKDOWN = {
+    # Exact twin of ``cli/sediment_cli/agent_guide.txt``; the guide test
+    # requires a match (``cli/tests/test_agent_guide.py``).
+    "docs/operate/agent-guide.md",
+}
+FULL_VALIDATION_MARKDOWN_PREFIXES = (
+    # Outputs of gen_api_docs / gen_cli_docs / gen_schema_docs /
+    # gen_compatibility_docs. The prose path still runs ``--check``; a hand
+    # edit still selects the full suite so packaging and schema contract
+    # tests see it.
+    "docs/reference/",
+)
 SHIM_FILES = {
     "cli/hatch_build.py",
     "cli/sediment_cli/attribution.py",
@@ -87,6 +101,15 @@ def requires_artifact_scans(root: Path, event: str, base: str) -> bool:
     )
 
 
+def is_prose_path(name: str) -> bool:
+    """True when ``name`` is ordinary markdown eligible for the prose path."""
+    if not name.endswith(".md"):
+        return False
+    if name in FULL_VALIDATION_MARKDOWN:
+        return False
+    return not name.startswith(FULL_VALIDATION_MARKDOWN_PREFIXES)
+
+
 def requires_full_validation(root: Path, event: str, base: str) -> bool:
     """Only added or modified regular prose files qualify for reduced checks."""
     if event not in {"push", "pull_request", "merge_group"} or not re.fullmatch(
@@ -105,10 +128,7 @@ def requires_full_validation(root: Path, event: str, base: str) -> bool:
             return True
         for status, name in zip(fields[::2], fields[1::2], strict=True):
             path = root / name
-            prose = name in PROSE_FILES or (
-                name.startswith(PROSE_DIRS) and name.endswith(".md")
-            )
-            if status not in {"A", "M"} or not prose or path.is_symlink():
+            if status not in {"A", "M"} or not is_prose_path(name) or path.is_symlink():
                 return True
             if not path.is_file() or path.stat().st_mode & 0o111:
                 return True

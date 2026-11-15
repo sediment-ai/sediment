@@ -8,6 +8,12 @@
   `compose-and-rehearsal` job beside the Python suite. The required `test`
   check aggregates both jobs so a failure still blocks merge.
 
+- Widen the CI prose path so ordinary Markdown under `docs/` and `.skills/`,
+  top-level prose such as `CONTRIBUTING.md`, and other plain `*.md` files skip
+  the full suite when every changed file qualifies. Generated pages under
+  `docs/reference/` and `docs/operate/agent-guide.md` still select full
+  validation. The prose path keeps generated-reference freshness checks.
+
 ## 0.7.1 — 2026-11-14
 
 ### Capture
