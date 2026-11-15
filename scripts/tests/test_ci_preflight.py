@@ -187,6 +187,18 @@ def test_compose_and_rehearsal_runs_beside_suite_under_the_full_gate():
     assert compose["if"] == suite["if"]
     assert compose["runs-on"] == suite["runs-on"]
     assert compose["env"] == suite["env"]
+    suite_checkout = next(
+        step
+        for step in suite["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+    compose_checkout = next(
+        step
+        for step in compose["steps"]
+        if step.get("uses", "").startswith("actions/checkout@")
+    )
+    assert suite_checkout["with"]["fetch-depth"] == 0
+    assert compose_checkout["with"]["fetch-depth"] == 0
     commands = [step.get("run", "") for step in compose["steps"]]
     assert any("ci_preflight.py scope" in command for command in commands)
     assert not any("sediment db upgrade" in command for command in commands)
