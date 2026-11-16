@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Tear down the verify instance this run started. Evidence survives.
+set -euo pipefail
+# shellcheck source=common.sh
+source "$(cd "$(dirname "$0")" && pwd)/common.sh"
+_verify_load_state
+
+pid="${SEDIMENT_VERIFY_PID}"
+run_dir="${SEDIMENT_VERIFY_RUN_DIR}"
+evidence="${SEDIMENT_VERIFY_EVIDENCE}"
+
+if kill -0 "$pid" 2>/dev/null; then
+  kill -TERM "$pid" 2>/dev/null || true
+  deadline=$((SECONDS + 30))
+  while kill -0 "$pid" 2>/dev/null && (( SECONDS < deadline )); do
+    sleep 0.2
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -KILL "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+  fi
+  echo "stopped server pid ${pid}" >&2
+else
+  echo "server pid ${pid} already stopped" >&2
+fi
+
+# Managed postmaster under this HOME should exit with the server; if a pid
+# file remains, wait briefly then warn (do not kill foreign postgres).
+pg_pid_file="${SEDIMENT_VERIFY_HOME}/.sediment/server/postgres/postmaster.pid"
+if [[ -f "$pg_pid_file" ]]; then
+  deadline=$((SECONDS + 15))
+  while [[ -f "$pg_pid_file" ]] && (( SECONDS < deadline )); do
+    sleep 0.2
+  done
+  if [[ -f "$pg_pid_file" ]]; then
+    echo "warn: postmaster.pid still present under verify HOME; not force-killing" >&2
+  fi
+fi
+
+if [[ -d "$run_dir" ]]; then
+  rm -rf "$run_dir"
+  echo "removed instance data ${run_dir}" >&2
+fi
+
+if [[ -d "$evidence" ]]; then
+  echo "evidence retained at ${evidence}" >&2
+else
+  echo "warn: evidence directory missing: ${evidence}" >&2
+fi
