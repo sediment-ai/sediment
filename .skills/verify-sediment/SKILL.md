@@ -9,9 +9,8 @@ Sediment's primary user surface is the `sediment` CLI and the local API that
 `sediment server` starts. There is no product web UI. Drive the real CLI and
 HTTP doors; do not call library setters as a stand-in for ingest.
 
-Repository skills live under `.skills/`. Cursor also discovers this skill at
-`.cursor/skills/verify-sediment/` (symlink). Read `features/` before choosing
-what to drive.
+Repository skills live under `.skills/` (see `AGENTS.md`). Read `features/`
+before choosing what to drive.
 
 ## Launch
 
