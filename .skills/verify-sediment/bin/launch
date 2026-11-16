@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Start an isolated sediment server for verification. Prints export lines on stdout.
+set -euo pipefail
+# shellcheck source=common.sh
+source "$(cd "$(dirname "$0")" && pwd)/common.sh"
+
+run_id="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+run_dir="/tmp/sediment-verify-${run_id}"
+home_dir="${run_dir}/home"
+evidence_dir="/tmp/sediment-verify-evidence/${run_id}"
+log_file="${run_dir}/server.log"
+mkdir -p "$home_dir" "$evidence_dir"
+chmod 700 "$run_dir" "$home_dir"
+
+port="$(_verify_free_port)"
+url="http://127.0.0.1:${port}"
+
+# Clear SEDIMENT_* for the child; keep PATH and uv project.
+clean_env=(env)
+while IFS= read -r name; do
+  clean_env+=(-u "$name")
+done < <(compgen -e | grep '^SEDIMENT_' || true)
+
+echo "launching sediment server run_id=${run_id} port=${port}" >&2
+"${clean_env[@]}" \
+  HOME="$home_dir" \
+  PYTHONUNBUFFERED=1 \
+  uv run --project "$REPO_ROOT" sediment server --host 127.0.0.1 --port "$port" \
+  >"$log_file" 2>&1 &
+server_pid=$!
+
+deadline=$((SECONDS + 180))
+ready=0
+while (( SECONDS < deadline )); do
+  if ! kill -0 "$server_pid" 2>/dev/null; then
+    echo "error: server exited before ready; log:" >&2
+    cat "$log_file" >&2 || true
+    exit 1
+  fi
+  if curl -sf "$url/health" >"${run_dir}/health.json" 2>/dev/null; then
+    if python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); raise SystemExit(0 if d.get("status")=="ok" and d.get("version") else 1)' \
+      "${run_dir}/health.json"; then
+      ready=1
+      break
+    fi
+  fi
+  sleep 0.25
+done
+
+if (( ready != 1 )); then
+  echo "error: timed out waiting for /health; log:" >&2
+  cat "$log_file" >&2 || true
+  kill "$server_pid" 2>/dev/null || true
+  wait "$server_pid" 2>/dev/null || true
+  exit 1
+fi
+
+server_env="${home_dir}/.sediment/server/server.env"
+if [[ ! -f "$server_env" ]]; then
+  echo "error: missing credentials at $server_env" >&2
+  kill "$server_pid" 2>/dev/null || true
+  exit 1
+fi
+
+cat >"${run_dir}/state.env" <<EOF
+SEDIMENT_VERIFY_RUN_ID=${run_id}
+SEDIMENT_VERIFY_RUN_DIR=${run_dir}
+SEDIMENT_VERIFY_HOME=${home_dir}
+SEDIMENT_VERIFY_URL=${url}
+SEDIMENT_VERIFY_PORT=${port}
+SEDIMENT_VERIFY_PID=${server_pid}
+SEDIMENT_VERIFY_EVIDENCE=${evidence_dir}
+SEDIMENT_VERIFY_LOG=${log_file}
+SEDIMENT_VERIFY_SERVER_ENV=${server_env}
+EOF
+
+echo "ready ${url} (pid ${server_pid})" >&2
+# Exports for eval by the caller.
+cat <<EOF
+export SEDIMENT_VERIFY_RUN_ID='${run_id}'
+export SEDIMENT_VERIFY_RUN_DIR='${run_dir}'
+export SEDIMENT_VERIFY_HOME='${home_dir}'
+export SEDIMENT_VERIFY_URL='${url}'
+export SEDIMENT_VERIFY_PORT='${port}'
+export SEDIMENT_VERIFY_PID='${server_pid}'
+export SEDIMENT_VERIFY_EVIDENCE='${evidence_dir}'
+export SEDIMENT_VERIFY_LOG='${log_file}'
+export SEDIMENT_VERIFY_SERVER_ENV='${server_env}'
+EOF

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Run sediment under the active verify HOME. Usage: cli -- <sediment args...>
+set -euo pipefail
+# shellcheck source=common.sh
+source "$(cd "$(dirname "$0")" && pwd)/common.sh"
+_verify_load_state
+
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
+if [[ "$#" -eq 0 ]]; then
+  echo "usage: .skills/verify-sediment/bin/cli -- <sediment args...>" >&2
+  exit 2
+fi
+
+_verify_clean_env
+export HOME="$SEDIMENT_VERIFY_HOME"
+export PATH="$REPO_ROOT/.venv/bin:${PATH:-}"
+# Run from the verify home so a checkout .env cannot leak into Settings.
+cd "$SEDIMENT_VERIFY_HOME"
+exec uv run --project "$REPO_ROOT" sediment "$@"

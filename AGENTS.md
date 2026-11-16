@@ -250,8 +250,7 @@ deployment (`SEDIMENT_ORG_ID`), never to the request. Response shapes:
 ## Agent skills
 
 Repository skills live in `.skills/`. Every harness reads the matching
-`SKILL.md` before its task; resolve repository paths from the checkout root.
-Use this index directly when the harness doesn't discover `.skills/` itself.
+`SKILL.md` before its task; resolve paths from the checkout root. Use this index when the harness doesn't discover `.skills/` itself.
 
 | Task | Skill | Maintained procedure |
 |---|---|---|
@@ -260,6 +259,7 @@ Use this index directly when the harness doesn't discover `.skills/` itself.
 | Review a behavior-changing PR before merge | [.skills/review-closeout/SKILL.md](.skills/review-closeout/SKILL.md) | `docs/agents/review.md` |
 | Write or edit prose | [.skills/google-style/SKILL.md](.skills/google-style/SKILL.md) | `docs/agents/writing-style.md`; `docs/agents/doc-style.md` |
 | Edit or verify a Mermaid diagram | [.skills/beautiful-mermaid/SKILL.md](.skills/beautiful-mermaid/SKILL.md) | `docs/agents/mermaid-diagrams.md` |
+| Drive Sediment and prove user-facing behavior | [.skills/verify-sediment/SKILL.md](.skills/verify-sediment/SKILL.md) | `.skills/verify-sediment/features/` |
 
 Start with `docs/onboarding.md` and `CONTRIBUTING.md`. Claim an issue before
 starting; PRs say `Closes #<n>`. GitHub issues live in `sediment-ai/sediment`;
