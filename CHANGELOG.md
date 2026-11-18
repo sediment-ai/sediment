@@ -2,7 +2,21 @@
 
 ## Unreleased
 
+### Security
+
+- Review SQLAlchemy 2.1.9 and FastAPI 0.163.2 in the maintenance catalog after
+  a fresh unlocked client resolution installed them. PyPI and OSV list no
+  vulnerability for either revision; the client pip-audit report against that
+  resolution is clean. Eric approved the catalog additions on 2026-11-18.
+  Refs #338.
+
 ### Contributor checks
+
+- Document that `macos-15` (arm64) local-server cancellations with "not
+  acquired … after multiple attempts" are GitHub hosted-runner capacity
+  flakes, and bound the job with `timeout-minutes: 30` after a runner starts.
+  Do not set `continue-on-error`; a real local-server regression must still
+  fail.
 
 - Run Compose image tests and the release rehearsal in a parallel
   `compose-and-rehearsal` job beside the Python suite. The required `test`
