@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Security
+
+- Cap SQLAlchemy at `<=2.1.8` and FastAPI at `<=0.163.1`, the last revisions
+  in the maintenance catalog. The unlocked client security scan was resolving
+  SQLAlchemy `2.1.9` (and, after that pin, FastAPI `0.163.2`) and failing with
+  `unsupported or unreviewed`. Adopting either release still needs a catalog
+  review. Refs #338.
+
 ### Contributor checks
 
 - Run Compose image tests and the release rehearsal in a parallel

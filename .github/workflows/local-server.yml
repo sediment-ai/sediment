@@ -13,11 +13,17 @@ concurrency:
 jobs:
   native:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # macos-15 (arm64) can sit in GitHub's hosted queue under capacity
+    # constraints and fail with "not acquired … after multiple attempts"
+    # without ever starting a step. That is a runner-availability flake, not
+    # a label or concurrency bug; re-run the workflow. Do not set
+    # continue-on-error: a real local-server regression must still fail.
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
