@@ -211,7 +211,7 @@ jobs:
       # names, and its verifier "verifies" them. This repo will never hold
       # a real Lob (postal mail API) credential; re-include if one is ever
       # actually adopted.
-      - uses: trufflesecurity/trufflehog@ea68ca03c865c5f324e86e849ced20ed3cf9dbbb # v3.99.8
+      - uses: trufflesecurity/trufflehog@3bd2b5887eb0efb8fa18bfd1d296032924e4ffdc # v3.99.9
         # The complete-tree scan still runs when a manual run has no proposal.
         if: github.event_name != 'workflow_dispatch' || steps.secret-range.outputs.base != github.sha
         with:
