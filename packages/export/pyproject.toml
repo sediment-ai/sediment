@@ -9,7 +9,7 @@ dependencies = [
     "sediment-core==0.7.1",
     "sediment-derive==0.7.1",
     "pydantic>=2.14.3",
-    "pydantic-settings>=2.15.0",
+    "pydantic-settings>=2.16.3",
     "pyyaml>=6.0.3",
 ]
 
