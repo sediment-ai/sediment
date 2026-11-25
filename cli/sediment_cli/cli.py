@@ -1041,10 +1041,12 @@ def cmd_quarantine_or_release(
 
 
 def cmd_quarantine_log(store: FactStore, org: str, args: argparse.Namespace) -> int:
-    # ponytail: full-history read, tail applied in the CLI — log rows are
-    # small; a store-side LIMIT variant if an org's log ever gets huge.
-    log = store.read_quarantine_log(org)
-    shown = log if args.all else log[-args.tail :]
+    if args.all:
+        shown = store.read_quarantine_log(org)
+        total = len(shown)
+    else:
+        shown = store.read_quarantine_log(org, limit=args.tail)
+        total = store.count_quarantine_log(org)
     for rec in shown:
         color = "sandstone" if rec.action == "quarantine" else "phosphor"
         print(
@@ -1052,15 +1054,15 @@ def cmd_quarantine_log(store: FactStore, org: str, args: argparse.Namespace) -> 
             + f"  {ui.style(f'{rec.action:<10}', color)} "
             f"{rec.fact_table}/{rec.fact_id}  {rec.reason}"
         )
-    if len(shown) < len(log):
+    if len(shown) < total:
         print(
             ui.style(
-                f"... showing last {len(shown)} of {len(log)} rows (--all for all)",
+                f"... showing last {len(shown)} of {total} rows (--all for all)",
                 "dim",
             )
         )
     revision = _styled_revision(store.quarantine_revision(org))
-    print(f"{len(log)} rows; quarantine_revision: {revision}")
+    print(f"{total} rows; quarantine_revision: {revision}")
     return 0
 
 

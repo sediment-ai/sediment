@@ -621,6 +621,36 @@ def test_quarantine_log_tails_by_default(cli_db, capsys) -> None:
     assert main(["quarantine-log"]) == 0
     out = capsys.readouterr().out
     assert "showing last 20 of 25" in out and "id-4" not in out and "id-24" in out
+    assert "25 rows;" in out
+    lines = [line for line in out.splitlines() if "/id-" in line]
+    assert lines[0].endswith("inference_calls/id-5  r")
+    assert lines[-1].endswith("inference_calls/id-24  r")
+
+
+def test_quarantine_log_respects_tail_and_all(cli_db, capsys) -> None:
+    store = FactStore(cli_db)
+    for i in range(5):
+        store.quarantine_fact("testorg", "inference_calls", f"row-{i}", reason="r")
+    assert main(["quarantine-log", "--tail", "2"]) == 0
+    tailed = capsys.readouterr().out
+    assert "showing last 2 of 5" in tailed
+    assert "row-0" not in tailed and "row-3" in tailed and "row-4" in tailed
+    assert main(["quarantine-log", "--all"]) == 0
+    full = capsys.readouterr().out
+    assert "showing last" not in full
+    assert all(f"row-{i}" in full for i in range(5))
+    assert "5 rows;" in full
+
+
+def test_quarantine_log_large_history_stays_bounded(cli_db, capsys) -> None:
+    store = FactStore(cli_db)
+    for i in range(200):
+        store.quarantine_fact("testorg", "inference_calls", f"big-{i}", reason="r")
+    assert main(["quarantine-log"]) == 0
+    out = capsys.readouterr().out
+    assert "showing last 20 of 200" in out
+    assert "big-179" not in out and "big-180" in out and "big-199" in out
+    assert out.count("inference_calls/big-") == 20
 
 
 def test_export_rlvr_writes_rollouts(cli_db, tmp_path, capsys) -> None:

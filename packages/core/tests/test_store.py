@@ -1646,6 +1646,58 @@ def test_postgres_quarantine_excludes_by_revision_and_audit_can_include(
     ]
 
 
+def test_postgres_quarantine_log_limit_selects_newest_ascending(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    for index in range(5):
+        store.quarantine_fact(
+            "acme",
+            FactTable.INFERENCE_CALLS,
+            f"call-{index}",
+            reason=f"reason-{index}",
+        )
+
+    assert store.count_quarantine_log("acme") == 5
+    assert [record.fact_id for record in store.read_quarantine_log("acme")] == [
+        f"call-{index}" for index in range(5)
+    ]
+    limited = store.read_quarantine_log("acme", limit=2)
+    assert [record.fact_id for record in limited] == ["call-3", "call-4"]
+    assert store.read_quarantine_log("acme", limit=5) == store.read_quarantine_log(
+        "acme"
+    )
+    assert store.read_quarantine_log("acme", limit=50) == store.read_quarantine_log(
+        "acme"
+    )
+    with pytest.raises(ValueError, match="quarantine log limit must be positive"):
+        store.read_quarantine_log("acme", limit=0)
+    with pytest.raises(ValueError, match="quarantine log limit must be positive"):
+        store.read_quarantine_log("acme", limit=-1)
+
+
+def test_postgres_quarantine_log_limit_scales_past_default_tail(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    for index in range(100):
+        store.quarantine_fact(
+            "acme",
+            FactTable.INFERENCE_CALLS,
+            f"bulk-{index}",
+            reason="bulk",
+        )
+
+    assert store.count_quarantine_log("acme") == 100
+    newest = store.read_quarantine_log("acme", limit=20)
+    assert len(newest) == 20
+    assert [record.fact_id for record in newest] == [
+        f"bulk-{index}" for index in range(80, 100)
+    ]
+    assert store.read_quarantine_log("other") == []
+    assert store.count_quarantine_log("other") == 0
+
+
 def test_postgres_bulk_quarantine_filters_and_dry_run_are_atomic(
     postgres_engine,
 ) -> None:
