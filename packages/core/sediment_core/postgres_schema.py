@@ -377,6 +377,7 @@ Index(
     edit_observations.c.agent_harness,
     edit_observations.c.session_id,
     edit_observations.c.call_id,
+    edit_observations.c.file_path,
     unique=True,
 )
 Index(

@@ -465,9 +465,12 @@ class EditObservation(BaseModel):
     The pair is the fact; the edit retention score is a derivation over it (the
     scorer seam in ``sediment_derive.survival``) —
     never computed client-side, so the metric stays a re-derivable policy
-    choice. ``call_id`` is the tool-call id (Claude Code ``tool_use_id``)
-    joining this pair to its ``DeveloperDecision``. ``observed_file_text`` is
-    the file's content at session end; ``""`` means the file was gone.
+    choice. ``call_id`` is the tool-call id (Claude Code ``tool_use_id``,
+    Codex ``call_id``) joining this pair to its ``DeveloperDecision``. A
+    multi-file Codex patch keeps that parent id on every member and
+    distinguishes files by ``file_path`` — the same fan-out shape decisions
+    already use. ``observed_file_text`` is the file's content at session end;
+    ``""`` means the file was gone.
     """
 
     observation_id: NonEmptyId = Field(default_factory=_uuid)
@@ -500,7 +503,8 @@ class EditObservation(BaseModel):
         default=None, ge=0, le=2**63 - 1, strict=True
     )
     occurred_at: AwareDatetime  # the edit's transcript timestamp (dedup key is
-    # (org, agent_harness, session, call_id) — see uq_edit_observations_call)
+    # (org, agent_harness, session, call_id, file_path) — see
+    # uq_edit_observations_call)
     captured_at: AwareDatetime = Field(default_factory=_now)
     raw: dict[str, Any] = Field(default_factory=dict)
 

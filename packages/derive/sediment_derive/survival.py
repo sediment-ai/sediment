@@ -185,6 +185,7 @@ def derive_fate_result(
                 observation.agent_harness,
                 observation.session_id,
                 observation.call_id,
+                observation.file_path,
             )
         )
         result.fates.append(
@@ -221,8 +222,8 @@ def external_lines_after(
     edit to session end.
 
     Keyed like :func:`attach_edit_retention` — ``(org_id, agent_harness, session_id,
-    call_id)``. Each :class:`EditObservation` carries the counts for its *own*
-    window, which closes at the agent's next edit of that file. A pair's
+    call_id, file_path)``. Each :class:`EditObservation` carries the counts for its
+    *own* window, which closes at the agent's next edit of that file. A pair's
     ``edit_retention_score``, though, is measured against the file at session end,
     so what bears on it is every window from that edit onward: this sums
     them per file.
@@ -260,7 +261,10 @@ def external_lines_after(
                 continue
             added += o.external_lines_added
             removed += o.external_lines_removed
-            out[(o.org_id, o.agent_harness, o.session_id, o.call_id)] = (added, removed)
+            out[(o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path)] = (
+                added,
+                removed,
+            )
     return out
 
 
@@ -271,13 +275,16 @@ def attach_edit_retention(
 ) -> list[DeveloperDecision]:
     """Fill ``edit_retention_score`` from matching edit observations.
 
-    Joins on ``(org_id, agent_harness, session_id, call_id)`` — the observation's dedup
-    identity, matching the decision's ``call_id`` (Claude Code's
-    ``tool_use_id``). A decision is only filled when its score is
-    ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
-    matching pair exists. ``scorer(applied_text, observed_file_text)`` must return a float;
-    the result is clamped to ``[0.0, 1.0]``, and a non-finite score skips the
-    fill with a trail rather than poisoning the fact model's bounds.
+    Joins on ``(org_id, agent_harness, session_id, call_id, file_path)`` — the
+    observation's dedup identity, matching the decision's ``call_id`` (Claude
+    Code's ``tool_use_id``, Codex's parent tool-call id) and ``file_path``. A
+    multi-file Codex patch shares one ``call_id`` across per-file decisions and
+    observations; ``file_path`` selects the matching pair. A decision is only
+    filled when its score is ``None`` (a vendor-supplied rate, i.e. Copilot's,
+    always stands) and a matching pair exists. ``scorer(applied_text,
+    observed_file_text)`` must return a float; the result is clamped to
+    ``[0.0, 1.0]``, and a non-finite score skips the fill with a trail rather
+    than poisoning the fact model's bounds.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
     a whole file for Write, but only the ``new_string`` *snippet* for Edit —
@@ -292,15 +299,19 @@ def attach_edit_retention(
     Returns a new list — input models are never mutated (facts are immutable;
     the filled copies are derived state for the caller to consume, ADR 0001).
     """
-    by_key: dict[tuple[str, str, str, str], EditObservation] = {}
+    by_key: dict[tuple[str, str, str, str, str], EditObservation] = {}
     for o in observations:
         # Keep-first on a duplicate key, mirroring the store's
         # first-write-wins posture — never last-wins dict insertion luck.
-        by_key.setdefault((o.org_id, o.agent_harness, o.session_id, o.call_id), o)
+        by_key.setdefault(
+            (o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path), o
+        )
     out: list[DeveloperDecision] = []
     for d in decisions:
         observation = (
-            by_key.get((d.org_id, d.agent_harness, d.session_id, d.call_id))
+            by_key.get(
+                (d.org_id, d.agent_harness, d.session_id, d.call_id, d.file_path)
+            )
             if d.call_id and d.edit_retention_score is None
             else None
         )

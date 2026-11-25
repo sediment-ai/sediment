@@ -667,6 +667,31 @@ def test_postgres_edit_observation_round_trip_and_session_upsert(
     assert session.user_id is None
 
 
+def test_postgres_edit_observation_allows_same_call_across_files(
+    postgres_engine,
+) -> None:
+    store = FactStore(postgres_engine)
+    first = _observation(observation_id="observation-a", file_path="calc.py")
+    second = _observation(observation_id="observation-b", file_path="util.py")
+    duplicate = first.model_copy(
+        update={
+            "observation_id": "observation-a-redelivery",
+            "observed_file_text": "changed-later",
+        }
+    )
+
+    assert store.store_edit_observation(first) is True
+    assert store.store_edit_observation(second) is True
+    assert store.store_edit_observation(duplicate) is False
+    assert {
+        observation.file_path: observation.observed_file_text
+        for observation in store.read_edit_observations("acme")
+    } == {
+        "calc.py": first.observed_file_text,
+        "util.py": second.observed_file_text,
+    }
+
+
 def test_postgres_rejected_edit_round_trip_and_first_write_wins(
     postgres_engine,
 ) -> None:
