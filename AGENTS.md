@@ -72,10 +72,10 @@ Before structural changes, read the binding ADRs for your area in `docs/adr/`.
   about to touch. One guard in the shared function beats a guard in each
   caller, and patching only the path the issue names leaves every sibling
   broken.
-- **`ponytail:` marks a deliberate simplification** so it reads as intent.
-  Where the shortcut has a known ceiling, the comment names the ceiling and
-  the upgrade path: `# ponytail: global lock, per-account locks if
-  throughput matters`.
+- **Prefer no comments; solve the problem.** Restating code, deferring work
+  (`TODO`/`FIXME`/`for now`), or excusing a skip fails CI (ruff FIX/ERA/PGH,
+  `scripts/check_comments.py`). Keep only what code cannot express. A
+  `# ponytail:` names a measured ceiling and upgrade path — never a deferral.
 - **Non-trivial logic leaves one runnable check** — the smallest thing that
   fails if the logic breaks. It never relaxes the determinism rule above.
 - **Never simplified away**: validation at trust boundaries, the fail-soft
