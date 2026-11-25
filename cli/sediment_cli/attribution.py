@@ -2208,12 +2208,12 @@ def _sediment_executable() -> str | None:
             resolved = cand.resolve()
         except OSError:
             resolved = cand
-        foreign = _venv_root_for(resolved)
-        if foreign is not None:
+        owned = _venv_root_for(resolved)
+        if owned is not None:
             try:
-                if not resolved.is_relative_to(active_prefix):
+                if owned.resolve() != active_prefix:
                     continue
-            except (OSError, ValueError):
+            except OSError:
                 continue
         return str(cand)
     return None

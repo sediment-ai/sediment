@@ -3263,6 +3263,24 @@ def test_script_invocation_skips_venv_shims(tmp_path, monkeypatch) -> None:
     assert "attribution.py" in invocation  # the checkout fallback
 
 
+def test_script_invocation_skips_venv_nested_under_sys_prefix(
+    tmp_path, monkeypatch
+) -> None:
+    mod = _load_module()
+    prefix = tmp_path / "usr"
+    nested = prefix / "src" / "app" / ".venv"
+    venv_exe = nested / "bin" / "sediment"
+    venv_exe.parent.mkdir(parents=True)
+    (nested / "pyvenv.cfg").write_text("home = /usr\n")
+    venv_exe.write_text("#!/bin/sh\n")
+    venv_exe.chmod(0o755)
+    monkeypatch.setattr(mod.sys, "prefix", str(prefix))
+    monkeypatch.setattr(mod.os, "get_exec_path", lambda: [str(venv_exe.parent)])
+    invocation = mod._script_invocation("stamp")
+    assert str(venv_exe) not in invocation
+    assert "attribution.py" in invocation
+
+
 def test_mark_tools_match_agent_harness_without_copilot() -> None:
     from sediment_core import AgentHarness
 
