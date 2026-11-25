@@ -27,9 +27,6 @@ class LabelConfidenceSettings(BaseSettings):
     unconfigured-is-default-behavior convention).
     """
 
-    # extra="ignore": the process env / .env is shared with other components
-    # (apps/api's Settings, VerifierCommandsSettings), so
-    # tolerate keys this model does not own instead of failing construction.
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="SEDIMENT_LABEL_CONFIDENCE_", extra="ignore"
     )
@@ -49,9 +46,6 @@ class LabelConfidenceSettings(BaseSettings):
         """The loaded policy — validated by ``LabelConfidencePolicy.__post_init__``
         exactly as a directly-constructed policy would be, so a bad env
         value fails the same way a bad literal would."""
-        # Every field above is a LabelConfidencePolicy knob of the same name, so the
-        # dump maps straight across and the two can't drift apart field by
-        # field. policy_version is not a knob and keeps its own default.
         values = self.model_dump()
         ci_resolution = CIResolutionPolicy(
             clean_reliability=values.pop("clean_reliability"),

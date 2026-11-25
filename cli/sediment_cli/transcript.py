@@ -88,10 +88,8 @@ EVENT_NAME = "sediment.edit_observation"
 # the pi parser emits none rather than guessing.
 REJECTED_EVENT_NAME = "sediment.rejected_edit"
 RETRY_LINKAGE_EVENT_NAME = "sediment.retry_linkage"
-# Edit tools whose input carries the full AI-authored text. NotebookEdit and
-# the legacy MultiEdit are skipped (ponytail: cell-JSON and multi-part edits
-# need their own pairing rules; those sessions fall back to the attribution
-# backstop until those pairing rules exist).
+# Native Edit/Write only. NotebookEdit and MultiEdit need per-cell / per-part
+# pairing rules; sessions without them still get attribution notes.
 _EDIT_TOOLS = {"Edit": "new_string", "Write": "content"}
 # ponytail: fixed per-side cap keeps a pathological file from turning the
 # hook into a multi-MB POST; raise if real source files exceed it.
@@ -869,11 +867,7 @@ def _codex_edit_path(
 
 
 def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
-    """Extract successful single-file native changes and supported shell patches.
-
-    # ponytail: multi-file calls need a Fact identity that can join each file;
-    # skip them until that contract exists, without inventing child call ids.
-    """
+    """Extract successful single-file native changes and supported shell patches."""
     material = list(entries)
     cwd: object = None
     transcript_session: object = None
@@ -1690,15 +1684,12 @@ def _publish(url: str, payload: dict) -> bool:
 def build_parser():
     """The command's shape, for ``sediment transcript --help`` and the CLI
     reference only."""
-    # ponytail: a help-only twin of the hand parsing in main, which must exit
-    # 0 where argparse exits 2. Two arguments described twice; drive both from
-    # one table if the grammar grows.
-    import argparse  # the hook path never imports it
+    # ponytail: help-only argparse twin; main hand-parses so hooks exit 0
+    # (argparse exits 2). Share one arg table if the grammar grows.
+    import argparse
 
     parser = argparse.ArgumentParser(
         prog="sediment transcript",
-        # argparse prints options before positionals; main reads `snapshot`
-        # only as the first argument.
         usage="%(prog)s [-h] [snapshot] --agent {" + ",".join(_PARSERS) + "}",
         description="Read one hook event on stdin: a JSON object with "
         "session_id and transcript_path. Extract the Session's Edit "
@@ -1732,7 +1723,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         url = _endpoint()
         if url is None:
-            return 0  # not opted in — and nothing is cached either
+            return 0
         args = sys.argv[1:] if argv is None else argv
         if "--agent" not in args:
             _trail("missing --agent; skipping")
@@ -1764,8 +1755,6 @@ def main(argv: list[str] | None = None) -> int:
         pairs = build_pairs(
             entries, session_id, agent=agent, source_path=Path(transcript_path)
         )
-        # Refusals are Claude Code-only for now; the pi parser cannot tell a
-        # refusal from a tool failure, so it contributes nothing here.
         rejected = (
             extract_rejected_edits(entries, session_id)
             if agent == "claude-code"
@@ -1792,7 +1781,7 @@ def main(argv: list[str] | None = None) -> int:
         # Durable enqueue or acknowledged direct delivery owns the prepared
         # bytes. A decline preserves snapshots; replay never re-extracts them.
         _clear_cache(session_id)
-    except Exception:  # fail-soft: never fail the session end
+    except Exception:
         _trail("emit failed; Edit observation coverage is incomplete")
     return 0
 

@@ -443,7 +443,7 @@ def _copilot_decisions(
             )
             if _translated_records is not None:
                 _translated_records.add(position)
-        except Exception:  # malformed record — skip, don't sink the batch
+        except Exception:
             logger.warning(
                 "otlp_record_invalid",
                 extra={
@@ -642,7 +642,6 @@ def _claude_code_decisions(
             if _translated_records is not None:
                 _translated_records.add(position)
         except ValidationError:
-            # Source values are type-gated above; only Fact validation remains.
             logger.warning(
                 "otlp_record_invalid",
                 extra={
@@ -867,7 +866,6 @@ def _codex_decisions(
                 if _translated_records is not None:
                     _translated_records.add(position)
             except ValidationError:
-                # Source values are type-gated above; only Fact validation remains.
                 logger.warning(
                     "otlp_record_invalid",
                     extra={
@@ -1014,7 +1012,7 @@ def _sediment_decisions(
             out.append(fact)
             if _translated_records is not None:
                 _translated_records.add(position)
-        except Exception:  # malformed record — skip, don't sink the batch
+        except Exception:
             logger.warning(
                 "otlp_record_invalid",
                 extra={"org_id": org_id, "source": "sediment", "call_id": call_id},
@@ -1138,7 +1136,7 @@ def parse_otlp_edit_observations(
             )
             if _translated_records is not None:
                 _translated_records.add(position)
-        except Exception:  # malformed record — skip, don't sink the batch
+        except Exception:
             logger.warning(
                 "otlp_record_invalid",
                 extra={"org_id": org_id, "source": "sediment", "call_id": call_id},
@@ -1218,7 +1216,7 @@ def parse_otlp_rejected_edits(
             )
             if _translated_records is not None:
                 _translated_records.add(position)
-        except Exception:  # malformed record — skip, don't sink the batch
+        except Exception:
             logger.warning(
                 "otlp_record_invalid",
                 extra={"org_id": org_id, "source": "sediment", "call_id": call_id},

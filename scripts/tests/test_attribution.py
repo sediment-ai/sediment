@@ -1147,8 +1147,8 @@ def hook_installation(
     so a status-preserving block has to land in both places.
     """
     repo = make_repo(tmp_path / "r")
-    # Fleet hooks invoke ``python3`` from PATH. The venv interpreter's
-    # directory is first; ``_sediment_executable`` still skips ``.venv``.
+    # Fleet hooks invoke ``python3`` from PATH. The active interpreter's
+    # directory is first; ``_sediment_executable`` still skips foreign venvs.
     monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}:/usr/bin:/bin")
     if request.param == "local":
         return repo, hooks_dir(repo), ["install", str(repo), "--no-agents"]
@@ -3251,14 +3251,26 @@ def test_script_invocation_skips_venv_shims(tmp_path, monkeypatch) -> None:
     # A worktree venv is the deleted-checkout rot this feature ends — its
     # shim must never be embedded even when it is first on PATH.
     mod = _load_module()
-    venv_exe = tmp_path / ".venv" / "bin" / "sediment"
+    venv_root = tmp_path / "custom-env"
+    venv_exe = venv_root / "bin" / "sediment"
     venv_exe.parent.mkdir(parents=True)
+    (venv_root / "pyvenv.cfg").write_text("home = /usr\n")
     venv_exe.write_text("#!/bin/sh\n")
     venv_exe.chmod(0o755)
     monkeypatch.setattr(mod.os, "get_exec_path", lambda: [str(venv_exe.parent)])
     invocation = mod._script_invocation("stamp")
-    assert str(venv_exe) not in invocation  # never the venv shim
+    assert str(venv_exe) not in invocation  # never the foreign venv shim
     assert "attribution.py" in invocation  # the checkout fallback
+
+
+def test_mark_tools_match_agent_harness_without_copilot() -> None:
+    from sediment_core import AgentHarness
+
+    mod = _load_module()
+    expected = tuple(
+        sorted(h.value for h in AgentHarness if h is not AgentHarness.COPILOT)
+    )
+    assert tuple(sorted(mod._MARK_TOOLS)) == expected
 
 
 def _login_config(home: Path, url: str = "http://127.0.0.1:8000") -> None:

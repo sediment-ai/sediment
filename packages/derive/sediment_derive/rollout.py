@@ -99,8 +99,6 @@ class Turn:
     completion: str  # assistant output, including any tool-call text
     decisions: tuple[DeveloperDecision, ...]  # joined by call_id, unique-or-drop
     inference_call_id: str
-    # The inference-call fact's response-side tool calls, verbatim.
-    # Empty when the capture saw none — no calls made, or no body logged.
     tool_calls: tuple[ToolCallPart, ...] = ()
 
 
@@ -126,8 +124,6 @@ class Rollout:
     attribution_source: AttributionSource  # GIT_NOTES | JACCARD
     terminal_outcomes: list[CIOutcome]  # every CI outcome for the commits above
     provenance: Provenance
-    # Deterministic train/eval holdout, hashed on session_id with split_of.
-    # Attributed completions use the same primitive.
     split: Split
     session_commit_observations: tuple[SessionCommitObservation, ...] = ()
 
@@ -141,8 +137,6 @@ class RolloutPolicy:
 
     attribution: AttributionPolicy = field(default_factory=AttributionPolicy)
     policy_version: str = ROLLOUT_IMPLEMENTATION_VERSION
-    # Eval-holdout share, hashed on session_id. The canonical version-1 policy
-    # defaults to 0.1. A caller can set 0.0 to disable the split.
     eval_fraction: float = 0.1
 
     def __post_init__(self) -> None:
@@ -550,7 +544,6 @@ def project_session_turns(
         ),
     )
 
-    # (completion, new_messages, segment_index)
     entries: list[tuple[InferenceCall, list[InferenceMessage], int]] = []
     segment = 0
     prev: InferenceCall | None = None

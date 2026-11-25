@@ -14,7 +14,7 @@ from __future__ import annotations
 import statistics
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from typing import Literal, get_args
+from typing import Literal, cast, get_args
 
 from sediment_core import FactStore
 from sediment_derive import MirrorManager, RepositoryContext
@@ -254,7 +254,7 @@ def _affected_by_knob(
 def _validate_knob(knob: str) -> LabelConfidencePolicyKnob:
     if knob not in LABEL_CONFIDENCE_POLICY_KNOBS:
         raise ValueError(f"unknown LabelConfidencePolicy knob {knob!r}")
-    return knob  # type: ignore[return-value]
+    return cast(LabelConfidencePolicyKnob, knob)
 
 
 def _replace_knob(

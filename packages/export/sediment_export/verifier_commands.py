@@ -165,9 +165,6 @@ class VerifierCommandsSettings(BaseSettings):
     :class:`VerifierCommands`, so target rows omit verification configuration.
     """
 
-    # extra="ignore": the process env / .env is shared with other components
-    # (apps/api's Settings), so tolerate keys this model does
-    # not own instead of failing construction.
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="SEDIMENT_", extra="ignore"
     )
