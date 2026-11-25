@@ -285,24 +285,37 @@ def _edit_paths_match(left: str, right: str) -> bool:
 
 
 def _observation_for_decision(
-    candidates: list[EditObservation], decision_path: str
+    candidates: list[EditObservation],
+    decision_path: str,
+    sibling_paths: frozenset[str],
 ) -> EditObservation | None:
     """Select the observation that joins a decision under one call_id.
 
-    Always require an exact or path-compatible ``file_path`` match. A Codex
-    patch fans decisions for every V4A file (including deletes) under one
-    parent ``call_id``, while observations skip deletes and unreadable pairs —
-    a lone candidate must not attach to the wrong decision. Ambiguity drops
-    rather than poisoning (ADR 0004).
+    Prefer exact ``file_path`` equality. Trailing-path matches cover Codex
+    absolute observations vs relative V4A decisions, but only when this
+    decision path is the most specific sibling that matches the observation —
+    otherwise a basename-only delete (``util.py``) would inherit the score of
+    ``src/util.py``. Ambiguity drops rather than poisoning (ADR 0004).
     """
     if not candidates:
         return None
     exact = [o for o in candidates if o.file_path == decision_path]
     if exact:
         return exact[0]
-    compatible = [
-        o for o in candidates if _edit_paths_match(o.file_path, decision_path)
-    ]
+
+    def most_specific(obs_path: str) -> bool:
+        if not _edit_paths_match(obs_path, decision_path):
+            return False
+        for sibling in sibling_paths:
+            if sibling == decision_path:
+                continue
+            if _edit_paths_match(obs_path, sibling) and len(sibling) > len(
+                decision_path
+            ):
+                return False
+        return True
+
+    compatible = [o for o in candidates if most_specific(o.file_path)]
     if len(compatible) == 1:
         return compatible[0]
     return None
@@ -316,16 +329,17 @@ def attach_edit_retention(
     """Fill ``edit_retention_score`` from matching edit observations.
 
     Joins on ``(org_id, agent_harness, session_id, call_id)``, then selects
-    among same-call observations by exact or trailing-path ``file_path``
-    equality (relative V4A decisions vs absolute SessionEnd paths). A
-    multi-file Codex patch shares one ``call_id`` across per-file decisions
-    and observations; path matching selects the member and refuses to attach
-    a lone observation to an unmatched sibling decision (for example a
-    delete). A decision is only filled when its score is ``None`` (a
-    vendor-supplied rate, i.e. Copilot's, always stands) and a matching pair
-    exists. ``scorer(applied_text, observed_file_text)`` must return a float;
-    the result is clamped to ``[0.0, 1.0]``, and a non-finite score skips the
-    fill with a trail rather than poisoning the fact model's bounds.
+    among same-call observations by exact or most-specific trailing-path
+    ``file_path`` equality (relative V4A decisions vs absolute SessionEnd
+    paths). A multi-file Codex patch shares one ``call_id`` across per-file
+    decisions and observations; path matching selects the member and refuses
+    to attach a lone observation to an unmatched sibling decision (for
+    example a same-basename delete). A decision is only filled when its score
+    is ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
+    matching pair exists. ``scorer(applied_text, observed_file_text)`` must
+    return a float; the result is clamped to ``[0.0, 1.0]``, and a non-finite
+    score skips the fill with a trail rather than poisoning the fact model's
+    bounds.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
     a whole file for Write, but only the ``new_string`` *snippet* for Edit —
@@ -350,12 +364,27 @@ def attach_edit_retention(
             continue
         seen.add(key)
         by_call[(o.org_id, o.agent_harness, o.session_id, o.call_id)].append(o)
+    sibling_paths: dict[tuple[str, str, str, str], frozenset[str]] = {
+        call_key: frozenset(
+            d.file_path
+            for d in decisions
+            if d.call_id
+            and (d.org_id, d.agent_harness, d.session_id, d.call_id) == call_key
+        )
+        for call_key in {
+            (d.org_id, d.agent_harness, d.session_id, d.call_id)
+            for d in decisions
+            if d.call_id
+        }
+    }
     out: list[DeveloperDecision] = []
     for d in decisions:
+        call_key = (d.org_id, d.agent_harness, d.session_id, d.call_id)
         observation = (
             _observation_for_decision(
-                by_call.get((d.org_id, d.agent_harness, d.session_id, d.call_id), []),
+                by_call.get(call_key, []),
                 d.file_path,
+                sibling_paths.get(call_key, frozenset()),
             )
             if d.call_id and d.edit_retention_score is None
             else None

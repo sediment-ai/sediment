@@ -34,7 +34,7 @@ def test_codex_completed_recorded_add_preserves_call_identity_and_text(tmp_path)
     assert fact.call_id == "exec-41bf137a-c5d5-4b57-b892-b392267d654b"
     assert fact.session_id == "sess-codex"
     assert pair["tool_name"] == "apply_patch"
-    assert fact.file_path == str(target)
+    assert fact.file_path == "codex_fixed.py"
     assert fact.applied_text == "def subtract(a, b):\n    return a - b\n"
     assert fact.observed_file_text == target.read_text()
     assert pair["time_unix_nano"] == 1788988293960000000
@@ -125,13 +125,13 @@ def test_codex_completed_multi_file_emits_one_pair_per_authored_file(tmp_path):
     pairs = build_pairs(entries, "sess-codex", agent="codex")
     by_path = {pair["file_path"]: pair for pair in pairs}
 
-    assert set(by_path) == {str(added), str(updated)}
+    assert set(by_path) == {"added.py", "updated.py"}
     assert all(
         pair["tool_use_id"] == "exec-41bf137a-c5d5-4b57-b892-b392267d654b"
         for pair in pairs
     )
-    assert by_path[str(added)]["applied_text"] == "added = True\n"
-    assert by_path[str(updated)]["applied_text"] == "updated = True"
+    assert by_path["added.py"]["applied_text"] == "added = True\n"
+    assert by_path["updated.py"]["applied_text"] == "updated = True"
 
 
 @pytest.mark.parametrize("call_id", [None, "", " ", 123])

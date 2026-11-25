@@ -426,6 +426,39 @@ def test_lone_observation_does_not_join_unmatched_sibling_decision() -> None:
     }
 
 
+def test_same_basename_sibling_does_not_inherit_trailing_path_match() -> None:
+    # Observation /tmp/project/src/util.py trailing-matches both src/util.py
+    # and util.py; only the most specific sibling may take the score.
+    decisions = [
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="src/util.py",
+        ),
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="util.py",
+        ),
+    ]
+    observations = [
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="/tmp/project/src/util.py",
+            applied_text="util",
+            observed_file_text="util",
+        )
+    ]
+    filled = attach_edit_retention(
+        decisions, observations, lambda applied, observed: 1.0
+    )
+    assert {d.file_path: d.edit_retention_score for d in filled} == {
+        "src/util.py": 1.0,
+        "util.py": None,
+    }
+
+
 def test_scorer_receives_the_pair() -> None:
     seen: list[tuple[str, str]] = []
 
