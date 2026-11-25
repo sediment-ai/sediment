@@ -393,6 +393,39 @@ def test_single_file_codex_joins_despite_absolute_vs_relative_paths() -> None:
     assert filled.edit_retention_score == 1.0
 
 
+def test_lone_observation_does_not_join_unmatched_sibling_decision() -> None:
+    # Decisions fan out for every V4A file (including deletes); observations
+    # skip deletes. A lone authored observation must not poison the delete.
+    decisions = [
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="kept.py",
+        ),
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="gone.py",
+        ),
+    ]
+    observations = [
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="/tmp/project/kept.py",
+            applied_text="kept",
+            observed_file_text="kept",
+        )
+    ]
+    filled = attach_edit_retention(
+        decisions, observations, lambda applied, observed: 1.0
+    )
+    assert {d.file_path: d.edit_retention_score for d in filled} == {
+        "kept.py": 1.0,
+        "gone.py": None,
+    }
+
+
 def test_scorer_receives_the_pair() -> None:
     seen: list[tuple[str, str]] = []
 

@@ -289,14 +289,14 @@ def _observation_for_decision(
 ) -> EditObservation | None:
     """Select the observation that joins a decision under one call_id.
 
-    A single candidate joins regardless of path spelling (the historical
-    call_id-only join). Several candidates need an exact or path-compatible
-    match; ambiguity drops rather than poisoning (ADR 0004).
+    Always require an exact or path-compatible ``file_path`` match. A Codex
+    patch fans decisions for every V4A file (including deletes) under one
+    parent ``call_id``, while observations skip deletes and unreadable pairs —
+    a lone candidate must not attach to the wrong decision. Ambiguity drops
+    rather than poisoning (ADR 0004).
     """
     if not candidates:
         return None
-    if len(candidates) == 1:
-        return candidates[0]
     exact = [o for o in candidates if o.file_path == decision_path]
     if exact:
         return exact[0]
@@ -316,16 +316,16 @@ def attach_edit_retention(
     """Fill ``edit_retention_score`` from matching edit observations.
 
     Joins on ``(org_id, agent_harness, session_id, call_id)``, then selects
-    among same-call observations by ``file_path``. A lone observation for a
-    call_id joins even when path spellings differ (Codex absolute observation
-    vs relative V4A decision). A multi-file Codex patch shares one ``call_id``
-    across per-file decisions and observations; exact or trailing-path
-    equality selects the member. A decision is only filled when its score is
-    ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
-    matching pair exists. ``scorer(applied_text, observed_file_text)`` must
-    return a float; the result is clamped to ``[0.0, 1.0]``, and a non-finite
-    score skips the fill with a trail rather than poisoning the fact model's
-    bounds.
+    among same-call observations by exact or trailing-path ``file_path``
+    equality (relative V4A decisions vs absolute SessionEnd paths). A
+    multi-file Codex patch shares one ``call_id`` across per-file decisions
+    and observations; path matching selects the member and refuses to attach
+    a lone observation to an unmatched sibling decision (for example a
+    delete). A decision is only filled when its score is ``None`` (a
+    vendor-supplied rate, i.e. Copilot's, always stands) and a matching pair
+    exists. ``scorer(applied_text, observed_file_text)`` must return a float;
+    the result is clamped to ``[0.0, 1.0]``, and a non-finite score skips the
+    fill with a trail rather than poisoning the fact model's bounds.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
     a whole file for Write, but only the ``new_string`` *snippet* for Edit —

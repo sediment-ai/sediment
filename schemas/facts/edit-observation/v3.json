@@ -51,7 +51,7 @@
     "call_id": {
       "type": "string",
       "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$",
-      "description": "The tool-use id of the edit this pair describes. A multi-file Codex patch keeps the parent tool-call id on every member; `file_path` completes the join to the matching Developer decision."
+      "description": "The tool-use id of the edit this pair describes."
     },
     "applied_text": {
       "type": "string",
