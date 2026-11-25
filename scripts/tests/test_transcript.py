@@ -434,7 +434,7 @@ def test_codex_shell_apply_patch_pairs_added_text_with_session_end_file(
 
     assert pair["tool_use_id"] == "call-shell-patch"
     assert pair["tool_name"] == "exec_command"
-    assert pair["file_path"] == str(target)
+    assert pair["file_path"] == "addition.py"
     assert pair["applied_text"] == "    return left + right"
     assert pair["observed_file_text"] == target.read_text(encoding="utf-8")
     assert "return left - right" not in json.dumps(pair)
@@ -521,13 +521,15 @@ def test_codex_multi_file_native_emits_add_update_rename_and_skips_delete(
 
     pairs = mod.build_pairs(entries, "sess-codex", agent="codex")
     by_path = {pair["file_path"]: pair for pair in pairs}
+    source = str(tmp_path / "old_name.py")
 
-    assert set(by_path) == {str(added), str(updated), str(renamed)}
+    assert set(by_path) == {str(added), str(updated), source}
     assert all(pair["tool_use_id"] == "call-multi" for pair in pairs)
     assert all(pair["tool_name"] == "apply_patch" for pair in pairs)
     assert by_path[str(added)]["applied_text"] == "added = 1\n"
     assert by_path[str(updated)]["applied_text"] == "updated = 1"
-    assert by_path[str(renamed)]["applied_text"] == "renamed = 1"
+    assert by_path[source]["applied_text"] == "renamed = 1"
+    assert by_path[source]["observed_file_text"] == renamed.read_text(encoding="utf-8")
     assert "unsupported_patch_kind" in capsys.readouterr().err
 
 
@@ -582,10 +584,16 @@ def test_codex_multi_file_shell_emits_one_pair_per_authored_file(
     pairs = mod.build_pairs(entries, "sess-codex", agent="codex")
     by_path = {pair["file_path"]: pair for pair in pairs}
 
-    assert set(by_path) == {str(first), str(second)}
+    assert set(by_path) == {"first.py", "second.py"}
     assert all(pair["tool_use_id"] == "call-shell-multi" for pair in pairs)
-    assert by_path[str(first)]["applied_text"] == "first = True"
-    assert by_path[str(second)]["applied_text"] == "second = True"
+    assert by_path["first.py"]["applied_text"] == "first = True"
+    assert by_path["second.py"]["applied_text"] == "second = True"
+    assert by_path["first.py"]["observed_file_text"] == first.read_text(
+        encoding="utf-8"
+    )
+    assert by_path["second.py"]["observed_file_text"] == second.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_codex_multi_file_reingestion_is_idempotent_and_joins_retention(
@@ -605,8 +613,8 @@ def test_codex_multi_file_reingestion_is_idempotent_and_joins_retention(
         _codex_patch(
             "call-multi",
             {
-                str(first): {"type": "add", "content": "calc = 1\n"},
-                str(second): {
+                "calc.py": {"type": "add", "content": "calc = 1\n"},
+                "util.py": {
                     "type": "update",
                     "move_path": None,
                     "unified_diff": "@@ -1 +1 @@\n-util = 0\n+util = 1\n",
@@ -617,32 +625,38 @@ def test_codex_multi_file_reingestion_is_idempotent_and_joins_retention(
     pairs = mod.build_pairs(entries, "sess-codex", agent="codex")
     payload = mod.build_payload("sess-codex", pairs, agent="codex")
     facts = parse_otlp_edit_observations(payload, org_id="acme")
-    assert {fact.file_path for fact in facts} == {str(first), str(second)}
+    assert {fact.file_path for fact in facts} == {"calc.py", "util.py"}
     assert all(fact.call_id == "call-multi" for fact in facts)
 
     assert sum(postgres_store.store_edit_observation(fact) for fact in facts) == 2
     assert sum(postgres_store.store_edit_observation(fact) for fact in facts) == 0
     stored = postgres_store.read_edit_observations("acme")
-    assert {fact.file_path for fact in stored} == {str(first), str(second)}
+    assert {fact.file_path for fact in stored} == {"calc.py", "util.py"}
 
+    # Decisions keep the relative V4A paths OTLP emits; observations may be
+    # absolute for native FileChange keys. Path-compatible join fills both.
     decisions = [
         DeveloperDecision(
             org_id="acme",
             session_id="sess-codex",
             agent_harness=AgentHarness.CODEX,
-            file_path=fact.file_path,
+            file_path=name,
             accepted=True,
             explicit=False,
             interaction_mode=InteractionMode.AGENT,
             call_id="call-multi",
-            occurred_at=fact.occurred_at,
+            occurred_at=facts[0].occurred_at,
         )
+        for name in ("calc.py", "util.py")
+    ]
+    absolute = [
+        fact.model_copy(update={"file_path": str(tmp_path / fact.file_path)})
         for fact in facts
     ]
-    filled = attach_edit_retention(decisions, facts, four_gram_containment)
+    filled = attach_edit_retention(decisions, absolute, four_gram_containment)
     assert {d.file_path: d.edit_retention_score for d in filled} == {
-        str(first): 1.0,
-        str(second): 1.0,
+        "calc.py": 1.0,
+        "util.py": 1.0,
     }
 
 
@@ -660,7 +674,7 @@ def test_codex_shell_patch_predicate_matches_the_decision_translator() -> None:
         "*** End Patch\n"
         "PATCH"
     )
-    assert mod._codex_shell_patch(heredoc) == [("calc.py", "value = True")]
+    assert mod._codex_shell_patch(heredoc) == [("calc.py", "calc.py", "value = True")]
     assert mod._codex_shell_patch("echo apply_patch <<'PATCH'") is None
     assert (
         mod._codex_shell_patch(
@@ -2080,7 +2094,7 @@ def test_codex_shell_uses_execution_directory_and_preserves_increment(
     cwd = project if workdir_kind == "absent" else tmp_path
     entries = _codex_shell_entries(cwd, **kwargs)
     [pair] = mod.build_pairs(entries, "sess-codex", agent="codex")
-    assert pair["file_path"] == str(target)
+    assert pair["file_path"] == "counter.js"
     assert pair["applied_text"] == pair["observed_file_text"] == _CODEX_APPLIED
 
 
@@ -2326,7 +2340,7 @@ def test_codex_shell_first_update_hunk_preserves_text_and_retention(
     [pair] = mod.build_pairs(
         _codex_shell_entries(tmp_path, command=command), "sess-codex", agent="codex"
     )
-    assert pair["file_path"] == str(target)
+    assert pair["file_path"] == "counter.js"
     assert pair["applied_text"] == _CODEX_APPLIED
     assert pair["observed_file_text"] == target.read_text()
     [fact] = parse_otlp_edit_observations(
@@ -2374,9 +2388,11 @@ def test_codex_shell_headerless_hunk_accepts_a_second_file_marker(tmp_path):
         _codex_shell_entries(tmp_path, command=command), "sess-codex", agent="codex"
     )
     by_path = {pair["file_path"]: pair for pair in pairs}
-    assert set(by_path) == {str(counter), str(sibling)}
-    assert by_path[str(counter)]["applied_text"] == "valid"
-    assert by_path[str(sibling)]["applied_text"] == "other"
+    assert set(by_path) == {"counter.js", "sibling.js"}
+    assert by_path["counter.js"]["applied_text"] == "valid"
+    assert by_path["sibling.js"]["applied_text"] == "other"
+    assert by_path["counter.js"]["observed_file_text"] == counter.read_text()
+    assert by_path["sibling.js"]["observed_file_text"] == sibling.read_text()
 
 
 def _large_transcript(tmp_path, count=32):

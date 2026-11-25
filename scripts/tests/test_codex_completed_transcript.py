@@ -58,7 +58,9 @@ def test_codex_completed_update_preserves_hunk_additions(tmp_path, move_path):
     [pair] = build_pairs(entries, "sess-codex", agent="codex")
 
     assert pair["tool_use_id"] == item["id"]
-    assert pair["file_path"] == str(target)
+    # Identity stays the Update-File source path; content is read from the
+    # Move destination when present.
+    assert pair["file_path"] == "counter.js"
     assert pair["applied_text"] == "++counter; record(counter);"
     assert pair["observed_file_text"] == target.read_text()
 

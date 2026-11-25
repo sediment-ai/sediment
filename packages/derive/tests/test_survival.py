@@ -347,14 +347,14 @@ def test_multi_file_codex_call_joins_each_file_independently() -> None:
         _outcome(
             agent_harness=AgentHarness.CODEX,
             call_id="call-multi",
-            file_path="calc.py",
+            file_path="/tmp/project/calc.py",
             applied_text="calc",
             observed_file_text="calc kept",
         ),
         _outcome(
             agent_harness=AgentHarness.CODEX,
             call_id="call-multi",
-            file_path="util.py",
+            file_path="/tmp/project/util.py",
             applied_text="util",
             observed_file_text="gone",
         ),
@@ -368,6 +368,29 @@ def test_multi_file_codex_call_joins_each_file_independently() -> None:
         "calc.py": 1.0,
         "util.py": 0.0,
     }
+
+
+def test_single_file_codex_joins_despite_absolute_vs_relative_paths() -> None:
+    [filled] = attach_edit_retention(
+        [
+            _decision(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-one",
+                file_path="calc.py",
+            )
+        ],
+        [
+            _outcome(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-one",
+                file_path="/home/dev/project/calc.py",
+                applied_text="body",
+                observed_file_text="body kept",
+            )
+        ],
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert filled.edit_retention_score == 1.0
 
 
 def test_scorer_receives_the_pair() -> None:

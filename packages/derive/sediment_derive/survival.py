@@ -268,6 +268,46 @@ def external_lines_after(
     return out
 
 
+def _edit_paths_match(left: str, right: str) -> bool:
+    """True when two edit paths name the same file under absolute/relative forms.
+
+    Codex decisions carry the relative V4A marker path; SessionEnd observations
+    often resolve that path against the Session cwd. Exact equality covers
+    Claude Code and pi; a trailing path-component match covers Codex.
+    """
+    if left == right:
+        return True
+    if not left or not right:
+        return False
+    a = left.replace("\\", "/")
+    b = right.replace("\\", "/")
+    return a.endswith("/" + b) or b.endswith("/" + a)
+
+
+def _observation_for_decision(
+    candidates: list[EditObservation], decision_path: str
+) -> EditObservation | None:
+    """Select the observation that joins a decision under one call_id.
+
+    A single candidate joins regardless of path spelling (the historical
+    call_id-only join). Several candidates need an exact or path-compatible
+    match; ambiguity drops rather than poisoning (ADR 0004).
+    """
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+    exact = [o for o in candidates if o.file_path == decision_path]
+    if exact:
+        return exact[0]
+    compatible = [
+        o for o in candidates if _edit_paths_match(o.file_path, decision_path)
+    ]
+    if len(compatible) == 1:
+        return compatible[0]
+    return None
+
+
 def attach_edit_retention(
     decisions: list[DeveloperDecision],
     observations: list[EditObservation],
@@ -275,16 +315,17 @@ def attach_edit_retention(
 ) -> list[DeveloperDecision]:
     """Fill ``edit_retention_score`` from matching edit observations.
 
-    Joins on ``(org_id, agent_harness, session_id, call_id, file_path)`` — the
-    observation's dedup identity, matching the decision's ``call_id`` (Claude
-    Code's ``tool_use_id``, Codex's parent tool-call id) and ``file_path``. A
-    multi-file Codex patch shares one ``call_id`` across per-file decisions and
-    observations; ``file_path`` selects the matching pair. A decision is only
-    filled when its score is ``None`` (a vendor-supplied rate, i.e. Copilot's,
-    always stands) and a matching pair exists. ``scorer(applied_text,
-    observed_file_text)`` must return a float; the result is clamped to
-    ``[0.0, 1.0]``, and a non-finite score skips the fill with a trail rather
-    than poisoning the fact model's bounds.
+    Joins on ``(org_id, agent_harness, session_id, call_id)``, then selects
+    among same-call observations by ``file_path``. A lone observation for a
+    call_id joins even when path spellings differ (Codex absolute observation
+    vs relative V4A decision). A multi-file Codex patch shares one ``call_id``
+    across per-file decisions and observations; exact or trailing-path
+    equality selects the member. A decision is only filled when its score is
+    ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
+    matching pair exists. ``scorer(applied_text, observed_file_text)`` must
+    return a float; the result is clamped to ``[0.0, 1.0]``, and a non-finite
+    score skips the fill with a trail rather than poisoning the fact model's
+    bounds.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
     a whole file for Write, but only the ``new_string`` *snippet* for Edit —
@@ -299,18 +340,22 @@ def attach_edit_retention(
     Returns a new list — input models are never mutated (facts are immutable;
     the filled copies are derived state for the caller to consume, ADR 0001).
     """
-    by_key: dict[tuple[str, str, str, str, str], EditObservation] = {}
+    by_call: dict[tuple[str, str, str, str], list[EditObservation]] = defaultdict(list)
+    seen: set[tuple[str, str, str, str, str]] = set()
     for o in observations:
-        # Keep-first on a duplicate key, mirroring the store's
-        # first-write-wins posture — never last-wins dict insertion luck.
-        by_key.setdefault(
-            (o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path), o
-        )
+        # Keep-first on a duplicate (call_id, file_path), mirroring the store's
+        # first-write-wins posture — never last-wins list append luck.
+        key = (o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        by_call[(o.org_id, o.agent_harness, o.session_id, o.call_id)].append(o)
     out: list[DeveloperDecision] = []
     for d in decisions:
         observation = (
-            by_key.get(
-                (d.org_id, d.agent_harness, d.session_id, d.call_id, d.file_path)
+            _observation_for_decision(
+                by_call.get((d.org_id, d.agent_harness, d.session_id, d.call_id), []),
+                d.file_path,
             )
             if d.call_id and d.edit_retention_score is None
             else None
