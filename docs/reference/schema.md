@@ -166,7 +166,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/facts/edit-observation/
 | `user_id` | string or null | The developer identity when known. Null when capture omitted it. |
 | `agent_harness` | [`AgentHarness`](#agentharness) | Which coding agent harness produced this fact. |
 | `file_path` | string | Repo-relative path of the file the record concerns. |
-| `call_id` | string | The tool-use id of the edit this pair describes. |
+| `call_id` | string | The tool-use id of the edit this pair describes. A multi-file Codex patch keeps the parent tool-call id on every member; `file_path` completes the join to the matching Developer decision. |
 | `applied_text` | string | The replacement text that the edit tool applied. |
 | `observed_file_text` | string | The complete file text observed at session end. Empty string means the file was deleted. |
 | `external_lines_added` | integer or null | Lines added by something other than the agent's edit tools between this edit and the next observation of the file. **External, not human** — a formatter, a linter, a watcher, or the agent's own shell all land here. Null means no window covered the call, which is not the same claim as 0. |

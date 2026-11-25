@@ -131,8 +131,8 @@ terms.
   Cursor preserves hook receipt time, not an inferred execution time. Historical random-ID Facts stay immutable; the first later receipt can coexist once after upgrade. `raw`: `{"decision": attrs}`; fixture: `fixtures/otlp/sediment/tool_decision.json`.
 
 ### Edit observations (`sediment.edit_observation` — `parse_otlp_edit_observations`)
-- ADR 0007 maps `applied_text` and `observed_file_text` directly.
-- `agent` is mandatory and maps to `AgentHarness` like decisions.
+- ADR 0007 maps `applied_text` and `observed_file_text` directly. `agent` is
+  mandatory. Dedup and retention joins use `(call_id, file_path)`.
 - `external_lines_added`/`external_lines_removed`: optional `intValue`
   counts; junk or negative values become absent without dropping the text pair.
 

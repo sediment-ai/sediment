@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Capture
+
+- Capture multi-file Codex `apply_patch` Edit observations. Each authored file
+  keeps the parent tool-call id and is distinguished by `file_path`, matching
+  the Developer decision fan-out. Migration `0013_edit_obs_file_path` widens
+  `uq_edit_observations_call` to
+  `(org_id, agent_harness, session_id, call_id, file_path)`. Deletions still
+  have no authored proposal and are skipped.
+
 ### Operator CLI
 
 - `sediment quarantine-log` bounds its default `--tail 20` (and any explicit

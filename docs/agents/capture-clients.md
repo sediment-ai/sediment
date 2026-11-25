@@ -120,7 +120,7 @@ no refused-edit records.
 
 `call_id` joins the record to the rejecting `DeveloperDecision` (which
 carries `file_path=""` and no content). Dedup is first-write-wins on
-`(org, agent_harness, session, call_id)`, like Edit observations.
+`(org, agent_harness, session, call_id)`. Edit observations add `file_path`.
 
 ### Correction retries — `sediment.retry_linkage`
 

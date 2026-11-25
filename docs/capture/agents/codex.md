@@ -10,7 +10,7 @@ inference calls, and optional Edit observations on one developer machine.
 | Commit Attribution | Yes | The `PostToolUse` hook has no matcher. Every tool call that triggers it marks the Session, including read-only commands. |
 | Developer decisions | Yes | Native telemetry covers `apply_patch` and supported `exec_command` calls. |
 | Inference calls | Optional | A Codex provider can route the Responses API through a compatible gateway. |
-| Edit observations | Optional | The Session-end parser supports successful single-file patches. |
+| Edit observations | Optional | The Session-end parser emits one observation per authored file in a successful patch. |
 | Rejected edits and Retry linkages | No | Codex transcripts don't contain enough evidence to create these Facts. |
 | External line counts | No | Codex has no pre-edit snapshot hook. |
 
@@ -113,8 +113,9 @@ sediment install --user-id alice --codex-profile sediment --transcripts /path/to
 . "$HOME/.sediment/env.sh"
 ```
 
-The `SessionEnd` extractor needs a completed single-file patch. A multi-file
-patch still produces Developer decisions, but no Edit observation.
+The `SessionEnd` extractor needs a completed patch with at least one authored
+add or update. Each authored file becomes its own Edit observation under the
+parent tool-call id; deletions have no authored proposal and are skipped.
 [Opt in to transcript capture](../local-capture.md#opt-in-to-transcript-capture)
 covers the `--no-env` case.
 
@@ -128,8 +129,7 @@ Remote checks need a separate [operator login](../local-capture.md#verify-captur
    sediment doctor --fetch /path/to/repo
    ```
 
-2. Ask Codex to apply a single-file patch, end the Session, and commit the
-   change.
+2. Ask Codex to apply a patch, end the Session, and commit the change.
 3. Read the commit's Session note:
 
    ```bash
@@ -152,8 +152,8 @@ Remote checks need a separate [operator login](../local-capture.md#verify-captur
 - A decision without a file path, such as a rejection or a result in a later
   batch, produces one Developer decision with an empty path. A shell-tool
   decision without its result produces none.
-- Multi-file patches have no Edit observations. Codex doesn't support Rejected
-  edits, Retry linkages, or external line counts.
+- A delete-only patch produces no Edit observation. Codex doesn't support
+  Rejected edits, Retry linkages, or external line counts.
 - A patch event without a matching Session, tool-call identifier, timestamp, or
   confirmed result produces no Edit observation. The extractor logs why.
 - Transcript capture omits conversations, prompts, shell commands, and shell

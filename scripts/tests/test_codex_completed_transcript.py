@@ -94,13 +94,6 @@ def test_codex_completed_requires_success_metadata(tmp_path, status, reason, cap
             "malformed_patch",
         ),
         ({"app.py": {"type": "delete", "content": "text"}}, "unsupported_patch_kind"),
-        (
-            {
-                "app.py": {"type": "add", "content": "one"},
-                "other.py": {"type": "add", "content": "two"},
-            },
-            "unsupported_patch_kind",
-        ),
     ],
 )
 def test_codex_completed_declines_unproved_changes(tmp_path, changes, reason, capsys):
@@ -109,6 +102,34 @@ def test_codex_completed_declines_unproved_changes(tmp_path, changes, reason, ca
 
     assert build_pairs(entries, "sess-codex", agent="codex") == []
     assert capsys.readouterr().err.count(reason) == 1
+
+
+def test_codex_completed_multi_file_emits_one_pair_per_authored_file(tmp_path):
+    entries = _entries(tmp_path)
+    added = tmp_path / "added.py"
+    updated = tmp_path / "updated.py"
+    added.write_text("added = True\n", encoding="utf-8")
+    updated.write_text("updated = True\n", encoding="utf-8")
+    entries[1]["payload"]["item"]["changes"] = {
+        str(added): {"type": "add", "content": "added = True\n"},
+        str(updated): {
+            "type": "update",
+            "unified_diff": "@@ -1 +1 @@\n-old = True\n+updated = True\n",
+            "move_path": None,
+        },
+        str(tmp_path / "gone.py"): {"type": "delete", "move_path": None},
+    }
+
+    pairs = build_pairs(entries, "sess-codex", agent="codex")
+    by_path = {pair["file_path"]: pair for pair in pairs}
+
+    assert set(by_path) == {str(added), str(updated)}
+    assert all(
+        pair["tool_use_id"] == "exec-41bf137a-c5d5-4b57-b892-b392267d654b"
+        for pair in pairs
+    )
+    assert by_path[str(added)]["applied_text"] == "added = True\n"
+    assert by_path[str(updated)]["applied_text"] == "updated = True"
 
 
 @pytest.mark.parametrize("call_id", [None, "", " ", 123])

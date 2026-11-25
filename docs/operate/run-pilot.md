@@ -113,7 +113,7 @@ Check one real Session for each agent that the team uses.
    | pi | Run `cd "$REPO" && pi`. |
 
 3. Ask the agent to create a small file, and end the Session. Use Cursor
-   Agent rather than Tab, pi's `write` tool, and a single-file patch in Codex.
+   Agent rather than Tab, pi's `write` tool, and a patch in Codex.
 4. Commit only that file, and read the commit's Session note:
 
    ```bash

@@ -61,7 +61,10 @@ apply or redefine it.
   missed (the notes/jaccard correlation backstop still covers them);
   Edit/Write only (no NotebookEdit/MultiEdit pairing); a SessionEnd refire
   collapses first-write-wins on
-  `(org, agent_harness, session, call_id)`.
+  `(org, agent_harness, session, call_id, file_path)`. A multi-file Codex
+  patch keeps the parent tool-call id on every Edit observation and
+  distinguishes members by `file_path`, matching the Developer decision
+  fan-out.
 - Retry linkage extraction extends the client extractor rather than sending
   raw transcripts to the server. A `RetryLinkage` requires a
   human-explicit rejected Edit or Write, an intervening developer text entry,

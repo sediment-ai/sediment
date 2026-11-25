@@ -127,13 +127,14 @@ human gesture) or **implicit** (auto-applied or retention-inferred), recorded on
 The `applied_text` and `observed_file_text` pair for one applied AI edit — the
 replacement that the tool applied next to the file's content at Session end — captured by the
 client-side transcript extractor and joined to its Developer decision by
-`call_id` (ADR 0007). The pair is the Fact, and the edit retention score is a
-Derivation over it (scorer seam in `sediment_derive.survival`, metric
-`four_gram_containment` — containment-shaped by contract: for Edit
-calls the pair is the `new_string` snippet vs the whole Session-end file,
-so symmetric distance metrics are invalid). _Avoid:_ "edit outcome", "survival
-fact". The score is derived unless Copilot supplies its vendor grade on the
-decision.
+`(call_id, file_path)` (ADR 0007). A multi-file Codex patch keeps the parent
+tool-call id on every member; `file_path` selects the matching decision. The
+pair is the Fact, and the edit retention score is a Derivation over it (scorer
+seam in `sediment_derive.survival`, metric `four_gram_containment` —
+containment-shaped by contract: for Edit calls the pair is the `new_string`
+snippet vs the whole Session-end file, so symmetric distance metrics are
+invalid). _Avoid:_ "edit outcome", "survival fact". The score is derived unless
+Copilot supplies its vendor grade on the decision.
 
 ### External line counts (`external_lines_added` / `external_lines_removed`)
 The two counts on an `EditObservation` recording lines changed by something
