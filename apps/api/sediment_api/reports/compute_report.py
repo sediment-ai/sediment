@@ -2,6 +2,7 @@
 """Compute report: Session completion time by final Compute allocation.
 
 sediment report compute --org acme-corp
+sediment report compute --org acme-corp --since-days 30
 sediment report compute --org acme-corp --json
 sediment report compute --org acme-corp --rows-out sessions.jsonl
 """
@@ -12,12 +13,14 @@ import argparse
 import json
 import os
 import sys
+from datetime import UTC, datetime
 
 from sediment_core import normalize_org_id
 from sediment_derive import ComputeArm
 from sediment_export import (
     ComputeReport,
     DurationDistribution,
+    OperationalReportScope,
     compute_report_to_json,
     compute_timings_to_export_rows,
     generate_compute_report_result,
@@ -60,7 +63,9 @@ def _difference(name: str, difference: MedianDifference) -> str:
     )
 
 
-def _print_table(report: ComputeReport) -> None:
+def _print_table(report: ComputeReport, *, org_id: str, since_days: int | None) -> None:
+    window = f"last {since_days} day(s)" if since_days else "all history"
+    print(f"org: {org_id}  window: {window}")
     print(f"Sessions with a Compute allocation: {report.sessions_with_allocation}")
     print(f"timed Sessions: {report.timed_sessions}")
     skipped = ", ".join(f"{key}={value}" for key, value in report.skipped.items())
@@ -104,6 +109,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="org id (default: $SEDIMENT_ORG_ID)",
     )
     parser.add_argument(
+        "--since-days",
+        type=int,
+        default=None,
+        help="window Compute allocations (and their Session timings) to the last N days by "
+        "capture time; default: all history",
+    )
+    parser.add_argument(
         "--json", action="store_true", help="emit JSON instead of a text report"
     )
     parser.add_argument(
@@ -117,19 +129,27 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.since_days is not None and args.since_days <= 0:
+        print("error: --since-days must be a positive integer", file=sys.stderr)
+        return 2
     try:
         org_id = normalize_org_id(args.org)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    scope = (
+        OperationalReportScope.trailing_days(args.since_days, as_of=datetime.now(UTC))
+        if args.since_days is not None
+        else None
+    )
     with one_shot_fact_store(
         args.database_url, operation="generate compute report"
     ) as store:
-        result = generate_compute_report_result(store, org_id)
+        result = generate_compute_report_result(store, org_id, scope=scope)
     if args.json:
         print(json.dumps(compute_report_to_json(result.report), indent=2))
     else:
-        _print_table(result.report)
+        _print_table(result.report, org_id=org_id, since_days=args.since_days)
     if args.rows_out:
         try:
             write_result = write_jsonl(

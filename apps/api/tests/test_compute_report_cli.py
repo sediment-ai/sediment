@@ -17,7 +17,7 @@ from sediment_core import (
 T0 = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 
 
-def _seed(store) -> None:
+def _seed(store, *, captured_at: datetime | None = None) -> None:
     for index, (cpu, work_s) in enumerate(
         [(2000, 60), (2000, 70), (2000, 80), (8000, 20), (8000, 30), (8000, 40)]
     ):
@@ -30,6 +30,7 @@ def _seed(store) -> None:
                 cpu_millicores=cpu,
                 memory_bytes=None,
                 occurred_at=T0 - timedelta(minutes=1),
+                captured_at=captured_at or T0,
             )
         )
         for call, end_s in enumerate((5, 10 + work_s)):
@@ -52,6 +53,7 @@ def _seed(store) -> None:
             allocation_source=ComputeAllocationSource.AGENT_REQUEST,
             cpu_millicores=16000,
             occurred_at=T0,
+            captured_at=captured_at or T0,
         )
     )
 
@@ -64,6 +66,7 @@ def test_compute_report_table_names_arms_comparisons_and_skips(
     assert cli.main(["--org", "acme", "--database-url", postgres_database_url]) == 0
 
     output = capsys.readouterr().out
+    assert "org: acme  window: all history" in output
     assert "Sessions with a Compute allocation: 7" in output
     assert "timed Sessions: 6" in output
     assert "no_inference_calls=1" in output
@@ -110,3 +113,73 @@ def test_compute_report_json_and_rows_out(
     rows = [json.loads(line) for line in destination.read_text().splitlines()]
     assert [row["session_id"] for row in rows] == [f"session-{i}" for i in range(6)]
     assert rows[0]["elapsed_ms"] == 70_000
+
+
+def test_compute_report_since_days_windows_and_rejects_non_positive(
+    postgres_store, postgres_database_url, monkeypatch, capsys
+) -> None:
+    _seed(postgres_store, captured_at=T0)
+    assert (
+        cli.main(
+            [
+                "--org",
+                "acme",
+                "--database-url",
+                postgres_database_url,
+                "--since-days",
+                "0",
+            ]
+        )
+        == 2
+    )
+    assert "positive integer" in capsys.readouterr().err
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return empty_now if tz is None else empty_now.astimezone(tz)
+
+    empty_now = T0 + timedelta(days=30)
+    monkeypatch.setattr(cli, "datetime", FrozenDatetime)
+    assert (
+        cli.main(
+            [
+                "--org",
+                "acme",
+                "--database-url",
+                postgres_database_url,
+                "--since-days",
+                "7",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "org: acme  window: last 7 day(s)" in output
+    assert "Sessions with a Compute allocation: 0" in output
+    assert "arms: no data" in output
+
+    class InsideDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return inside_now if tz is None else inside_now.astimezone(tz)
+
+    inside_now = T0 + timedelta(days=3)
+    monkeypatch.setattr(cli, "datetime", InsideDatetime)
+    assert (
+        cli.main(
+            [
+                "--org",
+                "acme",
+                "--database-url",
+                postgres_database_url,
+                "--since-days",
+                "7",
+                "--json",
+            ]
+        )
+        == 0
+    )
+    report = json.loads(capsys.readouterr().out)
+    assert report["sessions_with_allocation"] == 7
+    assert report["timed_sessions"] == 6

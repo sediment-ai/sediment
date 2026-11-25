@@ -114,7 +114,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   defaults from `SEDIMENT_DATABASE_URL` and `SEDIMENT_MIRROR_PATH`. Each one-shot command owns and disposes one engine. **An empty
   result prints "no data" and exits 0. It is not an error.** Every report takes
   `--json`; the model report renders Attribution share and alerts before its per-model rows.
-  Its `--since-days` path uses `services/operational_reports.py` for bounded assembly; omitting the flag retains the explicit offline all-history path. The lifecycle CLI calls the service without an `OperationalReportScope`; other delivery boundaries can pass an explicit scope.
+  Its `--since-days` path uses `services/operational_reports.py` for bounded assembly; omitting the flag retains the explicit offline all-history path. `report compute --since-days` builds the same `OperationalReportScope.trailing_days` cohort and pushes `captured_between` into the Compute allocation read; omitting the flag keeps the all-history path. The lifecycle CLI calls the service without an `OperationalReportScope`; other delivery boundaries can pass an explicit scope.
 - Label-confidence inspection accepts `--recipe`; dataset diagnostics accepts
   `--dpo-recipe` and `--sft-recipe`. Reports stratify by recipe version and
   label or eligibility source, never pooling heterogeneous recipe evidence.

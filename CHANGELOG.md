@@ -12,6 +12,12 @@
   `FactStore.count_quarantine_log` returns the organization row count for the
   CLI footer without materializing the log.
 
+### Reports
+
+- `sediment report compute --since-days N` windows Compute allocations by
+  capture time through the shared `OperationalReportScope.trailing_days`
+  path used by `report model`. Omitting the flag still reads all history.
+
 ### Security
 
 - Review SQLAlchemy 2.1.9 and FastAPI 0.163.2 in the maintenance catalog after

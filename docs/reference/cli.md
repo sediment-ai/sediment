@@ -860,7 +860,7 @@ Options:
 Compare Session completion time across final Compute allocations.
 
 ```text
-sediment report compute [-h] --org ORG [--json] [--rows-out FILE] [--database-url DATABASE_URL]
+sediment report compute [-h] --org ORG [--since-days SINCE_DAYS] [--json] [--rows-out FILE] [--database-url DATABASE_URL]
 ```
 
 Options:
@@ -868,6 +868,7 @@ Options:
 | Name | Default | Description |
 |---|---|---|
 | `--org` | — | org id (default: $SEDIMENT_ORG_ID) **(required)** |
+| `--since-days` | — | window Compute allocations (and their Session timings) to the last N days by capture time; default: all history |
 | `--json` | `false` | emit JSON instead of a text report |
 | `--rows-out` | — | write one Session compute timing per line to FILE as JSONL |
 | `--database-url` | — | PostgreSQL URL (default: $SEDIMENT_DATABASE_URL) |

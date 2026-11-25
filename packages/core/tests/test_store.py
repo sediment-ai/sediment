@@ -802,6 +802,28 @@ def test_postgres_compute_allocation_reads_filter_and_quarantine(
     assert store.read_compute_allocations(
         "acme", captured_through=T0 + timedelta(minutes=1)
     ) == [other, kept]
+    assert store.read_compute_allocations(
+        "acme",
+        captured_between=(T0 + timedelta(minutes=2), T0 + timedelta(minutes=3)),
+    ) == [later]
+    assert store.read_compute_allocations(
+        "acme",
+        captured_between=(T0, T0 + timedelta(minutes=2)),
+    ) == [other, kept]
+    assert (
+        store.read_compute_allocations(
+            "acme",
+            captured_between=(
+                T0 + timedelta(minutes=2, seconds=1),
+                T0 + timedelta(minutes=3),
+            ),
+        )
+        == []
+    )
+    with pytest.raises(ValueError, match="precede"):
+        store.read_compute_allocations(
+            "acme", captured_between=(T0 + timedelta(minutes=1), T0)
+        )
     with pytest.raises(store_module.OperationalReportLimitExceeded):
         store.read_compute_allocations("acme", limit=2)
 
