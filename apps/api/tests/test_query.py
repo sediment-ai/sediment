@@ -16,8 +16,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-# gitfixtures is in packages/derive/tests — add it so the test module can
-# import make_work_repo / make_remote / commit_all / run_git.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "packages/derive/tests"))
 
 from gitfixtures import FIB, commit_all, make_remote, make_work_repo, run_git  # noqa: E402

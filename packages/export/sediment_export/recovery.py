@@ -44,7 +44,7 @@ guessed at").
 
 **Known ceiling.** Fixes authored outside any captured session carry no
 session evidence and fall to the train default — the holdout guarantee
-covers captured sessions only (``_pair_split``'s ``ponytail:`` comment).
+covers captured sessions only.
 
 **Representation eligibility.** Each pair declines once under
 ``non_finite_number`` or ``unrepresentable_unicode`` if an emitted value cannot

@@ -60,6 +60,12 @@ that boundary is the one to respect.
 - **Facts are append-only.** Nothing mutates a Fact table.
 - **Derivations are pure functions** of (Facts, policy) — recomputable
   over all history, independent of ingest order.
+- **Prefer no comments; solve the problem.** Do not leave `TODO`/`FIXME`/
+  `HACK`, workaround language, or comments that excuse a skip. Ruff
+  (`FIX`, `ERA`, `PGH003`/`PGH004`) and `scripts/check_comments.py`
+  enforce this in CI. Keep only comments the code cannot express
+  (upstream bug link, external constraint, or a `# ponytail:` that names
+  a measured ceiling and upgrade path). Public API docstrings may stay.
 - Python 3.12. Node 24 and TypeScript only under `shims/`.
 - Runtime and integration tests use real PostgreSQL and real git repos.
 - PostgreSQL tests require a PostgreSQL 17 server. Set
@@ -258,6 +264,7 @@ rehearsal creates, migrates, and removes its own scratch database.
 uv run sediment db upgrade
 uv run ruff check .
 uv run ruff format --check .
+uv run python scripts/check_comments.py
 uv run python scripts/add_spdx.py --check
 uv run python scripts/check_docs.py --base origin/main
 uv run python scripts/dump_openapi.py --check

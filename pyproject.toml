@@ -46,8 +46,19 @@ target-version = "py312"
 include = ["*.py", "*.pyi", "*.ipynb", "**/pyproject.toml"]
 
 [tool.ruff.lint]
-# Ruff 0.16 expands its defaults; preserve the existing lint contract.
-select = ["E4", "E7", "E9", "F"]
+# E/F: the pre-0.16 contract. FIX/ERA/PGH: no deferred-work tags, no
+# commented-out code, no blanket noqa or type: ignore. Pair with
+# scripts/check_comments.py for cross-language excuse phrases and density.
+select = ["E4", "E7", "E9", "F", "ERA", "FIX", "PGH003", "PGH004"]
+
+[tool.ruff.lint.per-file-ignores]
+# Semgrep ruleid/ok markers look like commented-out code to eradicate.
+"security/**" = ["ERA001"]
+# Hand-derived expected values in calibration/significance tests.
+"packages/export/tests/test_calibration.py" = ["ERA001"]
+"packages/export/tests/test_outcome_report.py" = ["ERA001"]
+"packages/export/tests/test_significance.py" = ["ERA001"]
+"packages/export/tests/test_similarity_score_calibration.py" = ["ERA001"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "apps", "cli", "scripts", "sim", "litellm"]

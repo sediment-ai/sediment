@@ -32,9 +32,6 @@ _RETRIEVAL_GRANT_BYTES_LIMIT = 16 * 1024
 
 
 class Settings(BaseSettings):
-    # extra="ignore": the .env is shared with the LiteLLM container (e.g.
-    # ANTHROPIC_API_KEY), so tolerate keys this model doesn't own instead of
-    # crashing at startup.
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="SEDIMENT_",

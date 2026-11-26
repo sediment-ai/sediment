@@ -419,7 +419,6 @@ def _derive_recovery_result(
                     # Last red before the green wins: overwrite, never accumulate.
                     pending_failed = outcome
                     continue
-                # outcome.result == CIResult.PASSED
                 if pending_failed is None:
                     continue
                 sample, skipped, diff_line_count = _try_pair(

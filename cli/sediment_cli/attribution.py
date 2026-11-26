@@ -132,6 +132,9 @@ except ImportError:  # pragma: no cover — run by path, not as a package
 
 
 NOTES_REF = "refs/notes/sediment"
+# Markable harnesses (AgentHarness minus COPILOT). Stdlib-only: cannot import
+# the enum; scripts/tests/test_attribution.py pins the set.
+_MARK_TOOLS = ("claude-code", "codex", "cursor", "pi")
 MARKER_FILENAME = "sediment-sessions"
 MARKER_LOCK_FILENAME = "sediment-sessions.lock"
 NOTES_LOCK_FILENAME = "sediment-notes.lock"
@@ -274,7 +277,6 @@ def _log_event(event: str, **fields: str) -> None:
     path = _log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        # ponytail: single-slot rotation, .1 overwritten each time
         if path.stat().st_size > ATTRIBUTION_LOG_CAP_BYTES:
             path.replace(path.with_name(path.name + ".1"))
     except OSError:
@@ -490,7 +492,7 @@ def cmd_mark(tool: str) -> int:
             cwd = os.getcwd()
         _record_marker(tool, session_id, cwd)
     except Exception:
-        pass  # best-effort: never fail the agent's tool call
+        pass
     return 0
 
 
@@ -762,7 +764,7 @@ def _capture_failure(reason: str, git_dir: Path | None, sha: str = "") -> None:
     try:
         _log_event(reason, git_dir=str(git_dir or ""), sha=sha)
     except OSError:
-        pass  # The stderr diagnostic still reports an unwritable local log.
+        pass
     target = f" sha={sha}" if sha else ""
     print(f"sediment-attribution: {reason}{target}", file=sys.stderr)
 
@@ -1355,7 +1357,7 @@ def cmd_push_notes(remote: str) -> int:
             )
             _log_push_failure(remote, detail)
     except Exception:
-        pass  # never abort the developer's push
+        pass
     return 0
 
 
@@ -2174,25 +2176,46 @@ def cmd_doctor(
     return 1 if failures else 0
 
 
+def _venv_root_for(executable: Path) -> Path | None:
+    """Return the virtualenv root that owns ``executable``, if any."""
+    for root in (executable.parent.parent, executable.parent):
+        if (root / "pyvenv.cfg").is_file():
+            return root
+    return None
+
+
 def _sediment_executable() -> str | None:
     """The selected ``sediment`` command, or None on a bare checkout.
 
     Resolved at INSTALL time and embedded absolute: hook runtime PATH (a
     Dock-launched agent, a bare git env) cannot be trusted to contain the
     user's tool bin dir. Honor an explicitly invoked CLI, including a retained
-    source checkout. Bare scripts skip unrelated virtualenv shims on PATH.
-    # ponytail: ".venv" name test covers uv's convention; a custom-named
-    # venv would need sys.prefix probing — add it when someone hits it.
+    source checkout. Bare scripts skip virtualenv shims that are not the
+    active interpreter's environment.
     """
     invoked = Path(sys.argv[0]).absolute()
     if invoked.name == "sediment" and invoked.is_file() and os.access(invoked, os.X_OK):
         return str(invoked)
+    try:
+        active_prefix = Path(sys.prefix).resolve()
+    except OSError:
+        active_prefix = Path(sys.prefix)
     for d in os.get_exec_path():
         cand = Path(d) / "sediment"
-        if ".venv" in cand.parts:
+        if not (cand.is_file() and os.access(cand, os.X_OK)):
             continue
-        if cand.is_file() and os.access(cand, os.X_OK):
-            return str(cand)
+        try:
+            resolved = cand.resolve()
+        except OSError:
+            resolved = cand
+        owned = _venv_root_for(resolved)
+        if owned is not None:
+            try:
+                if owned.resolve() != active_prefix:
+                    continue
+            except OSError:
+                continue
+        return str(cand)
     return None
 
 
@@ -3839,12 +3862,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p_mark = sub.add_parser("mark", help="record a session marker (agent hook)")
-    # Registration twin of AgentHarness (models.py): a harness's shim can
-    # only mark once its tool value is accepted here. The script is
-    # stdlib-only by design, so the list is duplicated, not imported.
-    p_mark.add_argument(
-        "--tool", required=True, choices=["claude-code", "codex", "cursor", "pi"]
-    )
+    # Stdlib-only script: keep choices local. scripts/tests pin them to
+    # AgentHarness minus COPILOT.
+    p_mark.add_argument("--tool", required=True, choices=list(_MARK_TOOLS))
 
     sub.add_parser(
         "stamp",

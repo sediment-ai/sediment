@@ -22,6 +22,14 @@
 
 ### Contributor checks
 
+- Enforce a minimal-comments policy: ruff selects `ERA`, `FIX`, `PGH003`, and
+  `PGH004`; `scripts/check_comments.py` fails on excuse phrases and a
+  repository comment-density budget. CI and the opt-in pre-commit hook run
+  the script. Prefer fixing the problem over annotating it; keep only
+  comments the code cannot express (or a `# ponytail:` that names a measured
+  ceiling). Attribution install resolves foreign virtualenvs via `pyvenv.cfg`
+  and `sys.prefix` instead of a `.venv` path-name check.
+
 - Document that `macos-15` (arm64) local-server cancellations with "not
   acquired … after multiple attempts" are GitHub hosted-runner capacity
   flakes, and bound the job with `timeout-minutes: 30` after a runner starts.

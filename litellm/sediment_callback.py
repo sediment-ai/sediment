@@ -258,7 +258,7 @@ class SedimentCallback(CustomLogger):
                 delivery_id=capture_id,
             )
             await asyncio.to_thread(delivery.deliver, request, env=environment)
-        except Exception:  # noqa: BLE001 — never break the proxy on logging
+        except Exception:  # noqa: BLE001
             logger.warning(
                 "sediment_delivery delivery_id=%s reason=preparation_failed",
                 capture_id,

@@ -22,13 +22,7 @@ from sediment_core import EVIDENCE_REQUEST_BYTES_LIMIT, FactStore, NonEmptyId
 
 from .config import settings
 
-# The app-wide request-body ceiling, enforced for every door by
-# BodySizeLimitMiddleware. 25 MB because GitHub caps webhook payloads
-# there and refuses to deliver anything larger, and no other door has a
-# legitimate payload anywhere near it. It is a ceiling on a pre-auth
-# allocation, not a tuning parameter — FastAPI reads an envelope route's
-# body before its auth dependency runs, so every door's read is pre-auth.
-# ponytail: fixed constant; make it a setting only if a non-GitHub forge needs it
+# ponytail: 25 MB matches GitHub's webhook cap; setting only if a non-GitHub forge needs it
 MAX_BODY_BYTES = 25 * 1024 * 1024
 CONTEXT_REQUEST_BYTES_LIMIT = 16 * 1024
 

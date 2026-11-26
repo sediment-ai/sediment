@@ -74,6 +74,7 @@ jobs:
         run: uv run --no-project python scripts/ci_preflight.py scope >> "$GITHUB_OUTPUT"
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - run: uv run python scripts/check_comments.py
       - run: uv run python scripts/add_spdx.py --check
       # PRs also run the diff-mode CHANGELOG-touch check; pushes to
       # main have no base to diff against, so they run the static checks only.
