@@ -704,6 +704,29 @@ def test_multiedit_without_counts_does_not_hole_edit_windows() -> None:
     assert _key("toolu-multi", "app.py") not in totals
 
 
+def test_projection_without_raw_uses_edit_part_index_for_multiedit() -> None:
+    from types import SimpleNamespace
+
+    outcomes = [
+        _window("toolu-edit", 0, 1, 0, file_path="app.py"),
+        SimpleNamespace(
+            org_id="acme",
+            agent_harness=AgentHarness.CLAUDE_CODE,
+            session_id="sess-1",
+            call_id="toolu-multi",
+            file_path="app.py",
+            edit_part_index=0,
+            external_lines_added=None,
+            external_lines_removed=None,
+            occurred_at=T0 + timedelta(minutes=1),
+        ),
+        _window("toolu-write", 2, 3, 0, file_path="app.py"),
+    ]
+    totals = external_lines_after(outcomes)  # type: ignore[arg-type]
+    assert totals[_key("toolu-edit", "app.py")] == (4, 0)
+    assert totals[_key("toolu-write", "app.py")] == (3, 0)
+
+
 def test_edit_without_counts_still_holes_prior_windows() -> None:
     outcomes = [
         _window("toolu-1", 0, 1, file_path="app.py", raw={"tool_name": "Edit"}),

@@ -225,16 +225,30 @@ def _timeline_slot_key(observation: EditObservation) -> tuple[str, str]:
     return (observation.call_id, observation.file_path)
 
 
+def _observation_tool_name(observation: EditObservation) -> str | None:
+    raw = getattr(observation, "raw", None)
+    if isinstance(raw, dict):
+        name = raw.get("tool_name")
+        return name if isinstance(name, str) else None
+    name = getattr(observation, "tool_name", None)
+    return name if isinstance(name, str) else None
+
+
 def _participates_in_external_timeline(observation: EditObservation) -> bool:
     """NotebookEdit, and MultiEdit without counts, never open or close a window."""
-    tool_name = None
-    if isinstance(observation.raw, dict):
-        tool_name = observation.raw.get("tool_name")
-    if tool_name == "NotebookEdit":
-        return False
-    if tool_name == "MultiEdit" and (
+    tool_name = _observation_tool_name(observation)
+    missing_counts = (
         observation.external_lines_added is None
         or observation.external_lines_removed is None
+    )
+    if tool_name == "NotebookEdit":
+        return False
+    if tool_name == "MultiEdit" and missing_counts:
+        return False
+    if (
+        tool_name is None
+        and getattr(observation, "edit_part_index", None) is not None
+        and missing_counts
     ):
         return False
     return True
