@@ -268,19 +268,30 @@ def external_lines_after(
     return out
 
 
+def _edit_path_key(path: str) -> str:
+    """Slash-normalize a path so Windows and POSIX spellings compare equal."""
+    return path.replace("\\", "/")
+
+
+def _edit_paths_equal(left: str, right: str) -> bool:
+    """True when paths are equal after slash normalization."""
+    return bool(left) and bool(right) and _edit_path_key(left) == _edit_path_key(right)
+
+
 def _edit_paths_match(left: str, right: str) -> bool:
     """True when two edit paths name the same file under absolute/relative forms.
 
     Codex decisions carry the relative V4A marker path; SessionEnd observations
-    often resolve that path against the Session cwd. Exact equality covers
-    Claude Code and pi; a trailing path-component match covers Codex.
+    often resolve that path against the Session cwd. Slash-normalized equality
+    covers Claude Code, pi, and Windows separators; a trailing path-component
+    match covers Codex absolute vs relative spellings.
     """
-    if left == right:
-        return True
     if not left or not right:
         return False
-    a = left.replace("\\", "/")
-    b = right.replace("\\", "/")
+    a = _edit_path_key(left)
+    b = _edit_path_key(right)
+    if a == b:
+        return True
     return a.endswith("/" + b) or b.endswith("/" + a)
 
 
@@ -291,27 +302,29 @@ def _observation_for_decision(
 ) -> EditObservation | None:
     """Select the observation that joins a decision under one call_id.
 
-    Prefer exact ``file_path`` equality. Trailing-path matches cover Codex
-    absolute observations vs relative V4A decisions, but only when this
+    Prefer slash-normalized ``file_path`` equality. Trailing-path matches cover
+    Codex absolute observations vs relative V4A decisions, but only when this
     decision path is the most specific sibling that matches the observation —
     otherwise a basename-only delete (``util.py``) would inherit the score of
     ``src/util.py``. Ambiguity drops rather than poisoning (ADR 0004).
     """
     if not candidates:
         return None
-    exact = [o for o in candidates if o.file_path == decision_path]
+    exact = [o for o in candidates if _edit_paths_equal(o.file_path, decision_path)]
     if exact:
         return exact[0]
+
+    decision_key = _edit_path_key(decision_path)
 
     def most_specific(obs_path: str) -> bool:
         if not _edit_paths_match(obs_path, decision_path):
             return False
         for sibling in sibling_paths:
-            if sibling == decision_path:
+            if _edit_paths_equal(sibling, decision_path):
                 continue
-            if _edit_paths_match(obs_path, sibling) and len(sibling) > len(
-                decision_path
-            ):
+            if _edit_paths_match(obs_path, sibling) and len(
+                _edit_path_key(sibling)
+            ) > len(decision_key):
                 return False
         return True
 

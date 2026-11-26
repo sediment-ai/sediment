@@ -875,17 +875,6 @@ def _codex_status_reason(outputs: list[object]) -> str | None:
     return "execution_failed" if statuses[0] != 0 else None
 
 
-def _codex_identity_path(identity_path: str, cwd: object) -> str:
-    """Ship a V4A-shaped identity: relative to Session cwd when possible."""
-    path = Path(identity_path)
-    if not path.is_absolute() or not isinstance(cwd, str) or not cwd:
-        return identity_path
-    try:
-        return path.relative_to(Path(cwd)).as_posix()
-    except ValueError:
-        return identity_path
-
-
 def _codex_edit_path(
     file_path: str, cwd: object, arguments: dict | None = None
 ) -> str | None:
@@ -1101,10 +1090,10 @@ def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
                 {
                     "tool_use_id": call_id,
                     "tool_name": tool_name,
-                    # Identity matches the Developer decision's V4A path
-                    # (cwd-relative when the change key was absolute under cwd);
-                    # read_path is the resolved session-end file location.
-                    "file_path": _codex_identity_path(identity_path, cwd),
+                    # Identity is the patch marker / change-map key as authored
+                    # (stable across SessionEnd refires); read_path is the
+                    # resolved session-end file location.
+                    "file_path": identity_path,
                     "read_path": resolved,
                     "applied_text": applied_text,
                     "time_unix_nano": nanos,

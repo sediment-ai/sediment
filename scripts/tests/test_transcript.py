@@ -379,7 +379,7 @@ def test_codex_patch_pairs_added_text_with_session_end_file(tmp_path: Path) -> N
 
     assert pair["tool_use_id"] == "call-patch"
     assert pair["tool_name"] == "apply_patch"
-    assert pair["file_path"] == "addition.py"
+    assert pair["file_path"] == str(target)
     assert pair["applied_text"] == "    return left + right"
     assert pair["observed_file_text"] == target.read_text(encoding="utf-8")
     assert "pass" not in pair["applied_text"]
@@ -521,16 +521,15 @@ def test_codex_multi_file_native_emits_add_update_rename_and_skips_delete(
 
     pairs = mod.build_pairs(entries, "sess-codex", agent="codex")
     by_path = {pair["file_path"]: pair for pair in pairs}
+    source = str(tmp_path / "old_name.py")
 
-    assert set(by_path) == {"added.py", "updated.py", "old_name.py"}
+    assert set(by_path) == {str(added), str(updated), source}
     assert all(pair["tool_use_id"] == "call-multi" for pair in pairs)
     assert all(pair["tool_name"] == "apply_patch" for pair in pairs)
-    assert by_path["added.py"]["applied_text"] == "added = 1\n"
-    assert by_path["updated.py"]["applied_text"] == "updated = 1"
-    assert by_path["old_name.py"]["applied_text"] == "renamed = 1"
-    assert by_path["old_name.py"]["observed_file_text"] == renamed.read_text(
-        encoding="utf-8"
-    )
+    assert by_path[str(added)]["applied_text"] == "added = 1\n"
+    assert by_path[str(updated)]["applied_text"] == "updated = 1"
+    assert by_path[source]["applied_text"] == "renamed = 1"
+    assert by_path[source]["observed_file_text"] == renamed.read_text(encoding="utf-8")
     assert "unsupported_patch_kind" in capsys.readouterr().err
 
 

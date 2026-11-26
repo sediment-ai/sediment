@@ -426,6 +426,29 @@ def test_lone_observation_does_not_join_unmatched_sibling_decision() -> None:
     }
 
 
+def test_slash_normalized_paths_join_as_equal() -> None:
+    [filled] = attach_edit_retention(
+        [
+            _decision(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-slash",
+                file_path=r"src\util.py",
+            )
+        ],
+        [
+            _outcome(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-slash",
+                file_path="src/util.py",
+                applied_text="util",
+                observed_file_text="util",
+            )
+        ],
+        lambda applied, observed: 1.0,
+    )
+    assert filled.edit_retention_score == 1.0
+
+
 def test_same_basename_sibling_does_not_inherit_trailing_path_match() -> None:
     # Observation /tmp/project/src/util.py trailing-matches both src/util.py
     # and util.py; only the most specific sibling may take the score.
