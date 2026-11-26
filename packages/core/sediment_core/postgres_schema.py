@@ -344,6 +344,7 @@ edit_observations = Table(
     Column("call_id", Text, nullable=False),
     Column("applied_text", Text, nullable=False),
     Column("observed_file_text", Text, nullable=False),
+    Column("edit_part_index", BigInteger),
     Column("external_lines_added", BigInteger),
     Column("external_lines_removed", BigInteger),
     Column("occurred_at", DateTime(timezone=True), nullable=False),
@@ -370,6 +371,10 @@ edit_observations = Table(
         "(external_lines_removed IS NULL OR external_lines_removed >= 0)",
         name="ck_edit_observations_external_counts",
     ),
+    CheckConstraint(
+        "edit_part_index IS NULL OR edit_part_index >= 0",
+        name="ck_edit_observations_edit_part_index",
+    ),
 )
 Index(
     "uq_edit_observations_call",
@@ -378,6 +383,7 @@ Index(
     edit_observations.c.session_id,
     edit_observations.c.call_id,
     edit_observations.c.file_path,
+    func.coalesce(edit_observations.c.edit_part_index, -1),
     unique=True,
 )
 Index(

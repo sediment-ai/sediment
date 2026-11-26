@@ -692,6 +692,42 @@ def test_postgres_edit_observation_allows_same_call_across_files(
     }
 
 
+
+def test_postgres_edit_observation_allows_same_call_parts(
+    postgres_store: FactStore,
+) -> None:
+    first = _observation(
+        observation_id="edit-part-0",
+        call_id="toolu-multi",
+        file_path="app.py",
+        edit_part_index=0,
+        applied_text="A",
+    )
+    second = _observation(
+        observation_id="edit-part-1",
+        call_id="toolu-multi",
+        file_path="app.py",
+        edit_part_index=1,
+        applied_text="B",
+    )
+    duplicate = _observation(
+        observation_id="edit-part-dup",
+        call_id="toolu-multi",
+        file_path="app.py",
+        edit_part_index=0,
+        applied_text="A2",
+    )
+    assert postgres_store.store_edit_observation(first) is True
+    assert postgres_store.store_edit_observation(second) is True
+    assert postgres_store.store_edit_observation(duplicate) is False
+    stored = {
+        (o.edit_part_index, o.applied_text)
+        for o in postgres_store.read_edit_observations("acme")
+        if o.call_id == "toolu-multi"
+    }
+    assert stored == {(0, "A"), (1, "B")}
+
+
 def test_postgres_rejected_edit_round_trip_and_first_write_wins(
     postgres_engine,
 ) -> None:

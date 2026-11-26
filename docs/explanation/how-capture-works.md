@@ -437,10 +437,15 @@ The extractor removes its Session snapshots after SessionEnd. A crash can
 leave snapshots behind; the next cleanup reaps sibling Session directories
 older than seven days.
 
-Claude Code transcript survival covers Edit and Write. NotebookEdit and legacy
-MultiEdit fall back to commit Attribution. Codex covers successful single-file
-patches; pi covers successful `edit` and `write` calls. External line counts
-cover Claude Code only; pi and Codex have no snapshot equivalent.
+Claude Code transcript survival covers Edit, Write, MultiEdit, and
+NotebookEdit. MultiEdit parts share the parent tool-call id and `file_path`,
+and distinguish members with `edit_part_index`. NotebookEdit pairs one cell
+per call under `file_path=notebook_path` (applied `delete` skips
+observations; a refused delete still ships a `RejectedEdit`). Codex covers
+successful authored patches, including multi-file `apply_patch` members
+distinguished by `file_path`; pi covers successful `edit` and `write` calls.
+External line counts cover Claude Code Edit, Write, and MultiEdit; NotebookEdit,
+pi, and Codex have no snapshot equivalent.
 
 An agent's later revision can lower its earlier edit's survival. External line
 counts reduce that ambiguity but don't identify the actor that changed a line.

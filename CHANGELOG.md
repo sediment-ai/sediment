@@ -4,6 +4,19 @@
 
 ### Capture
 
+- Pair Claude Code `NotebookEdit` and legacy `MultiEdit` transcript tool calls
+  into Edit observations. NotebookEdit `replace`/`insert` emit one cell-source
+  pair per call under `(call_id, file_path=notebook_path)` (applied `delete`
+  skips observations — containment cannot score a removal — while a refused
+  delete still ships a `RejectedEdit`); MultiEdit emits one pair per `edits[]`
+  entry under the parent tool-call id and shared `file_path`, distinguished by
+  `edit_part_index`. Migration `0014_edit_obs_part_index` widens
+  `uq_edit_observations_call` with `coalesce(edit_part_index, -1)` and publishes
+  EditObservation schema v4. A MultiEdit refusal collapses to one
+  `RejectedEdit` under the parent tool-use id. Retention averages MultiEdit
+  part scores for the parent Developer decision. Snapshot external-delta
+  windows cover MultiEdit; NotebookEdit still omits them.
+
 - Capture multi-file Codex `apply_patch` Edit observations. Each authored file
   keeps the parent tool-call id and is distinguished by `file_path`, matching
   the Developer decision fan-out. Migration `0013_edit_obs_file_path` widens

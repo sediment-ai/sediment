@@ -954,6 +954,29 @@ def test_every_waiver_entry_matches_a_real_model_and_field() -> None:
         )
 
 
+def test_edit_observation_edit_part_index_bounds() -> None:
+    base = dict(
+        org_id="acme",
+        session_id="sess-1",
+        agent_harness=AgentHarness.CLAUDE_CODE,
+        file_path="app.py",
+        call_id="toolu-1",
+        applied_text="x",
+        observed_file_text="x",
+        occurred_at=datetime(2026, 7, 10, 12, 0, 0, tzinfo=UTC),
+    )
+    assert EditObservation(**base, edit_part_index=0).edit_part_index == 0
+    assert EditObservation(**base).edit_part_index is None
+    with pytest.raises(ValidationError):
+        EditObservation(**base, edit_part_index=-1)
+    with pytest.raises(ValidationError):
+        EditObservation(**base, edit_part_index=2**63)
+    with pytest.raises(ValidationError):
+        EditObservation(**base, edit_part_index=1.5)
+    with pytest.raises(ValidationError):
+        EditObservation(**base, edit_part_index=True)
+
+
 def test_edit_observation_external_counts_reject_negative() -> None:
     # A negative count is a quietly wrong number in every report built on it
     # (same rationale as InferenceCall's token counts).

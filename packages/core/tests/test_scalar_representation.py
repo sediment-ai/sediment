@@ -73,7 +73,7 @@ INVENTORY = {
         ],
         "Closed vocabulary": ["agent_harness"],
         "Opaque content": ["applied_text", "observed_file_text", "raw"],
-        "Integer": ["external_lines_added?", "external_lines_removed?"],
+        "Integer": ["edit_part_index?", "external_lines_added?", "external_lines_removed?"],
         "Aware timestamp": ["occurred_at", "captured_at"],
     },
     "rejected_edits": {

@@ -3818,7 +3818,7 @@ def test_transcripts_flag_installs_snapshot_hook(tmp_path: Path) -> None:
     [hook] = block["hooks"]
     # Only the write tools: the hook reads the file each call is about to
     # change, so Bash and the read-only tools have nothing for it to do.
-    assert block["matcher"] == "Edit|Write"
+    assert block["matcher"] == "Edit|Write|MultiEdit"
     assert f'"{sys.executable}" "{TRANSCRIPT}"' in hook["command"]
     assert hook["command"].endswith("snapshot --agent claude-code || true")
 

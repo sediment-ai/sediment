@@ -51,11 +51,11 @@
       "output_path": "schemas/facts/developer-decision/v3.json"
     },
     {
-      "schema_id": "https://sediment.so/schemas/facts/edit-observation/v3.json",
-      "schema_version": 3,
+      "schema_id": "https://sediment.so/schemas/facts/edit-observation/v4.json",
+      "schema_version": 4,
       "python_type": "sediment_core.models.EditObservation",
       "artifact_family": "facts",
-      "output_path": "schemas/facts/edit-observation/v3.json"
+      "output_path": "schemas/facts/edit-observation/v4.json"
     },
     {
       "schema_id": "https://sediment.so/schemas/facts/rejected-edit/v3.json",

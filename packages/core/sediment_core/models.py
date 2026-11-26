@@ -469,8 +469,15 @@ class EditObservation(BaseModel):
     Codex ``call_id``) joining this pair to its ``DeveloperDecision``. A
     multi-file Codex patch keeps that parent id on every member and
     distinguishes files by ``file_path`` — the same fan-out shape decisions
-    already use. ``observed_file_text`` is the file's content at session end;
-    ``""`` means the file was gone.
+    already use. A Claude Code MultiEdit keeps that parent id on every
+    ``edits[]`` member under one ``file_path`` and distinguishes members by
+    ``edit_part_index``. NotebookEdit keeps the parent id with
+    ``file_path`` set to ``notebook_path`` (one cell per call).
+    ``applied_text`` is the tool's written snippet: Edit/MultiEdit
+    ``new_string``, Write ``content``, or NotebookEdit cell ``new_source``.
+    ``observed_file_text`` is the file's content at session end, or the
+    addressed notebook cell's source for NotebookEdit; ``""`` means the
+    file or cell was gone.
     """
 
     observation_id: NonEmptyId = Field(default_factory=_uuid)
@@ -484,6 +491,12 @@ class EditObservation(BaseModel):
     call_id: NonEmptyId
     applied_text: str  # the edit tool's new_string / Write content, as applied
     observed_file_text: str  # file content at session end ("" = file deleted)
+    # Zero-based index into a MultiEdit ``edits[]`` list. Null for every
+    # other edit tool (Edit, Write, NotebookEdit, Codex, pi). Same-file
+    # MultiEdit parts share ``call_id`` and ``file_path``, so the index is
+    # the remaining discriminator in the natural key — never a synthetic
+    # child call id.
+    edit_part_index: int | None = Field(default=None, ge=0, le=2**63 - 1, strict=True)
     # Lines changed by something other than the agent between this edit and
     # the next observation of the file. "External", not "human": a
     # formatter, a linter, a file watcher, or a rebase moves lines too, and
@@ -503,8 +516,8 @@ class EditObservation(BaseModel):
         default=None, ge=0, le=2**63 - 1, strict=True
     )
     occurred_at: AwareDatetime  # the edit's transcript timestamp (dedup key is
-    # (org, agent_harness, session, call_id, file_path) — see
-    # uq_edit_observations_call)
+    # (org, agent_harness, session, call_id, file_path, coalesce(edit_part_index, -1))
+    # — see uq_edit_observations_call)
     captured_at: AwareDatetime = Field(default_factory=_now)
     raw: dict[str, Any] = Field(default_factory=dict)
 

@@ -598,3 +598,72 @@ def test_simultaneous_edits_break_ties_on_call_id_not_input_order() -> None:
     a = _window("toolu-a", 0, 1)
     b = _window("toolu-b", 0, 2)
     assert external_lines_after([a, b]) == external_lines_after([b, a])
+
+
+def test_attach_edit_retention_averages_multiedit_parts() -> None:
+    decisions = [_decision(call_id="toolu-1", file_path="app.py")]
+    observations = [
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="A",
+            observed_file_text="A",
+            edit_part_index=0,
+        ),
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="gone",
+            observed_file_text="A",
+            edit_part_index=1,
+        ),
+    ]
+    filled = attach_edit_retention(
+        decisions,
+        observations,
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert filled[0].edit_retention_score == 0.5
+
+
+def test_attach_edit_retention_multiedit_order_independent() -> None:
+    decisions = [_decision(call_id="toolu-1", file_path="app.py")]
+    observations = [
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="A",
+            observed_file_text="A",
+            edit_part_index=1,
+        ),
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="gone",
+            observed_file_text="A",
+            edit_part_index=0,
+        ),
+    ]
+    forward = attach_edit_retention(
+        decisions,
+        observations,
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    reverse = attach_edit_retention(
+        decisions,
+        list(reversed(observations)),
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert forward[0].edit_retention_score == reverse[0].edit_retention_score == 0.5
+
+
+def test_external_lines_after_collapses_multiedit_parts() -> None:
+    observations = [
+        _window("toolu-1", 1, 1, 2, file_path="app.py", edit_part_index=0),
+        _window("toolu-1", 1, 1, 2, file_path="app.py", edit_part_index=1),
+        _window("toolu-2", 2, 3, 0, file_path="app.py"),
+    ]
+    totals = external_lines_after(observations)
+    assert totals[_key("toolu-1", "app.py")] == (4, 2)
+    assert totals[_key("toolu-2", "app.py")] == (3, 0)
+

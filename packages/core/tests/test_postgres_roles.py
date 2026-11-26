@@ -831,7 +831,7 @@ def test_check_on_a_behind_schema_names_only_the_revision(role_database):
     assert result.revision.value == "behind"
     assert [str(failure) for failure in result.failures] == [
         "database schema revision is behind; the supported head is "
-        "0013_edit_obs_file_path; "
+        "0014_edit_obs_part_index; "
         "fix: run `sediment db upgrade` with the release that supports this schema"
     ]
 
