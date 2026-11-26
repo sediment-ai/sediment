@@ -9,10 +9,11 @@ payload on stdin, parses the session transcript (JSONL at
 (``POST <endpoint>/v1/logs``) — one record per *applied* edit tool call,
 carrying wire attributes that the server maps to an ``EditObservation``:
 
-  - ``applied_text`` is the ``new_string`` or ``content`` that the tool
-    applied.
+  - ``applied_text`` is the ``new_string``, Write ``content``, MultiEdit part
+    ``new_string``, or NotebookEdit cell ``new_source`` that the tool applied.
   - ``observed_file_text`` is the file content at session end (``""`` when
-    the file is gone).
+    the file is gone), or the addressed notebook cell's source for NotebookEdit
+    (``""`` when the cell is gone).
 
 No scoring happens here. Which edit retention metric to use is a server-side
 derivation decision (``sediment_derive.survival``); the client ships
@@ -88,11 +89,14 @@ EVENT_NAME = "sediment.edit_observation"
 # the pi parser emits none rather than guessing.
 REJECTED_EVENT_NAME = "sediment.rejected_edit"
 RETRY_LINKAGE_EVENT_NAME = "sediment.retry_linkage"
-# Edit tools whose input carries the full AI-authored text. NotebookEdit and
-# the legacy MultiEdit are skipped (ponytail: cell-JSON and multi-part edits
-# need their own pairing rules; those sessions fall back to the attribution
-# backstop until those pairing rules exist).
+# Single-field edit tools: the named input key holds the full AI-authored text.
 _EDIT_TOOLS = {"Edit": "new_string", "Write": "content"}
+# Snapshot + SessionEnd file tools. NotebookEdit pairs at cell granularity and
+# skips PreToolUse windows (simulated .ipynb JSON would not match on-disk form).
+_FILE_EDIT_TOOLS = frozenset({"Edit", "Write", "MultiEdit"})
+_SNAPSHOT_TOOLS = _FILE_EDIT_TOOLS
+_NOTEBOOK_EDIT_TOOL = "NotebookEdit"
+_MULTI_EDIT_TOOL = "MultiEdit"
 # ponytail: fixed per-side cap keeps a pathological file from turning the
 # hook into a multi-MB POST; raise if real source files exceed it.
 MAX_TEXT_BYTES = 256 * 1024
@@ -187,14 +191,159 @@ def _is_user_reject(entry: dict, block: dict) -> bool:
     return _result_text(block).startswith(_REJECT_PHRASE)
 
 
+def _notebook_cell_source_text(cell: dict) -> str:
+    """Join a Jupyter cell's ``source`` field into one string."""
+    source = cell.get("source", "")
+    if isinstance(source, list):
+        return "".join(part for part in source if isinstance(part, str))
+    return source if isinstance(source, str) else ""
+
+
+def _parse_notebook(text: str) -> dict | None:
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    cells = parsed.get("cells")
+    if not isinstance(cells, list):
+        return None
+    return parsed
+
+
+def _notebook_cell_by_id(notebook: dict, cell_id: str) -> dict | None:
+    for cell in notebook.get("cells", []):
+        if not isinstance(cell, dict):
+            continue
+        if cell.get("id") == cell_id:
+            return cell
+    return None
+
+
+def _notebook_observed_cell_text(notebook_text: str | None, edit: dict) -> str | None:
+    """Cell source at session end for one NotebookEdit, or None when unpairable.
+
+    ``None`` is a capture gap (unreadable notebook, unresolvable insert).
+    ``""`` is a real observation: the addressed cell is gone.
+    """
+    if notebook_text is None:
+        return None
+    if notebook_text == "":
+        return ""
+    notebook = _parse_notebook(notebook_text)
+    if notebook is None:
+        return None
+    mode = edit.get("edit_mode") or "replace"
+    cell_id = edit.get("cell_id")
+    if mode == "insert":
+        applied = edit["applied_text"]
+        matches = [
+            cell
+            for cell in notebook.get("cells", [])
+            if isinstance(cell, dict) and _notebook_cell_source_text(cell) == applied
+        ]
+        if len(matches) != 1:
+            return None
+        return _notebook_cell_source_text(matches[0])
+    if not isinstance(cell_id, str) or not cell_id:
+        return None
+    cell = _notebook_cell_by_id(notebook, cell_id)
+    if cell is None:
+        return ""
+    return _notebook_cell_source_text(cell)
+
+
+def _claude_edit_parts(
+    name: str, tool_input: dict, tool_use_id: str, nanos: int
+) -> list[dict]:
+    """Expand one tool_use into zero or more observation-shaped call dicts."""
+    if name in _EDIT_TOOLS:
+        field = _EDIT_TOOLS[name]
+        file_path = tool_input.get("file_path")
+        text = tool_input.get(field)
+        if not (isinstance(file_path, str) and file_path and isinstance(text, str)):
+            return []
+        return [
+            {
+                "tool_use_id": tool_use_id,
+                "tool_name": name,
+                "file_path": file_path,
+                "applied_text": text,
+                "time_unix_nano": nanos,
+            }
+        ]
+    if name == _MULTI_EDIT_TOOL:
+        file_path = tool_input.get("file_path")
+        edits = tool_input.get("edits")
+        if not (isinstance(file_path, str) and file_path and isinstance(edits, list)):
+            return []
+        parts: list[dict] = []
+        for index, part in enumerate(edits):
+            if not isinstance(part, dict):
+                continue
+            text = part.get("new_string")
+            if not isinstance(text, str):
+                continue
+            parts.append(
+                {
+                    "tool_use_id": tool_use_id,
+                    "tool_name": name,
+                    "file_path": file_path,
+                    "applied_text": text,
+                    "time_unix_nano": nanos,
+                    "edit_part_index": index,
+                }
+            )
+        return parts
+    if name == _NOTEBOOK_EDIT_TOOL:
+        notebook_path = tool_input.get("notebook_path")
+        new_source = tool_input.get("new_source")
+        if not (isinstance(notebook_path, str) and notebook_path):
+            return []
+        edit_mode = tool_input.get("edit_mode") or "replace"
+        if not isinstance(edit_mode, str):
+            return []
+        if edit_mode not in {"replace", "insert", "delete"}:
+            return []
+        cell_id = tool_input.get("cell_id")
+        if cell_id is not None and not isinstance(cell_id, str):
+            return []
+        if edit_mode in {"replace", "delete"} and not (
+            isinstance(cell_id, str) and cell_id
+        ):
+            return []
+        if edit_mode == "delete":
+            applied = new_source if isinstance(new_source, str) else ""
+        elif isinstance(new_source, str):
+            applied = new_source
+        else:
+            return []
+        return [
+            {
+                "tool_use_id": tool_use_id,
+                "tool_name": name,
+                "file_path": notebook_path,
+                "applied_text": applied,
+                "time_unix_nano": nanos,
+                "cell_id": cell_id,
+                "edit_mode": edit_mode,
+            }
+        ]
+    return []
+
+
 def _claude_calls(entries, session_id: str | None = None) -> tuple[list[dict], dict]:
-    """Every Edit/Write call in the transcript, plus how each one ended.
+    """Every Edit/Write/MultiEdit/NotebookEdit call, plus how each one ended.
 
     Returns ``(calls, outcome_by_id)`` where the outcome is ``"ok"``,
     ``"reject"`` (the developer refused), or ``"error"`` (the tool failed).
-    A call with no result at all — an interrupted session — appears in
-    ``calls`` and is absent from the mapping, which is neither an
-    application nor a refusal.
+    Outcomes key on the tool-use id. MultiEdit expands to one call dict per
+    well-formed ``edits[]`` entry under the parent tool-use id with
+    ``edit_part_index`` set; NotebookEdit emits one call for the addressed
+    cell. A call with no result at all — an interrupted session — appears in
+    ``calls`` and is absent from the mapping, which is neither an application
+    nor a refusal.
 
     Lines from other sessions are skipped: a resumed session's transcript
     embeds the prior session's history, each line stamped with its own
@@ -223,34 +372,19 @@ def _claude_calls(entries, session_id: str | None = None) -> tuple[list[dict], d
                 continue
             if entry.get("type") == "assistant" and block.get("type") == "tool_use":
                 name = block.get("name")
-                field = _EDIT_TOOLS.get(name)
-                if field is None:
+                if not isinstance(name, str):
                     continue
                 tool_input = block.get("input")
-                if not isinstance(tool_input, dict):
-                    continue
-                file_path = tool_input.get("file_path")
-                text = tool_input.get(field)
                 tool_use_id = block.get("id")
                 nanos = _nanos(entry.get("timestamp"))
                 if not (
-                    isinstance(file_path, str)
-                    and file_path
-                    and isinstance(text, str)
+                    isinstance(tool_input, dict)
                     and isinstance(tool_use_id, str)
                     and tool_use_id
                     and nanos
                 ):
                     continue
-                calls.append(
-                    {
-                        "tool_use_id": tool_use_id,
-                        "tool_name": name,
-                        "file_path": file_path,
-                        "applied_text": text,
-                        "time_unix_nano": nanos,
-                    }
-                )
+                calls.extend(_claude_edit_parts(name, tool_input, tool_use_id, nanos))
             elif entry.get("type") == "user" and block.get("type") == "tool_result":
                 tool_use_id = block.get("tool_use_id")
                 if not isinstance(tool_use_id, str):
@@ -265,19 +399,26 @@ def _claude_calls(entries, session_id: str | None = None) -> tuple[list[dict], d
 
 
 def extract_edits(entries, session_id: str | None = None) -> list[dict]:
-    """Applied Edit/Write tool calls from transcript entries.
+    """Applied edit tool calls from transcript entries.
 
     An edit counts only when its ``tool_result`` arrived without ``is_error``
     — a rejected or failed call never touched the file, and pairing its text
     against the session-end state would fabricate a zero edit-retention signal
-    on top of the reject decision the OTLP wire already carries.
+    on top of the reject decision the OTLP wire already carries. NotebookEdit
+    ``delete`` is omitted here: containment cannot score a removal, but the
+    same call remains available to ``extract_rejected_edits`` when the
+    developer refused it.
     """
     calls, outcome = _claude_calls(entries, session_id)
-    return [c for c in calls if outcome.get(c["tool_use_id"]) == "ok"]
+    return [
+        c
+        for c in calls
+        if outcome.get(c["tool_use_id"]) == "ok" and c.get("edit_mode") != "delete"
+    ]
 
 
 def extract_rejected_edits(entries, session_id: str | None = None) -> list[dict]:
-    """Edit/Write calls the developer refused, with the text they refused.
+    """Edit calls the developer refused, with the text they refused.
 
     The rejected side of a DPO pair needs the model's proposed text, and for
     a non-gateway harness it exists nowhere else: the decision fact carries
@@ -287,20 +428,43 @@ def extract_rejected_edits(entries, session_id: str | None = None) -> list[dict]
     prompts, no conversation, no file state).
 
     Only refusals. A call the tool failed on emits nothing: the model's text
-    was never judged by anyone, so it is not a preference signal.
+    was never judged by anyone, so it is not a preference signal. MultiEdit
+    refusals collapse to one record under the parent tool-use id (so
+    ``RejectedEdit.call_id`` still joins the rejecting ``DeveloperDecision``),
+    with ``proposed`` the newline-joined part texts in ``edits[]`` order.
     """
     calls, outcome = _claude_calls(entries, session_id)
-    rejected = []
+    by_call: dict[str, list[dict]] = {}
+    order: list[str] = []
     for call in calls:
-        if outcome.get(call["tool_use_id"]) != "reject":
+        tool_use_id = call["tool_use_id"]
+        if outcome.get(tool_use_id) != "reject":
             continue
-        proposed = call["applied_text"]
+        if tool_use_id not in by_call:
+            by_call[tool_use_id] = []
+            order.append(tool_use_id)
+        by_call[tool_use_id].append(call)
+    rejected = []
+    for tool_use_id in order:
+        parts = by_call[tool_use_id]
+        first = parts[0]
+        if first["tool_name"] == _MULTI_EDIT_TOOL:
+            ordered = sorted(
+                parts,
+                key=lambda part: part.get("edit_part_index", 0),
+            )
+            proposed = "\n".join(part["applied_text"] for part in ordered)
+            record = {**first, "proposed": proposed}
+            record.pop("edit_part_index", None)
+        else:
+            proposed = first["applied_text"]
+            record = {**first, "proposed": proposed}
         if len(proposed.encode("utf-8", "replace")) > MAX_TEXT_BYTES:
             _trail(
-                f"rejected edit over {MAX_TEXT_BYTES}B for {call['file_path']}; dropped"
+                f"rejected edit over {MAX_TEXT_BYTES}B for {record['file_path']}; dropped"
             )
             continue
-        rejected.append({**call, "proposed": proposed})
+        rejected.append(record)
     return rejected
 
 
@@ -353,6 +517,7 @@ def extract_retry_linkages(entries, session_id: str | None = None) -> list[dict]
         and (session_id is None or entry["sessionId"] == session_id)
     ]
     calls, outcomes = _claude_calls(ordered, session_id)
+    calls = [call for call in calls if call["tool_name"] in _EDIT_TOOLS]
     calls_by_id = {call["tool_use_id"]: call for call in calls}
     call_positions: dict[str, int] = {}
     call_sessions: dict[str, str | None] = {}
@@ -1191,24 +1356,56 @@ def _line_hashes(text: str) -> list[str]:
     ]
 
 
+def _apply_string_edit(
+    pre: str, old: str, new: str, *, replace_all: bool
+) -> str | None:
+    if old not in pre:
+        return None
+    if replace_all:
+        return pre.replace(old, new)
+    return pre.replace(old, new, 1)
+
+
 def _post_edit_text(pre: str, tool_name: str, tool_input: dict) -> str | None:
     """The file as this edit will leave it, or None if that is unpredictable.
 
     Performs the tool's own substitution against the on-disk state. An
     ``old_string`` that does not occur means the call will not apply as
     described (a stale read, a racing writer) — unpredictable, so the window
-    it would have opened is omitted rather than guessed.
+    it would have opened is omitted rather than guessed. MultiEdit applies
+    each well-formed part in order against the running text.
     """
     if tool_name == "Write":
         content = tool_input.get("content")
         return content if isinstance(content, str) else None
-    old = tool_input.get("old_string")
-    new = tool_input.get("new_string")
-    if not isinstance(old, str) or not isinstance(new, str) or old not in pre:
-        return None
-    if tool_input.get("replace_all"):
-        return pre.replace(old, new)
-    return pre.replace(old, new, 1)
+    if tool_name == "Edit":
+        old = tool_input.get("old_string")
+        new = tool_input.get("new_string")
+        if not isinstance(old, str) or not isinstance(new, str):
+            return None
+        return _apply_string_edit(
+            pre, old, new, replace_all=bool(tool_input.get("replace_all"))
+        )
+    if tool_name == _MULTI_EDIT_TOOL:
+        edits = tool_input.get("edits")
+        if not isinstance(edits, list) or not edits:
+            return None
+        current = pre
+        for part in edits:
+            if not isinstance(part, dict):
+                return None
+            old = part.get("old_string")
+            new = part.get("new_string")
+            if not isinstance(old, str) or not isinstance(new, str):
+                return None
+            updated = _apply_string_edit(
+                current, old, new, replace_all=bool(part.get("replace_all"))
+            )
+            if updated is None:
+                return None
+            current = updated
+        return current
+    return None
 
 
 def cmd_snapshot(hook: dict) -> None:
@@ -1216,6 +1413,9 @@ def cmd_snapshot(hook: dict) -> None:
 
     One file per call rather than appends to a shared log — parallel edit
     calls would interleave a shared file, and a per-call name needs no lock.
+    Covers Edit, Write, and MultiEdit. NotebookEdit is omitted: a simulated
+    notebook JSON does not byte-match the tool's on-disk serialization, so a
+    window would mis-attribute the agent's own cell write as external.
     """
     session_id = hook.get("session_id")
     call_id = hook.get("tool_use_id")
@@ -1225,7 +1425,7 @@ def cmd_snapshot(hook: dict) -> None:
         isinstance(session_id, str)
         and isinstance(call_id, str)
         and _SAFE_ID.match(call_id)
-        and tool_name in _EDIT_TOOLS
+        and tool_name in _SNAPSHOT_TOOLS
         and isinstance(tool_input, dict)
     ):
         return
@@ -1344,8 +1544,10 @@ def external_deltas(
     exists to catch — the agent edits, the developer rejects its next
     proposal, then fixes the file by hand.
 
-    Only ``post`` opens a window, and only ``pre`` closes one, so an edit
-    whose post state was unpredictable still closes its predecessor's window.
+    ``applied`` holds tool-use ids (MultiEdit parts share one parent id and
+    one window). Only ``post`` opens a window, and only ``pre`` closes one, so
+    an edit whose post state was unpredictable still closes its predecessor's
+    window.
     """
     by_file: dict[str, list[dict]] = {}
     for snap in sorted(snapshots, key=lambda s: (s["ts"], s["call_id"])):
@@ -1404,6 +1606,28 @@ def _observed_file_states(edits: list[dict]) -> dict[str, str | None]:
     return observed_file_states
 
 
+def _observed_text_for_edit(
+    edit: dict, observed_file_states: dict[str, str | None]
+) -> str | None:
+    """Resolve the paired observation text for one applied edit.
+
+    File tools use the whole-file session-end state. NotebookEdit pairs the
+    addressed cell's source; an unresolvable cell is a gap for that edit only.
+    """
+    raw = observed_file_states[_edit_read_path(edit)]
+    if edit["tool_name"] != _NOTEBOOK_EDIT_TOOL:
+        return raw
+    if raw is None:
+        return None
+    observed = _notebook_observed_cell_text(raw, edit)
+    if observed is None:
+        _trail(
+            f"notebook cell unresolvable for {edit['file_path']} "
+            f"({edit.get('edit_mode')}, cell_id={edit.get('cell_id')!r}); pair dropped"
+        )
+    return observed
+
+
 def build_pairs(
     entries,
     session_id: str | None = None,
@@ -1417,18 +1641,22 @@ def build_pairs(
     PreToolUse snapshots cover that call; a call with no usable window
     simply omits them.
 
-    Counts ship per file under one rule: **every** applied edit on that file
-    must both have a window and ship a pair. The server sums a file's
-    windows forward from each edit, so the shipped windows have to tile the
-    file's whole timeline. Any hole and the remaining counts understate by
-    an unknown amount, or — worse — swallow the agent's own next edit and
-    report it as somebody else's work.
+    Counts ship per file under one rule: **every** applied Edit or Write on
+    that file must both have a window and ship a pair. The server sums a
+    file's windows forward from each edit, so the shipped windows have to
+    tile the file's whole timeline. Any hole and the remaining counts
+    understate by an unknown amount, or — worse — swallow the agent's own
+    next edit and report it as somebody else's work. MultiEdit attaches a
+    window when one exists and is otherwise transparent (so a CLI upgrade
+    before the PreToolUse matcher is re-installed does not hole Edit/Write
+    counts). NotebookEdit observations never carry external counts and never
+    hole a file's windows.
 
-    A hole is anything that costs one applied edit its window or its pair: a
-    missing or unreadable PreToolUse snapshot, an edit whose post state was
-    unpredictable, an unreadable observed file state, an oversized side. Each of
-    those is invisible to the server, so the honest move is to drop the
-    file's counts here. Other files in the session keep theirs.
+    A hole is anything that costs one applied file-edit its window or its
+    pair: a missing or unreadable PreToolUse snapshot, an edit whose post
+    state was unpredictable, an unreadable observed file state, an oversized
+    side. Each of those is invisible to the server, so the honest move is to
+    drop the file's counts here. Other files in the session keep theirs.
     """
     edits = (
         extract_edits_pi(entries, session_id, source_path=source_path)
@@ -1436,39 +1664,50 @@ def build_pairs(
         else _PARSERS[agent](entries, session_id)
     )
     observed_file_states = _observed_file_states(edits)
+    file_edit_ids = {
+        edit["tool_use_id"] for edit in edits if edit["tool_name"] in _FILE_EDIT_TOOLS
+    }
     deltas = (
         external_deltas(
             _load_snapshots(session_id),
             observed_file_states,
-            {e["tool_use_id"] for e in edits},
+            file_edit_ids,
         )
         if session_id
         else {}
     )
     shippable, holed = [], set()
     for edit in edits:
-        observed_file_text = observed_file_states[_edit_read_path(edit)]
+        observed_file_text = _observed_text_for_edit(edit, observed_file_states)
         if observed_file_text is None:
-            holed.add(edit["file_path"])
+            if edit["tool_name"] in _FILE_EDIT_TOOLS:
+                holed.add(edit["file_path"])
             continue
         if (
             len(edit["applied_text"].encode("utf-8", "replace")) > MAX_TEXT_BYTES
             or len(observed_file_text.encode("utf-8", "replace")) > MAX_TEXT_BYTES
         ):
             _trail(f"pair over {MAX_TEXT_BYTES}B for {edit['file_path']}; dropped")
-            holed.add(edit["file_path"])
+            if edit["tool_name"] in _FILE_EDIT_TOOLS:
+                holed.add(edit["file_path"])
             continue
         shippable.append((edit, observed_file_text))
-    # The whole-timeline check: an applied edit missing from `deltas` had no
-    # usable window, which leaves a gap its neighbours would silently absorb.
     for edit in edits:
+        if edit["tool_name"] not in _FILE_EDIT_TOOLS:
+            continue
         if edit["tool_use_id"] not in deltas:
+            if edit["tool_name"] == _MULTI_EDIT_TOOL:
+                continue
             holed.add(edit["file_path"])
     pairs = []
     for edit, observed_file_text in shippable:
         pair = {**edit, "observed_file_text": observed_file_text}
         pair.pop("read_path", None)
-        if edit["file_path"] not in holed:
+        if (
+            edit["tool_name"] in _FILE_EDIT_TOOLS
+            and edit["file_path"] not in holed
+            and edit["tool_use_id"] in deltas
+        ):
             pair["external_lines_added"], pair["external_lines_removed"] = deltas[
                 edit["tool_use_id"]
             ]
@@ -1528,7 +1767,11 @@ def build_payload(
                     # Omitted, never zeroed, when no window covered the call.
                     **{
                         k: p[k]
-                        for k in ("external_lines_added", "external_lines_removed")
+                        for k in (
+                            "edit_part_index",
+                            "external_lines_added",
+                            "external_lines_removed",
+                        )
                         if k in p
                     },
                 }

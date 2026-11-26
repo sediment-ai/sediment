@@ -2984,3 +2984,475 @@ def test_readable_transcript_without_edits_clears_snapshots(
     assert mod.main(["--agent", "claude-code"]) == 0
     assert not list(delta_cache.rglob("*.json"))
     assert not directory.exists()
+
+
+def _assistant_multiedit(tool_use_id, file_path, edits, *, ts=None):
+    return {
+        "type": "assistant",
+        "timestamp": ts or "2026-07-24T01:00:00.000Z",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": tool_use_id,
+                    "name": "MultiEdit",
+                    "input": {"file_path": file_path, "edits": edits},
+                }
+            ]
+        },
+    }
+
+
+def _assistant_notebook_edit(
+    tool_use_id,
+    notebook_path,
+    *,
+    new_source="",
+    cell_id=None,
+    edit_mode="replace",
+    ts=None,
+):
+    tool_input = {
+        "notebook_path": notebook_path,
+        "new_source": new_source,
+        "edit_mode": edit_mode,
+    }
+    if cell_id is not None:
+        tool_input["cell_id"] = cell_id
+    return {
+        "type": "assistant",
+        "timestamp": ts or "2026-07-24T01:00:00.000Z",
+        "message": {
+            "content": [
+                {
+                    "type": "tool_use",
+                    "id": tool_use_id,
+                    "name": "NotebookEdit",
+                    "input": tool_input,
+                }
+            ]
+        },
+    }
+
+
+def _notebook(cells: list[dict]) -> str:
+    return json.dumps({"nbformat": 4, "nbformat_minor": 5, "cells": cells})
+
+
+def test_multiedit_without_snapshot_does_not_hole_edit_counts(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("a\nb\n", encoding="utf-8")
+    target.write_text("A\nb\n", encoding="utf-8")
+    _snapshot("sess-1", "toolu-edit", target, old_string="b", new_string="B")
+    target.write_text("A\nB\n", encoding="utf-8")
+    target.write_text("A\nB\nhand\n", encoding="utf-8")
+
+    entries = [
+        _assistant_multiedit(
+            "toolu-multi",
+            str(target),
+            [{"old_string": "a", "new_string": "A"}],
+        ),
+        _tool_result("toolu-multi"),
+        _assistant_edit(
+            "toolu-edit",
+            str(target),
+            "B",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-edit"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    by_id = {p["tool_use_id"]: p for p in pairs}
+    assert (
+        by_id["toolu-edit"]["external_lines_added"],
+        by_id["toolu-edit"]["external_lines_removed"],
+    ) == (1, 0)
+    assert "external_lines_added" not in by_id["toolu-multi"]
+
+
+def test_edit_without_snapshot_still_holes_multiedit_counts(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("a\nb\n", encoding="utf-8")
+    _snapshot(
+        "sess-1",
+        "toolu-multi",
+        target,
+        tool_name="MultiEdit",
+        edits=[{"old_string": "a", "new_string": "A"}],
+    )
+    target.write_text("A\nb\n", encoding="utf-8")
+    target.write_text("A\nB\n", encoding="utf-8")
+
+    entries = [
+        _assistant_multiedit(
+            "toolu-multi",
+            str(target),
+            [{"old_string": "a", "new_string": "A"}],
+        ),
+        _tool_result("toolu-multi"),
+        _assistant_edit(
+            "toolu-edit",
+            str(target),
+            "B",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-edit"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    assert len(pairs) == 2
+    for pair in pairs:
+        assert "external_lines_added" not in pair, pair["tool_use_id"]
+
+
+def test_notebook_edit_never_holes_file_edit_counts(tmp_path: Path) -> None:
+    py = tmp_path / "app.py"
+    nb = tmp_path / "nb.ipynb"
+    py.write_text("a\n", encoding="utf-8")
+    nb.write_text(
+        _notebook(
+            [{"id": "c1", "cell_type": "code", "source": ["x = 1\n"], "metadata": {}}]
+        ),
+        encoding="utf-8",
+    )
+    _snapshot("sess-1", "toolu-edit", py, old_string="a", new_string="A")
+    py.write_text("A\n", encoding="utf-8")
+    py.write_text("A\nhand\n", encoding="utf-8")
+
+    entries = [
+        _assistant_edit("toolu-edit", str(py), "A"),
+        _tool_result("toolu-edit"),
+        _assistant_notebook_edit(
+            "toolu-nb",
+            str(nb),
+            new_source="x = 2\n",
+            cell_id="c1",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-nb"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    by_tool = {p["tool_name"]: p for p in pairs}
+    assert (
+        by_tool["Edit"]["external_lines_added"],
+        by_tool["Edit"]["external_lines_removed"],
+    ) == (1, 0)
+    assert "external_lines_added" not in by_tool["NotebookEdit"]
+
+
+def test_multiedit_emits_one_pair_per_part(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("alpha\nbeta\n", encoding="utf-8")
+    entries = [
+        _assistant_multiedit(
+            "toolu-m",
+            str(target),
+            [
+                {"old_string": "alpha", "new_string": "ALPHA"},
+                {"old_string": "beta", "new_string": "BETA"},
+            ],
+        ),
+        _tool_result("toolu-m"),
+    ]
+    pairs = mod.build_pairs(entries, agent="claude-code")
+    assert [p["tool_use_id"] for p in pairs] == ["toolu-m", "toolu-m"]
+    assert [p["edit_part_index"] for p in pairs] == [0, 1]
+    assert [p["applied_text"] for p in pairs] == ["ALPHA", "BETA"]
+    assert all(p["observed_file_text"] == "alpha\nbeta\n" for p in pairs)
+
+
+def test_multiedit_skips_empty_edits_list(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("x", encoding="utf-8")
+    entries = [
+        _assistant_multiedit("toolu-empty", str(target), []),
+        _tool_result("toolu-empty"),
+    ]
+    assert mod.build_pairs(entries, agent="claude-code") == []
+
+
+def test_multiedit_skips_malformed_parts_keeps_valid(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("kept", encoding="utf-8")
+    entries = [
+        _assistant_multiedit(
+            "toolu-partial",
+            str(target),
+            [
+                {"old_string": "a", "new_string": "A"},
+                "not-a-dict",
+                {"old_string": "b"},
+                {"old_string": "c", "new_string": "C"},
+                {"old_string": "d", "new_string": ""},
+            ],
+        ),
+        _tool_result("toolu-partial"),
+    ]
+    pairs = mod.build_pairs(entries, agent="claude-code")
+    assert [p["edit_part_index"] for p in pairs] == [0, 3, 4]
+    assert [p["applied_text"] for p in pairs] == ["A", "C", ""]
+    assert all(p["tool_use_id"] == "toolu-partial" for p in pairs)
+
+
+def test_multiedit_failed_call_emits_nothing(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("x", encoding="utf-8")
+    entries = [
+        _assistant_multiedit(
+            "toolu-fail",
+            str(target),
+            [{"old_string": "x", "new_string": "y"}],
+        ),
+        _tool_result("toolu-fail", is_error=True),
+    ]
+    assert mod.build_pairs(entries, agent="claude-code") == []
+    assert mod.extract_rejected_edits(entries) == []
+
+
+def test_multiedit_reject_collapses_under_parent_call_id(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    entries = [
+        _assistant_multiedit(
+            "toolu-rej",
+            str(target),
+            [
+                {"old_string": "a", "new_string": "A"},
+                {"old_string": "b", "new_string": "B"},
+            ],
+        ),
+        {
+            "type": "user",
+            "timestamp": "2026-07-24T01:00:01.000Z",
+            "toolUseResult": "User rejected tool use",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu-rej",
+                        "is_error": True,
+                        "content": (
+                            "The user doesn't want to proceed with this tool use."
+                        ),
+                    }
+                ]
+            },
+        },
+    ]
+    [rejected] = mod.extract_rejected_edits(entries)
+    assert rejected["tool_use_id"] == "toolu-rej"
+    assert rejected["proposed"] == "A\nB"
+    assert "edit_part_index" not in rejected
+
+
+def test_notebook_edit_pairs_cell_source(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    notebook.write_text(
+        _notebook(
+            [
+                {
+                    "id": "cell-a",
+                    "cell_type": "code",
+                    "source": ["print('final')\n"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    entries = [
+        _assistant_notebook_edit(
+            "toolu-nb",
+            str(notebook),
+            new_source="print('applied')\n",
+            cell_id="cell-a",
+        ),
+        _tool_result("toolu-nb"),
+    ]
+    [pair] = mod.build_pairs(entries, agent="claude-code")
+    assert pair["tool_use_id"] == "toolu-nb"
+    assert pair["tool_name"] == "NotebookEdit"
+    assert pair["applied_text"] == "print('applied')\n"
+    assert pair["observed_file_text"] == "print('final')\n"
+    assert "external_lines_added" not in pair
+    assert "edit_part_index" not in pair
+
+
+def test_notebook_edit_missing_cell_observes_empty(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    notebook.write_text(_notebook([]), encoding="utf-8")
+    entries = [
+        _assistant_notebook_edit(
+            "toolu-gone",
+            str(notebook),
+            new_source="x = 1\n",
+            cell_id="missing",
+        ),
+        _tool_result("toolu-gone"),
+    ]
+    [pair] = mod.build_pairs(entries, agent="claude-code")
+    assert pair["observed_file_text"] == ""
+
+
+def test_notebook_edit_invalid_cell_id_skipped(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    notebook.write_text(
+        _notebook([{"id": "cell-a", "cell_type": "code", "source": ["ok"]}]),
+        encoding="utf-8",
+    )
+    entries = [
+        _assistant_notebook_edit(
+            "toolu-bad",
+            str(notebook),
+            new_source="x",
+            cell_id="",
+            edit_mode="replace",
+        ),
+        _tool_result("toolu-bad"),
+        _assistant_notebook_edit(
+            "toolu-none",
+            str(notebook),
+            new_source="x",
+            cell_id=None,
+            edit_mode="replace",
+        ),
+        _tool_result("toolu-none"),
+    ]
+    assert mod.build_pairs(entries, agent="claude-code") == []
+
+
+def test_notebook_edit_delete_emits_no_observation(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    notebook.write_text(
+        _notebook([{"id": "cell-a", "cell_type": "code", "source": ["still here"]}]),
+        encoding="utf-8",
+    )
+    entries = [
+        _assistant_notebook_edit(
+            "toolu-del",
+            str(notebook),
+            new_source="ignored",
+            cell_id="cell-a",
+            edit_mode="delete",
+        ),
+        _tool_result("toolu-del"),
+    ]
+    assert mod.build_pairs(entries, agent="claude-code") == []
+    assert mod.extract_edits(entries) == []
+
+
+def test_notebook_edit_delete_refusal_emits_rejected_edit(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    entries = [
+        _assistant_notebook_edit(
+            "toolu-del-rej",
+            str(notebook),
+            new_source="",
+            cell_id="cell-a",
+            edit_mode="delete",
+        ),
+        {
+            "type": "user",
+            "timestamp": "2026-07-24T01:00:01.000Z",
+            "toolUseResult": "User rejected tool use",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": "toolu-del-rej",
+                        "is_error": True,
+                        "content": (
+                            "The user doesn't want to proceed with this tool use."
+                        ),
+                    }
+                ]
+            },
+        },
+    ]
+    [rejected] = mod.extract_rejected_edits(entries)
+    assert rejected["tool_use_id"] == "toolu-del-rej"
+    assert rejected["file_path"] == str(notebook)
+    assert rejected["proposed"] == ""
+    assert rejected["tool_name"] == "NotebookEdit"
+
+
+def test_notebook_edit_insert_requires_unique_cell_match(tmp_path: Path) -> None:
+    notebook = tmp_path / "nb.ipynb"
+    notebook.write_text(
+        _notebook(
+            [
+                {"id": "c1", "cell_type": "code", "source": ["unique()\n"]},
+                {"id": "c2", "cell_type": "code", "source": ["dup()\n"]},
+                {"id": "c3", "cell_type": "code", "source": ["dup()\n"]},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    unique = [
+        _assistant_notebook_edit(
+            "toolu-ins",
+            str(notebook),
+            new_source="unique()\n",
+            edit_mode="insert",
+        ),
+        _tool_result("toolu-ins"),
+    ]
+    [pair] = mod.build_pairs(unique, agent="claude-code")
+    assert pair["observed_file_text"] == "unique()\n"
+
+    ambiguous = [
+        _assistant_notebook_edit(
+            "toolu-amb",
+            str(notebook),
+            new_source="dup()\n",
+            edit_mode="insert",
+        ),
+        _tool_result("toolu-amb"),
+    ]
+    assert mod.build_pairs(ambiguous, agent="claude-code") == []
+
+
+def test_multiedit_post_edit_text_applies_parts_in_order() -> None:
+    post = mod._post_edit_text(
+        "one two three",
+        "MultiEdit",
+        {
+            "edits": [
+                {"old_string": "one", "new_string": "1"},
+                {"old_string": "two", "new_string": "2", "replace_all": True},
+            ]
+        },
+    )
+    assert post == "1 2 three"
+    assert (
+        mod._post_edit_text(
+            "one",
+            "MultiEdit",
+            {"edits": [{"old_string": "missing", "new_string": "x"}]},
+        )
+        is None
+    )
+
+
+def test_multiedit_payload_ships_edit_part_index(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("a\nb\n", encoding="utf-8")
+    entries = [
+        _assistant_multiedit(
+            "toolu-wire",
+            str(target),
+            [
+                {"old_string": "a", "new_string": "A"},
+                {"old_string": "b", "new_string": "B"},
+            ],
+        ),
+        _tool_result("toolu-wire"),
+    ]
+    pairs = mod.build_pairs(entries, agent="claude-code")
+    payload = mod.build_payload("sess-wire", pairs, agent="claude-code")
+    records = payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
+    assert len(records) == 2
+    for index, record in enumerate(records):
+        attrs = {a["key"]: a["value"] for a in record["attributes"]}
+        assert attrs["tool_use_id"]["stringValue"] == "toolu-wire"
+        assert attrs["edit_part_index"]["intValue"] == str(index)

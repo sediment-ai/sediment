@@ -134,8 +134,11 @@ instead.
 - Transcript capture omits raw conversations, prompts, Read results, tool
   results, and the environment. Inference-call capture includes model inputs
   and outputs.
-- Transcript survival covers `Edit` and `Write`. `NotebookEdit` and legacy
-  `MultiEdit` fall back to commit Attribution.
+- Transcript survival covers `Edit`, `Write`, `MultiEdit`, and `NotebookEdit`.
+  MultiEdit parts share the parent tool-call id and `file_path`, distinguished
+  by `edit_part_index`. NotebookEdit pairs one cell per call under
+  `file_path=notebook_path` (applied `delete` skips observations; a refused
+  delete still ships a `RejectedEdit`).
 - External line counts require a complete snapshot and observation chain for
   the file.
 - If a saved Session missed extraction, follow

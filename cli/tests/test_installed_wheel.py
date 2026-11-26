@@ -224,7 +224,7 @@ def test_installed_wheel_configures_transcript_hooks(
     )
     [pre_tool_use] = settings["hooks"]["PreToolUse"]
     [pre_tool_use_hook] = pre_tool_use["hooks"]
-    assert pre_tool_use["matcher"] == "Edit|Write"
+    assert pre_tool_use["matcher"] == "Edit|Write|MultiEdit"
     assert pre_tool_use_hook["command"] == (
         f'"{sediment}" transcript snapshot --agent claude-code || true'
     )

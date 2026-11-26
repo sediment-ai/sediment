@@ -182,7 +182,7 @@ CONTRACT_GROUPS: tuple[
                 "facts",
                 "edit-observation",
                 "One applied edit and later file observation.",
-                version=3,
+                version=4,
             ),
             _contract(
                 RejectedEdit,

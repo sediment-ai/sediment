@@ -603,7 +603,7 @@ def test_installed_hook_validator_rejects_checkout_commands(tmp_path: Path) -> N
                     ],
                     "PreToolUse": [
                         {
-                            "matcher": "Edit|Write",
+                            "matcher": "Edit|Write|MultiEdit",
                             "hooks": [
                                 {
                                     "type": "command",

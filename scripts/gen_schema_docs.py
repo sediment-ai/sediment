@@ -725,6 +725,11 @@ FIELDS: dict[str, str] = {
         "The path the harness reported for both edit attempts. It may be "
         "absolute or repo-relative."
     ),
+    "EditObservation.edit_part_index": (
+        "Zero-based index into a MultiEdit `edits[]` list. Null for every "
+        "other edit tool. Same-file MultiEdit parts share `call_id` and "
+        "`file_path`, so the index completes the natural key."
+    ),
     "EditObservation.external_lines_added": (
         "Lines added by something other than the agent's edit tools between "
         "this edit and the next observation of the file. **External, not "

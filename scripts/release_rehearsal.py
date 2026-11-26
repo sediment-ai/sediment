@@ -2481,9 +2481,9 @@ def validate_installed_hooks(settings_path: Path, sediment: Path) -> list[str]:
     if not (
         len(pre_tool) == 1
         and isinstance(pre_tool[0], dict)
-        and pre_tool[0].get("matcher") == "Edit|Write"
+        and pre_tool[0].get("matcher") == "Edit|Write|MultiEdit"
     ):
-        errors.append("PreToolUse must use the Edit|Write matcher")
+        errors.append("PreToolUse must use the Edit|Write|MultiEdit matcher")
     return errors
 
 

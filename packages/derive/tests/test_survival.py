@@ -598,3 +598,153 @@ def test_simultaneous_edits_break_ties_on_call_id_not_input_order() -> None:
     a = _window("toolu-a", 0, 1)
     b = _window("toolu-b", 0, 2)
     assert external_lines_after([a, b]) == external_lines_after([b, a])
+
+
+def test_attach_edit_retention_averages_multiedit_parts() -> None:
+    decisions = [_decision(call_id="toolu-1", file_path="app.py")]
+    observations = [
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="A",
+            observed_file_text="A",
+            edit_part_index=0,
+        ),
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="gone",
+            observed_file_text="A",
+            edit_part_index=1,
+        ),
+    ]
+    filled = attach_edit_retention(
+        decisions,
+        observations,
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert filled[0].edit_retention_score == 0.5
+
+
+def test_attach_edit_retention_multiedit_order_independent() -> None:
+    decisions = [_decision(call_id="toolu-1", file_path="app.py")]
+    observations = [
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="A",
+            observed_file_text="A",
+            edit_part_index=1,
+        ),
+        _outcome(
+            call_id="toolu-1",
+            file_path="app.py",
+            applied_text="gone",
+            observed_file_text="A",
+            edit_part_index=0,
+        ),
+    ]
+    forward = attach_edit_retention(
+        decisions,
+        observations,
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    reverse = attach_edit_retention(
+        decisions,
+        list(reversed(observations)),
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert forward[0].edit_retention_score == reverse[0].edit_retention_score == 0.5
+
+
+def test_notebook_edit_does_not_hole_file_edit_windows() -> None:
+    outcomes = [
+        _window(
+            "toolu-write", 0, 1, 0, file_path="nb.ipynb", raw={"tool_name": "Write"}
+        ),
+        _window(
+            "toolu-nb",
+            1,
+            None,
+            file_path="nb.ipynb",
+            raw={"tool_name": "NotebookEdit"},
+        ),
+        _window("toolu-edit", 2, 2, 0, file_path="nb.ipynb", raw={"tool_name": "Edit"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-write", "nb.ipynb")] == (3, 0)
+    assert totals[_key("toolu-edit", "nb.ipynb")] == (2, 0)
+    assert _key("toolu-nb", "nb.ipynb") not in totals
+
+
+def test_multiedit_without_counts_does_not_hole_edit_windows() -> None:
+    outcomes = [
+        _window("toolu-edit", 0, 1, 0, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window(
+            "toolu-multi",
+            1,
+            None,
+            file_path="app.py",
+            raw={"tool_name": "MultiEdit"},
+            edit_part_index=0,
+        ),
+        _window(
+            "toolu-multi",
+            1,
+            None,
+            file_path="app.py",
+            raw={"tool_name": "MultiEdit"},
+            edit_part_index=1,
+        ),
+        _window("toolu-write", 2, 3, 0, file_path="app.py", raw={"tool_name": "Write"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-edit", "app.py")] == (4, 0)
+    assert totals[_key("toolu-write", "app.py")] == (3, 0)
+    assert _key("toolu-multi", "app.py") not in totals
+
+
+def test_projection_without_raw_uses_edit_part_index_for_multiedit() -> None:
+    from types import SimpleNamespace
+
+    outcomes = [
+        _window("toolu-edit", 0, 1, 0, file_path="app.py"),
+        SimpleNamespace(
+            org_id="acme",
+            agent_harness=AgentHarness.CLAUDE_CODE,
+            session_id="sess-1",
+            call_id="toolu-multi",
+            file_path="app.py",
+            edit_part_index=0,
+            external_lines_added=None,
+            external_lines_removed=None,
+            occurred_at=T0 + timedelta(minutes=1),
+        ),
+        _window("toolu-write", 2, 3, 0, file_path="app.py"),
+    ]
+    totals = external_lines_after(outcomes)  # type: ignore[arg-type]
+    assert totals[_key("toolu-edit", "app.py")] == (4, 0)
+    assert totals[_key("toolu-write", "app.py")] == (3, 0)
+
+
+def test_edit_without_counts_still_holes_prior_windows() -> None:
+    outcomes = [
+        _window("toolu-1", 0, 1, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window("toolu-2", 1, None, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window("toolu-3", 2, 4, file_path="app.py", raw={"tool_name": "Write"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-3", "app.py")] == (4, 0)
+    assert _key("toolu-2", "app.py") not in totals
+    assert _key("toolu-1", "app.py") not in totals
+
+
+def test_external_lines_after_collapses_multiedit_parts() -> None:
+    observations = [
+        _window("toolu-1", 1, 1, 2, file_path="app.py", edit_part_index=0),
+        _window("toolu-1", 1, 1, 2, file_path="app.py", edit_part_index=1),
+        _window("toolu-2", 2, 3, 0, file_path="app.py"),
+    ]
+    totals = external_lines_after(observations)
+    assert totals[_key("toolu-1", "app.py")] == (4, 2)
+    assert totals[_key("toolu-2", "app.py")] == (3, 0)

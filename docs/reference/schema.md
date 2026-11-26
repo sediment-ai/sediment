@@ -156,7 +156,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/facts/developer-decisio
 
 One applied edit and later file observation.
 
-Canonical schema: [JSON Schema, version 3](../../schemas/facts/edit-observation/v3.json). ID: `https://sediment.so/schemas/facts/edit-observation/v3.json`.
+Canonical schema: [JSON Schema, version 4](../../schemas/facts/edit-observation/v4.json). ID: `https://sediment.so/schemas/facts/edit-observation/v4.json`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -169,6 +169,7 @@ Canonical schema: [JSON Schema, version 3](../../schemas/facts/edit-observation/
 | `call_id` | string | The tool-use id of the edit this pair describes. |
 | `applied_text` | string | The replacement text that the edit tool applied. |
 | `observed_file_text` | string | The complete file text observed at session end. Empty string means the file was deleted. |
+| `edit_part_index` | integer or null | Zero-based index into a MultiEdit `edits[]` list. Null for every other edit tool. Same-file MultiEdit parts share `call_id` and `file_path`, so the index completes the natural key. |
 | `external_lines_added` | integer or null | Lines added by something other than the agent's edit tools between this edit and the next observation of the file. **External, not human** — a formatter, a linter, a watcher, or the agent's own shell all land here. Null means no window covered the call, which is not the same claim as 0. |
 | `external_lines_removed` | integer or null | Lines removed by something other than the agent's edit tools over the same window. Same caveats as `external_lines_added`. |
 | `occurred_at` | string (RFC 3339) | When the edit was observed, stamped client-side. |

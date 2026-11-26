@@ -2682,7 +2682,7 @@ def _install_codex_transcript_hook() -> str:
 
 # Only the edit tools: the snapshot hook reads the file each call is about to
 # write, so Bash and the read-only tools have nothing for it to do.
-CLAUDE_EDIT_MATCHER = "Edit|Write"
+CLAUDE_EDIT_MATCHER = "Edit|Write|MultiEdit"
 
 
 def _install_snapshot_hook() -> str:

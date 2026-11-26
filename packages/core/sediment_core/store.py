@@ -621,6 +621,7 @@ class EditObservationProjection:
     call_id: str
     applied_text: str
     observed_file_text: str
+    edit_part_index: int | None
     external_lines_added: int | None
     external_lines_removed: int | None
     occurred_at: datetime

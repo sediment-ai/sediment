@@ -215,9 +215,79 @@ def derive_fate_result(
     return result
 
 
+def _timeline_slot_key(observation: EditObservation) -> tuple[str, str]:
+    """One external-delta window per tool call per file.
+
+    MultiEdit parts share ``call_id`` and ``file_path`` and one PreToolUse
+    window; collapsing them prevents the same counts from tiling the file
+    timeline more than once.
+    """
+    return (observation.call_id, observation.file_path)
+
+
+def _observation_tool_name(observation: EditObservation) -> str | None:
+    raw = getattr(observation, "raw", None)
+    if isinstance(raw, dict):
+        name = raw.get("tool_name")
+        return name if isinstance(name, str) else None
+    name = getattr(observation, "tool_name", None)
+    return name if isinstance(name, str) else None
+
+
+def _participates_in_external_timeline(observation: EditObservation) -> bool:
+    """NotebookEdit, and MultiEdit without counts, never open or close a window."""
+    tool_name = _observation_tool_name(observation)
+    missing_counts = (
+        observation.external_lines_added is None
+        or observation.external_lines_removed is None
+    )
+    if tool_name == "NotebookEdit":
+        return False
+    if tool_name == "MultiEdit" and missing_counts:
+        return False
+    if (
+        tool_name is None
+        and getattr(observation, "edit_part_index", None) is not None
+        and missing_counts
+    ):
+        return False
+    return True
+
+
+def _file_timeline(observations: list[EditObservation]) -> list[EditObservation]:
+    """Keep-first representative per ``(call_id, file_path)``, preferring counts."""
+    representatives: dict[tuple[str, str], EditObservation] = {}
+    for observation in observations:
+        if not _participates_in_external_timeline(observation):
+            continue
+        key = _timeline_slot_key(observation)
+        existing = representatives.get(key)
+        if existing is None:
+            representatives[key] = observation
+            continue
+        existing_covered = (
+            existing.external_lines_added is not None
+            and existing.external_lines_removed is not None
+        )
+        incoming_covered = (
+            observation.external_lines_added is not None
+            and observation.external_lines_removed is not None
+        )
+        if not existing_covered and incoming_covered:
+            representatives[key] = observation
+    return sorted(
+        representatives.values(),
+        key=lambda o: (
+            o.occurred_at,
+            o.call_id,
+            -1 if o.edit_part_index is None else o.edit_part_index,
+        ),
+    )
+
+
 def external_lines_after(
     observations: list[EditObservation],
-) -> dict[tuple[str, str, str, str], tuple[int, int]]:
+) -> dict[tuple[str, str, str, str, str], tuple[int, int]]:
     """Lines changed by something other than the agent, per edit, from that
     edit to session end.
 
@@ -226,7 +296,11 @@ def external_lines_after(
     *own* window, which closes at the agent's next edit of that file. A pair's
     ``edit_retention_score``, though, is measured against the file at session end,
     so what bears on it is every window from that edit onward: this sums
-    them per file.
+    them per file. MultiEdit parts share one window under the same
+    ``(call_id, file_path)`` and collapse to one timeline slot before the sum.
+    NotebookEdit observations, and MultiEdit observations that shipped without
+    counts, are omitted from the timeline so they never hole Edit/Write windows
+    on the same path.
 
     A drop with lines here did not come from the agent revising itself —
     that is the disambiguation the edit retention score cannot make alone. It does
@@ -240,15 +314,15 @@ def external_lines_after(
     so it is omitted instead — absent, never a guessed sum (AGENTS.md).
 
     Pure and order-independent: observations are ordered by
-    ``(occurred_at, call_id)``, never by ingest or read order (ADR 0001,
-    non-negotiable rule 2).
+    ``(occurred_at, call_id, edit_part_index)``, never by ingest or read order
+    (ADR 0001, non-negotiable rule 2).
     """
     by_file: dict[tuple[str, str, str, str], list[EditObservation]] = defaultdict(list)
     for o in observations:
         by_file[(o.org_id, o.agent_harness, o.session_id, o.file_path)].append(o)
-    out: dict[tuple[str, str, str, str], tuple[int, int]] = {}
+    out: dict[tuple[str, str, str, str, str], tuple[int, int]] = {}
     for group in by_file.values():
-        ordered = sorted(group, key=lambda o: (o.occurred_at, o.call_id))
+        ordered = _file_timeline(group)
         added = removed = 0
         covered = True
         # Walk the tail backwards: each edit's total is its own window plus
@@ -295,24 +369,22 @@ def _edit_paths_match(left: str, right: str) -> bool:
     return a.endswith("/" + b) or b.endswith("/" + a)
 
 
-def _observation_for_decision(
+def _observations_for_decision(
     candidates: list[EditObservation],
     decision_path: str,
     sibling_paths: frozenset[str],
-) -> EditObservation | None:
-    """Select the observation that joins a decision under one call_id.
+) -> list[EditObservation]:
+    """All observations that join a decision under one call_id and path.
 
-    Prefer slash-normalized ``file_path`` equality. Trailing-path matches cover
-    Codex absolute observations vs relative V4A decisions, but only when this
-    decision path is the most specific sibling that matches the observation —
-    otherwise a basename-only delete (``util.py``) would inherit the score of
-    ``src/util.py``. Ambiguity drops rather than poisoning (ADR 0004).
+    Path selection prefers slash-normalized equality, then the most-specific
+    trailing-path match among sibling decision paths. MultiEdit parts that
+    share the selected path all return so their scores can average.
     """
     if not candidates:
-        return None
+        return []
     exact = [o for o in candidates if _edit_paths_equal(o.file_path, decision_path)]
     if exact:
-        return exact[0]
+        return exact
 
     decision_key = _edit_path_key(decision_path)
 
@@ -328,10 +400,7 @@ def _observation_for_decision(
                 return False
         return True
 
-    compatible = [o for o in candidates if most_specific(o.file_path)]
-    if len(compatible) == 1:
-        return compatible[0]
-    return None
+    return [o for o in candidates if most_specific(o.file_path)]
 
 
 def attach_edit_retention(
@@ -347,18 +416,22 @@ def attach_edit_retention(
     paths). A multi-file Codex patch shares one ``call_id`` across per-file
     decisions and observations; path matching selects the member and refuses
     to attach a lone observation to an unmatched sibling decision (for
-    example a same-basename delete). A decision is only filled when its score
-    is ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
-    matching pair exists. ``scorer(applied_text, observed_file_text)`` must
-    return a float; the result is clamped to ``[0.0, 1.0]``, and a non-finite
-    score skips the fill with a trail rather than poisoning the fact model's
-    bounds.
+    example a same-basename delete). A MultiEdit shares one ``call_id`` and
+    ``file_path`` across ``edits[]`` parts distinguished by
+    ``edit_part_index``; the decision score is the arithmetic mean of finite
+    part scores. A decision is only filled when its score is ``None`` (a
+    vendor-supplied rate, i.e. Copilot's, always stands) and a matching pair
+    exists. ``scorer(applied_text, observed_file_text)`` must return a float;
+    each part score is clamped to ``[0.0, 1.0]``, and a non-finite score
+    skips that part with a trail rather than poisoning the fact model's
+    bounds. When every part is non-finite the decision stays unfilled.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
-    a whole file for Write, but only the ``new_string`` *snippet* for Edit —
-    while ``observed_file_text`` is always the whole file at session end. The
-    scorer must measure containment (how much applied text remains in the
-    observed file),
+    a whole file for Write, but only the ``new_string`` *snippet* for Edit or
+    one MultiEdit part, or a NotebookEdit cell's ``new_source`` — while
+    ``observed_file_text`` is the whole file at session end (or the
+    addressed cell source for NotebookEdit). The scorer must measure
+    containment (how much applied text remains in the observed file),
     never symmetric distance: a normalized edit distance scores a perfectly
     surviving 300-byte Edit inside a 30 KB file at ~0.01. Cross-check any
     candidate metric against snippet-vs-whole-file pairs before plugging it
@@ -368,11 +441,19 @@ def attach_edit_retention(
     the filled copies are derived state for the caller to consume, ADR 0001).
     """
     by_call: dict[tuple[str, str, str, str], list[EditObservation]] = defaultdict(list)
-    seen: set[tuple[str, str, str, str, str]] = set()
+    seen: set[tuple[str, str, str, str, str, int]] = set()
     for o in observations:
-        # Keep-first on a duplicate (call_id, file_path), mirroring the store's
+        # Keep-first on a duplicate natural key, mirroring the store's
         # first-write-wins posture — never last-wins list append luck.
-        key = (o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path)
+        part = -1 if o.edit_part_index is None else o.edit_part_index
+        key = (
+            o.org_id,
+            o.agent_harness,
+            o.session_id,
+            o.call_id,
+            o.file_path,
+            part,
+        )
         if key in seen:
             continue
         seen.add(key)
@@ -393,32 +474,35 @@ def attach_edit_retention(
     out: list[DeveloperDecision] = []
     for d in decisions:
         call_key = (d.org_id, d.agent_harness, d.session_id, d.call_id)
-        observation = (
-            _observation_for_decision(
+        matched = (
+            _observations_for_decision(
                 by_call.get(call_key, []),
                 d.file_path,
                 sibling_paths.get(call_key, frozenset()),
             )
             if d.call_id and d.edit_retention_score is None
-            else None
+            else []
         )
-        if observation is None:
+        if not matched:
             out.append(d)
             continue
-        score = scorer(
-            observation.applied_text,
-            observation.observed_file_text,
-        )
-        if not isinstance(score, (int, float)) or not math.isfinite(score):
-            logger.warning(
-                "edit_retention_scorer_non_finite",
-                extra={"org_id": d.org_id, "call_id": d.call_id},
+        scores: list[float] = []
+        for observation in matched:
+            score = scorer(
+                observation.applied_text,
+                observation.observed_file_text,
             )
+            if not isinstance(score, (int, float)) or not math.isfinite(score):
+                logger.warning(
+                    "edit_retention_scorer_non_finite",
+                    extra={"org_id": d.org_id, "call_id": d.call_id},
+                )
+                continue
+            scores.append(max(0.0, min(1.0, float(score))))
+        if not scores:
             out.append(d)
             continue
         out.append(
-            d.model_copy(
-                update={"edit_retention_score": max(0.0, min(1.0, float(score)))}
-            )
+            d.model_copy(update={"edit_retention_score": sum(scores) / len(scores)})
         )
     return out

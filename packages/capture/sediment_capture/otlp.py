@@ -1124,6 +1124,7 @@ def parse_otlp_edit_observations(
                     call_id=call_id,
                     applied_text=applied_text,
                     observed_file_text=observed_file_text,
+                    edit_part_index=_count_or_none(attrs.get("edit_part_index")),
                     external_lines_added=_count_or_none(
                         attrs.get("external_lines_added")
                     ),
