@@ -237,7 +237,6 @@ def generate_compute_report_result(
                     org_id,
                     session_ids=cohort_sessions,
                     captured_through=scope.as_of,
-                    limit=scope.max_inference_calls,
                 )
                 if cohort_sessions
                 else []

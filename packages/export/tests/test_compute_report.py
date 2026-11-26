@@ -408,3 +408,53 @@ def test_generated_report_scope_reloads_pre_window_allocations(
         "resized-start",
         "resized-final",
     ]
+
+
+def test_generated_report_scope_reload_is_not_capped_by_cohort_budget(
+    postgres_store,
+) -> None:
+    as_of = T0 + timedelta(days=5)
+    start = as_of - timedelta(days=2)
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="budget-start",
+            org_id="acme",
+            session_id="budget",
+            allocation_source=ComputeAllocationSource.DEFAULT,
+            cpu_millicores=1000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=2),
+            captured_at=start - timedelta(days=1),
+        )
+    )
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="budget-final",
+            org_id="acme",
+            session_id="budget",
+            allocation_source=RANDOMIZED,
+            cpu_millicores=8000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=1),
+            captured_at=start + timedelta(hours=1),
+        )
+    )
+    _, calls = _session("budget", source=RANDOMIZED, cpu=8000, work_s=20)
+    for call in calls:
+        assert postgres_store.store_inference_call(call)
+
+    result = generate_compute_report_result(
+        postgres_store,
+        "acme",
+        scope=OperationalReportScope.trailing_days(
+            2, as_of=as_of, max_inference_calls=1
+        ),
+        bootstrap_iterations=50,
+    )
+
+    [timing] = result.timings
+    assert timing.allocation_changed is True
+    assert [item.allocation_id for item in timing.allocations] == [
+        "budget-start",
+        "budget-final",
+    ]
