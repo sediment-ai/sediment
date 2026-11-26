@@ -42,8 +42,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
   because the server reads envelope bodies before it authenticates them. The
   webhook door keeps its streaming `bytearray` reader and ignores `Content-Length`.
 - **422s never echo the input.** `main.py`'s `RequestValidationError` handler
-  returns `type`, `loc`, and `msg`. The default handler 500'd instead, because
-  it recursed over a nested body's `input`.
+  returns `type`, `loc`, and `msg` (the default 500'd on nested `input`).
 - **Verify the signature before examining the event type.** Otherwise GitHub's
   setup ping green-lights a misconfigured webhook. A missing bearer returns
   401, never 422. The gateway envelope sets `extra="forbid"`, so it rejects a
@@ -77,6 +76,8 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - Safety posture: bulk `quarantine-inference-calls` **dry-runs by default** and
   writes only with `--apply`. It refuses a filterless run unless you pass
   `--all`. Per-Fact verbs act immediately. Every verb requires `--reason`.
+  `quarantine-log` defaults to `--tail 20` via store-side newest-revision `LIMIT`
+  (`--all` for full history); footer prints count and revision.
 - Output vocabulary is normative. Say "quarantined" and "released", never
   "deleted". Advertise reversibility, and print `quarantine_revision` where it is
   relevant. On an expected validation, filesystem, or database error, write
@@ -161,8 +162,7 @@ Values drift, so the cited file wins. [API Conventions](../../AGENTS.md#api-conv
 - `second_review.py` runs the cross-model closeout pass from
   `docs/agents/review.md` in an empty temporary workspace. It calls the codex
   CLI and spends codex credits, so do not run it unattended. Missing or malformed final review results exit 2 even when the CLI exits zero; a completed pass can still contain findings.
-- `glossary_gap.py` flags classes with no CONTEXT.md entry. Advisory.
-- `create_deploy_env.py` creates private deployment credentials without workspace dependencies. Repeat `--ingest-client NAME` to generate distinct client tokens in the initial map; existing files and duplicate or reserved names are refused.
+- `glossary_gap.py` flags classes with no CONTEXT.md entry. Advisory. `create_deploy_env.py` creates private deployment credentials without workspace dependencies. Repeat `--ingest-client NAME` for distinct client tokens; refuse existing files and duplicate or reserved names.
 
 ## Deployment glue
 

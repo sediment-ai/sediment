@@ -240,7 +240,9 @@ redaction catches common credential shapes, not every secret.
    ```
 
 2. Review the selection. Then run the same command with `--apply`.
-3. To review the audit trail, run `sediment quarantine-log`.
+3. To review the audit trail, run `sediment quarantine-log`. It shows the newest
+   20 rows by default. Pass `--tail N` for a different window, or `--all` for
+   the full history.
 
 To quarantine or release one Fact of any kind, use `sediment quarantine` and
 `sediment release`. See the [CLI reference](../reference/cli.md#sediment-quarantine).

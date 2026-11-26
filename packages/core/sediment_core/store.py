@@ -1999,7 +1999,14 @@ class FactStore:
                 insert(fact_quarantine).values(**record.model_dump(mode="python"))
             )
 
-    def read_quarantine_log(self, org_id: str) -> list[QuarantineRecord]:
+    def read_quarantine_log(
+        self,
+        org_id: str,
+        *,
+        limit: int | None = None,
+    ) -> list[QuarantineRecord]:
+        if limit is not None and (type(limit) is not int or limit <= 0):
+            raise ValueError("quarantine log limit must be positive")
         statement = (
             select(
                 fact_quarantine.c.quarantine_id,
@@ -2011,11 +2018,29 @@ class FactStore:
                 fact_quarantine.c.recorded_at,
             )
             .where(fact_quarantine.c.org_id == org_id)
-            .order_by(fact_quarantine.c.quarantine_revision)
+            .order_by(
+                fact_quarantine.c.quarantine_revision.desc()
+                if limit is not None
+                else fact_quarantine.c.quarantine_revision
+            )
         )
+        if limit is not None:
+            statement = statement.limit(limit)
         with self._engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
-        return [QuarantineRecord.model_validate(row) for row in rows]
+        records = [QuarantineRecord.model_validate(row) for row in rows]
+        if limit is not None:
+            records.reverse()
+        return records
+
+    def count_quarantine_log(self, org_id: str) -> int:
+        statement = (
+            select(func.count())
+            .select_from(fact_quarantine)
+            .where(fact_quarantine.c.org_id == org_id)
+        )
+        with self._engine.connect() as connection:
+            return int(connection.execute(statement).scalar_one())
 
     def quarantine_revision(self, org_id: str) -> int:
         with self._engine.connect() as connection:

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Operator CLI
+
+- `sediment quarantine-log` bounds its default `--tail 20` (and any explicit
+  `--tail`) in PostgreSQL with `ORDER BY quarantine_revision DESC LIMIT`,
+  instead of reading the full quarantine history and slicing in the CLI.
+  `--all` still returns the complete log. `FactStore.read_quarantine_log`
+  accepts an optional `limit`; omit it for the previous full ascending read.
+  `FactStore.count_quarantine_log` returns the organization row count for the
+  CLI footer without materializing the log.
+
 ### Security
 
 - Review SQLAlchemy 2.1.9 and FastAPI 0.163.2 in the maintenance catalog after

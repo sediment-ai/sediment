@@ -84,9 +84,11 @@ cap. Read both from the same snapshot before cohort or repository selection. Com
   `recorded_at` remains audit metadata and never decides visibility.
 - `quarantine_revision()` returns the greatest identity for the organization,
   or `0` when clean. Derivations fold that monotone revision into Provenance.
+  `read_quarantine_log` omits `limit` for full ascending history; a positive
+  `limit` selects newest rows with SQL `DESC LIMIT` (returns ascending).
+  `count_quarantine_log` counts without materializing; no `OFFSET`.
 - Reads and `count_facts` exclude quarantined Facts **by default**. Pass
-  `include_quarantined=True` from audit tooling only, never from a
-  Derivation.
+  `include_quarantined=True` from audit tooling only, never from a Derivation.
 - `quarantine_inference_calls_where` filters inference-call Facts. It rejects
   naive datetimes and validates `reason`
   before dry-run, and rolls back failed batches. Quarantining a nonexistent
@@ -128,12 +130,11 @@ cap. Read both from the same snapshot before cohort or repository selection. Com
   envelope requires `run_id`, not `run_url`. Webhook parsers degrade rather
   than raise.
 - Enum members with no adapter (`PORTKEY`, `HELICONE`, `UNKNOWN`) stay
-  envelope-valid **on purpose**, so the route returns a clean 400 rather
-  than a 422. Removing them changes the ingest contract.
-- `file_path=""` on a decision is a load-bearing sentinel — the Claude Code
-  reject path, and the Codex path-less patch — never missing data. The
-  read-time collapse lives in `sediment_derive/attachment.py`.
-- `occurred_at` is required on decisions and isn't backfilled from server ingest
-  time. Native Cursor records hook receipt time; other decision keys include event time. The schema enforces
-  `edit_retention_score` bounds, so NaN and inf fail. Pairing the score with
-  its observation delay is the translator's job.
+  envelope-valid **on purpose**, so the route returns a clean 400 rather than a
+  422. Removing them changes the ingest contract. `file_path=""` on a decision
+  is a load-bearing sentinel — Claude Code reject and Codex path-less patch —
+  never missing data; collapse lives in `sediment_derive/attachment.py`.
+  `occurred_at` is required on decisions and isn't backfilled from server ingest
+  time. Native Cursor records hook receipt time; other decision keys include
+  event time. The schema enforces `edit_retention_score` bounds, so NaN and inf
+  fail. Pairing the score with its observation delay is the translator's job.
