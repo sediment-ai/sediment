@@ -185,6 +185,7 @@ def derive_fate_result(
                 observation.agent_harness,
                 observation.session_id,
                 observation.call_id,
+                observation.file_path,
             )
         )
         result.fates.append(
@@ -221,8 +222,8 @@ def external_lines_after(
     edit to session end.
 
     Keyed like :func:`attach_edit_retention` — ``(org_id, agent_harness, session_id,
-    call_id)``. Each :class:`EditObservation` carries the counts for its *own*
-    window, which closes at the agent's next edit of that file. A pair's
+    call_id, file_path)``. Each :class:`EditObservation` carries the counts for its
+    *own* window, which closes at the agent's next edit of that file. A pair's
     ``edit_retention_score``, though, is measured against the file at session end,
     so what bears on it is every window from that edit onward: this sums
     them per file.
@@ -260,8 +261,77 @@ def external_lines_after(
                 continue
             added += o.external_lines_added
             removed += o.external_lines_removed
-            out[(o.org_id, o.agent_harness, o.session_id, o.call_id)] = (added, removed)
+            out[(o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path)] = (
+                added,
+                removed,
+            )
     return out
+
+
+def _edit_path_key(path: str) -> str:
+    """Slash-normalize a path so Windows and POSIX spellings compare equal."""
+    return path.replace("\\", "/")
+
+
+def _edit_paths_equal(left: str, right: str) -> bool:
+    """True when paths are equal after slash normalization."""
+    return bool(left) and bool(right) and _edit_path_key(left) == _edit_path_key(right)
+
+
+def _edit_paths_match(left: str, right: str) -> bool:
+    """True when two edit paths name the same file under absolute/relative forms.
+
+    Codex decisions carry the relative V4A marker path; SessionEnd observations
+    often resolve that path against the Session cwd. Slash-normalized equality
+    covers Claude Code, pi, and Windows separators; a trailing path-component
+    match covers Codex absolute vs relative spellings.
+    """
+    if not left or not right:
+        return False
+    a = _edit_path_key(left)
+    b = _edit_path_key(right)
+    if a == b:
+        return True
+    return a.endswith("/" + b) or b.endswith("/" + a)
+
+
+def _observation_for_decision(
+    candidates: list[EditObservation],
+    decision_path: str,
+    sibling_paths: frozenset[str],
+) -> EditObservation | None:
+    """Select the observation that joins a decision under one call_id.
+
+    Prefer slash-normalized ``file_path`` equality. Trailing-path matches cover
+    Codex absolute observations vs relative V4A decisions, but only when this
+    decision path is the most specific sibling that matches the observation —
+    otherwise a basename-only delete (``util.py``) would inherit the score of
+    ``src/util.py``. Ambiguity drops rather than poisoning (ADR 0004).
+    """
+    if not candidates:
+        return None
+    exact = [o for o in candidates if _edit_paths_equal(o.file_path, decision_path)]
+    if exact:
+        return exact[0]
+
+    decision_key = _edit_path_key(decision_path)
+
+    def most_specific(obs_path: str) -> bool:
+        if not _edit_paths_match(obs_path, decision_path):
+            return False
+        for sibling in sibling_paths:
+            if _edit_paths_equal(sibling, decision_path):
+                continue
+            if _edit_paths_match(obs_path, sibling) and len(
+                _edit_path_key(sibling)
+            ) > len(decision_key):
+                return False
+        return True
+
+    compatible = [o for o in candidates if most_specific(o.file_path)]
+    if len(compatible) == 1:
+        return compatible[0]
+    return None
 
 
 def attach_edit_retention(
@@ -271,13 +341,18 @@ def attach_edit_retention(
 ) -> list[DeveloperDecision]:
     """Fill ``edit_retention_score`` from matching edit observations.
 
-    Joins on ``(org_id, agent_harness, session_id, call_id)`` — the observation's dedup
-    identity, matching the decision's ``call_id`` (Claude Code's
-    ``tool_use_id``). A decision is only filled when its score is
-    ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
-    matching pair exists. ``scorer(applied_text, observed_file_text)`` must return a float;
-    the result is clamped to ``[0.0, 1.0]``, and a non-finite score skips the
-    fill with a trail rather than poisoning the fact model's bounds.
+    Joins on ``(org_id, agent_harness, session_id, call_id)``, then selects
+    among same-call observations by exact or most-specific trailing-path
+    ``file_path`` equality (relative V4A decisions vs absolute SessionEnd
+    paths). A multi-file Codex patch shares one ``call_id`` across per-file
+    decisions and observations; path matching selects the member and refuses
+    to attach a lone observation to an unmatched sibling decision (for
+    example a same-basename delete). A decision is only filled when its score
+    is ``None`` (a vendor-supplied rate, i.e. Copilot's, always stands) and a
+    matching pair exists. ``scorer(applied_text, observed_file_text)`` must
+    return a float; the result is clamped to ``[0.0, 1.0]``, and a non-finite
+    score skips the fill with a trail rather than poisoning the fact model's
+    bounds.
 
     Scorer contract (normative): ``applied_text`` is the tool's written text —
     a whole file for Write, but only the ``new_string`` *snippet* for Edit —
@@ -292,15 +367,38 @@ def attach_edit_retention(
     Returns a new list — input models are never mutated (facts are immutable;
     the filled copies are derived state for the caller to consume, ADR 0001).
     """
-    by_key: dict[tuple[str, str, str, str], EditObservation] = {}
+    by_call: dict[tuple[str, str, str, str], list[EditObservation]] = defaultdict(list)
+    seen: set[tuple[str, str, str, str, str]] = set()
     for o in observations:
-        # Keep-first on a duplicate key, mirroring the store's
-        # first-write-wins posture — never last-wins dict insertion luck.
-        by_key.setdefault((o.org_id, o.agent_harness, o.session_id, o.call_id), o)
+        # Keep-first on a duplicate (call_id, file_path), mirroring the store's
+        # first-write-wins posture — never last-wins list append luck.
+        key = (o.org_id, o.agent_harness, o.session_id, o.call_id, o.file_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        by_call[(o.org_id, o.agent_harness, o.session_id, o.call_id)].append(o)
+    sibling_paths: dict[tuple[str, str, str, str], frozenset[str]] = {
+        call_key: frozenset(
+            d.file_path
+            for d in decisions
+            if d.call_id
+            and (d.org_id, d.agent_harness, d.session_id, d.call_id) == call_key
+        )
+        for call_key in {
+            (d.org_id, d.agent_harness, d.session_id, d.call_id)
+            for d in decisions
+            if d.call_id
+        }
+    }
     out: list[DeveloperDecision] = []
     for d in decisions:
+        call_key = (d.org_id, d.agent_harness, d.session_id, d.call_id)
         observation = (
-            by_key.get((d.org_id, d.agent_harness, d.session_id, d.call_id))
+            _observation_for_decision(
+                by_call.get(call_key, []),
+                d.file_path,
+                sibling_paths.get(call_key, frozenset()),
+            )
             if d.call_id and d.edit_retention_score is None
             else None
         )

@@ -162,6 +162,9 @@ def test_postgres_metadata_preserves_natural_key_unique_indexes() -> None:
     assert "coalesce(cpu_millicores, 0)" in allocation_sql
     assert "coalesce(memory_bytes, 0)" in allocation_sql
 
+    edit_sql = _postgres_sql(CreateIndex(indexes["uq_edit_observations_call"]))
+    assert "file_path" in edit_sql
+
 
 def test_postgres_metadata_names_domain_check_constraints() -> None:
     constraint_names = {

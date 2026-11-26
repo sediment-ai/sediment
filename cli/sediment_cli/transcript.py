@@ -738,45 +738,46 @@ def _codex_added_text(unified_diff: str) -> str | None:
     )
 
 
-def _codex_shell_patch(command: str) -> tuple[str, str] | None:
-    """Read one apply_patch heredoc; never execute or infer shell context."""
-    lines = command.lstrip().split("\n")
-    while lines[-1:] == [""]:
-        lines.pop()
-    if not lines:
+def _codex_shell_file_sections(
+    patch: list[str],
+) -> list[tuple[str, str, list[str]]] | None:
+    """Split a V4A body into ``(kind, path, body_lines)`` per file marker."""
+    sections: list[tuple[str, str, list[str]]] = []
+    kind = path = None
+    body: list[str] = []
+    for line in patch[1:-1]:
+        file_header = re.fullmatch(r"\*\*\* (Add|Update|Delete) File: (.+)", line)
+        if file_header is not None:
+            if kind is not None:
+                sections.append((kind, path, body))
+            kind, path = file_header.groups()
+            body = []
+            continue
+        if kind is None:
+            return None
+        body.append(line)
+    if kind is None:
         return None
-    header = re.fullmatch(
-        r"apply_patch <<\s*(?:'([^']+)'|\"([^\"]+)\"|(\w+))", lines[0]
-    )
-    if header is None:
-        if "apply_patch" in command:
-            _trail("execution_directory_unknown: unsupported shell command")
-        return None
-    delimiter = next(value for value in header.groups() if value is not None)
-    if lines[-1] != delimiter:
-        _trail("execution_directory_unknown: command extends beyond patch heredoc")
-        return None
-    patch = lines[1:-1]
-    if header[3] is not None and any(char in "\n".join(patch) for char in "$`\\"):
-        _trail("malformed_patch: unquoted heredoc can change authored text")
-        return None
-    if len(patch) < 3 or patch[0] != "*** Begin Patch" or patch[-1] != "*** End Patch":
-        _trail("malformed_patch: incomplete patch envelope")
-        return None
-    file_headers = [
-        line for line in patch if re.match(r"\*\*\* (Add|Update|Delete) File:", line)
-    ]
-    file_header = re.fullmatch(r"\*\*\* (Add|Update|Delete) File: (.+)", patch[1])
-    if len(file_headers) != 1 or file_header is None:
-        _trail("unsupported_patch_kind: expected one file")
-        return None
-    kind, path = file_header.groups()
+    sections.append((kind, path, body))
+    return sections
+
+
+def _codex_shell_file_text(
+    kind: str, path: str, body: list[str]
+) -> tuple[str, str, str] | None:
+    """Return ``(identity_path, read_path, applied_text)`` for one V4A section.
+
+    ``identity_path`` is the Add/Update marker path (what Developer decisions
+    carry). ``read_path`` is where the file lands after the patch — the Move
+    destination when present, otherwise the marker path.
+    """
     if kind == "Delete":
         _trail("unsupported_patch_kind: deletion has no authored proposal")
         return None
-    body = patch[2:-1]
+    identity_path = path
+    read_path = path
     if kind == "Update" and body and body[0].startswith("*** Move to: "):
-        path = body.pop(0).removeprefix("*** Move to: ")
+        read_path = body.pop(0).removeprefix("*** Move to: ")
     additions = []
     # The first Update hunk may start with change lines without an @@ header.
     in_hunk = kind == "Add" or bool(body)
@@ -800,10 +801,47 @@ def _codex_shell_patch(command: str) -> tuple[str, str] | None:
         else:
             _trail("malformed_patch: unsupported patch body")
             return None
-    if not in_hunk or not path:
+    if not in_hunk or not identity_path or not read_path:
         _trail("malformed_patch: missing patch body or path")
         return None
-    return path, "\n".join(additions)
+    return identity_path, read_path, "\n".join(additions)
+
+
+def _codex_shell_patch(command: str) -> list[tuple[str, str, str]] | None:
+    """Read one apply_patch heredoc into ``(identity, read, applied_text)`` triples."""
+    lines = command.lstrip().split("\n")
+    while lines[-1:] == [""]:
+        lines.pop()
+    if not lines:
+        return None
+    header = re.fullmatch(
+        r"apply_patch <<\s*(?:'([^']+)'|\"([^\"]+)\"|(\w+))", lines[0]
+    )
+    if header is None:
+        if "apply_patch" in command:
+            _trail("execution_directory_unknown: unsupported shell command")
+        return None
+    delimiter = next(value for value in header.groups() if value is not None)
+    if lines[-1] != delimiter:
+        _trail("execution_directory_unknown: command extends beyond patch heredoc")
+        return None
+    patch = lines[1:-1]
+    if header[3] is not None and any(char in "\n".join(patch) for char in "$`\\"):
+        _trail("malformed_patch: unquoted heredoc can change authored text")
+        return None
+    if len(patch) < 3 or patch[0] != "*** Begin Patch" or patch[-1] != "*** End Patch":
+        _trail("malformed_patch: incomplete patch envelope")
+        return None
+    sections = _codex_shell_file_sections(patch)
+    if sections is None:
+        _trail("malformed_patch: missing file markers")
+        return None
+    files: list[tuple[str, str, str]] = []
+    for kind, path, body in sections:
+        parsed = _codex_shell_file_text(kind, path, list(body))
+        if parsed is not None:
+            files.append(parsed)
+    return files
 
 
 def _codex_status_reason(outputs: list[object]) -> str | None:
@@ -868,11 +906,58 @@ def _codex_edit_path(
         return None
 
 
-def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
-    """Extract successful single-file native changes and supported shell patches.
+def _codex_native_file_edits(call_id: str, changes: dict) -> list[tuple[str, str, str]]:
+    """Return ``(identity_path, read_path, applied_text)`` per authored change.
 
-    # ponytail: multi-file calls need a Fact identity that can join each file;
-    # skip them until that contract exists, without inventing child call ids.
+    ``identity_path`` is the change-map key (the V4A Add/Update source path
+    Developer decisions carry). ``read_path`` is the Move destination when
+    present, otherwise the same key — used only to read session-end content.
+    """
+    files: list[tuple[str, str, str]] = []
+    for file_path, change in changes.items():
+        if (
+            not isinstance(file_path, str)
+            or not file_path
+            or not isinstance(change, dict)
+        ):
+            _trail(f"malformed_patch: patch {call_id}")
+            continue
+        kind = change.get("type")
+        identity_path = file_path
+        read_path = file_path
+        if kind == "add":
+            applied_text = change.get("content")
+        elif kind == "update":
+            move_path = change.get("move_path")
+            if move_path is not None:
+                if not isinstance(move_path, str) or not move_path:
+                    _trail(f"malformed_patch: patch {call_id} move path")
+                    continue
+                read_path = move_path
+            diff = change.get("unified_diff")
+            applied_text = _codex_added_text(diff) if isinstance(diff, str) else None
+        elif kind == "delete":
+            _trail(
+                f"unsupported_patch_kind: deletion has no authored proposal ({call_id})"
+            )
+            continue
+        else:
+            _trail(f"unsupported_patch_kind: patch {call_id}")
+            continue
+        if not isinstance(applied_text, str):
+            _trail(f"malformed_patch: patch {call_id}")
+            continue
+        files.append((identity_path, read_path, applied_text))
+    return files
+
+
+def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
+    """Extract successful native changes and supported shell patches.
+
+    One parent tool-call id can touch several files. Each authored file becomes
+    its own edit row under that ``call_id``; ``file_path`` completes the
+    EditObservation natural key so the pair joins its per-file Developer
+    decision without inventing child call ids.
     """
     material = list(entries)
     cwd: object = None
@@ -956,6 +1041,7 @@ def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
         if not isinstance(call_id, str) or not call_id or not nanos:
             continue
         arguments = None
+        file_edits: list[tuple[str, str, str]] = []
         if (
             entry.get("type") == "response_item"
             and payload.get("type") == "function_call"
@@ -979,7 +1065,7 @@ def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
             if reason:
                 _trail(f"{reason}: patch {call_id}")
                 continue
-            file_path, applied_text = patch
+            file_edits = patch
             tool_name = "exec_command"
         elif entry.get("type") == "event_msg" and (
             completed_change
@@ -992,49 +1078,23 @@ def extract_edits_codex(entries, session_id: str | None = None) -> list[dict]:
             if not isinstance(changes, dict) or not changes:
                 _trail(f"malformed_patch: patch {call_id} changes are absent")
                 continue
-            if len(changes) != 1:
-                _trail(
-                    f"unsupported_patch_kind: multi-file patch {call_id} cannot join one EditObservation"
-                )
-                continue
-            file_path, change = next(iter(changes.items()))
-            if (
-                not isinstance(file_path, str)
-                or not file_path
-                or not isinstance(change, dict)
-            ):
-                _trail(f"malformed_patch: patch {call_id}")
-                continue
-            kind = change.get("type")
-            if kind == "add":
-                applied_text = change.get("content")
-            elif kind == "update":
-                move_path = change.get("move_path")
-                if move_path is not None:
-                    if not isinstance(move_path, str) or not move_path:
-                        _trail(f"malformed_patch: patch {call_id} move path")
-                        continue
-                    file_path = move_path
-                diff = change.get("unified_diff")
-                applied_text = (
-                    _codex_added_text(diff) if isinstance(diff, str) else None
-                )
-            else:
-                _trail(f"unsupported_patch_kind: patch {call_id}")
-                continue
-            if not isinstance(applied_text, str):
-                _trail(f"malformed_patch: patch {call_id}")
-                continue
+            file_edits = _codex_native_file_edits(call_id, changes)
             tool_name = "apply_patch"
         else:
             continue
-        path = _codex_edit_path(file_path, cwd, arguments)
-        if path is not None:
+        for identity_path, read_path, applied_text in file_edits:
+            resolved = _codex_edit_path(read_path, cwd, arguments)
+            if resolved is None:
+                continue
             edits.append(
                 {
                     "tool_use_id": call_id,
                     "tool_name": tool_name,
-                    "file_path": path,
+                    # Identity is the patch marker / change-map key as authored
+                    # (stable across SessionEnd refires); read_path is the
+                    # resolved session-end file location.
+                    "file_path": identity_path,
+                    "read_path": resolved,
                     "applied_text": applied_text,
                     "time_unix_nano": nanos,
                 }
@@ -1308,16 +1368,23 @@ def external_deltas(
     return out
 
 
+def _edit_read_path(edit: dict) -> str:
+    """Disk path for session-end content; falls back to the shipped identity."""
+    read_path = edit.get("read_path")
+    return read_path if isinstance(read_path, str) and read_path else edit["file_path"]
+
+
 def _observed_file_states(edits: list[dict]) -> dict[str, str | None]:
     """Read each edited file's session-end content from disk, once per path.
 
     A missing file reads as ``""`` (the edit fully discarded by deletion — a
     legitimate zero-survival observation). Any other failure reads as ``None``
     and drops that file's pairs: an unobservable session-end state is a capture
-    gap, not a zero.
+    gap, not a zero. Codex edits may carry a ``read_path`` (Move destination)
+    distinct from the V4A identity ``file_path``.
     """
     observed_file_states: dict[str, str | None] = {}
-    for path in {e["file_path"] for e in edits}:
+    for path in {_edit_read_path(e) for e in edits}:
         try:
             observed_file_states[path] = Path(path).read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -1380,7 +1447,7 @@ def build_pairs(
     )
     shippable, holed = [], set()
     for edit in edits:
-        observed_file_text = observed_file_states[edit["file_path"]]
+        observed_file_text = observed_file_states[_edit_read_path(edit)]
         if observed_file_text is None:
             holed.add(edit["file_path"])
             continue
@@ -1400,6 +1467,7 @@ def build_pairs(
     pairs = []
     for edit, observed_file_text in shippable:
         pair = {**edit, "observed_file_text": observed_file_text}
+        pair.pop("read_path", None)
         if edit["file_path"] not in holed:
             pair["external_lines_added"], pair["external_lines_removed"] = deltas[
                 edit["tool_use_id"]

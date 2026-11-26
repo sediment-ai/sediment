@@ -330,6 +330,158 @@ def test_duplicate_outcome_keys_keep_first() -> None:
     assert filled.edit_retention_score == 1.0  # store's first-write-wins, mirrored
 
 
+def test_multi_file_codex_call_joins_each_file_independently() -> None:
+    decisions = [
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-multi",
+            file_path="calc.py",
+        ),
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-multi",
+            file_path="util.py",
+        ),
+    ]
+    observations = [
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-multi",
+            file_path="/tmp/project/calc.py",
+            applied_text="calc",
+            observed_file_text="calc kept",
+        ),
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-multi",
+            file_path="/tmp/project/util.py",
+            applied_text="util",
+            observed_file_text="gone",
+        ),
+    ]
+    filled = attach_edit_retention(
+        decisions,
+        observations,
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert {d.file_path: d.edit_retention_score for d in filled} == {
+        "calc.py": 1.0,
+        "util.py": 0.0,
+    }
+
+
+def test_single_file_codex_joins_despite_absolute_vs_relative_paths() -> None:
+    [filled] = attach_edit_retention(
+        [
+            _decision(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-one",
+                file_path="calc.py",
+            )
+        ],
+        [
+            _outcome(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-one",
+                file_path="/home/dev/project/calc.py",
+                applied_text="body",
+                observed_file_text="body kept",
+            )
+        ],
+        lambda applied, observed: 1.0 if applied in observed else 0.0,
+    )
+    assert filled.edit_retention_score == 1.0
+
+
+def test_lone_observation_does_not_join_unmatched_sibling_decision() -> None:
+    # Decisions fan out for every V4A file (including deletes); observations
+    # skip deletes. A lone authored observation must not poison the delete.
+    decisions = [
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="kept.py",
+        ),
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="gone.py",
+        ),
+    ]
+    observations = [
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-mixed",
+            file_path="/tmp/project/kept.py",
+            applied_text="kept",
+            observed_file_text="kept",
+        )
+    ]
+    filled = attach_edit_retention(
+        decisions, observations, lambda applied, observed: 1.0
+    )
+    assert {d.file_path: d.edit_retention_score for d in filled} == {
+        "kept.py": 1.0,
+        "gone.py": None,
+    }
+
+
+def test_slash_normalized_paths_join_as_equal() -> None:
+    [filled] = attach_edit_retention(
+        [
+            _decision(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-slash",
+                file_path=r"src\util.py",
+            )
+        ],
+        [
+            _outcome(
+                agent_harness=AgentHarness.CODEX,
+                call_id="call-slash",
+                file_path="src/util.py",
+                applied_text="util",
+                observed_file_text="util",
+            )
+        ],
+        lambda applied, observed: 1.0,
+    )
+    assert filled.edit_retention_score == 1.0
+
+
+def test_same_basename_sibling_does_not_inherit_trailing_path_match() -> None:
+    # Observation /tmp/project/src/util.py trailing-matches both src/util.py
+    # and util.py; only the most specific sibling may take the score.
+    decisions = [
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="src/util.py",
+        ),
+        _decision(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="util.py",
+        ),
+    ]
+    observations = [
+        _outcome(
+            agent_harness=AgentHarness.CODEX,
+            call_id="call-basename",
+            file_path="/tmp/project/src/util.py",
+            applied_text="util",
+            observed_file_text="util",
+        )
+    ]
+    filled = attach_edit_retention(
+        decisions, observations, lambda applied, observed: 1.0
+    )
+    assert {d.file_path: d.edit_retention_score for d in filled} == {
+        "src/util.py": 1.0,
+        "util.py": None,
+    }
+
+
 def test_scorer_receives_the_pair() -> None:
     seen: list[tuple[str, str]] = []
 
@@ -358,8 +510,10 @@ def _window(call_id: str, minute: int, added: int | None, removed: int = 0, **ov
     )
 
 
-def _key(call_id: str) -> tuple[str, str, str, str]:
-    return ("acme", AgentHarness.CLAUDE_CODE, "sess-1", call_id)
+def _key(
+    call_id: str, file_path: str = "app/math.py"
+) -> tuple[str, str, str, str, str]:
+    return ("acme", AgentHarness.CLAUDE_CODE, "sess-1", call_id, file_path)
 
 
 def test_each_edit_sums_the_windows_after_it() -> None:
@@ -389,8 +543,8 @@ def test_files_do_not_bleed_into_each_other() -> None:
         _window("toolu-b", 1, 9, file_path="b.py"),
     ]
     totals = external_lines_after(outcomes)
-    assert totals[_key("toolu-a")] == (1, 0)
-    assert totals[_key("toolu-b")] == (9, 0)
+    assert totals[_key("toolu-a", "a.py")] == (1, 0)
+    assert totals[_key("toolu-b", "b.py")] == (9, 0)
 
 
 def test_uncovered_window_omits_every_edit_before_it() -> None:
@@ -431,6 +585,7 @@ def test_shuffled_ingest_order_identical_output() -> None:
         _window("toolu-4", 3, 8, file_path="other.py"),
     ]
     expected = external_lines_after(outcomes)
+    assert _key("toolu-4", "other.py") in expected
     for seed in range(8):
         shuffled = list(outcomes)
         random.Random(seed).shuffle(shuffled)

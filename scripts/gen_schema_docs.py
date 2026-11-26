@@ -682,7 +682,7 @@ FIELDS: dict[str, str] = {
         "what makes a redelivery collapse, and is never backfilled."
     ),
     "EditObservation.occurred_at": "When the edit was observed, stamped client-side.",
-    "EditObservation.call_id": "The tool-use id of the edit this pair describes.",
+    "EditObservation.call_id": ("The tool-use id of the edit this pair describes."),
     "RejectedEdit.call_id": (
         "The tool-use id of the refused call, joining this to the "
         "`DeveloperDecision` that rejected it — which is what makes it "

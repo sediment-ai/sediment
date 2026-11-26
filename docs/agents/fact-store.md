@@ -33,14 +33,14 @@ Everything public re-exports flat from `sediment_core`. PostgreSQL is required a
   in a UNIQUE index, so `-1` stands in.
   Native Cursor implicit `Write` receipts use a deterministic `decision_id`; the primary key collapses later receipts. Historical rows stay immutable. `packages/capture/sediment_capture/otlp.py` defines the source key and upgrade boundary.
 - **edit_observations** —
-  `(org_id, agent_harness, session_id, call_id)`, because the
-  wire's `tool_use_id` is row-unique per Session. **First write wins** (the
-  `uq_edit_observations_call` schema comment): `SessionEnd` can refire, and the
-  store drops the later observed file state. `external_lines_added` and
-  `external_lines_removed` are nullable with no DEFAULT. NULL is the
-  honest reading for every row captured before these fields existed, and `0` makes a different claim.
-- **rejected_edits** — the same key, the same first-write-wins, the same
-  reasoning.
+  `(org_id, agent_harness, session_id, call_id, file_path)`. A Codex
+  `apply_patch` can share one parent `call_id` across files, so `file_path`
+  completes the key. **First write wins** on `uq_edit_observations_call`:
+  `SessionEnd` can refire and drops the later observed file state.
+  `external_lines_added`/`external_lines_removed` are nullable with no
+  DEFAULT — NULL means pre-field history; `0` means nobody touched the file.
+- **rejected_edits** — `(org_id, agent_harness, session_id, call_id)`,
+  first-write-wins.
 - **retry_linkages** — `(org_id, agent_harness, session_id, tool_name, file_path, rejected_call_id, accepted_call_id)`.
   Redelivery collapses independently of the generated Fact id. Both call ids remain distinct and nonempty.
 - **compute_allocations** — org, Session, `occurred_at`, source, and `COALESCE(cpu_millicores, 0)`/`COALESCE(memory_bytes, 0)`; limits are positive, so `0` exists only in the index. `store_compute_allocation_receipt` returns the retained Fact ID. The Fact has no content or `raw`, so Basic redaction skips it (ADR 0029).

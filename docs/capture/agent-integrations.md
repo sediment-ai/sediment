@@ -10,7 +10,7 @@ guide. Every guide assumes the machine setup in
 | Agent | Developer decisions | Commit Attribution | Inference calls | Edit observations |
 | --- | --- | --- | --- | --- |
 | [Claude Code](agents/claude-code.md) | Accept and reject | Yes | Optional, through a gateway | Optional |
-| [Codex](agents/codex.md) | Accept and reject | Yes | Optional, through a gateway | Optional, single-file patches |
+| [Codex](agents/codex.md) | Accept and reject | Yes | Optional, through a gateway | Optional, one observation per authored file in a patch |
 | [Cursor](agents/cursor.md) | Implicit accepts for successful Agent writes | Yes | No | No |
 | [pi](agents/pi.md) | Implicit accepts | Yes | Optional, through a gateway | Optional |
 | [Copilot Chat](#github-copilot-chat) | Accept, reject, and retention | No | No integration | No |

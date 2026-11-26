@@ -290,7 +290,7 @@ def test_postgres_baseline_revision_is_frozen_from_live_metadata() -> None:
 
 
 def test_cursor_agent_harness_migration_replaces_all_four_checks() -> None:
-    assert postgres_migrations.HEAD_REVISION == "0012_compute_allocations"
+    assert postgres_migrations.HEAD_REVISION == "0013_edit_obs_file_path"
     constraints = {
         "developer_decisions": "ck_decisions_agent_harness",
         "edit_observations": "ck_edit_observations_agent_harness",
