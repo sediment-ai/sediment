@@ -3353,4 +3353,3 @@ def test_multiedit_payload_ships_edit_part_index(tmp_path: Path) -> None:
         attrs = {a["key"]: a["value"] for a in record["attributes"]}
         assert attrs["tool_use_id"]["stringValue"] == "toolu-wire"
         assert attrs["edit_part_index"]["intValue"] == str(index)
-

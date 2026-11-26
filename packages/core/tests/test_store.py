@@ -692,7 +692,6 @@ def test_postgres_edit_observation_allows_same_call_across_files(
     }
 
 
-
 def test_postgres_edit_observation_allows_same_call_parts(
     postgres_store: FactStore,
 ) -> None:

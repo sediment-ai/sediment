@@ -666,4 +666,3 @@ def test_external_lines_after_collapses_multiedit_parts() -> None:
     totals = external_lines_after(observations)
     assert totals[_key("toolu-1", "app.py")] == (4, 2)
     assert totals[_key("toolu-2", "app.py")] == (3, 0)
-

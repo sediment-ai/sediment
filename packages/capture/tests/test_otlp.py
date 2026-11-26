@@ -1309,7 +1309,6 @@ def test_edit_observation_happy_path() -> None:
     assert o.raw == {"tool_name": "Edit"}  # no second copy of the pair
 
 
-
 def test_edit_observation_accepts_edit_part_index() -> None:
     record = _eo_record()
     record["attributes"] = list(record["attributes"]) + [
@@ -1317,7 +1316,6 @@ def test_edit_observation_accepts_edit_part_index() -> None:
     ]
     [o] = parse_otlp_edit_observations(_eo_batch(record), org_id=ORG)
     assert o.edit_part_index == 2
-
 
 
 def test_edit_observation_user_id_from_resource() -> None:
