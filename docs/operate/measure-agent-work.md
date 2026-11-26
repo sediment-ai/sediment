@@ -119,8 +119,11 @@ report needs [Compute allocations](../capture/managed-capture.md#capture-compute
 and gateway capture of the same Sessions.
 
 ```bash
-sediment report compute --org acme
+sediment report compute --org acme --since-days 30
 ```
+
+Without `--since-days`, the report reads all history — the same default as
+`report model`.
 
 The report groups Sessions by their final Compute allocation, the *arm*. For
 each arm, it shows the median and quartiles of three durations:

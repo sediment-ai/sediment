@@ -50,6 +50,7 @@ from sediment_derive import (
 )
 
 from .jsonl import ExportRow
+from .operational_scope import OperationalReportScope
 from .significance import (
     DEFAULT_BOOTSTRAP_ITERATIONS,
     DEFAULT_BOOTSTRAP_SEED,
@@ -207,19 +208,39 @@ def build_compute_report(
 
 
 def generate_compute_report_result(
-    store: FactStore, org_id: str, **report_options
+    store: FactStore,
+    org_id: str,
+    *,
+    scope: OperationalReportScope | None = None,
+    **report_options,
 ) -> ComputeReportResult:
     """Read one snapshot, derive Session compute timings, and build the report.
 
     Only Sessions with a visible Compute allocation are read; their complete
-    visible Inference call populations come from the same snapshot."""
+    visible Inference call populations come from the same snapshot. An optional
+    ``scope`` selects the allocation cohort by ``captured_at`` half-open bounds
+    and reloads each selected Session's allocations through ``as_of``."""
 
-    # ponytail: all-history read of allocations and call summaries (no message
-    # content); add a cohort window like `report model --since-days` if one
-    # organization's allocated Sessions outgrow memory.
     with store.read_snapshot() as snapshot:
         quarantine_revision = snapshot.quarantine_revision(org_id)
-        allocations = snapshot.read_compute_allocations(org_id)
+        if scope is None:
+            allocations = snapshot.read_compute_allocations(org_id)
+        else:
+            cohort = snapshot.read_compute_allocations(
+                org_id,
+                captured_between=(scope.cohort_start, scope.cohort_end),
+                limit=scope.max_inference_calls,
+            )
+            cohort_sessions = {allocation.session_id for allocation in cohort}
+            allocations = (
+                snapshot.read_compute_allocations(
+                    org_id,
+                    session_ids=cohort_sessions,
+                    captured_through=scope.as_of,
+                )
+                if cohort_sessions
+                else []
+            )
         session_ids = sorted({allocation.session_id for allocation in allocations})
         calls = []
         for start in range(0, len(session_ids), COMPOSITE_FILTER_KEY_LIMIT):

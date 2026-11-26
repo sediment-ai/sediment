@@ -1,12 +1,15 @@
 USAGE:
-  sediment report compute [-h] [--org ORG] [--json] [--rows-out FILE]
-                          [--database-url DATABASE_URL]
+  sediment report compute [-h] [--org ORG] [--since-days SINCE_DAYS] [--json]
+                          [--rows-out FILE] [--database-url DATABASE_URL]
 
   Compare Session completion time across final Compute allocations.
 
 OPTIONS:
   -h, --help            show this help message and exit
   --org ORG             org id (default: $SEDIMENT_ORG_ID)
+  --since-days SINCE_DAYS
+                        window Compute allocations (and their Session timings)
+                        to the last N days by capture time; default: all history
   --json                emit JSON instead of a text report
   --rows-out FILE       write one Session compute timing per line to FILE as
                         JSONL

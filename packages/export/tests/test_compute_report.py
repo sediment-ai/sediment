@@ -18,6 +18,7 @@ from sediment_core import (
 )
 from sediment_derive import ComputeArm, derive_compute_timing_result
 from sediment_export import (
+    OperationalReportScope,
     bootstrap_median_difference,
     build_compute_report,
     compute_report_to_json,
@@ -284,3 +285,176 @@ def test_generated_report_reads_one_snapshot_and_honors_quarantine(
     assert small_zero.inference_calls == 1
     assert small_zero.between_calls_ms == 0
     assert "unallocated" not in {timing.session_id for timing in result.timings}
+
+
+def _store_windowed_allocations(store) -> datetime:
+    """Seed one in-window Session, one on each bound, and one outside."""
+    as_of = T0 + timedelta(days=10)
+    specs = (
+        ("inside", as_of - timedelta(days=3)),
+        ("at-start", as_of - timedelta(days=7)),
+        ("at-end", as_of),
+        ("outside", as_of - timedelta(days=8)),
+    )
+    for session_id, captured_at in specs:
+        allocations, calls = _session(
+            session_id, source=RANDOMIZED, cpu=2000, work_s=30
+        )
+        for allocation in allocations:
+            assert store.store_compute_allocation(
+                allocation.model_copy(update={"captured_at": captured_at})
+            )
+        for call in calls:
+            assert store.store_inference_call(call)
+    return as_of
+
+
+def test_generated_report_default_reads_all_history(postgres_store) -> None:
+    as_of = _store_windowed_allocations(postgres_store)
+
+    result = generate_compute_report_result(
+        postgres_store, "acme", bootstrap_iterations=50
+    )
+
+    assert {timing.session_id for timing in result.timings} == {
+        "inside",
+        "at-start",
+        "at-end",
+        "outside",
+    }
+    assert result.report.sessions_with_allocation == 4
+    scoped = generate_compute_report_result(
+        postgres_store,
+        "acme",
+        scope=OperationalReportScope.trailing_days(7, as_of=as_of),
+        bootstrap_iterations=50,
+    )
+    assert scoped.report.sessions_with_allocation < 4
+
+
+def test_generated_report_scope_includes_start_excludes_end(
+    postgres_store,
+) -> None:
+    as_of = _store_windowed_allocations(postgres_store)
+    scope = OperationalReportScope.trailing_days(7, as_of=as_of)
+
+    result = generate_compute_report_result(
+        postgres_store, "acme", scope=scope, bootstrap_iterations=50
+    )
+
+    assert {timing.session_id for timing in result.timings} == {"inside", "at-start"}
+    assert result.report.sessions_with_allocation == 2
+
+
+def test_generated_report_empty_scope_returns_no_sessions(postgres_store) -> None:
+    _store_windowed_allocations(postgres_store)
+    scope = OperationalReportScope.trailing_days(1, as_of=T0 - timedelta(days=30))
+
+    result = generate_compute_report_result(
+        postgres_store, "acme", scope=scope, bootstrap_iterations=50
+    )
+
+    assert result.report.sessions_with_allocation == 0
+    assert result.report.timed_sessions == 0
+    assert result.report.arms == []
+    assert result.timings == []
+
+
+def test_generated_report_scope_reloads_pre_window_allocations(
+    postgres_store,
+) -> None:
+    as_of = T0 + timedelta(days=5)
+    start = as_of - timedelta(days=2)
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="resized-start",
+            org_id="acme",
+            session_id="resized",
+            allocation_source=ComputeAllocationSource.DEFAULT,
+            cpu_millicores=1000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=2),
+            captured_at=start - timedelta(days=1),
+        )
+    )
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="resized-final",
+            org_id="acme",
+            session_id="resized",
+            allocation_source=RANDOMIZED,
+            cpu_millicores=8000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=1),
+            captured_at=start + timedelta(hours=1),
+        )
+    )
+    _, calls = _session("resized", source=RANDOMIZED, cpu=8000, work_s=20)
+    for call in calls:
+        assert postgres_store.store_inference_call(call)
+
+    result = generate_compute_report_result(
+        postgres_store,
+        "acme",
+        scope=OperationalReportScope.trailing_days(2, as_of=as_of),
+        bootstrap_iterations=50,
+    )
+
+    [timing] = result.timings
+    assert timing.session_id == "resized"
+    assert timing.allocation_changed is True
+    assert timing.final_allocation == ComputeArm(RANDOMIZED, 8000, 8 * 2**30)
+    assert [item.allocation_id for item in timing.allocations] == [
+        "resized-start",
+        "resized-final",
+    ]
+
+
+def test_generated_report_scope_reload_is_not_capped_by_cohort_budget(
+    postgres_store,
+) -> None:
+    as_of = T0 + timedelta(days=5)
+    start = as_of - timedelta(days=2)
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="budget-start",
+            org_id="acme",
+            session_id="budget",
+            allocation_source=ComputeAllocationSource.DEFAULT,
+            cpu_millicores=1000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=2),
+            captured_at=start - timedelta(days=1),
+        )
+    )
+    assert postgres_store.store_compute_allocation(
+        ComputeAllocation(
+            allocation_id="budget-final",
+            org_id="acme",
+            session_id="budget",
+            allocation_source=RANDOMIZED,
+            cpu_millicores=8000,
+            memory_bytes=8 * 2**30,
+            occurred_at=T0 - timedelta(minutes=1),
+            captured_at=start + timedelta(hours=1),
+        )
+    )
+    _, calls = _session("budget", source=RANDOMIZED, cpu=8000, work_s=20)
+    for call in calls:
+        assert postgres_store.store_inference_call(call)
+
+    result = generate_compute_report_result(
+        postgres_store,
+        "acme",
+        scope=OperationalReportScope.trailing_days(
+            2, as_of=as_of, max_inference_calls=1
+        ),
+        bootstrap_iterations=50,
+    )
+
+    [timing] = result.timings
+    assert timing.allocation_changed is True
+    assert [item.allocation_id for item in timing.allocations] == [
+        "budget-start",
+        "budget-final",
+    ]

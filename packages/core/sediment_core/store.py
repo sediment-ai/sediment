@@ -1290,6 +1290,7 @@ class FactStore:
         include_quarantined: bool = False,
         *,
         captured_through: datetime | None = None,
+        captured_between: tuple[datetime, datetime] | None = None,
         session_ids: set[str] | None = None,
         limit: int | None = None,
     ) -> list[ComputeAllocation]:
@@ -1299,6 +1300,7 @@ class FactStore:
                 org_id,
                 include_quarantined,
                 captured_through=captured_through,
+                captured_between=captured_between,
                 session_ids=session_ids,
                 limit=limit,
             )
@@ -2780,6 +2782,7 @@ class _FactSnapshot:
         org_id: str,
         *,
         captured_through: datetime | None = None,
+        captured_between: tuple[datetime, datetime] | None = None,
         session_ids: set[str] | None = None,
         limit: int | None = None,
         include_quarantined: bool = False,
@@ -2789,6 +2792,7 @@ class _FactSnapshot:
             org_id,
             include_quarantined,
             captured_through=captured_through,
+            captured_between=captured_between,
             session_ids=session_ids,
             limit=limit,
         )
@@ -4118,6 +4122,7 @@ def _read_compute_allocations(
     include_quarantined: bool,
     *,
     captured_through: datetime | None = None,
+    captured_between: tuple[datetime, datetime] | None = None,
     session_ids: set[str] | None = None,
     limit: int | None = None,
 ) -> list[ComputeAllocation]:
@@ -4129,6 +4134,18 @@ def _read_compute_allocations(
     )
     if captured_through is not None:
         conditions.append(compute_allocations.c.captured_at <= captured_through)
+    if captured_between is not None:
+        lower, upper = captured_between
+        if lower.tzinfo is None or upper.tzinfo is None:
+            raise ValueError("captured_between bounds must be timezone-aware")
+        if lower >= upper:
+            raise ValueError("captured_between lower bound must precede upper bound")
+        conditions.extend(
+            [
+                compute_allocations.c.captured_at >= lower,
+                compute_allocations.c.captured_at < upper,
+            ]
+        )
     if session_ids is not None:
         conditions.append(compute_allocations.c.session_id.in_(sorted(session_ids)))
     statement = (
