@@ -225,10 +225,27 @@ def _timeline_slot_key(observation: EditObservation) -> tuple[str, str]:
     return (observation.call_id, observation.file_path)
 
 
+def _participates_in_external_timeline(observation: EditObservation) -> bool:
+    """NotebookEdit, and MultiEdit without counts, never open or close a window."""
+    tool_name = None
+    if isinstance(observation.raw, dict):
+        tool_name = observation.raw.get("tool_name")
+    if tool_name == "NotebookEdit":
+        return False
+    if tool_name == "MultiEdit" and (
+        observation.external_lines_added is None
+        or observation.external_lines_removed is None
+    ):
+        return False
+    return True
+
+
 def _file_timeline(observations: list[EditObservation]) -> list[EditObservation]:
     """Keep-first representative per ``(call_id, file_path)``, preferring counts."""
     representatives: dict[tuple[str, str], EditObservation] = {}
     for observation in observations:
+        if not _participates_in_external_timeline(observation):
+            continue
         key = _timeline_slot_key(observation)
         existing = representatives.get(key)
         if existing is None:
@@ -267,6 +284,9 @@ def external_lines_after(
     so what bears on it is every window from that edit onward: this sums
     them per file. MultiEdit parts share one window under the same
     ``(call_id, file_path)`` and collapse to one timeline slot before the sum.
+    NotebookEdit observations, and MultiEdit observations that shipped without
+    counts, are omitted from the timeline so they never hole Edit/Write windows
+    on the same path.
 
     A drop with lines here did not come from the agent revising itself —
     that is the disambiguation the edit retention score cannot make alone. It does

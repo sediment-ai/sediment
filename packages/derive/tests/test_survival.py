@@ -657,6 +657,65 @@ def test_attach_edit_retention_multiedit_order_independent() -> None:
     assert forward[0].edit_retention_score == reverse[0].edit_retention_score == 0.5
 
 
+def test_notebook_edit_does_not_hole_file_edit_windows() -> None:
+    outcomes = [
+        _window(
+            "toolu-write", 0, 1, 0, file_path="nb.ipynb", raw={"tool_name": "Write"}
+        ),
+        _window(
+            "toolu-nb",
+            1,
+            None,
+            file_path="nb.ipynb",
+            raw={"tool_name": "NotebookEdit"},
+        ),
+        _window("toolu-edit", 2, 2, 0, file_path="nb.ipynb", raw={"tool_name": "Edit"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-write", "nb.ipynb")] == (3, 0)
+    assert totals[_key("toolu-edit", "nb.ipynb")] == (2, 0)
+    assert _key("toolu-nb", "nb.ipynb") not in totals
+
+
+def test_multiedit_without_counts_does_not_hole_edit_windows() -> None:
+    outcomes = [
+        _window("toolu-edit", 0, 1, 0, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window(
+            "toolu-multi",
+            1,
+            None,
+            file_path="app.py",
+            raw={"tool_name": "MultiEdit"},
+            edit_part_index=0,
+        ),
+        _window(
+            "toolu-multi",
+            1,
+            None,
+            file_path="app.py",
+            raw={"tool_name": "MultiEdit"},
+            edit_part_index=1,
+        ),
+        _window("toolu-write", 2, 3, 0, file_path="app.py", raw={"tool_name": "Write"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-edit", "app.py")] == (4, 0)
+    assert totals[_key("toolu-write", "app.py")] == (3, 0)
+    assert _key("toolu-multi", "app.py") not in totals
+
+
+def test_edit_without_counts_still_holes_prior_windows() -> None:
+    outcomes = [
+        _window("toolu-1", 0, 1, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window("toolu-2", 1, None, file_path="app.py", raw={"tool_name": "Edit"}),
+        _window("toolu-3", 2, 4, file_path="app.py", raw={"tool_name": "Write"}),
+    ]
+    totals = external_lines_after(outcomes)
+    assert totals[_key("toolu-3", "app.py")] == (4, 0)
+    assert _key("toolu-2", "app.py") not in totals
+    assert _key("toolu-1", "app.py") not in totals
+
+
 def test_external_lines_after_collapses_multiedit_parts() -> None:
     observations = [
         _window("toolu-1", 1, 1, 2, file_path="app.py", edit_part_index=0),

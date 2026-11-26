@@ -3039,6 +3039,109 @@ def _notebook(cells: list[dict]) -> str:
     return json.dumps({"nbformat": 4, "nbformat_minor": 5, "cells": cells})
 
 
+def test_multiedit_without_snapshot_does_not_hole_edit_counts(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("a\nb\n", encoding="utf-8")
+    target.write_text("A\nb\n", encoding="utf-8")
+    _snapshot("sess-1", "toolu-edit", target, old_string="b", new_string="B")
+    target.write_text("A\nB\n", encoding="utf-8")
+    target.write_text("A\nB\nhand\n", encoding="utf-8")
+
+    entries = [
+        _assistant_multiedit(
+            "toolu-multi",
+            str(target),
+            [{"old_string": "a", "new_string": "A"}],
+        ),
+        _tool_result("toolu-multi"),
+        _assistant_edit(
+            "toolu-edit",
+            str(target),
+            "B",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-edit"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    by_id = {p["tool_use_id"]: p for p in pairs}
+    assert (
+        by_id["toolu-edit"]["external_lines_added"],
+        by_id["toolu-edit"]["external_lines_removed"],
+    ) == (1, 0)
+    assert "external_lines_added" not in by_id["toolu-multi"]
+
+
+def test_edit_without_snapshot_still_holes_multiedit_counts(tmp_path: Path) -> None:
+    target = tmp_path / "app.py"
+    target.write_text("a\nb\n", encoding="utf-8")
+    _snapshot(
+        "sess-1",
+        "toolu-multi",
+        target,
+        tool_name="MultiEdit",
+        edits=[{"old_string": "a", "new_string": "A"}],
+    )
+    target.write_text("A\nb\n", encoding="utf-8")
+    target.write_text("A\nB\n", encoding="utf-8")
+
+    entries = [
+        _assistant_multiedit(
+            "toolu-multi",
+            str(target),
+            [{"old_string": "a", "new_string": "A"}],
+        ),
+        _tool_result("toolu-multi"),
+        _assistant_edit(
+            "toolu-edit",
+            str(target),
+            "B",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-edit"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    assert len(pairs) == 2
+    for pair in pairs:
+        assert "external_lines_added" not in pair, pair["tool_use_id"]
+
+
+def test_notebook_edit_never_holes_file_edit_counts(tmp_path: Path) -> None:
+    py = tmp_path / "app.py"
+    nb = tmp_path / "nb.ipynb"
+    py.write_text("a\n", encoding="utf-8")
+    nb.write_text(
+        _notebook(
+            [{"id": "c1", "cell_type": "code", "source": ["x = 1\n"], "metadata": {}}]
+        ),
+        encoding="utf-8",
+    )
+    _snapshot("sess-1", "toolu-edit", py, old_string="a", new_string="A")
+    py.write_text("A\n", encoding="utf-8")
+    py.write_text("A\nhand\n", encoding="utf-8")
+
+    entries = [
+        _assistant_edit("toolu-edit", str(py), "A"),
+        _tool_result("toolu-edit"),
+        _assistant_notebook_edit(
+            "toolu-nb",
+            str(nb),
+            new_source="x = 2\n",
+            cell_id="c1",
+            ts="2026-07-24T01:00:02.000Z",
+        ),
+        _tool_result("toolu-nb"),
+    ]
+    pairs = mod.build_pairs(entries, "sess-1", agent="claude-code")
+    by_tool = {p["tool_name"]: p for p in pairs}
+    assert (
+        by_tool["Edit"]["external_lines_added"],
+        by_tool["Edit"]["external_lines_removed"],
+    ) == (1, 0)
+    assert "external_lines_added" not in by_tool["NotebookEdit"]
+
+
 def test_multiedit_emits_one_pair_per_part(tmp_path: Path) -> None:
     target = tmp_path / "app.py"
     target.write_text("alpha\nbeta\n", encoding="utf-8")

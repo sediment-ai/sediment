@@ -1641,14 +1641,16 @@ def build_pairs(
     PreToolUse snapshots cover that call; a call with no usable window
     simply omits them.
 
-    Counts ship per file under one rule: **every** applied file-edit on that
-    file (Edit, Write, MultiEdit) must both have a window and ship a pair.
-    The server sums a file's windows forward from each edit, so the shipped
-    windows have to tile the file's whole timeline. Any hole and the
-    remaining counts understate by an unknown amount, or — worse — swallow
-    the agent's own next edit and report it as somebody else's work.
-    NotebookEdit observations never carry external counts and never hole a
-    file's windows.
+    Counts ship per file under one rule: **every** applied Edit or Write on
+    that file must both have a window and ship a pair. The server sums a
+    file's windows forward from each edit, so the shipped windows have to
+    tile the file's whole timeline. Any hole and the remaining counts
+    understate by an unknown amount, or — worse — swallow the agent's own
+    next edit and report it as somebody else's work. MultiEdit attaches a
+    window when one exists and is otherwise transparent (so a CLI upgrade
+    before the PreToolUse matcher is re-installed does not hole Edit/Write
+    counts). NotebookEdit observations never carry external counts and never
+    hole a file's windows.
 
     A hole is anything that costs one applied file-edit its window or its
     pair: a missing or unreadable PreToolUse snapshot, an edit whose post
@@ -1694,12 +1696,18 @@ def build_pairs(
         if edit["tool_name"] not in _FILE_EDIT_TOOLS:
             continue
         if edit["tool_use_id"] not in deltas:
+            if edit["tool_name"] == _MULTI_EDIT_TOOL:
+                continue
             holed.add(edit["file_path"])
     pairs = []
     for edit, observed_file_text in shippable:
         pair = {**edit, "observed_file_text": observed_file_text}
         pair.pop("read_path", None)
-        if edit["tool_name"] in _FILE_EDIT_TOOLS and edit["file_path"] not in holed:
+        if (
+            edit["tool_name"] in _FILE_EDIT_TOOLS
+            and edit["file_path"] not in holed
+            and edit["tool_use_id"] in deltas
+        ):
             pair["external_lines_added"], pair["external_lines_removed"] = deltas[
                 edit["tool_use_id"]
             ]
